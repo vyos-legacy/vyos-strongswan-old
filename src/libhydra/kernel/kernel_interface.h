@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010 Tobias Brunner
+ * Copyright (C) 2006-2011 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -175,6 +175,13 @@ struct kernel_interface_t {
 						mark_t mark);
 
 	/**
+	 * Flush all SAs from the SAD.
+	 *
+	 * @return				SUCCESS if operation completed
+	 */
+	status_t (*flush_sas) (kernel_interface_t *this);
+
+	/**
 	 * Add a policy to the SPD.
 	 *
 	 * A policy is always associated to an SA. Traffic which matches a
@@ -188,7 +195,7 @@ struct kernel_interface_t {
 	 * @param type			type of policy, POLICY_(IPSEC|PASS|DROP)
 	 * @param sa			details about the SA(s) tied to this policy
 	 * @param mark			mark for this policy
-	 * @param routed		TRUE, if this policy is routed in the kernel
+	 * @param priority		priority of this policy
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*add_policy) (kernel_interface_t *this,
@@ -196,7 +203,8 @@ struct kernel_interface_t {
 							traffic_selector_t *src_ts,
 							traffic_selector_t *dst_ts,
 							policy_dir_t direction, policy_type_t type,
-							ipsec_sa_cfg_t *sa, mark_t mark, bool routed);
+							ipsec_sa_cfg_t *sa, mark_t mark,
+							policy_priority_t priority);
 
 	/**
 	 * Query the use time of a policy.
@@ -228,15 +236,23 @@ struct kernel_interface_t {
 	 * @param src_ts		traffic selector to match traffic source
 	 * @param dst_ts		traffic selector to match traffic dest
 	 * @param direction		direction of traffic, POLICY_(IN|OUT|FWD)
+	 * @param reqid			unique ID of the associated SA
 	 * @param mark			optional mark
-	 * @param unrouted		TRUE, if this policy is unrouted from the kernel
+	 * @param priority		priority of the policy
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*del_policy) (kernel_interface_t *this,
 							traffic_selector_t *src_ts,
 							traffic_selector_t *dst_ts,
-							policy_dir_t direction, mark_t mark,
-							bool unrouted);
+							policy_dir_t direction, u_int32_t reqid,
+							mark_t mark, policy_priority_t priority);
+
+	/**
+	 * Flush all policies from the SPD.
+	 *
+	 * @return				SUCCESS if operation completed
+	 */
+	status_t (*flush_policies) (kernel_interface_t *this);
 
 	/**
 	 * Get our outgoing source address for a destination.

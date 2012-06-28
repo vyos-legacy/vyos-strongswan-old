@@ -50,6 +50,20 @@ struct backtrace_t {
 	bool (*contains_function)(backtrace_t *this, char *function[], int count);
 
 	/**
+	 * Check two backtraces for equality.
+	 *
+	 * @param other	backtrace to compare to this
+	 * @return		TRUE if backtraces are equal
+	 */
+	bool (*equals)(backtrace_t *this, backtrace_t *other);
+	/**
+	 * Create an enumerator over the stack frame addresses.
+	 *
+	 * @return		enumerator_t over void*
+	 */
+	enumerator_t* (*create_frame_enumerator)(backtrace_t *this);
+
+	/**
 	 * Destroy a backtrace instance.
 	 */
 	void (*destroy)(backtrace_t *this);

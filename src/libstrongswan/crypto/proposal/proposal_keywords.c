@@ -59,7 +59,7 @@ struct proposal_token {
     u_int16_t         keysize;
 };
 
-#define TOTAL_KEYWORDS 119
+#define TOTAL_KEYWORDS 122
 #define MIN_WORD_LENGTH 3
 #define MAX_WORD_LENGTH 17
 #define MIN_HASH_VALUE 9
@@ -90,7 +90,7 @@ hash (str, len)
       214, 214, 214, 214, 214, 214, 214, 214, 214, 214,
       214, 214, 214, 214, 214, 214, 214, 214, 214, 214,
       214, 214, 214, 214, 214, 131, 214,   3,  22,  21,
-        3,   1, 101,  48,   3,   4, 214, 214,   3, 214,
+        3,   1, 101,  48,   3,   4, 214, 214,   3,  10,
        57,   4, 214, 214,  94,   6,   3,  32, 214, 214,
       214, 214, 214, 214, 214, 214, 214, 214, 214, 214,
       214, 214, 214, 214, 214, 214, 214, 214, 214, 214,
@@ -196,7 +196,9 @@ static const struct proposal_token wordlist[] =
     {"modp768",          DIFFIE_HELLMAN_GROUP, MODP_768_BIT,              0},
     {"md5",              INTEGRITY_ALGORITHM,  AUTH_HMAC_MD5_96,          0},
     {"sha384",           INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_384_192,    0},
+    {"aescmac",          INTEGRITY_ALGORITHM,  AUTH_AES_CMAC_96,          0},
     {"aes256ccm8",       ENCRYPTION_ALGORITHM, ENCR_AES_CCM_ICV8,       256},
+    {"md5_128",          INTEGRITY_ALGORITHM,  AUTH_HMAC_MD5_128,         0},
     {"aes256ccm96",      ENCRYPTION_ALGORITHM, ENCR_AES_CCM_ICV12,      256},
     {"aes256ccm12",      ENCRYPTION_ALGORITHM, ENCR_AES_CCM_ICV12,      256},
     {"aes256ccm128",     ENCRYPTION_ALGORITHM, ENCR_AES_CCM_ICV16,      256},
@@ -250,6 +252,7 @@ static const struct proposal_token wordlist[] =
     {"aes192gcm64",      ENCRYPTION_ALGORITHM, ENCR_AES_GCM_ICV8,       192},
     {"aes128gcm64",      ENCRYPTION_ALGORITHM, ENCR_AES_GCM_ICV8,       128},
     {"esn",              EXTENDED_SEQUENCE_NUMBERS, EXT_SEQ_NUMBERS,      0},
+    {"sha1_160",         INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA1_160,        0},
     {"aes256ctr",        ENCRYPTION_ALGORITHM, ENCR_AES_CTR,            256},
     {"blowfish256",      ENCRYPTION_ALGORITHM, ENCR_BLOWFISH,           256},
     {"sha2_256",         INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_256_128,    0},
@@ -273,20 +276,20 @@ static const short lookup[] =
      -1,  -1,  -1,  -1,  29,  30,  31,  32,  33,  34,
      35,  -1,  36,  -1,  37,  38,  39,  40,  41,  42,
      43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
-     53,  -1,  54,  -1,  55,  -1,  56,  -1,  57,  -1,
-     58,  -1,  59,  60,  61,  62,  63,  64,  65,  66,
-     67,  68,  69,  70,  71,  72,  -1,  73,  -1,  74,
-     -1,  75,  -1,  76,  77,  78,  79,  80,  -1,  81,
-     82,  83,  84,  85,  -1,  86,  87,  -1,  88,  -1,
-     -1,  89,  90,  -1,  91,  -1,  -1,  92,  -1,  93,
-     94,  95,  96,  -1,  97,  -1,  98,  99, 100, 101,
-    102, 103,  -1,  -1,  -1, 104,  -1,  -1, 105, 106,
-     -1, 107,  -1,  -1,  -1, 108, 109,  -1,  -1, 110,
-    111,  -1,  -1,  -1, 112, 113,  -1, 114, 115,  -1,
+     53,  54,  55,  56,  57,  -1,  58,  -1,  59,  -1,
+     60,  -1,  61,  62,  63,  64,  65,  66,  67,  68,
+     69,  70,  71,  72,  73,  74,  -1,  75,  -1,  76,
+     -1,  77,  -1,  78,  79,  80,  81,  82,  -1,  83,
+     84,  85,  86,  87,  -1,  88,  89,  -1,  90,  -1,
+     -1,  91,  92,  -1,  93,  -1,  -1,  94,  -1,  95,
+     96,  97,  98,  -1,  99,  -1, 100, 101, 102, 103,
+    104, 105,  -1,  -1,  -1, 106,  -1,  -1, 107, 108,
+     -1, 109,  -1,  -1, 110, 111, 112,  -1,  -1, 113,
+    114,  -1,  -1,  -1, 115, 116,  -1, 117, 118,  -1,
      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-     -1,  -1,  -1,  -1,  -1, 116,  -1,  -1,  -1, 117,
-     -1,  -1,  -1, 118
+     -1,  -1,  -1,  -1,  -1, 119,  -1,  -1,  -1, 120,
+     -1,  -1,  -1, 121
   };
 
 #ifdef __GNUC__

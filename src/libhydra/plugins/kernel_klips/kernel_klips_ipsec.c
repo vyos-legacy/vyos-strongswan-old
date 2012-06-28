@@ -1971,7 +1971,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	private_kernel_klips_ipsec_t *this, host_t *src, host_t *dst,
 	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
 	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
-	mark_t mark, bool routed)
+	mark_t mark, policy_priority_t priority)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -2013,7 +2013,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 		this->policies->insert_last(this->policies, policy);
 	}
 
-	if (routed)
+	if (priority == POLICY_PRIORITY_ROUTED)
 	{
 		/* we install this as a %trap eroute in the kernel, later to be
 		 * triggered by packets matching the policy (-> ACQUIRE). */
@@ -2049,9 +2049,11 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	msg = (struct sadb_msg*)request;
 
 	/* FIXME: SADB_X_SAFLAGS_INFLOW may be required, if we add an inbound policy for an IPIP SA */
-	build_addflow(msg, satype, spi, routed ? NULL : src, routed ? NULL : dst,
-			policy->src.net, policy->src.mask, policy->dst.net, policy->dst.mask,
-			policy->src.proto, found != NULL);
+	build_addflow(msg, satype, spi,
+				  priority == POLICY_PRIORITY_ROUTED ? NULL : src,
+				  priority == POLICY_PRIORITY_ROUTED ? NULL : dst,
+				  policy->src.net, policy->src.mask, policy->dst.net,
+				  policy->dst.mask, policy->src.proto, found != NULL);
 
 	this->mutex->unlock(this->mutex);
 
@@ -2347,8 +2349,8 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 
 METHOD(kernel_ipsec_t, del_policy, status_t,
 	private_kernel_klips_ipsec_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	bool unrouted)
+	traffic_selector_t *dst_ts, policy_dir_t direction, u_int32_t reqid,
+	mark_t mark, policy_priority_t priority)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg = (struct sadb_msg*)request, *out;
@@ -2382,7 +2384,8 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	policy_entry_destroy(policy);
 
 	/* decrease appropriate counter */
-	unrouted ? found->trapcount-- : found->activecount--;
+	priority == POLICY_PRIORITY_ROUTED ? found->trapcount--
+									   : found->activecount--;
 
 	if (found->trapcount == 0)
 	{
@@ -2507,7 +2510,7 @@ static void init_ipsec_devices(private_kernel_klips_ipsec_t *this)
 }
 
 /**
- * Register a socket for AQUIRE/EXPIRE messages
+ * Register a socket for ACQUIRE/EXPIRE messages
  */
 static status_t register_pfkey_socket(private_kernel_klips_ipsec_t *this, u_int8_t satype)
 {
@@ -2586,9 +2589,11 @@ kernel_klips_ipsec_t *kernel_klips_ipsec_create()
 				.update_sa = _update_sa,
 				.query_sa = _query_sa,
 				.del_sa = _del_sa,
+				.flush_sas = (void*)return_failed,
 				.add_policy = _add_policy,
 				.query_policy = _query_policy,
 				.del_policy = _del_policy,
+				.flush_policies = (void*)return_failed,
 				.bypass_socket = _bypass_socket,
 				.destroy = _destroy,
 			},
@@ -2634,8 +2639,8 @@ kernel_klips_ipsec_t *kernel_klips_ipsec_create()
 		return NULL;
 	}
 
-	this->job = callback_job_create((callback_job_cb_t)receive_events,
-									this, NULL, NULL);
+	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_events,
+									this, NULL, NULL, JOB_PRIO_CRITICAL);
 	lib->processor->queue_job(lib->processor, (job_t*)this->job);
 
 	return &this->public;

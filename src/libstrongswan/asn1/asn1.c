@@ -222,7 +222,7 @@ size_t asn1_length(chunk_t *blob)
 
 	if (blob->len < 2)
 	{
-		DBG2(DBG_LIB, "insufficient number of octets to parse ASN.1 length");
+		DBG2(DBG_ASN, "insufficient number of octets to parse ASN.1 length");
 		return ASN1_INVALID_LENGTH;
 	}
 
@@ -234,7 +234,7 @@ size_t asn1_length(chunk_t *blob)
 	{	/* single length octet */
 		if (n > blob->len)
 		{
-			DBG2(DBG_LIB, "length is larger than remaining blob size");
+			DBG2(DBG_ASN, "length is larger than remaining blob size");
 			return ASN1_INVALID_LENGTH;
 		}
 		return n;
@@ -245,13 +245,13 @@ size_t asn1_length(chunk_t *blob)
 
 	if (n == 0 || n > blob->len)
 	{
-		DBG2(DBG_LIB, "number of length octets invalid");
+		DBG2(DBG_ASN, "number of length octets invalid");
 		return ASN1_INVALID_LENGTH;
 	}
 
 	if (n > sizeof(len))
 	{
-		DBG2(DBG_LIB, "number of length octets is larger than limit of"
+		DBG2(DBG_ASN, "number of length octets is larger than limit of"
 			 " %d octets", (int)sizeof(len));
 		return ASN1_INVALID_LENGTH;
 	}
@@ -265,7 +265,7 @@ size_t asn1_length(chunk_t *blob)
 	}
 	if (len > blob->len)
 	{
-		DBG2(DBG_LIB, "length is larger than remaining blob size");
+		DBG2(DBG_ASN, "length is larger than remaining blob size");
 		return ASN1_INVALID_LENGTH;
 	}
 	return len;
@@ -326,10 +326,10 @@ static const int tm_leap_1970 = 477;
  */
 time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
 {
-	int tm_year, tm_mon, tm_day, tm_days, tm_hour, tm_min, tm_sec;
+	int tm_year, tm_mon, tm_day, tm_hour, tm_min, tm_sec;
 	int tm_leap_4, tm_leap_100, tm_leap_400, tm_leap;
 	int tz_hour, tz_min, tz_offset;
-	time_t tm_secs;
+	time_t tm_days, tm_secs;
 	u_char *eot = NULL;
 
 	if ((eot = memchr(utctime->ptr, 'Z', utctime->len)) != NULL)
@@ -435,6 +435,11 @@ chunk_t asn1_from_time(const time_t *time, asn1_t type)
 	struct tm t;
 
 	gmtime_r(time, &t);
+	/* RFC 5280 says that dates through the year 2049 MUST be encoded as UTCTIME
+	 * and dates in 2050 or later MUST be encoded as GENERALIZEDTIME. We only
+	 * enforce the latter to avoid overflows but allow callers to force the
+	 * encoding to GENERALIZEDTIME */
+	type = (t.tm_year >= 150) ? ASN1_GENERALIZEDTIME : type;
 	if (type == ASN1_GENERALIZEDTIME)
 	{
 		format = "%04d%02d%02d%02d%02d%02dZ";
@@ -443,7 +448,7 @@ chunk_t asn1_from_time(const time_t *time, asn1_t type)
 	else /* ASN1_UTCTIME */
 	{
 		format = "%02d%02d%02d%02d%02d%02dZ";
-		offset = (t.tm_year < 100)? 0 : -100;
+		offset = (t.tm_year < 100) ? 0 : -100;
 	}
 	snprintf(buf, BUF_LEN, format, t.tm_year + offset,
 			 t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
@@ -471,12 +476,12 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 				{
 					break;
 				}
-				DBG2(DBG_LIB, "  %s", oid_str);
+				DBG2(DBG_ASN, "  %s", oid_str);
 				free(oid_str);
 			}
 			else
 			{
-				DBG2(DBG_LIB, "  '%s'", oid_names[oid].name);
+				DBG2(DBG_ASN, "  '%s'", oid_names[oid].name);
 			}
 			return;
 		case ASN1_UTF8STRING:
@@ -484,14 +489,14 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 		case ASN1_PRINTABLESTRING:
 		case ASN1_T61STRING:
 		case ASN1_VISIBLESTRING:
-			DBG2(DBG_LIB, "  '%.*s'", (int)object.len, object.ptr);
+			DBG2(DBG_ASN, "  '%.*s'", (int)object.len, object.ptr);
 			return;
 		case ASN1_UTCTIME:
 		case ASN1_GENERALIZEDTIME:
 			{
 				time_t time = asn1_to_time(&object, type);
 
-				DBG2(DBG_LIB, "  '%T'", &time, TRUE);
+				DBG2(DBG_ASN, "  '%T'", &time, TRUE);
 			}
 			return;
 		default:
@@ -499,11 +504,11 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 	}
 	if (private)
 	{
-		DBG4(DBG_LIB, "%B", &object);
+		DBG4(DBG_ASN, "%B", &object);
 	}
 	else
 	{
-		DBG3(DBG_LIB, "%B", &object);
+		DBG3(DBG_ASN, "%B", &object);
 	}
 }
 
@@ -517,14 +522,14 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
 	/* an ASN.1 object must possess at least a tag and length field */
 	if (object->len < 2)
 	{
-		DBG2(DBG_LIB, "L%d - %s:  ASN.1 object smaller than 2 octets", level,
+		DBG2(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets", level,
 			 name);
 		return FALSE;
 	}
 
 	if (*object->ptr != type)
 	{
-		DBG2(DBG_LIB, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",
+		DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",
 			 level, name, type, *object->ptr);
 		return FALSE;
 	}
@@ -533,12 +538,12 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
 
 	if (len == ASN1_INVALID_LENGTH || object->len < len)
 	{
-		DBG2(DBG_LIB, "L%d - %s:  length of ASN.1 object invalid or too large",
+		DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",
 			 level, name);
 		return FALSE;
 	}
 
-	DBG2(DBG_LIB, "L%d - %s:", level, name);
+	DBG2(DBG_ASN, "L%d - %s:", level, name);
 	asn1_debug_simple_object(*object, type, FALSE);
 	return TRUE;
 }
@@ -547,14 +552,20 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
  * ASN.1 definition of an algorithmIdentifier
  */
 static const asn1Object_t algorithmIdentifierObjects[] = {
-	{ 0, "algorithmIdentifier",	ASN1_SEQUENCE,	ASN1_NONE			}, /* 0 */
-	{ 1,   "algorithm",			ASN1_OID,		ASN1_BODY			}, /* 1 */
-	{ 1,   "parameters",		ASN1_EOC,		ASN1_RAW|ASN1_OPT	}, /* 2 */
-	{ 1,   "end opt",			ASN1_EOC,		ASN1_END			}, /* 3 */
-	{ 0, "exit",				ASN1_EOC,		ASN1_EXIT			}
+	{ 0, "algorithmIdentifier",	ASN1_SEQUENCE,		ASN1_NONE			}, /* 0 */
+	{ 1,   "algorithm",			ASN1_OID,			ASN1_BODY			}, /* 1 */
+	{ 1,   "parameters",		ASN1_OID,			ASN1_RAW|ASN1_OPT	}, /* 2 */
+	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 3 */
+	{ 1,   "parameters",		ASN1_SEQUENCE,		ASN1_RAW|ASN1_OPT	}, /* 4 */
+	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 5 */
+	{ 1,   "parameters",		ASN1_OCTET_STRING,	ASN1_RAW|ASN1_OPT	}, /* 6 */
+	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 7 */
+	{ 0, "exit",				ASN1_EOC,			ASN1_EXIT			}
 };
-#define ALGORITHM_ID_ALG			1
-#define ALGORITHM_ID_PARAMETERS		2
+#define ALGORITHM_ID_ALG				1
+#define ALGORITHM_ID_PARAMETERS_OID		2
+#define ALGORITHM_ID_PARAMETERS_SEQ		4
+#define ALGORITHM_ID_PARAMETERS_OCT		6
 
 /*
  * Defined in header
@@ -576,7 +587,9 @@ int asn1_parse_algorithmIdentifier(chunk_t blob, int level0, chunk_t *parameters
 			case ALGORITHM_ID_ALG:
 				alg = asn1_known_oid(object);
 				break;
-			case ALGORITHM_ID_PARAMETERS:
+			case ALGORITHM_ID_PARAMETERS_OID:
+			case ALGORITHM_ID_PARAMETERS_SEQ:
+			case ALGORITHM_ID_PARAMETERS_OCT:
 				if (parameters != NULL)
 				{
 					*parameters = object;
@@ -606,7 +619,7 @@ bool is_asn1(chunk_t blob)
 	tag = *blob.ptr;
 	if (tag != ASN1_SEQUENCE && tag != ASN1_SET && tag != ASN1_OCTET_STRING)
 	{
-		DBG2(DBG_LIB, "  file content is not binary ASN.1");
+		DBG2(DBG_ASN, "  file content is not binary ASN.1");
 		return FALSE;
 	}
 
@@ -624,7 +637,7 @@ bool is_asn1(chunk_t blob)
 		return TRUE;
 	}
 
-	DBG2(DBG_LIB, "  file size does not match ASN.1 coded length");
+	DBG2(DBG_ASN, "  file size does not match ASN.1 coded length");
 	return FALSE;
 }
 

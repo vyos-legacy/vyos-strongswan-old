@@ -37,20 +37,25 @@ host_triplet = @host@
 @USE_LIBHYDRA_TRUE@am__append_2 = libhydra
 @USE_SIMAKA_TRUE@am__append_3 = libsimaka
 @USE_TLS_TRUE@am__append_4 = libtls
-@USE_LIBCHARON_TRUE@am__append_5 = libcharon
-@USE_FILE_CONFIG_TRUE@am__append_6 = libfreeswan starter
-@USE_IPSEC_SCRIPT_TRUE@am__append_7 = ipsec _copyright
-@USE_PLUTO_TRUE@am__append_8 = pluto whack
-@USE_CHARON_TRUE@am__append_9 = charon
-@USE_STROKE_TRUE@am__append_10 = stroke
-@USE_UPDOWN_TRUE@am__append_11 = _updown _updown_espmark
-@USE_TOOLS_TRUE@am__append_12 = libfreeswan openac scepclient pki
-@USE_CONFTEST_TRUE@am__append_13 = conftest
-@USE_DUMM_TRUE@am__append_14 = dumm
-@USE_FAST_TRUE@am__append_15 = libfast
-@USE_MANAGER_TRUE@am__append_16 = manager
-@USE_MEDSRV_TRUE@am__append_17 = medsrv
-@USE_INTEGRITY_TEST_TRUE@am__append_18 = checksum
+@USE_RADIUS_TRUE@am__append_5 = libradius
+@USE_LIBTNCIF_TRUE@am__append_6 = libtncif
+@USE_LIBTNCCS_TRUE@am__append_7 = libtnccs
+@USE_IMCV_TRUE@am__append_8 = libimcv
+@USE_PTS_TRUE@am__append_9 = libpts
+@USE_LIBCHARON_TRUE@am__append_10 = libcharon
+@USE_FILE_CONFIG_TRUE@am__append_11 = libfreeswan starter
+@USE_IPSEC_SCRIPT_TRUE@am__append_12 = ipsec _copyright
+@USE_PLUTO_TRUE@am__append_13 = pluto whack
+@USE_CHARON_TRUE@am__append_14 = charon
+@USE_STROKE_TRUE@am__append_15 = stroke
+@USE_UPDOWN_TRUE@am__append_16 = _updown _updown_espmark
+@USE_TOOLS_TRUE@am__append_17 = libfreeswan openac scepclient pki
+@USE_CONFTEST_TRUE@am__append_18 = conftest
+@USE_DUMM_TRUE@am__append_19 = dumm
+@USE_FAST_TRUE@am__append_20 = libfast
+@USE_MANAGER_TRUE@am__append_21 = manager
+@USE_MEDSRV_TRUE@am__append_22 = medsrv
+@USE_INTEGRITY_TEST_TRUE@am__append_23 = checksum
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -85,9 +90,10 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = . include libstrongswan libhydra libsimaka libtls \
-	libcharon libfreeswan starter ipsec _copyright pluto whack \
-	charon stroke _updown _updown_espmark openac scepclient pki \
-	conftest dumm libfast manager medsrv checksum
+	libradius libtncif libtnccs libimcv libpts libcharon \
+	libfreeswan starter ipsec _copyright pluto whack charon stroke \
+	_updown _updown_espmark openac scepclient pki conftest dumm \
+	libfast manager medsrv checksum
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -205,6 +211,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -213,6 +222,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -229,11 +239,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -277,6 +289,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -292,7 +305,9 @@ SUBDIRS = . include $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_7) $(am__append_8) $(am__append_9) \
 	$(am__append_10) $(am__append_11) $(am__append_12) \
 	$(am__append_13) $(am__append_14) $(am__append_15) \
-	$(am__append_16) $(am__append_17) $(am__append_18)
+	$(am__append_16) $(am__append_17) $(am__append_18) \
+	$(am__append_19) $(am__append_20) $(am__append_21) \
+	$(am__append_22) $(am__append_23)
 EXTRA_DIST = strongswan.conf
 all: all-recursive
 

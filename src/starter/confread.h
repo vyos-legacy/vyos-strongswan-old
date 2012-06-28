@@ -20,7 +20,7 @@
 #include <freeswan.h>
 #endif
 
-#include "parser.h"
+#include "ipsec-parser.h"
 #include "interfaces.h"
 
 typedef enum {
@@ -66,6 +66,7 @@ struct starter_end {
 		char            *groups;
 		char            *cert_policy;
 		char            *iface;
+		char            *host;
 		ip_address      addr;
 		u_int           ikeport;
 		ip_address      nexthop;
@@ -143,6 +144,8 @@ struct starter_conn {
 		dpd_action_t    dpd_action;
 		int             dpd_count;
 
+		dpd_action_t    close_action;
+
 		time_t          inactivity;
 
 		bool            me_mediation;
@@ -195,12 +198,12 @@ struct starter_config {
 				char     *plutostderrlog;
 				bool     uniqueids;
 				u_int    overridemtu;
-				u_int    crlcheckinterval;
+				time_t   crlcheckinterval;
 				bool     cachecrls;
 				strict_t strictcrlpolicy;
 				bool     nocrsend;
 				bool     nat_traversal;
-				u_int    keep_alive;
+				time_t   keep_alive;
 				u_int    force_keepalive;
 				char     *virtual_private;
 				char     *pkcs11module;

@@ -12,11 +12,16 @@
  * for more details.
  */
 
-#include <debug.h>
-#include <daemon.h>
-#include <tnc/tncifimv.h>
+#include <tncifimv.h>
+#include <tncif_names.h>
+
+#include <tnc/tnc.h>
 #include <tnc/imv/imv.h>
+#include <tnc/imv/imv_manager.h>
 #include <tnc/imv/imv_recommendations.h>
+
+#include <debug.h>
+#include <utils/linked_list.h>
 
 typedef struct private_tnc_imv_recommendations_t private_tnc_imv_recommendations_t;
 typedef struct recommendation_entry_t recommendation_entry_t;
@@ -126,7 +131,7 @@ METHOD(recommendations_t, have_recommendation, bool,
 		DBG1(DBG_TNC, "there are no IMVs to make a recommendation");
 		return TRUE;
 	}
-	policy = charon->imvs->get_recommendation_policy(charon->imvs);
+	policy = tnc->imvs->get_recommendation_policy(tnc->imvs);
 
 	enumerator = this->recs->create_enumerator(this->recs);
 	while (enumerator->enumerate(enumerator, &entry))
@@ -357,6 +362,21 @@ METHOD(recommendations_t, create_reason_enumerator, enumerator_t*,
 					(void*)reason_filter, NULL, NULL);
 }
 
+METHOD(recommendations_t, clear_reasons, void,
+	private_tnc_imv_recommendations_t *this)
+{
+	enumerator_t *enumerator;
+	recommendation_entry_t *entry;
+
+	enumerator = this->recs->create_enumerator(this->recs);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		chunk_clear(&entry->reason);
+		chunk_clear(&entry->reason_language);
+	}
+	enumerator->destroy(enumerator);
+}
+
 METHOD(recommendations_t, destroy, void,
 	private_tnc_imv_recommendations_t *this)
 {
@@ -392,6 +412,7 @@ recommendations_t* tnc_imv_recommendations_create(linked_list_t *imv_list)
 			.set_reason_string = _set_reason_string,
 			.set_reason_language = _set_reason_language,
 			.create_reason_enumerator = _create_reason_enumerator,
+			.clear_reasons = _clear_reasons,
 			.destroy = _destroy,
 		},
 		.recs = linked_list_create(),

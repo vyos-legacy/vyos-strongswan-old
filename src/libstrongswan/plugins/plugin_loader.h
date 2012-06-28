@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2007 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -15,7 +16,7 @@
 
 /**
  * @defgroup plugin_loader plugin_loader
- * @{ @ingroup plugin
+ * @{ @ingroup plugins
  */
 
 #ifndef PLUGIN_LOADER_H_
@@ -59,9 +60,22 @@ struct plugin_loader_t {
 	/**
 	 * Create an enumerator over all loaded plugins.
 	 *
-	 * @return				enumerator over plugin_t*
+	 * In addition to the plugin, the enumerator returns a list of pointers to
+	 * plugin features currently loaded (if the argument is not NULL).
+	 * This list is to be read only.
+	 *
+	 * @return				enumerator over plugin_t*, linked_list_t*
 	 */
 	enumerator_t* (*create_plugin_enumerator)(plugin_loader_t *this);
+
+	/**
+	 * Get a simple list the names of all loaded plugins.
+	 *
+	 * The function returns internal data, do not free.
+	 *
+	 * @return				list of the names of all loaded plugins
+	 */
+	char* (*loaded_plugins)(plugin_loader_t *this);
 
 	/**
 	 * Unload loaded plugins, destroy plugin_loader instance.

@@ -118,8 +118,8 @@ plugin_t *nm_plugin_create()
 		},
 		.creds = nm_creds_create(),
 		.handler = nm_handler_create(),
-		.plugin = nm_strongswan_plugin_new(this->creds, this->handler),
 	);
+	this->plugin = nm_strongswan_plugin_new(this->creds, this->handler);
 
 	hydra->attributes->add_handler(hydra->attributes, &this->handler->handler);
 	lib->credmgr->add_set(lib->credmgr, &this->creds->set);
@@ -134,7 +134,8 @@ plugin_t *nm_plugin_create()
 	charon->keep_cap(charon, CAP_DAC_OVERRIDE);
 
 	lib->processor->queue_job(lib->processor,
-		 (job_t*)callback_job_create((callback_job_cb_t)run, this, NULL, NULL));
+				(job_t*)callback_job_create_with_prio((callback_job_cb_t)run,
+										this, NULL, NULL, JOB_PRIO_CRITICAL));
 
 	return &this->public.plugin;
 }

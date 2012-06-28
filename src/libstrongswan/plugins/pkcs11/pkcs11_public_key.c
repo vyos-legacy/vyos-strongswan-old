@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2011 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
  *
@@ -19,8 +22,10 @@
 #include "pkcs11_private_key.h"
 #include "pkcs11_manager.h"
 
+#include <asn1/oid.h>
+#include <asn1/asn1.h>
+#include <asn1/asn1_parser.h>
 #include <debug.h>
-#include <threading/mutex.h>
 
 typedef struct private_pkcs11_public_key_t private_pkcs11_public_key_t;
 
@@ -40,7 +45,7 @@ struct private_pkcs11_public_key_t {
 	key_type_t type;
 
 	/**
-	 * Key size in bytes
+	 * Key size in bits
 	 */
 	size_t k;
 
@@ -65,15 +70,120 @@ struct private_pkcs11_public_key_t {
 	CK_OBJECT_HANDLE object;
 
 	/**
-	 * Mutex to lock session
-	 */
-	mutex_t *mutex;
-
-	/**
 	 * References to this key
 	 */
 	refcount_t ref;
 };
+
+/**
+ * Helper function that returns the base point order length in bits of the
+ * given named curve.
+ *
+ * Currently only a subset of defined curves is supported (namely the 5 curves
+ * over Fp recommended by NIST). IKEv2 only supports 3 out of these.
+ *
+ * 0 is returned if the given curve is not supported.
+ */
+static size_t basepoint_order_len(int oid)
+{
+	switch (oid)
+	{
+		case OID_PRIME192V1:
+			return 192;
+		case OID_SECT224R1:
+			return 224;
+		case OID_PRIME256V1:
+			return 256;
+		case OID_SECT384R1:
+			return 384;
+		case OID_SECT521R1:
+			return 521;
+		default:
+			return 0;
+	}
+}
+
+/**
+ * Parses the given ecParameters (ASN.1) and returns the key length.
+ */
+static bool keylen_from_ecparams(chunk_t ecparams, size_t *keylen)
+{
+	if (!asn1_parse_simple_object(&ecparams, ASN1_OID, 0, "named curve"))
+	{
+		return FALSE;
+	}
+	*keylen = basepoint_order_len(asn1_known_oid(ecparams));
+	return *keylen > 0;
+}
+
+/**
+ * ASN.1 definition of a subjectPublicKeyInfo structure when used with ECDSA
+ * we currently only support named curves.
+ */
+static const asn1Object_t pkinfoObjects[] = {
+	{ 0, "subjectPublicKeyInfo",	ASN1_SEQUENCE,		ASN1_NONE	}, /* 0 */
+	{ 1,   "algorithmIdentifier",	ASN1_SEQUENCE,		ASN1_NONE	}, /* 1 */
+	{ 2,     "algorithm",			ASN1_OID,			ASN1_BODY	}, /* 2 */
+	{ 2,     "namedCurve",			ASN1_OID,			ASN1_RAW	}, /* 3 */
+	{ 1,   "subjectPublicKey",		ASN1_BIT_STRING,	ASN1_BODY	}, /* 4 */
+	{ 0, "exit",					ASN1_EOC,			ASN1_EXIT	}
+};
+#define PKINFO_SUBJECT_PUBLIC_KEY_ALGORITHM		2
+#define PKINFO_SUBJECT_PUBLIC_KEY_NAMEDCURVE	3
+#define PKINFO_SUBJECT_PUBLIC_KEY				4
+
+/**
+ * Extract the DER encoded Parameters and ECPoint from the given DER encoded
+ * subjectPublicKeyInfo.
+ */
+static bool parse_ecdsa_public_key(chunk_t blob, chunk_t *ecparams,
+								   chunk_t *ecpoint, size_t *keylen)
+{
+	asn1_parser_t *parser;
+	chunk_t object;
+	int objectID;
+	bool success = FALSE;
+
+	parser = asn1_parser_create(pkinfoObjects, blob);
+
+	while (parser->iterate(parser, &objectID, &object))
+	{
+		switch (objectID)
+		{
+			case PKINFO_SUBJECT_PUBLIC_KEY_ALGORITHM:
+			{
+				if (asn1_known_oid(object) != OID_EC_PUBLICKEY)
+				{
+					goto end;
+				}
+				break;
+			}
+			case PKINFO_SUBJECT_PUBLIC_KEY_NAMEDCURVE:
+			{
+				*ecparams = object;
+				if (!keylen_from_ecparams(object, keylen))
+				{
+					goto end;
+				}
+				break;
+			}
+			case PKINFO_SUBJECT_PUBLIC_KEY:
+			{
+				if (object.len > 0 && *object.ptr == 0x00)
+				{	/* skip initial bit string octet defining 0 unused bits */
+					object = chunk_skip(object, 1);
+				}
+				*ecpoint = object;
+				break;
+			}
+		}
+	}
+	success = parser->success(parser);
+end:
+	parser->destroy(parser);
+	return success;
+}
+
 
 METHOD(public_key_t, get_type, key_type_t,
 	private_pkcs11_public_key_t *this)
@@ -84,7 +194,7 @@ METHOD(public_key_t, get_type, key_type_t,
 METHOD(public_key_t, get_keysize, int,
 	private_pkcs11_public_key_t *this)
 {
-	return this->k * 8;
+	return this->k;
 }
 
 METHOD(public_key_t, verify, bool,
@@ -92,9 +202,13 @@ METHOD(public_key_t, verify, bool,
 	chunk_t data, chunk_t sig)
 {
 	CK_MECHANISM_PTR mechanism;
+	CK_SESSION_HANDLE session;
 	CK_RV rv;
+	hash_algorithm_t hash_alg;
+	chunk_t hash = chunk_empty;
 
-	mechanism = pkcs11_signature_scheme_to_mech(scheme);
+	mechanism = pkcs11_signature_scheme_to_mech(scheme, this->type, this->k,
+												&hash_alg);
 	if (!mechanism)
 	{
 		DBG1(DBG_LIB, "signature scheme %N not supported",
@@ -105,17 +219,35 @@ METHOD(public_key_t, verify, bool,
 	{	/* trim leading zero byte in sig */
 		sig = chunk_skip(sig, 1);
 	}
-	this->mutex->lock(this->mutex);
-	rv = this->lib->f->C_VerifyInit(this->session, mechanism, this->object);
+	rv = this->lib->f->C_OpenSession(this->slot, CKF_SERIAL_SESSION, NULL, NULL,
+									 &session);
 	if (rv != CKR_OK)
 	{
-		this->mutex->unlock(this->mutex);
+		DBG1(DBG_CFG, "opening PKCS#11 session failed: %N", ck_rv_names, rv);
+		return FALSE;
+	}
+	rv = this->lib->f->C_VerifyInit(session, mechanism, this->object);
+	if (rv != CKR_OK)
+	{
+		this->lib->f->C_CloseSession(session);
 		DBG1(DBG_LIB, "C_VerifyInit() failed: %N", ck_rv_names, rv);
 		return FALSE;
 	}
-	rv = this->lib->f->C_Verify(this->session, data.ptr, data.len,
-								sig.ptr, sig.len);
-	this->mutex->unlock(this->mutex);
+	if (hash_alg != HASH_UNKNOWN)
+	{
+		hasher_t *hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
+		if (!hasher)
+		{
+			this->lib->f->C_CloseSession(session);
+			return FALSE;
+		}
+		hasher->allocate_hash(hasher, data, &hash);
+		hasher->destroy(hasher);
+		data = hash;
+	}
+	rv = this->lib->f->C_Verify(session, data.ptr, data.len, sig.ptr, sig.len);
+	this->lib->f->C_CloseSession(session);
+	chunk_free(&hash);
 	if (rv != CKR_OK)
 	{
 		DBG1(DBG_LIB, "C_Verify() failed: %N", ck_rv_names, rv);
@@ -129,6 +261,7 @@ METHOD(public_key_t, encrypt, bool,
 	chunk_t plain, chunk_t *crypt)
 {
 	CK_MECHANISM_PTR mechanism;
+	CK_SESSION_HANDLE session;
 	CK_BYTE_PTR buf;
 	CK_ULONG len;
 	CK_RV rv;
@@ -140,18 +273,24 @@ METHOD(public_key_t, encrypt, bool,
 			 encryption_scheme_names, scheme);
 		return FALSE;
 	}
-	this->mutex->lock(this->mutex);
-	rv = this->lib->f->C_EncryptInit(this->session, mechanism, this->object);
+	rv = this->lib->f->C_OpenSession(this->slot, CKF_SERIAL_SESSION, NULL, NULL,
+									 &session);
 	if (rv != CKR_OK)
 	{
-		this->mutex->unlock(this->mutex);
+		DBG1(DBG_CFG, "opening PKCS#11 session failed: %N", ck_rv_names, rv);
+		return FALSE;
+	}
+	rv = this->lib->f->C_EncryptInit(session, mechanism, this->object);
+	if (rv != CKR_OK)
+	{
+		this->lib->f->C_CloseSession(session);
 		DBG1(DBG_LIB, "C_EncryptInit() failed: %N", ck_rv_names, rv);
 		return FALSE;
 	}
 	len = (get_keysize(this) + 7) / 8;
 	buf = malloc(len);
-	rv = this->lib->f->C_Encrypt(this->session, plain.ptr, plain.len, buf, &len);
-	this->mutex->unlock(this->mutex);
+	rv = this->lib->f->C_Encrypt(session, plain.ptr, plain.len, buf, &len);
+	this->lib->f->C_CloseSession(session);
 	if (rv != CKR_OK)
 	{
 		DBG1(DBG_LIB, "C_Encrypt() failed: %N", ck_rv_names, rv);
@@ -163,40 +302,119 @@ METHOD(public_key_t, encrypt, bool,
 }
 
 /**
+ * Encode ECDSA key using a given encoding type
+ */
+static bool encode_ecdsa(private_pkcs11_public_key_t *this,
+						 cred_encoding_type_t type, chunk_t *encoding)
+{
+	enumerator_t *enumerator;
+	bool success = FALSE;
+	CK_ATTRIBUTE attr[] = {
+		{CKA_EC_PARAMS, NULL, 0},
+		{CKA_EC_POINT, NULL, 0},
+	};
+
+	if (type != PUBKEY_SPKI_ASN1_DER && type != PUBKEY_PEM)
+	{
+		return FALSE;
+	}
+
+	enumerator = this->lib->create_object_attr_enumerator(this->lib,
+							this->session, this->object, attr, countof(attr));
+	if (enumerator && enumerator->enumerate(enumerator, NULL) &&
+		attr[0].ulValueLen > 0 && attr[1].ulValueLen > 0)
+	{
+		chunk_t ecparams, ecpoint;
+		ecparams = chunk_create(attr[0].pValue, attr[0].ulValueLen);
+		ecpoint = chunk_create(attr[1].pValue, attr[1].ulValueLen);
+		/* encode as subjectPublicKeyInfo */
+		*encoding = asn1_wrap(ASN1_SEQUENCE, "mm",
+						asn1_wrap(ASN1_SEQUENCE, "mc",
+							asn1_build_known_oid(OID_EC_PUBLICKEY), ecparams),
+						asn1_bitstring("c", ecpoint));
+		success = TRUE;
+		if (type == PUBKEY_PEM)
+		{
+			chunk_t asn1 = *encoding;
+			success = lib->encoding->encode(lib->encoding, PUBKEY_PEM,
+							NULL, encoding, CRED_PART_ECDSA_PUB_ASN1_DER,
+							asn1, CRED_PART_END);
+			chunk_clear(&asn1);
+		}
+	}
+	DESTROY_IF(enumerator);
+	return success;
+}
+
+/**
+ * Compute fingerprint of an ECDSA key
+ */
+static bool fingerprint_ecdsa(private_pkcs11_public_key_t *this,
+							  cred_encoding_type_t type, chunk_t *fp)
+{
+	hasher_t *hasher;
+	chunk_t asn1;
+
+	switch (type)
+	{
+		case KEYID_PUBKEY_SHA1:
+			if (!this->lib->get_ck_attribute(this->lib, this->session,
+						this->object, CKA_EC_POINT, &asn1))
+			{
+				return FALSE;
+			}
+			break;
+		case KEYID_PUBKEY_INFO_SHA1:
+			if (!encode_ecdsa(this, PUBKEY_SPKI_ASN1_DER, &asn1))
+			{
+				return FALSE;
+			}
+			break;
+		default:
+			return FALSE;
+	}
+	hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
+	if (!hasher)
+	{
+		chunk_clear(&asn1);
+		return FALSE;
+	}
+	hasher->allocate_hash(hasher, asn1, fp);
+	hasher->destroy(hasher);
+	chunk_clear(&asn1);
+	lib->encoding->cache(lib->encoding, type, this, *fp);
+	return TRUE;
+}
+
+/**
  * Encode RSA key using a given encoding type
  */
 static bool encode_rsa(private_pkcs11_public_key_t *this,
 					cred_encoding_type_t type, void *cache, chunk_t *encoding)
 {
-	CK_RV rv;
+	enumerator_t *enumerator;
 	bool success = FALSE;
-	chunk_t n, e;
 	CK_ATTRIBUTE attr[] = {
 		{CKA_MODULUS, NULL, 0},
 		{CKA_PUBLIC_EXPONENT, NULL, 0},
 	};
 
-	rv = this->lib->f->C_GetAttributeValue(this->session, this->object,
-										   attr, countof(attr));
-	if (rv != CKR_OK ||
-		attr[0].ulValueLen == 0 || attr[0].ulValueLen == -1 ||
-		attr[1].ulValueLen == 0 || attr[1].ulValueLen == -1)
+	enumerator = this->lib->create_object_attr_enumerator(this->lib,
+							this->session, this->object, attr, countof(attr));
+	if (enumerator && enumerator->enumerate(enumerator, NULL) &&
+		attr[0].ulValueLen > 0 && attr[1].ulValueLen > 0)
 	{
-		return FALSE;
-	}
-	attr[0].pValue = malloc(attr[0].ulValueLen);
-	attr[1].pValue = malloc(attr[1].ulValueLen);
-	rv = this->lib->f->C_GetAttributeValue(this->session, this->object,
-										   attr, countof(attr));
-	if (rv == CKR_OK)
-	{
+		chunk_t n, e;
 		n = chunk_create(attr[0].pValue, attr[0].ulValueLen);
+		if (n.ptr[0] & 0x80)
+		{	/* add leading 0x00, encoders expect it already like this */
+			n = chunk_cata("cc", chunk_from_chars(0x00), n);
+		}
 		e = chunk_create(attr[1].pValue, attr[1].ulValueLen);
 		success = lib->encoding->encode(lib->encoding, type, cache, encoding,
 			CRED_PART_RSA_MODULUS, n, CRED_PART_RSA_PUB_EXP, e, CRED_PART_END);
 	}
-	free(attr[0].pValue);
-	free(attr[1].pValue);
+	DESTROY_IF(enumerator);
 	return success;
 }
 
@@ -208,6 +426,8 @@ METHOD(public_key_t, get_encoding, bool,
 	{
 		case KEY_RSA:
 			return encode_rsa(this, type, NULL, encoding);
+		case KEY_ECDSA:
+			return encode_ecdsa(this, type, encoding);
 		default:
 			return FALSE;
 	}
@@ -224,6 +444,8 @@ METHOD(public_key_t, get_fingerprint, bool,
 	{
 		case KEY_RSA:
 			return encode_rsa(this, type, this, fp);
+		case KEY_ECDSA:
+			return fingerprint_ecdsa(this, type, fp);
 		default:
 			return FALSE;
 	}
@@ -243,7 +465,6 @@ METHOD(public_key_t, destroy, void,
 	{
 		lib->encoding->clear_cache(lib->encoding, this);
 		this->lib->f->C_CloseSession(this->session);
-		this->mutex->destroy(this->mutex);
 		free(this);
 	}
 }
@@ -278,7 +499,6 @@ static private_pkcs11_public_key_t *create(key_type_t type, size_t k,
 		.slot = slot,
 		.session = session,
 		.object = object,
-		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.ref = 1,
 	);
 
@@ -288,7 +508,8 @@ static private_pkcs11_public_key_t *create(key_type_t type, size_t k,
 /**
  * Find a key object, including PKCS11 library and slot
  */
-static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e)
+static private_pkcs11_public_key_t* find_key(key_type_t type, size_t keylen,
+											 CK_ATTRIBUTE_PTR tmpl, int count)
 {
 	private_pkcs11_public_key_t *this = NULL;
 	pkcs11_manager_t *manager;
@@ -296,7 +517,7 @@ static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e)
 	pkcs11_library_t *p11;
 	CK_SLOT_ID slot;
 
-	manager = pkcs11_manager_get();
+	manager = lib->get(lib, "pkcs11-manager");
 	if (!manager)
 	{
 		return NULL;
@@ -305,14 +526,6 @@ static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e)
 	enumerator = manager->create_token_enumerator(manager);
 	while (enumerator->enumerate(enumerator, &p11, &slot))
 	{
-		CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
-		CK_KEY_TYPE type = CKK_RSA;
-		CK_ATTRIBUTE tmpl[] = {
-			{CKA_CLASS, &class, sizeof(class)},
-			{CKA_KEY_TYPE, &type, sizeof(type)},
-			{CKA_MODULUS, n.ptr, n.len},
-			{CKA_PUBLIC_EXPONENT, e.ptr, e.len},
-		};
 		CK_OBJECT_HANDLE object;
 		CK_SESSION_HANDLE session;
 		CK_RV rv;
@@ -324,11 +537,11 @@ static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e)
 			DBG1(DBG_CFG, "opening PKCS#11 session failed: %N", ck_rv_names, rv);
 			continue;
 		}
-		keys = p11->create_object_enumerator(p11, session,
-											 tmpl, countof(tmpl), NULL, 0);
+		keys = p11->create_object_enumerator(p11, session, tmpl, count,
+											 NULL, 0);
 		if (keys->enumerate(keys, &object))
 		{
-			this = create(KEY_RSA, n.len, p11, slot, session, object);
+			this = create(type, keylen, p11, slot, session, object);
 			keys->destroy(keys);
 			break;
 		}
@@ -340,9 +553,46 @@ static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e)
 }
 
 /**
+ * Find an RSA key object
+ */
+static private_pkcs11_public_key_t* find_rsa_key(chunk_t n, chunk_t e,
+												 size_t keylen)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE type = CKK_RSA;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+		{CKA_MODULUS, n.ptr, n.len},
+		{CKA_PUBLIC_EXPONENT, e.ptr, e.len},
+	};
+	return find_key(KEY_RSA, keylen, tmpl, countof(tmpl));
+}
+
+/**
+ * Find an ECDSA key object
+ */
+static private_pkcs11_public_key_t* find_ecdsa_key(chunk_t ecparams,
+												   chunk_t ecpoint,
+												   size_t keylen)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE type = CKK_ECDSA;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+		{CKA_EC_PARAMS, ecparams.ptr, ecparams.len},
+		{CKA_EC_POINT, ecpoint.ptr, ecpoint.len},
+	};
+	return find_key(KEY_ECDSA, keylen, tmpl, countof(tmpl));
+}
+
+/**
  * Create a key object in a suitable token session
  */
-static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
+static private_pkcs11_public_key_t* create_key(key_type_t type, size_t keylen,
+								CK_MECHANISM_TYPE_PTR mechanisms, int mcount,
+								CK_ATTRIBUTE_PTR tmpl, int count)
 {
 	private_pkcs11_public_key_t *this = NULL;
 	pkcs11_manager_t *manager;
@@ -350,7 +600,7 @@ static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
 	pkcs11_library_t *p11;
 	CK_SLOT_ID slot;
 
-	manager = pkcs11_manager_get();
+	manager = lib->get(lib, "pkcs11-manager");
 	if (!manager)
 	{
 		return NULL;
@@ -361,14 +611,6 @@ static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
 	{
 		CK_MECHANISM_TYPE mech;
 		CK_MECHANISM_INFO info;
-		CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
-		CK_KEY_TYPE type = CKK_RSA;
-		CK_ATTRIBUTE tmpl[] = {
-			{CKA_CLASS, &class, sizeof(class)},
-			{CKA_KEY_TYPE, &type, sizeof(type)},
-			{CKA_MODULUS, n.ptr, n.len},
-			{CKA_PUBLIC_EXPONENT, e.ptr, e.len}
-		};
 		CK_OBJECT_HANDLE object;
 		CK_SESSION_HANDLE session;
 		CK_RV rv;
@@ -376,21 +618,23 @@ static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
 		mechs = p11->create_mechanism_enumerator(p11, slot);
 		while (mechs->enumerate(mechs, &mech, &info))
 		{
+			bool found = FALSE;
+			int i;
 			if (!(info.flags & CKF_VERIFY))
 			{
 				continue;
 			}
-			switch (mech)
+			for (i = 0; i < mcount; i++)
 			{
-				case CKM_RSA_PKCS:
-				case CKM_SHA1_RSA_PKCS:
-				case CKM_SHA256_RSA_PKCS:
-				case CKM_SHA384_RSA_PKCS:
-				case CKM_SHA512_RSA_PKCS:
-				case CKM_MD5_RSA_PKCS:
+				if (mechanisms[i] == mech)
+				{
+					found = TRUE;
 					break;
-				default:
-					continue;
+				}
+			}
+			if (!found)
+			{
+				continue;
 			}
 			rv = p11->f->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL,
 									   &session);
@@ -400,20 +644,21 @@ static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
 					 ck_rv_names, rv);
 				continue;
 			}
-			rv = p11->f->C_CreateObject(session, tmpl, countof(tmpl), &object);
+			rv = p11->f->C_CreateObject(session, tmpl, count, &object);
 			if (rv == CKR_OK)
 			{
-				this = create(KEY_RSA, n.len, p11, slot, session, object);
-				DBG2(DBG_CFG, "created RSA public key on token '%s':%d ",
-					 p11->get_name(p11), slot);
-				break;
+				this = create(type, keylen, p11, slot, session, object);
+				DBG2(DBG_CFG, "created %N public key on token '%s':%d ",
+					 key_type_names, type, p11->get_name(p11), slot);
 			}
 			else
 			{
-				DBG1(DBG_CFG, "creating RSA public key on token '%s':%d "
-					 "failed: %N", p11->get_name(p11), slot, ck_rv_names, rv);
+				DBG1(DBG_CFG, "creating %N public key on token '%s':%d "
+					 "failed: %N", key_type_names, type, p11->get_name(p11),
+					 slot, ck_rv_names, rv);
 				p11->f->C_CloseSession(session);
 			}
+			break;
 		}
 		mechs->destroy(mechs);
 		if (this)
@@ -426,18 +671,71 @@ static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e)
 }
 
 /**
+ * Create an RSA key object in a suitable token session
+ */
+static private_pkcs11_public_key_t* create_rsa_key(chunk_t n, chunk_t e,
+												   size_t keylen)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE type = CKK_RSA;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+		{CKA_MODULUS, n.ptr, n.len},
+		{CKA_PUBLIC_EXPONENT, e.ptr, e.len},
+	};
+	CK_MECHANISM_TYPE mechs[] = {
+		CKM_RSA_PKCS,
+		CKM_SHA1_RSA_PKCS,
+		CKM_SHA256_RSA_PKCS,
+		CKM_SHA384_RSA_PKCS,
+		CKM_SHA512_RSA_PKCS,
+		CKM_MD5_RSA_PKCS,
+	};
+	return create_key(KEY_RSA, keylen, mechs, countof(mechs), tmpl,
+					  countof(tmpl));
+}
+
+/**
+ * Create an ECDSA key object in a suitable token session
+ */
+static private_pkcs11_public_key_t* create_ecdsa_key(chunk_t ecparams,
+													 chunk_t ecpoint,
+													 size_t keylen)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE type = CKK_ECDSA;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+		{CKA_EC_PARAMS, ecparams.ptr, ecparams.len},
+		{CKA_EC_POINT, ecpoint.ptr, ecpoint.len},
+	};
+	CK_MECHANISM_TYPE mechs[] = {
+		CKM_ECDSA,
+		CKM_ECDSA_SHA1,
+	};
+	return create_key(KEY_ECDSA, keylen, mechs,
+					  countof(mechs), tmpl, countof(tmpl));
+}
+
+/**
  * See header
  */
 pkcs11_public_key_t *pkcs11_public_key_load(key_type_t type, va_list args)
 {
 	private_pkcs11_public_key_t *this;
-	chunk_t n, e;
+	chunk_t n, e, blob;
+	size_t keylen = 0;
 
-	n = e = chunk_empty;
+	n = e = blob = chunk_empty;
 	while (TRUE)
 	{
 		switch (va_arg(args, builder_part_t))
 		{
+			case BUILD_BLOB_ASN1_DER:
+				blob = va_arg(args, chunk_t);
+				continue;
 			case BUILD_RSA_MODULUS:
 				n = va_arg(args, chunk_t);
 				continue;
@@ -457,17 +755,152 @@ pkcs11_public_key_t *pkcs11_public_key_load(key_type_t type, va_list args)
 		{	/* trim leading zero byte in modulus */
 			n = chunk_skip(n, 1);
 		}
-		this = find_rsa_key(n, e);
+		keylen = n.len * 8;
+		this = find_rsa_key(n, e, keylen);
 		if (this)
 		{
 			return &this->public;
 		}
-		this = create_rsa_key(n, e);
+		this = create_rsa_key(n, e, keylen);
 		if (this)
 		{
 			return &this->public;
 		}
 	}
+	else if (type == KEY_ECDSA && blob.ptr)
+	{
+		chunk_t ecparams, ecpoint;
+		ecparams = ecpoint = chunk_empty;
+		if (parse_ecdsa_public_key(blob, &ecparams, &ecpoint, &keylen))
+		{
+			this = find_ecdsa_key(ecparams, ecpoint, keylen);
+			if (this)
+			{
+				return &this->public;
+			}
+			this = create_ecdsa_key(ecparams, ecpoint, keylen);
+			if (this)
+			{
+				return &this->public;
+			}
+		}
+	}
 	return NULL;
 }
 
+static private_pkcs11_public_key_t *find_key_by_keyid(pkcs11_library_t *p11,
+												int slot, key_type_t key_type,
+												chunk_t keyid)
+{
+	CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+	CK_KEY_TYPE type;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_ID, keyid.ptr, keyid.len},
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+	};
+	CK_OBJECT_HANDLE object;
+	CK_ATTRIBUTE attr[] = {
+		{CKA_KEY_TYPE, &type, sizeof(type)},
+	};
+	CK_SESSION_HANDLE session;
+	CK_RV rv;
+	enumerator_t *enumerator;
+	int count = countof(tmpl);
+	bool found = FALSE;
+	size_t keylen;
+
+	switch (key_type)
+	{
+		case KEY_RSA:
+			type = CKK_RSA;
+			break;
+		case KEY_ECDSA:
+			type = CKK_ECDSA;
+			break;
+		default:
+			/* don't specify key type on KEY_ANY */
+			count--;
+			break;
+	}
+
+	rv = p11->f->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &session);
+	if (rv != CKR_OK)
+	{
+		DBG1(DBG_CFG, "opening public key session on '%s':%d failed: %N",
+			 p11->get_name(p11), slot, ck_rv_names, rv);
+		return NULL;
+	}
+
+	enumerator = p11->create_object_enumerator(p11, session, tmpl, count, attr,
+											   countof(attr));
+	if (enumerator->enumerate(enumerator, &object))
+	{
+		switch (type)
+		{
+			case CKK_ECDSA:
+			{
+				chunk_t ecparams;
+				if (p11->get_ck_attribute(p11, session, object, CKA_EC_PARAMS,
+										  &ecparams) &&
+					keylen_from_ecparams(ecparams, &keylen))
+				{
+					chunk_free(&ecparams);
+					key_type = KEY_ECDSA;
+					found = TRUE;
+				}
+				break;
+			}
+			case CKK_RSA:
+			{
+				chunk_t n;
+				if (p11->get_ck_attribute(p11, session, object, CKA_MODULUS,
+										  &n) && n.len > 0)
+				{
+					keylen = n.len * 8;
+					chunk_free(&n);
+					key_type = KEY_RSA;
+					found = TRUE;
+				}
+				break;
+			}
+			default:
+				DBG1(DBG_CFG, "PKCS#11 key type %d not supported", type);
+				break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (found)
+	{
+		return create(key_type, keylen, p11, slot, session, object);
+	}
+	p11->f->C_CloseSession(session);
+	return NULL;
+}
+
+/**
+ * Find a public key on the given token with a specific keyid.
+ *
+ * Used by pkcs11_private_key_t.
+ *
+ * TODO: if no public key is found, we should perhaps search for a certificate
+ * with the given keyid and extract the key from there
+ *
+ * @param p11		PKCS#11 module
+ * @param slot		slot id
+ * @param type		type of the key
+ * @param keyid		key id
+ */
+pkcs11_public_key_t *pkcs11_public_key_connect(pkcs11_library_t *p11,
+									int slot, key_type_t type, chunk_t keyid)
+{
+	private_pkcs11_public_key_t *this;
+
+	this = find_key_by_keyid(p11, slot, type, keyid);
+	if (!this)
+	{
+		return NULL;
+	}
+	return &this->public;
+}

@@ -12,6 +12,9 @@
  * for more details.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,9 +29,9 @@
 #include "../pluto/log.h"
 
 #include "keywords.h"
-#include "parser.h"
 #include "confread.h"
 #include "args.h"
+#include "files.h"
 #include "interfaces.h"
 
 /* strings containing a colon are interpreted as an IPv6 address */
@@ -38,6 +41,17 @@ static const char ike_defaults[] = "aes128-sha1-modp2048,3des-sha1-modp1536";
 static const char esp_defaults[] = "aes128-sha1,3des-sha1";
 
 static const char firewall_defaults[] = "ipsec _updown iptables";
+
+static bool daemon_exists(char *daemon, char *path)
+{
+	struct stat st;
+	if (stat(path, &st) != 0)
+	{
+		plog("Disabling %sstart option, '%s' not found", daemon, path);
+		return FALSE;
+	}
+	return TRUE;
+}
 
 static void default_values(starter_config_t *cfg)
 {
@@ -123,7 +137,7 @@ static void load_setup(starter_config_t *cfg, config_parsed_t *cfgp)
 
 		kw_token_t token = kw->entry->token;
 
-		if (token < KW_SETUP_FIRST || token > KW_SETUP_LAST)
+		if ((int)token < KW_SETUP_FIRST || token > KW_SETUP_LAST)
 		{
 			plog("# unsupported keyword '%s' in config setup", kw->entry->name);
 			cfg->err++;
@@ -137,6 +151,21 @@ static void load_setup(starter_config_t *cfg, config_parsed_t *cfgp)
 			continue;
 		}
 	}
+
+	/* verify the executables are actually available (some distros split
+	 * packages but enabled both) */
+#ifdef START_CHARON
+	cfg->setup.charonstart = cfg->setup.charonstart &&
+							 daemon_exists("charon", CHARON_CMD);
+#else
+	cfg->setup.charonstart = FALSE;
+#endif
+#ifdef START_PLUTO
+	cfg->setup.plutostart = cfg->setup.plutostart &&
+							daemon_exists("pluto", PLUTO_CMD);
+#else
+	cfg->setup.plutostart = FALSE;
+#endif
 }
 
 static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
@@ -155,6 +184,70 @@ static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
 	/* post processing of some keywords that were assigned automatically */
 	switch (token)
 	{
+	case KW_HOST:
+		free(end->host);
+		end->host = NULL;
+		if (streq(value, "%defaultroute"))
+		{
+			if (cfg->defaultroute.defined)
+			{
+				end->addr    = cfg->defaultroute.addr;
+				end->nexthop = cfg->defaultroute.nexthop;
+			}
+			else if (!cfg->defaultroute.supported)
+			{
+				plog("%%defaultroute not supported, fallback to %%any");
+			}
+			else
+			{
+				plog("# default route not known: %s=%s", name, value);
+				goto err;
+			}
+		}
+		else if (streq(value, "%any") || streq(value, "%any4"))
+		{
+			anyaddr(conn->addr_family, &end->addr);
+		}
+		else if (streq(value, "%any6"))
+		{
+			conn->addr_family = AF_INET6;
+			anyaddr(conn->addr_family, &end->addr);
+		}
+		else if (streq(value, "%group"))
+		{
+			ip_address any;
+
+			conn->policy |= POLICY_GROUP | POLICY_TUNNEL;
+			anyaddr(conn->addr_family, &end->addr);
+			anyaddr(conn->tunnel_addr_family, &any);
+			end->has_client = TRUE;
+		}
+		else
+		{
+			/* check for allow_any prefix */
+			if (value[0] == '%')
+			{
+				end->allow_any = TRUE;
+				value++;
+			}
+			conn->addr_family = ip_version(value);
+			ugh = ttoaddr(value, 0, conn->addr_family, &end->addr);
+			if (ugh != NULL)
+			{
+				plog("# bad addr: %s=%s [%s]", name, value, ugh);
+				if (streq(ugh, "does not look numeric and name lookup failed"))
+				{
+					end->dns_failed = TRUE;
+					anyaddr(conn->addr_family, &end->addr);
+				}
+				else
+				{
+					goto err;
+				}
+			}
+			end->host = clone_str(value);
+		}
+		break;
 	case KW_SUBNET:
 		if ((strlen(value) >= 6 && strncmp(value,"vhost:",6) == 0)
 		||  (strlen(value) >= 5 && strncmp(value,"vnet:",5) == 0))
@@ -264,67 +357,6 @@ static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
 	/* individual processing of keywords that were not assigned automatically */
 	switch (token)
 	{
-	case KW_HOST:
-		if (streq(value, "%defaultroute"))
-		{
-			if (cfg->defaultroute.defined)
-			{
-				end->addr    = cfg->defaultroute.addr;
-				end->nexthop = cfg->defaultroute.nexthop;
-			}
-			else if (!cfg->defaultroute.supported)
-			{
-				plog("%%defaultroute not supported, fallback to %%any");
-			}
-			else
-			{
-				plog("# default route not known: %s=%s", name, value);
-				goto err;
-			}
-		}
-		else if (streq(value, "%any") || streq(value, "%any4"))
-		{
-			anyaddr(conn->addr_family, &end->addr);
-		}
-		else if (streq(value, "%any6"))
-		{
-			conn->addr_family = AF_INET6;
-			anyaddr(conn->addr_family, &end->addr);
-		}
-		else if (streq(value, "%group"))
-		{
-			ip_address any;
-
-			conn->policy |= POLICY_GROUP | POLICY_TUNNEL;
-			anyaddr(conn->addr_family, &end->addr);
-			anyaddr(conn->tunnel_addr_family, &any);
-			end->has_client = TRUE;
-		}
-		else
-		{
-			/* check for allow_any prefix */
-			if (value[0] == '%')
-			{
-				end->allow_any = TRUE;
-				value++;
-			}
-			conn->addr_family = ip_version(value);
-			ugh = ttoaddr(value, 0, conn->addr_family, &end->addr);
-			if (ugh != NULL)
-			{
-				plog("# bad addr: %s=%s [%s]", name, value, ugh);
-				if (streq(ugh, "does not look numeric and name lookup failed"))
-				{
-					end->dns_failed = TRUE;
-					anyaddr(conn->addr_family, &end->addr);
-				}
-				else
-				{
-					goto err;
-				}
-			}
-		}
-		break;
 	case KW_NEXTHOP:
 		if (streq(value, "%defaultroute"))
 		{
@@ -425,7 +457,7 @@ err:
  * handles left|right=<FQDN> DNS resolution failure
  */
 static void handle_dns_failure(const char *label, starter_end_t *end,
-							   starter_config_t *cfg)
+							   starter_config_t *cfg, starter_conn_t *conn)
 {
 	if (end->dns_failed)
 	{
@@ -434,7 +466,7 @@ static void handle_dns_failure(const char *label, starter_end_t *end,
 			plog("# fallback to %s=%%any due to '%%' prefix or %sallowany=yes",
 				label, label);
 		}
-		else
+		else if (!end->host || conn->keyexchange == KEY_EXCHANGE_IKEV1)
 		{
 			/* declare an error */
 			cfg->err++;
@@ -609,7 +641,7 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 		case KW_AUTHBY:
 			conn->policy &= ~(POLICY_ID_AUTH_MASK | POLICY_ENCRYPT);
 
-			if (!(streq(kw->value, "never") || streq(kw->value, "eap")))
+			if (!streq(kw->value, "never"))
 			{
 				char *value = kw->value;
 				char *second = strchr(kw->value, '|');
@@ -636,7 +668,7 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 					{
 						conn->policy |= POLICY_XAUTH_RSASIG | POLICY_ENCRYPT;
 					}
-					else if (streq(value, "xauthpsk"))
+					else if (streq(value, "xauthpsk") || streq(value, "eap"))
 					{
 						conn->policy |= POLICY_XAUTH_PSK | POLICY_ENCRYPT;
 					}
@@ -762,8 +794,8 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 		}
 	}
 
-	handle_dns_failure("left", &conn->left, cfg);
-	handle_dns_failure("right", &conn->right, cfg);
+	handle_dns_failure("left", &conn->left, cfg, conn);
+	handle_dns_failure("right", &conn->right, cfg, conn);
 	handle_firewall("left", &conn->left, cfg);
 	handle_firewall("right", &conn->right, cfg);
 }

@@ -65,7 +65,7 @@ static job_requeue_t initiate(char *config)
 	{
 		DBG1(DBG_CFG, "initiating IKE_SA for CHILD_SA config '%s'", config);
 		charon->controller->initiate(charon->controller, peer_cfg, child_cfg,
-									 NULL, NULL);
+									 NULL, NULL, 0);
 	}
 	else
 	{
@@ -85,7 +85,8 @@ static job_requeue_t rekey_ike(char *config)
 	job_t *job = NULL;
 	ike_sa_t *ike_sa;
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		if (strcaseeq(config, ike_sa->get_name(ike_sa)))
@@ -113,18 +114,18 @@ static job_requeue_t rekey_ike(char *config)
  */
 static job_requeue_t rekey_child(char *config)
 {
-	enumerator_t *enumerator;
-	iterator_t *children;
+	enumerator_t *enumerator, *children;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
 	u_int32_t reqid = 0, spi = 0;
 	protocol_id_t proto = PROTO_ESP;
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
-		children = ike_sa->create_child_sa_iterator(ike_sa);
-		while (children->iterate(children, (void**)&child_sa))
+		children = ike_sa->create_child_sa_enumerator(ike_sa);
+		while (children->enumerate(children, (void**)&child_sa))
 		{
 			if (streq(config, child_sa->get_name(child_sa)))
 			{
@@ -159,7 +160,8 @@ static job_requeue_t liveness(char *config)
 	job_t *job = NULL;
 	ike_sa_t *ike_sa;
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		if (strcaseeq(config, ike_sa->get_name(ike_sa)))
@@ -191,7 +193,8 @@ static job_requeue_t close_ike(char *config)
 	ike_sa_t *ike_sa;
 	int id = 0;
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		if (strcaseeq(config, ike_sa->get_name(ike_sa)))
@@ -204,7 +207,7 @@ static job_requeue_t close_ike(char *config)
 	if (id)
 	{
 		DBG1(DBG_CFG, "closing IKE_SA '%s'", config);
-		charon->controller->terminate_ike(charon->controller, id, NULL, NULL);
+		charon->controller->terminate_ike(charon->controller, id, NULL, NULL, 0);
 	}
 	else
 	{
@@ -218,18 +221,18 @@ static job_requeue_t close_ike(char *config)
  */
 static job_requeue_t close_child(char *config)
 {
-	enumerator_t *enumerator;
-	iterator_t *children;
+	enumerator_t *enumerator, *children;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
 	int id = 0;
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 
-		children = ike_sa->create_child_sa_iterator(ike_sa);
-		while (children->iterate(children, (void**)&child_sa))
+		children = ike_sa->create_child_sa_enumerator(ike_sa);
+		while (children->enumerate(children, (void**)&child_sa))
 		{
 			if (streq(config, child_sa->get_name(child_sa)))
 			{
@@ -243,7 +246,8 @@ static job_requeue_t close_child(char *config)
 	if (id)
 	{
 		DBG1(DBG_CFG, "closing CHILD_SA '%s'", config);
-		charon->controller->terminate_child(charon->controller, id, NULL, NULL);
+		charon->controller->terminate_child(charon->controller, id,
+											NULL, NULL, 0);
 	}
 	else
 	{

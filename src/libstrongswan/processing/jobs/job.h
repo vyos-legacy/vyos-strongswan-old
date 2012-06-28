@@ -23,11 +23,32 @@
 #define JOB_H_
 
 typedef struct job_t job_t;
+typedef enum job_priority_t job_priority_t;
 
 #include <library.h>
 
 /**
- * Job-Interface as it is stored in the job queue.
+ * Priority classes of jobs
+ */
+enum job_priority_t {
+	/** Critical infrastructure jobs that should always been served */
+	JOB_PRIO_CRITICAL = 0,
+	/** Short jobs executed with highest priority */
+	JOB_PRIO_HIGH,
+	/** Default job priority */
+	JOB_PRIO_MEDIUM,
+	/** Low priority jobs with thread blocking operations */
+	JOB_PRIO_LOW,
+	JOB_PRIO_MAX
+};
+
+/**
+ * Enum names for job priorities
+ */
+extern enum_name_t *job_priority_names;
+
+/**
+ * Job interface as it is stored in the job queue.
  */
 struct job_t {
 
@@ -41,12 +62,19 @@ struct job_t {
 	void (*execute) (job_t *this);
 
 	/**
+	 * Get the priority of a job.
+	 *
+	 * @return			job priority
+	 */
+	job_priority_t (*get_priority)(job_t *this);
+
+	/**
 	 * Destroy a job.
 	 *
 	 * Is only called whenever a job was not executed (e.g. due daemon shutdown).
 	 * After execution, jobs destroy themself.
 	 */
-	void (*destroy) (job_t *job);
+	void (*destroy) (job_t *this);
 };
 
 #endif /** JOB_H_ @}*/

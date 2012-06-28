@@ -42,7 +42,7 @@ struct private_eap_simaka_sql_provider_t {
 	bool remove_used;
 };
 
-METHOD(sim_provider_t, get_triplet, bool,
+METHOD(simaka_provider_t, get_triplet, bool,
 	private_eap_simaka_sql_provider_t *this, identification_t *id,
 	char rand[SIM_RAND_LEN], char sres[SIM_SRES_LEN], char kc[SIM_KC_LEN])
 {
@@ -53,7 +53,7 @@ METHOD(sim_provider_t, get_triplet, bool,
 
 	snprintf(buf, sizeof(buf), "%Y", id);
 	query = this->db->query(this->db,
-				"select rand, sres, kc from triplets where id = ? order by use",
+				"select rand, sres, kc from triplets where id = ? order by used",
 				DB_TEXT, buf, DB_BLOB, DB_BLOB, DB_BLOB);
 	if (query)
 	{
@@ -82,7 +82,7 @@ METHOD(sim_provider_t, get_triplet, bool,
 		else
 		{
 			this->db->execute(this->db, NULL,
-					"update triplets set use = ? where id = ? and rand = ?",
+					"update triplets set used = ? where id = ? and rand = ?",
 					DB_UINT, time(NULL), DB_TEXT, buf,
 					DB_BLOB, chunk_create(rand, SIM_RAND_LEN));
 		}
@@ -90,7 +90,7 @@ METHOD(sim_provider_t, get_triplet, bool,
 	return found;
 }
 
-METHOD(sim_provider_t, get_quintuplet, bool,
+METHOD(simaka_provider_t, get_quintuplet, bool,
 	private_eap_simaka_sql_provider_t *this, identification_t *id,
 	char rand[AKA_RAND_LEN], char xres[AKA_RES_MAX], int *xres_len,
 	char ck[AKA_CK_LEN], char ik[AKA_IK_LEN], char autn[AKA_AUTN_LEN])
@@ -102,7 +102,7 @@ METHOD(sim_provider_t, get_quintuplet, bool,
 
 	snprintf(buf, sizeof(buf), "%Y", id);
 	query = this->db->query(this->db, "select rand, res, ck, ik, autn "
-				"from quintuplets where id = ? order by use", DB_TEXT, buf,
+				"from quintuplets where id = ? order by used", DB_TEXT, buf,
 				DB_BLOB, DB_BLOB, DB_BLOB, DB_BLOB, DB_BLOB);
 	if (query)
 	{
@@ -137,7 +137,7 @@ METHOD(sim_provider_t, get_quintuplet, bool,
 		else
 		{
 			this->db->execute(this->db, NULL,
-					"update quintuplets set use = ? where id = ? and rand = ?",
+					"update quintuplets set used = ? where id = ? and rand = ?",
 					DB_UINT, time(NULL), DB_TEXT, buf,
 					DB_BLOB, chunk_create(rand, AKA_RAND_LEN));
 		}

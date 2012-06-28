@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Tobias Brunner
+ * Copyright (C) 2008-2011 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
@@ -32,6 +32,16 @@ struct private_kernel_interface_t {
 	 * Public part of kernel_interface_t object.
 	 */
 	kernel_interface_t public;
+
+	/**
+	 * Registered IPsec constructor
+	 */
+	kernel_ipsec_constructor_t ipsec_constructor;
+
+	/**
+	 * Registered net constructor
+	 */
+	kernel_net_constructor_t net_constructor;
 
 	/**
 	 * ipsec interface
@@ -128,18 +138,28 @@ METHOD(kernel_interface_t, del_sa, status_t,
 	return this->ipsec->del_sa(this->ipsec, src, dst, spi, protocol, cpi, mark);
 }
 
+METHOD(kernel_interface_t, flush_sas, status_t,
+	private_kernel_interface_t *this)
+{
+	if (!this->ipsec)
+	{
+		return NOT_SUPPORTED;
+	}
+	return this->ipsec->flush_sas(this->ipsec);
+}
+
 METHOD(kernel_interface_t, add_policy, status_t,
 	private_kernel_interface_t *this, host_t *src, host_t *dst,
 	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
 	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
-	mark_t mark, bool routed)
+	mark_t mark, policy_priority_t priority)
 {
 	if (!this->ipsec)
 	{
 		return NOT_SUPPORTED;
 	}
 	return this->ipsec->add_policy(this->ipsec, src, dst, src_ts, dst_ts,
-								   direction, type, sa, mark, routed);
+								   direction, type, sa, mark, priority);
 }
 
 METHOD(kernel_interface_t, query_policy, status_t,
@@ -157,15 +177,25 @@ METHOD(kernel_interface_t, query_policy, status_t,
 
 METHOD(kernel_interface_t, del_policy, status_t,
 	private_kernel_interface_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	bool unrouted)
+	traffic_selector_t *dst_ts, policy_dir_t direction, u_int32_t reqid,
+	mark_t mark, policy_priority_t priority)
 {
 	if (!this->ipsec)
 	{
 		return NOT_SUPPORTED;
 	}
 	return this->ipsec->del_policy(this->ipsec, src_ts, dst_ts,
-								   direction, mark, unrouted);
+								   direction, reqid, mark, priority);
+}
+
+METHOD(kernel_interface_t, flush_policies, status_t,
+	private_kernel_interface_t *this)
+{
+	if (!this->ipsec)
+	{
+		return NOT_SUPPORTED;
+	}
+	return this->ipsec->flush_policies(this->ipsec);
 }
 
 METHOD(kernel_interface_t, get_source_addr, host_t*,
@@ -310,7 +340,7 @@ METHOD(kernel_interface_t, get_address_by_ts, status_t,
 
 	if (!found)
 	{
-		DBG1(DBG_KNL, "no local address found in traffic selector %R", ts);
+		DBG2(DBG_KNL, "no local address found in traffic selector %R", ts);
 		return FAILED;
 	}
 
@@ -324,6 +354,7 @@ METHOD(kernel_interface_t, add_ipsec_interface, void,
 {
 	if (!this->ipsec)
 	{
+		this->ipsec_constructor = constructor;
 		this->ipsec = constructor();
 	}
 }
@@ -331,7 +362,11 @@ METHOD(kernel_interface_t, add_ipsec_interface, void,
 METHOD(kernel_interface_t, remove_ipsec_interface, void,
 	private_kernel_interface_t *this, kernel_ipsec_constructor_t constructor)
 {
-	/* TODO: replace if interface currently in use */
+	if (constructor == this->ipsec_constructor)
+	{
+		this->ipsec->destroy(this->ipsec);
+		this->ipsec = NULL;
+	}
 }
 
 METHOD(kernel_interface_t, add_net_interface, void,
@@ -339,6 +374,7 @@ METHOD(kernel_interface_t, add_net_interface, void,
 {
 	if (!this->net)
 	{
+		this->net_constructor = constructor;
 		this->net = constructor();
 	}
 }
@@ -346,7 +382,11 @@ METHOD(kernel_interface_t, add_net_interface, void,
 METHOD(kernel_interface_t, remove_net_interface, void,
 	private_kernel_interface_t *this, kernel_net_constructor_t constructor)
 {
-	/* TODO: replace if interface currently in use */
+	if (constructor == this->net_constructor)
+	{
+		this->net->destroy(this->net);
+		this->net = NULL;
+	}
 }
 
 METHOD(kernel_interface_t, add_listener, void,
@@ -485,9 +525,11 @@ kernel_interface_t *kernel_interface_create()
 			.update_sa = _update_sa,
 			.query_sa = _query_sa,
 			.del_sa = _del_sa,
+			.flush_sas = _flush_sas,
 			.add_policy = _add_policy,
 			.query_policy = _query_policy,
 			.del_policy = _del_policy,
+			.flush_policies = _flush_policies,
 			.get_source_addr = _get_source_addr,
 			.get_nexthop = _get_nexthop,
 			.get_interface = _get_interface,

@@ -1,4 +1,4 @@
-lib_LTLIBRARIES = libstrongswan.la
+ipseclib_LTLIBRARIES = libstrongswan.la
 
 libstrongswan_la_SOURCES = \
 library.c library.h \
@@ -10,6 +10,7 @@ printf_hook.c printf_hook.h \
 asn1/asn1.c asn1/asn1.h \
 asn1/asn1_parser.c asn1/asn1_parser.h \
 asn1/oid.c asn1/oid.h \
+bio/bio_reader.h bio/bio_reader.c bio/bio_writer.h bio/bio_writer.c \
 crypto/crypters/crypter.c crypto/crypters/crypter.h \
 crypto/hashers/hasher.h crypto/hashers/hasher.c \
 crypto/pkcs9.c crypto/pkcs9.h \
@@ -44,12 +45,14 @@ credentials/sets/cert_cache.c credentials/sets/cert_cache.h \
 credentials/sets/mem_cred.c credentials/sets/mem_cred.h \
 credentials/sets/callback_cred.c credentials/sets/callback_cred.h \
 credentials/auth_cfg.c credentials/auth_cfg.h credentials/credential_set.h \
-credentials/cert_validator.h \
-database/database.h database/database_factory.h database/database_factory.c \
+credentials/cert_validator.h database/database.h database/database.c \
+database/database_factory.h database/database_factory.c \
 fetcher/fetcher.h fetcher/fetcher.c fetcher/fetcher_manager.h fetcher/fetcher_manager.c \
 eap/eap.h eap/eap.c \
+pen/pen.h pen/pen.c \
 plugins/plugin_loader.c plugins/plugin_loader.h plugins/plugin.h \
-processing/jobs/job.h \
+plugins/plugin_feature.c plugins/plugin_feature.h \
+processing/jobs/job.h processing/jobs/job.c \
 processing/jobs/callback_job.c processing/jobs/callback_job.h \
 processing/processor.c processing/processor.h \
 processing/scheduler.c processing/scheduler.h \
@@ -62,7 +65,6 @@ threading/lock_profiler.h \
 utils.h utils.c \
 utils/host.c utils/host.h \
 utils/identification.c utils/identification.h \
-utils/iterator.h \
 utils/lexparser.c utils/lexparser.h \
 utils/linked_list.c utils/linked_list.h \
 utils/hashtable.c utils/hashtable.h \
@@ -78,6 +80,7 @@ libstrongswan_la_LIBADD = $(PTHREADLIB) $(DLLIB) $(BTLIB) $(SOCKLIB) $(RTLIB)
 INCLUDES = -I$(top_srcdir)/src/libstrongswan
 AM_CFLAGS = \
 -DIPSEC_DIR=\"${ipsecdir}\" \
+-DIPSEC_LIB_DIR=\"${ipseclibdir}\" \
 -DPLUGINDIR=\"${plugindir}\" \
 -DSTRONGSWAN_CONF=\"${strongswan_conf}\"
 
@@ -212,6 +215,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_CMAC
+  SUBDIRS += plugins/cmac
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/cmac/libstrongswan-cmac.la
+endif
+endif
+
 if USE_XCBC
   SUBDIRS += plugins/xcbc
 if MONOLITHIC
@@ -251,6 +261,13 @@ if USE_PKCS1
   SUBDIRS += plugins/pkcs1
 if MONOLITHIC
   libstrongswan_la_LIBADD += plugins/pkcs1/libstrongswan-pkcs1.la
+endif
+endif
+
+if USE_PKCS8
+  SUBDIRS += plugins/pkcs8
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/pkcs8/libstrongswan-pkcs8.la
 endif
 endif
 

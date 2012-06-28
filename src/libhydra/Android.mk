@@ -10,7 +10,7 @@ attributes/attribute_manager.c attributes/attribute_manager.h \
 attributes/mem_pool.c attributes/mem_pool.h \
 kernel/kernel_interface.c kernel/kernel_interface.h \
 kernel/kernel_ipsec.c kernel/kernel_ipsec.h \
-kernel/kernel_net.h \
+kernel/kernel_net.c kernel/kernel_net.h \
 kernel/kernel_listener.h
 
 # adding the plugin source files
@@ -31,6 +31,8 @@ LOCAL_C_INCLUDES += \
 LOCAL_CFLAGS := $(strongswan_CFLAGS)
 
 LOCAL_MODULE := libhydra
+
+LOCAL_MODULE_TAGS := optional
 
 LOCAL_ARM_MODE := arm
 

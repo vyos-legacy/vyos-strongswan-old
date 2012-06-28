@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -15,11 +16,19 @@
 
 #include "resolve_handler.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <hydra.h>
 #include <debug.h>
 #include <threading/mutex.h>
+
+/* path to resolvconf executable */
+#define RESOLVCONF_EXEC "/sbin/resolvconf"
+
+/* default prefix used for resolvconf interfaces (should have high prio) */
+#define RESOLVCONF_PREFIX "lo.inet.ipsec."
 
 typedef struct private_resolve_handler_t private_resolve_handler_t;
 
@@ -39,22 +48,147 @@ struct private_resolve_handler_t {
 	char *file;
 
 	/**
+	 * use resolvconf instead of writing directly to resolv.conf
+	 */
+	bool use_resolvconf;
+
+	/**
+	 * prefix to be used for interface names sent to resolvconf
+	 */
+	char *iface_prefix;
+
+	/**
 	 * Mutex to access file exclusively
 	 */
 	mutex_t *mutex;
 };
 
 /**
- * Implementation of attribute_handler_t.handle
+ * Writes the given nameserver to resolv.conf
  */
-static bool handle(private_resolve_handler_t *this, identification_t *server,
-				   configuration_attribute_type_t type, chunk_t data)
+static bool write_nameserver(private_resolve_handler_t *this,
+							 identification_t *server, host_t *addr)
 {
 	FILE *in, *out;
 	char buf[1024];
-	host_t *addr;
 	size_t len;
 	bool handled = FALSE;
+
+	in = fopen(this->file, "r");
+	/* allows us to stream from in to out */
+	unlink(this->file);
+	out = fopen(this->file, "w");
+	if (out)
+	{
+		fprintf(out, "nameserver %H   # by strongSwan, from %Y\n", addr,
+				server);
+		DBG1(DBG_IKE, "installing DNS server %H to %s", addr, this->file);
+		handled = TRUE;
+
+		/* copy rest of the file */
+		if (in)
+		{
+			while ((len = fread(buf, 1, sizeof(buf), in)))
+			{
+				ignore_result(fwrite(buf, 1, len, out));
+			}
+		}
+		fclose(out);
+	}
+	if (in)
+	{
+		fclose(in);
+	}
+	return handled;
+}
+
+/**
+ * Removes the given nameserver from resolv.conf
+ */
+static void remove_nameserver(private_resolve_handler_t *this,
+							  identification_t *server, host_t *addr)
+{
+	FILE *in, *out;
+	char line[1024], matcher[512];
+
+	in = fopen(this->file, "r");
+	if (in)
+	{
+		/* allows us to stream from in to out */
+		unlink(this->file);
+		out = fopen(this->file, "w");
+		if (out)
+		{
+			snprintf(matcher, sizeof(matcher),
+					 "nameserver %H   # by strongSwan, from %Y\n",
+					 addr, server);
+
+			/* copy all, but matching line */
+			while (fgets(line, sizeof(line), in))
+			{
+				if (strneq(line, matcher, strlen(matcher)))
+				{
+					DBG1(DBG_IKE, "removing DNS server %H from %s",
+						 addr, this->file);
+				}
+				else
+				{
+					fputs(line, out);
+				}
+			}
+			fclose(out);
+		}
+		fclose(in);
+	}
+}
+
+/**
+ * Add or remove the given nameserver by invoking resolvconf.
+ */
+static bool invoke_resolvconf(private_resolve_handler_t *this,
+							  identification_t *server, host_t *addr,
+							  bool install)
+{
+	char cmd[128];
+
+	/* we use the nameserver's IP address as part of the interface name to
+	 * make them unique */
+	if (snprintf(cmd, sizeof(cmd), "%s %s %s%H", RESOLVCONF_EXEC,
+				install ? "-a" : "-d", this->iface_prefix, addr) >= sizeof(cmd))
+	{
+		return FALSE;
+	}
+
+	if (install)
+	{
+		FILE *out;
+
+		out = popen(cmd, "w");
+		if (!out)
+		{
+			return FALSE;
+		}
+		DBG1(DBG_IKE, "installing DNS server %H via resolvconf", addr);
+		fprintf(out, "nameserver %H   # by strongSwan, from %Y\n", addr,
+				server);
+		if (ferror(out) || pclose(out))
+		{
+			return FALSE;
+		}
+	}
+	else
+	{
+		ignore_result(system(cmd));
+	}
+	return TRUE;
+}
+
+METHOD(attribute_handler_t, handle, bool,
+	private_resolve_handler_t *this, identification_t *server,
+	configuration_attribute_type_t type, chunk_t data)
+{
+	host_t *addr;
+	bool handled;
 
 	switch (type)
 	{
@@ -73,50 +207,30 @@ static bool handle(private_resolve_handler_t *this, identification_t *server,
 		DESTROY_IF(addr);
 		return FALSE;
 	}
+
 	this->mutex->lock(this->mutex);
-
-	in = fopen(this->file, "r");
-	/* allows us to stream from in to out */
-	unlink(this->file);
-	out = fopen(this->file, "w");
-	if (out)
+	if (this->use_resolvconf)
 	{
-		fprintf(out, "nameserver %H   # by strongSwan, from %Y\n", addr, server);
-		DBG1(DBG_IKE, "installing DNS server %H to %s", addr, this->file);
-		handled = TRUE;
-
-		/* copy rest of the file */
-		if (in)
-		{
-			while ((len = fread(buf, 1, sizeof(buf), in)))
-			{
-				ignore_result(fwrite(buf, 1, len, out));
-			}
-		}
-		fclose(out);
+		handled = invoke_resolvconf(this, server, addr, TRUE);
 	}
-	if (in)
+	else
 	{
-		fclose(in);
+		handled = write_nameserver(this, server, addr);
 	}
 	this->mutex->unlock(this->mutex);
 	addr->destroy(addr);
 
 	if (!handled)
 	{
-		DBG1(DBG_IKE, "adding DNS server failed", this->file);
+		DBG1(DBG_IKE, "adding DNS server failed");
 	}
 	return handled;
 }
 
-/**
- * Implementation of attribute_handler_t.release
- */
-static void release(private_resolve_handler_t *this, identification_t *server,
-					configuration_attribute_type_t type, chunk_t data)
+METHOD(attribute_handler_t, release, void,
+	private_resolve_handler_t *this, identification_t *server,
+	configuration_attribute_type_t type, chunk_t data)
 {
-	FILE *in, *out;
-	char line[1024], matcher[512];
 	host_t *addr;
 	int family;
 
@@ -131,42 +245,20 @@ static void release(private_resolve_handler_t *this, identification_t *server,
 		default:
 			return;
 	}
+	addr = host_create_from_chunk(family, data, 0);
 
 	this->mutex->lock(this->mutex);
-
-	in = fopen(this->file, "r");
-	if (in)
+	if (this->use_resolvconf)
 	{
-		/* allows us to stream from in to out */
-		unlink(this->file);
-		out = fopen(this->file, "w");
-		if (out)
-		{
-			addr = host_create_from_chunk(family, data, 0);
-			snprintf(matcher, sizeof(matcher),
-					 "nameserver %H   # by strongSwan, from %Y\n",
-					 addr, server);
-
-			/* copy all, but matching line */
-			while (fgets(line, sizeof(line), in))
-			{
-				if (strneq(line, matcher, strlen(matcher)))
-				{
-					DBG1(DBG_IKE, "removing DNS server %H from %s",
-						 addr, this->file);
-				}
-				else
-				{
-					fputs(line, out);
-				}
-			}
-			addr->destroy(addr);
-			fclose(out);
-		}
-		fclose(in);
+		invoke_resolvconf(this, server, addr, FALSE);
 	}
-
+	else
+	{
+		remove_nameserver(this, server, addr);
+	}
 	this->mutex->unlock(this->mutex);
+
+	addr->destroy(addr);
 }
 
 /**
@@ -179,11 +271,9 @@ typedef struct {
 	host_t *vip;
 } attribute_enumerator_t;
 
-/**
- * Implementation of create_attribute_enumerator().enumerate()
- */
 static bool attribute_enumerate(attribute_enumerator_t *this,
-						configuration_attribute_type_t *type, chunk_t *data)
+								configuration_attribute_type_t *type,
+								chunk_t *data)
 {
 	switch (this->vip->get_family(this->vip))
 	{
@@ -202,11 +292,8 @@ static bool attribute_enumerate(attribute_enumerator_t *this,
 	return TRUE;
 }
 
-/**
- * Implementation of attribute_handler_t.create_attribute_enumerator
- */
-static enumerator_t* create_attribute_enumerator(private_resolve_handler_t *this,
-										identification_t *server, host_t *vip)
+METHOD(attribute_handler_t, create_attribute_enumerator, enumerator_t*,
+	private_resolve_handler_t *this, identification_t *server, host_t *vip)
 {
 	if (vip)
 	{
@@ -222,10 +309,8 @@ static enumerator_t* create_attribute_enumerator(private_resolve_handler_t *this
 	return enumerator_create_empty();
 }
 
-/**
- * Implementation of resolve_handler_t.destroy.
- */
-static void destroy(private_resolve_handler_t *this)
+METHOD(resolve_handler_t, destroy, void,
+	private_resolve_handler_t *this)
 {
 	this->mutex->destroy(this->mutex);
 	free(this);
@@ -236,16 +321,30 @@ static void destroy(private_resolve_handler_t *this)
  */
 resolve_handler_t *resolve_handler_create()
 {
-	private_resolve_handler_t *this = malloc_thing(private_resolve_handler_t);
+	private_resolve_handler_t *this;
+	struct stat st;
 
-	this->public.handler.handle = (bool(*)(attribute_handler_t*, identification_t*, configuration_attribute_type_t, chunk_t))handle;
-	this->public.handler.release = (void(*)(attribute_handler_t*, identification_t*, configuration_attribute_type_t, chunk_t))release;
-	this->public.handler.create_attribute_enumerator = (enumerator_t*(*)(attribute_handler_t*, identification_t *server, host_t *vip))create_attribute_enumerator;
-	this->public.destroy = (void(*)(resolve_handler_t*))destroy;
+	INIT(this,
+		.public = {
+			.handler = {
+				.handle = _handle,
+				.release = _release,
+				.create_attribute_enumerator = _create_attribute_enumerator,
+			},
+			.destroy = _destroy,
+		},
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.file = lib->settings->get_str(lib->settings, "%s.plugins.resolve.file",
+									   RESOLV_CONF, hydra->daemon),
+	);
 
-	this->mutex = mutex_create(MUTEX_TYPE_DEFAULT);
-	this->file = lib->settings->get_str(lib->settings,
-								"%s.plugins.resolve.file", RESOLV_CONF, hydra->daemon);
+	if (stat(RESOLVCONF_EXEC, &st) == 0)
+	{
+		this->use_resolvconf = TRUE;
+		this->iface_prefix = lib->settings->get_str(lib->settings,
+								"%s.plugins.resolve.resolvconf.iface_prefix",
+								RESOLVCONF_PREFIX, hydra->daemon);
+	}
 
 	return &this->public;
 }

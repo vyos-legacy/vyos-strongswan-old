@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Martin Willi
+ * Copyright (C) 2009-2011 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,7 +15,9 @@
 
 #include "simaka_crypto.h"
 
-#include <daemon.h>
+#include "simaka_manager.h"
+
+#include <debug.h>
 
 /** length of the k_encr key */
 #define KENCR_LEN 16
@@ -37,6 +39,11 @@ struct private_simaka_crypto_t {
 	 * Public simaka_crypto_t interface.
 	 */
 	simaka_crypto_t public;
+
+	/**
+	 * EAP type this crypto is used, SIM or AKA
+	 */
+	eap_type_t type;
 
 	/**
 	 * signer to create/verify AT_MAC
@@ -69,35 +76,48 @@ struct private_simaka_crypto_t {
 	bool derived;
 };
 
-/**
- * Implementation of simaka_crypto_t.get_signer
- */
-static signer_t* get_signer(private_simaka_crypto_t *this)
+METHOD(simaka_crypto_t, get_signer, signer_t*,
+	private_simaka_crypto_t *this)
 {
 	return this->derived ? this->signer : NULL;
 }
 
-/**
- * Implementation of simaka_crypto_t.get_crypter
- */
-static crypter_t* get_crypter(private_simaka_crypto_t *this)
+METHOD(simaka_crypto_t, get_crypter, crypter_t*,
+	private_simaka_crypto_t *this)
 {
 	return this->derived ? this->crypter : NULL;
 }
 
-/**
- * Implementation of simaka_crypto_t.get_rng
- */
-static rng_t* get_rng(private_simaka_crypto_t *this)
+METHOD(simaka_crypto_t, get_rng, rng_t*,
+	private_simaka_crypto_t *this)
 {
 	return this->rng;
 }
 
 /**
- * Implementation of simaka_crypto_t.derive_keys_full
+ * Call SIM/AKA key hook
  */
-static chunk_t derive_keys_full(private_simaka_crypto_t *this,
-								identification_t *id, chunk_t data, chunk_t *mk)
+static void call_hook(private_simaka_crypto_t *this, chunk_t encr, chunk_t auth)
+{
+	simaka_manager_t *mgr;
+
+	switch (this->type)
+	{
+		case EAP_SIM:
+			mgr = lib->get(lib, "sim-manager");
+			break;
+		case EAP_AKA:
+			mgr = lib->get(lib, "aka-manager");
+			break;
+		default:
+			return;
+	}
+	mgr->key_hook(mgr, encr, auth);
+}
+
+METHOD(simaka_crypto_t, derive_keys_full, chunk_t,
+	private_simaka_crypto_t *this, identification_t *id,
+	chunk_t data, chunk_t *mk)
 {
 	chunk_t str, msk, k_encr, k_auth;
 	int i;
@@ -106,7 +126,7 @@ static chunk_t derive_keys_full(private_simaka_crypto_t *this,
 	 * For AKA: MK = SHA1(Identity|IK|CK) */
 	this->hasher->get_hash(this->hasher, id->get_encoding(id), NULL);
 	this->hasher->allocate_hash(this->hasher, data, mk);
-	DBG3(DBG_IKE, "MK %B", mk);
+	DBG3(DBG_LIB, "MK %B", mk);
 
 	/* K_encr | K_auth | MSK | EMSK = prf() | prf() | prf() | prf() */
 	this->prf->set_key(this->prf, *mk);
@@ -119,21 +139,19 @@ static chunk_t derive_keys_full(private_simaka_crypto_t *this,
 	k_encr = chunk_create(str.ptr, KENCR_LEN);
 	k_auth = chunk_create(str.ptr + KENCR_LEN, KAUTH_LEN);
 	msk = chunk_create(str.ptr + KENCR_LEN + KAUTH_LEN, MSK_LEN);
-	DBG3(DBG_IKE, "K_encr %B\nK_auth %B\nMSK %B", &k_encr, &k_auth, &msk);
+	DBG3(DBG_LIB, "K_encr %B\nK_auth %B\nMSK %B", &k_encr, &k_auth, &msk);
 
 	this->signer->set_key(this->signer, k_auth);
 	this->crypter->set_key(this->crypter, k_encr);
 
-	charon->sim->key_hook(charon->sim, k_encr, k_auth);
+	call_hook(this, k_encr, k_auth);
 
 	this->derived = TRUE;
 	return chunk_clone(msk);
 }
 
-/**
- * Implementation of simaka_crypto_t.derive_keys_reauth
- */
-static void derive_keys_reauth(private_simaka_crypto_t *this, chunk_t mk)
+METHOD(simaka_crypto_t, derive_keys_reauth, void,
+	private_simaka_crypto_t *this, chunk_t mk)
 {
 	chunk_t str, k_encr, k_auth;
 	int i;
@@ -147,22 +165,19 @@ static void derive_keys_reauth(private_simaka_crypto_t *this, chunk_t mk)
 	}
 	k_encr = chunk_create(str.ptr, KENCR_LEN);
 	k_auth = chunk_create(str.ptr + KENCR_LEN, KAUTH_LEN);
-	DBG3(DBG_IKE, "K_encr %B\nK_auth %B", &k_encr, &k_auth);
+	DBG3(DBG_LIB, "K_encr %B\nK_auth %B", &k_encr, &k_auth);
 
 	this->signer->set_key(this->signer, k_auth);
 	this->crypter->set_key(this->crypter, k_encr);
 
-	charon->sim->key_hook(charon->sim, k_encr, k_auth);
+	call_hook(this, k_encr, k_auth);
 
 	this->derived = TRUE;
 }
 
-/**
- * Implementation of simaka_crypto_t.derive_keys_reauth_msk
- */
-static chunk_t derive_keys_reauth_msk(private_simaka_crypto_t *this,
-									  identification_t *id, chunk_t counter,
-									  chunk_t nonce_s, chunk_t mk)
+METHOD(simaka_crypto_t, derive_keys_reauth_msk, chunk_t,
+	private_simaka_crypto_t *this, identification_t *id, chunk_t counter,
+	chunk_t nonce_s, chunk_t mk)
 {
 	char xkey[HASH_SIZE_SHA1];
 	chunk_t str, msk;
@@ -181,23 +196,19 @@ static chunk_t derive_keys_reauth_msk(private_simaka_crypto_t *this,
 		this->prf->get_bytes(this->prf, chunk_empty, str.ptr + str.len / 2 * i);
 	}
 	msk = chunk_create(str.ptr, MSK_LEN);
-	DBG3(DBG_IKE, "MSK %B", &msk);
+	DBG3(DBG_LIB, "MSK %B", &msk);
 
 	return chunk_clone(msk);
 }
 
-/**
- * Implementation of simaka_crypto_t.clear_keys
- */
-static void clear_keys(private_simaka_crypto_t *this)
+METHOD(simaka_crypto_t, clear_keys, void,
+	private_simaka_crypto_t *this)
 {
 	this->derived = FALSE;
 }
 
-/**
- * Implementation of simaka_crypto_t.destroy.
- */
-static void destroy(private_simaka_crypto_t *this)
+METHOD(simaka_crypto_t, destroy, void,
+	private_simaka_crypto_t *this)
 {
 	DESTROY_IF(this->rng);
 	DESTROY_IF(this->hasher);
@@ -210,32 +221,35 @@ static void destroy(private_simaka_crypto_t *this)
 /**
  * See header
  */
-simaka_crypto_t *simaka_crypto_create()
+simaka_crypto_t *simaka_crypto_create(eap_type_t type)
 {
-	private_simaka_crypto_t *this = malloc_thing(private_simaka_crypto_t);
+	private_simaka_crypto_t *this;
 
-	this->public.get_signer = (signer_t*(*)(simaka_crypto_t*))get_signer;
-	this->public.get_crypter = (crypter_t*(*)(simaka_crypto_t*))get_crypter;
-	this->public.get_rng = (rng_t*(*)(simaka_crypto_t*))get_rng;
-	this->public.derive_keys_full = (chunk_t(*)(simaka_crypto_t*, identification_t *id, chunk_t data, chunk_t *mk))derive_keys_full;
-	this->public.derive_keys_reauth = (void(*)(simaka_crypto_t*, chunk_t mk))derive_keys_reauth;
-	this->public.derive_keys_reauth_msk = (chunk_t(*)(simaka_crypto_t*, identification_t *id, chunk_t counter, chunk_t nonce_s, chunk_t mk))derive_keys_reauth_msk;
-	this->public.clear_keys = (void(*)(simaka_crypto_t*))clear_keys;
-	this->public.destroy = (void(*)(simaka_crypto_t*))destroy;
-
-	this->derived = FALSE;
-	this->rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	this->hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-	this->prf = lib->crypto->create_prf(lib->crypto, PRF_FIPS_SHA1_160);
-	this->signer = lib->crypto->create_signer(lib->crypto, AUTH_HMAC_SHA1_128);
-	this->crypter = lib->crypto->create_crypter(lib->crypto, ENCR_AES_CBC, 16);
+	INIT(this,
+		.public = {
+			.get_signer = _get_signer,
+			.get_crypter = _get_crypter,
+			.get_rng = _get_rng,
+			.derive_keys_full = _derive_keys_full,
+			.derive_keys_reauth = _derive_keys_reauth,
+			.derive_keys_reauth_msk = _derive_keys_reauth_msk,
+			.clear_keys = _clear_keys,
+			.destroy = _destroy,
+		},
+		.type = type,
+		.rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK),
+		.hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1),
+		.prf = lib->crypto->create_prf(lib->crypto, PRF_FIPS_SHA1_160),
+		.signer = lib->crypto->create_signer(lib->crypto, AUTH_HMAC_SHA1_128),
+		.crypter = lib->crypto->create_crypter(lib->crypto, ENCR_AES_CBC, 16),
+	);
 	if (!this->rng || !this->hasher || !this->prf ||
 		!this->signer || !this->crypter)
 	{
-		DBG1(DBG_IKE, "unable to use EAP-SIM, missing algorithms");
+		DBG1(DBG_LIB, "unable to use %N, missing algorithms",
+			 eap_type_names, type);
 		destroy(this);
 		return NULL;
 	}
 	return &this->public;
 }
-

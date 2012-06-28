@@ -196,22 +196,37 @@ METHOD(ha_cache_t, delete_, void,
  */
 static status_t rekey_children(ike_sa_t *ike_sa)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	child_sa_t *child_sa;
 	status_t status = SUCCESS;
 
-	iterator = ike_sa->create_child_sa_iterator(ike_sa);
-	while (iterator->iterate(iterator, (void**)&child_sa))
+	enumerator = ike_sa->create_child_sa_enumerator(ike_sa);
+	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
-		DBG1(DBG_CFG, "resyncing CHILD_SA");
-		status = ike_sa->rekey_child_sa(ike_sa, child_sa->get_protocol(child_sa),
-										child_sa->get_spi(child_sa, TRUE));
+		if (ike_sa->supports_extension(ike_sa, EXT_MS_WINDOWS) &&
+			ike_sa->has_condition(ike_sa, COND_NAT_THERE))
+		{
+			/* NATed Windows clients don't accept CHILD_SA rekeying, but fail
+			 * with an "invalid situation" error. We just close the CHILD_SA,
+			 * Windows will reestablish it immediately if required. */
+			DBG1(DBG_CFG, "resyncing CHILD_SA using a delete");
+			status = ike_sa->delete_child_sa(ike_sa,
+											 child_sa->get_protocol(child_sa),
+											 child_sa->get_spi(child_sa, TRUE));
+		}
+		else
+		{
+			DBG1(DBG_CFG, "resyncing CHILD_SA using a rekey");
+			status = ike_sa->rekey_child_sa(ike_sa,
+											child_sa->get_protocol(child_sa),
+											child_sa->get_spi(child_sa, TRUE));
+		}
 		if (status == DESTROY_ME)
 		{
 			break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 	return status;
 }
 
@@ -228,7 +243,7 @@ static void rekey_segment(private_ha_cache_t *this, u_int segment)
 	list = linked_list_create();
 
 	enumerator = charon->ike_sa_manager->create_enumerator(
-												charon->ike_sa_manager);
+												charon->ike_sa_manager, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		if (ike_sa->get_state(ike_sa) == IKE_ESTABLISHED &&
@@ -355,8 +370,8 @@ ha_cache_t *ha_cache_create(ha_kernel_t *kernel, ha_socket_t *socket,
 	{
 		/* request a resync as soon as we are up */
 		lib->scheduler->schedule_job(lib->scheduler, (job_t*)
-						callback_job_create((callback_job_cb_t)request_resync,
-											this, NULL, NULL), 1);
+			callback_job_create_with_prio((callback_job_cb_t)request_resync,
+									this, NULL, NULL, JOB_PRIO_CRITICAL), 1);
 	}
 	return &this->public;
 }

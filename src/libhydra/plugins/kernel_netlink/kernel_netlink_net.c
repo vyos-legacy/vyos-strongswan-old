@@ -193,16 +193,16 @@ struct private_kernel_netlink_net_t {
  */
 static int get_vip_refcount(private_kernel_netlink_net_t *this, host_t* ip)
 {
-	iterator_t *ifaces, *addrs;
+	enumerator_t *ifaces, *addrs;
 	iface_entry_t *iface;
 	addr_entry_t *addr;
 	int refcount = 0;
 
-	ifaces = this->ifaces->create_iterator(this->ifaces, TRUE);
-	while (ifaces->iterate(ifaces, (void**)&iface))
+	ifaces = this->ifaces->create_enumerator(this->ifaces);
+	while (ifaces->enumerate(ifaces, (void**)&iface))
 	{
-		addrs = iface->addrs->create_iterator(iface->addrs, TRUE);
-		while (addrs->iterate(addrs, (void**)&addr))
+		addrs = iface->addrs->create_enumerator(iface->addrs);
+		while (addrs->enumerate(addrs, (void**)&addr))
 		{
 			if (addr->virtual && (iface->flags & IFF_UP) &&
 				ip->ip_equals(ip, addr->ip))
@@ -375,9 +375,13 @@ static void process_link(private_kernel_netlink_net_t *this,
 			{
 				if (current->ifindex == msg->ifi_index)
 				{
-					/* we do not remove it, as an address may be added to a
-					 * "down" interface and we wan't to know that. */
-					current->flags = msg->ifi_flags;
+					if (event)
+					{
+						update = TRUE;
+						DBG1(DBG_KNL, "interface %s deleted", current->ifname);
+					}
+					this->ifaces->remove_at(this->ifaces, enumerator);
+					iface_entry_destroy(current);
 					break;
 				}
 			}
@@ -904,7 +908,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 				struct rtattr *rta;
 				size_t rtasize;
 				chunk_t rta_gtw, rta_src, rta_dst;
-				u_int32_t rta_oif = 0;
+				u_int32_t rta_oif = 0, rta_table;
 				host_t *new_src, *new_gtw;
 				bool cont = FALSE;
 				uintptr_t table;
@@ -913,6 +917,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 				msg = (struct rtmsg*)(NLMSG_DATA(current));
 				rta = RTM_RTA(msg);
 				rtasize = RTM_PAYLOAD(current);
+				rta_table = msg->rtm_table;
 				while (RTA_OK(rta, rtasize))
 				{
 					switch (rta->rta_type)
@@ -932,6 +937,14 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 								rta_oif = *(u_int32_t*)RTA_DATA(rta);
 							}
 							break;
+#ifdef HAVE_RTA_TABLE
+						case RTA_TABLE:
+							if (RTA_PAYLOAD(rta) == sizeof(rta_table))
+							{
+								rta_table = *(u_int32_t*)RTA_DATA(rta);
+							}
+							break;
+#endif /* HAVE_RTA_TABLE*/
 					}
 					rta = RTA_NEXT(rta, rtasize);
 				}
@@ -942,7 +955,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 				enumerator = this->rt_exclude->create_enumerator(this->rt_exclude);
 				while (enumerator->enumerate(enumerator, &table))
 				{
-					if (table == msg->rtm_table)
+					if (table == rta_table)
 					{
 						cont = TRUE;
 						break;
@@ -954,7 +967,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 					continue;
 				}
 				if (this->routing_table != 0 &&
-					msg->rtm_table == this->routing_table)
+					rta_table == this->routing_table)
 				{	/* route is from our own ipsec routing table */
 					continue;
 				}
@@ -1529,7 +1542,7 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 		return NULL;
 	}
 	addr.nl_groups = RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR |
-					 RTMGRP_IPV4_ROUTE | RTMGRP_IPV4_ROUTE | RTMGRP_LINK;
+					 RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE | RTMGRP_LINK;
 	if (bind(this->socket_events, (struct sockaddr*)&addr, sizeof(addr)))
 	{
 		DBG1(DBG_KNL, "unable to bind RT event socket");
@@ -1537,8 +1550,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 		return NULL;
 	}
 
-	this->job = callback_job_create((callback_job_cb_t)receive_events,
-									this, NULL, NULL);
+	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_events,
+										this, NULL, NULL, JOB_PRIO_CRITICAL);
 	lib->processor->queue_job(lib->processor, (job_t*)this->job);
 
 	if (init_address_list(this) != SUCCESS)

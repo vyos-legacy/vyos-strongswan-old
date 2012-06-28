@@ -71,6 +71,9 @@ enum notify_type_t {
 	/* IKE-ME, private use */
 	ME_CONNECT_FAILED = 8192,
 
+	/* Windows error code */
+	MS_NOTIFY_STATUS = 12345,
+
 	/* notify status messages */
 	INITIAL_CONTACT = 16384,
 	SET_WINDOW_SIZE = 16385,
@@ -115,7 +118,20 @@ enum notify_type_t {
 	ROHC_SUPPORTED = 16416,
 	/* EAP-only authentication, RFC 5998 */
 	EAP_ONLY_AUTHENTICATION = 16417,
-
+	/* Childless initiation of IKEv2 SA, RFC 6023 */
+	CHILDLESS_IKEV2_SUPPORTED = 16418,
+	/* Quick crash detection for IKE, RFC 6290 */
+	QUICK_CRASH_DETECTION = 16419,
+	/* High availability of IKEv2/IPsec, RFC 6311 */
+	IKEV2_MESSAGE_ID_SYNC_SUPPORTED = 16420,
+	IKEV2_REPLAY_COUNTER_SYNC_SUPPORTED = 16421,
+	IKEV2_MESSAGE_ID_SYNC = 16422,
+	IPSEC_REPLAY_COUNTER_SYNC = 16423,
+	/* Secure password methods, RFC 6467 */
+	SECURE_PASSWORD_METHOD = 16424,
+	/* PACE - draft-kuegler-ipsecme-pace-ikev2 */
+	PSK_PERSIST = 16425,
+	PSK_CONFIRM = 16426,
 	/* BEET mode, not even a draft yet. private use */
 	USE_BEET_MODE = 40961,
 	/* IKE-ME, private use */
@@ -125,7 +141,9 @@ enum notify_type_t {
 	ME_CONNECTID = 40965,
 	ME_CONNECTKEY = 40966,
 	ME_CONNECTAUTH = 40967,
-	ME_RESPONSE = 40968
+	ME_RESPONSE = 40968,
+	/* RADIUS attribute received/to send to a AAA backend */
+	RADIUS_ATTRIBUTE = 40969,
 };
 
 /**

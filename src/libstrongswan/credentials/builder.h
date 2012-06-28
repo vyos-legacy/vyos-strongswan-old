@@ -28,8 +28,8 @@ typedef enum builder_part_t builder_part_t;
 /**
  * Constructor function to build credentials.
  *
- * Any added parts are cloned/refcounted by the builder implementation, a
- * caller may need to free the passed ressources themself.
+ * Any added parts are cloned/refcounted by the builder implementation.
+ * Callers may need to free the passed resources themselves.
  *
  * @param subtype	constructor specific subtype, e.g. a certificate_type_t
  * @param args		list of builder part types, followed by parts, BUILD_END
@@ -53,10 +53,12 @@ enum builder_part_t {
 	BUILD_BLOB_ASN1_DER,
 	/** PEM encoded ASN.1/PGP blob, chunk_t */
 	BUILD_BLOB_PEM,
-	/**  OpenPGP key blob, chunk_t */
+	/** OpenPGP key blob, chunk_t */
 	BUILD_BLOB_PGP,
 	/** DNS public key blob (RFC 4034, RSA specifc RFC 3110), chunk_t */
 	BUILD_BLOB_DNSKEY,
+	/** parameters from algorithmIdentifier (ASN.1 blob), chunk_t */
+	BUILD_BLOB_ALGID_PARAMS,
 	/** key size in bits, as used for key generation, u_int */
 	BUILD_KEY_SIZE,
 	/** private key to use for signing, private_key_t* */

@@ -22,6 +22,10 @@
 
 typedef struct private_tls_server_t private_tls_server_t;
 
+/**
+ * Size of a session ID
+ */
+#define SESSION_ID_SIZE 16
 
 typedef enum {
 	STATE_INIT,
@@ -121,6 +125,16 @@ struct private_tls_server_t {
 	tls_version_t client_version;
 
 	/**
+	 * TLS session identifier
+	 */
+	chunk_t session;
+
+	/**
+	 * Do we resume a session?
+	 */
+	bool resume;
+
+	/**
 	 * Hash and signature algorithms supported by peer
 	 */
 	chunk_t hashsig;
@@ -192,13 +206,14 @@ static bool select_suite_and_key(private_tls_server_t *this,
  * Process client hello message
  */
 static status_t process_client_hello(private_tls_server_t *this,
-									 tls_reader_t *reader)
+									 bio_reader_t *reader)
 {
 	u_int16_t version, extension;
 	chunk_t random, session, ciphers, compression, ext = chunk_empty;
-	tls_reader_t *extensions;
+	bio_reader_t *extensions;
 	tls_cipher_suite_t *suites;
 	int count, i;
+	rng_t *rng;
 
 	this->crypto->append_handshake(this->crypto,
 								   TLS_CLIENT_HELLO, reader->peek(reader));
@@ -217,7 +232,7 @@ static status_t process_client_hello(private_tls_server_t *this,
 
 	if (ext.len)
 	{
-		extensions = tls_reader_create(ext);
+		extensions = bio_reader_create(ext);
 		while (extensions->remaining(extensions))
 		{
 			if (!extensions->read_uint16(extensions, &extension) ||
@@ -228,7 +243,7 @@ static status_t process_client_hello(private_tls_server_t *this,
 				extensions->destroy(extensions);
 				return NEED_MORE;
 			}
-			DBG1(DBG_TLS, "received TLS '%N' extension",
+			DBG2(DBG_TLS, "received TLS '%N' extension",
 				 tls_extension_names, extension);
 			DBG3(DBG_TLS, "%B", &ext);
 			switch (extension)
@@ -249,6 +264,17 @@ static status_t process_client_hello(private_tls_server_t *this,
 
 	memcpy(this->client_random, random.ptr, sizeof(this->client_random));
 
+	htoun32(&this->server_random, time(NULL));
+	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
+	if (!rng)
+	{
+		DBG1(DBG_TLS, "no suitable RNG found to generate server random");
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		return NEED_MORE;
+	}
+	rng->get_bytes(rng, sizeof(this->server_random) - 4, this->server_random + 4);
+	rng->destroy(rng);
+
 	if (!this->tls->set_version(this->tls, version))
 	{
 		DBG1(DBG_TLS, "negotiated version %N not supported",
@@ -256,24 +282,44 @@ static status_t process_client_hello(private_tls_server_t *this,
 		this->alert->add(this->alert, TLS_FATAL, TLS_PROTOCOL_VERSION);
 		return NEED_MORE;
 	}
-	count = ciphers.len / sizeof(u_int16_t);
-	suites = alloca(count * sizeof(tls_cipher_suite_t));
-	DBG2(DBG_TLS, "received %d TLS cipher suites:", count);
-	for (i = 0; i < count; i++)
-	{
-		suites[i] = untoh16(&ciphers.ptr[i * sizeof(u_int16_t)]);
-		DBG2(DBG_TLS, "  %N", tls_cipher_suite_names, suites[i]);
-	}
 
-	if (!select_suite_and_key(this, suites, count))
-	{
-		this->alert->add(this->alert, TLS_FATAL, TLS_HANDSHAKE_FAILURE);
-		return NEED_MORE;
-	}
-	DBG1(DBG_TLS, "negotiated TLS version %N with suite %N",
-		 tls_version_names, this->tls->get_version(this->tls),
-		 tls_cipher_suite_names, this->suite);
 	this->client_version = version;
+	this->suite = this->crypto->resume_session(this->crypto, session, this->peer,
+										chunk_from_thing(this->client_random),
+										chunk_from_thing(this->server_random));
+	if (this->suite)
+	{
+		this->session = chunk_clone(session);
+		this->resume = TRUE;
+		DBG1(DBG_TLS, "resumed %N using suite %N",
+			 tls_version_names, this->tls->get_version(this->tls),
+			 tls_cipher_suite_names, this->suite);
+	}
+	else
+	{
+		count = ciphers.len / sizeof(u_int16_t);
+		suites = alloca(count * sizeof(tls_cipher_suite_t));
+		DBG2(DBG_TLS, "received %d TLS cipher suites:", count);
+		for (i = 0; i < count; i++)
+		{
+			suites[i] = untoh16(&ciphers.ptr[i * sizeof(u_int16_t)]);
+			DBG2(DBG_TLS, "  %N", tls_cipher_suite_names, suites[i]);
+		}
+		if (!select_suite_and_key(this, suites, count))
+		{
+			this->alert->add(this->alert, TLS_FATAL, TLS_HANDSHAKE_FAILURE);
+			return NEED_MORE;
+		}
+		rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
+		if (rng)
+		{
+			rng->allocate_bytes(rng, SESSION_ID_SIZE, &this->session);
+			rng->destroy(rng);
+		}
+		DBG1(DBG_TLS, "negotiated %N using suite %N",
+			 tls_version_names, this->tls->get_version(this->tls),
+			 tls_cipher_suite_names, this->suite);
+	}
 	this->state = STATE_HELLO_RECEIVED;
 	return NEED_MORE;
 }
@@ -282,10 +328,10 @@ static status_t process_client_hello(private_tls_server_t *this,
  * Process certificate
  */
 static status_t process_certificate(private_tls_server_t *this,
-									tls_reader_t *reader)
+									bio_reader_t *reader)
 {
 	certificate_t *cert;
-	tls_reader_t *certs;
+	bio_reader_t *certs;
 	chunk_t data;
 	bool first = TRUE;
 
@@ -298,7 +344,7 @@ static status_t process_certificate(private_tls_server_t *this,
 		this->alert->add(this->alert, TLS_FATAL, TLS_DECODE_ERROR);
 		return NEED_MORE;
 	}
-	certs = tls_reader_create(data);
+	certs = bio_reader_create(data);
 	while (certs->remaining(certs))
 	{
 		if (!certs->read_data24(certs, &data))
@@ -342,7 +388,7 @@ static status_t process_certificate(private_tls_server_t *this,
  * Process Client Key Exchange, using premaster encryption
  */
 static status_t process_key_exchange_encrypted(private_tls_server_t *this,
-											   tls_reader_t *reader)
+											   bio_reader_t *reader)
 {
 	chunk_t encrypted, decrypted;
 	char premaster[48];
@@ -391,6 +437,7 @@ static status_t process_key_exchange_encrypted(private_tls_server_t *this,
 	}
 
 	this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
+								 this->session, this->peer,
 								 chunk_from_thing(this->client_random),
 								 chunk_from_thing(this->server_random));
 
@@ -402,7 +449,7 @@ static status_t process_key_exchange_encrypted(private_tls_server_t *this,
  * Process client key exchange, using DHE exchange
  */
 static status_t process_key_exchange_dhe(private_tls_server_t *this,
-										 tls_reader_t *reader)
+										 bio_reader_t *reader)
 {
 	chunk_t premaster, pub;
 	bool ec;
@@ -439,6 +486,7 @@ static status_t process_key_exchange_dhe(private_tls_server_t *this,
 	}
 
 	this->crypto->derive_secrets(this->crypto, premaster,
+								 this->session, this->peer,
 								 chunk_from_thing(this->client_random),
 								 chunk_from_thing(this->server_random));
 	chunk_clear(&premaster);
@@ -451,7 +499,7 @@ static status_t process_key_exchange_dhe(private_tls_server_t *this,
  * Process Client Key Exchange
  */
 static status_t process_key_exchange(private_tls_server_t *this,
-									 tls_reader_t *reader)
+									 bio_reader_t *reader)
 {
 	if (this->dh)
 	{
@@ -464,19 +512,19 @@ static status_t process_key_exchange(private_tls_server_t *this,
  * Process Certificate verify
  */
 static status_t process_cert_verify(private_tls_server_t *this,
-									tls_reader_t *reader)
+									bio_reader_t *reader)
 {
 	bool verified = FALSE;
 	enumerator_t *enumerator;
 	public_key_t *public;
 	auth_cfg_t *auth;
-	tls_reader_t *sig;
+	bio_reader_t *sig;
 
 	enumerator = lib->credmgr->create_public_enumerator(lib->credmgr,
 										KEY_ANY, this->peer, this->peer_auth);
 	while (enumerator->enumerate(enumerator, &public, &auth))
 	{
-		sig = tls_reader_create(reader->peek(reader));
+		sig = bio_reader_create(reader->peek(reader));
 		verified = this->crypto->verify_handshake(this->crypto, public, sig);
 		sig->destroy(sig);
 		if (verified)
@@ -505,7 +553,7 @@ static status_t process_cert_verify(private_tls_server_t *this,
  * Process finished message
  */
 static status_t process_finished(private_tls_server_t *this,
-								 tls_reader_t *reader)
+								 bio_reader_t *reader)
 {
 	chunk_t received;
 	char buf[12];
@@ -535,7 +583,7 @@ static status_t process_finished(private_tls_server_t *this,
 }
 
 METHOD(tls_handshake_t, process, status_t,
-	private_tls_server_t *this, tls_handshake_type_t type, tls_reader_t *reader)
+	private_tls_server_t *this, tls_handshake_type_t type, bio_reader_t *reader)
 {
 	tls_handshake_type_t expected;
 
@@ -576,10 +624,7 @@ METHOD(tls_handshake_t, process, status_t,
 				expected = TLS_CERTIFICATE_VERIFY;
 				break;
 			}
-			else
-			{
-				return INVALID_STATE;
-			}
+			return INVALID_STATE;
 		case STATE_CIPHERSPEC_CHANGED_IN:
 			if (type == TLS_FINISHED)
 			{
@@ -603,29 +648,14 @@ METHOD(tls_handshake_t, process, status_t,
  * Send ServerHello message
  */
 static status_t send_server_hello(private_tls_server_t *this,
-							tls_handshake_type_t *type, tls_writer_t *writer)
+							tls_handshake_type_t *type, bio_writer_t *writer)
 {
-	tls_version_t version;
-	rng_t *rng;
-
-	htoun32(&this->server_random, time(NULL));
-	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
-	{
-		DBG1(DBG_TLS, "no suitable RNG found to generate server random");
-		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
-		return FAILED;
-	}
-	rng->get_bytes(rng, sizeof(this->server_random) - 4, this->server_random + 4);
-	rng->destroy(rng);
-
 	/* TLS version */
-	version = this->tls->get_version(this->tls);
-	writer->write_uint16(writer, version);
+	writer->write_uint16(writer, this->tls->get_version(this->tls));
 	writer->write_data(writer, chunk_from_thing(this->server_random));
 
-	/* session identifier => none, we don't support session resumption */
-	writer->write_data8(writer, chunk_empty);
+	/* session identifier if we have one */
+	writer->write_data8(writer, this->session);
 
 	/* add selected TLS cipher suite */
 	writer->write_uint16(writer, this->suite);
@@ -643,16 +673,16 @@ static status_t send_server_hello(private_tls_server_t *this,
  * Send Certificate
  */
 static status_t send_certificate(private_tls_server_t *this,
-							tls_handshake_type_t *type, tls_writer_t *writer)
+							tls_handshake_type_t *type, bio_writer_t *writer)
 {
 	enumerator_t *enumerator;
 	certificate_t *cert;
 	auth_rule_t rule;
-	tls_writer_t *certs;
+	bio_writer_t *certs;
 	chunk_t data;
 
 	/* generate certificate payload */
-	certs = tls_writer_create(256);
+	certs = bio_writer_create(256);
 	cert = this->server_auth->get(this->server_auth, AUTH_RULE_SUBJECT_CERT);
 	if (cert)
 	{
@@ -693,15 +723,15 @@ static status_t send_certificate(private_tls_server_t *this,
  * Send Certificate Request
  */
 static status_t send_certificate_request(private_tls_server_t *this,
-							tls_handshake_type_t *type, tls_writer_t *writer)
+							tls_handshake_type_t *type, bio_writer_t *writer)
 {
-	tls_writer_t *authorities, *supported;
+	bio_writer_t *authorities, *supported;
 	enumerator_t *enumerator;
 	certificate_t *cert;
 	x509_t *x509;
 	identification_t *id;
 
-	supported = tls_writer_create(4);
+	supported = bio_writer_create(4);
 	/* we propose both RSA and ECDSA */
 	supported->write_uint8(supported, TLS_RSA_SIGN);
 	supported->write_uint8(supported, TLS_ECDSA_SIGN);
@@ -712,7 +742,7 @@ static status_t send_certificate_request(private_tls_server_t *this,
 		this->crypto->get_signature_algorithms(this->crypto, writer);
 	}
 
-	authorities = tls_writer_create(64);
+	authorities = bio_writer_create(64);
 	enumerator = lib->credmgr->create_cert_enumerator(lib->credmgr,
 												CERT_X509, KEY_RSA, NULL, TRUE);
 	while (enumerator->enumerate(enumerator, &cert))
@@ -763,14 +793,14 @@ static tls_named_curve_t ec_group_to_curve(private_tls_server_t *this,
  */
 bool peer_supports_curve(private_tls_server_t *this, tls_named_curve_t curve)
 {
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 	u_int16_t current;
 
 	if (!this->curves_received)
 	{	/* none received, assume yes */
 		return TRUE;
 	}
-	reader = tls_reader_create(this->curves);
+	reader = bio_reader_create(this->curves);
 	while (reader->remaining(reader) && reader->read_uint16(reader, &current))
 	{
 		if (current == curve)
@@ -810,7 +840,7 @@ static bool find_supported_curve(private_tls_server_t *this,
  * Send Server key Exchange
  */
 static status_t send_server_key_exchange(private_tls_server_t *this,
-							tls_handshake_type_t *type, tls_writer_t *writer,
+							tls_handshake_type_t *type, bio_writer_t *writer,
 							diffie_hellman_group_t group)
 {
 	diffie_hellman_params_t *params = NULL;
@@ -887,7 +917,7 @@ static status_t send_server_key_exchange(private_tls_server_t *this,
  * Send Hello Done
  */
 static status_t send_hello_done(private_tls_server_t *this,
-							tls_handshake_type_t *type, tls_writer_t *writer)
+							tls_handshake_type_t *type, bio_writer_t *writer)
 {
 	*type = TLS_SERVER_HELLO_DONE;
 	this->state = STATE_HELLO_DONE;
@@ -899,7 +929,7 @@ static status_t send_hello_done(private_tls_server_t *this,
  * Send Finished
  */
 static status_t send_finished(private_tls_server_t *this,
-							  tls_handshake_type_t *type, tls_writer_t *writer)
+							  tls_handshake_type_t *type, bio_writer_t *writer)
 {
 	char buf[12];
 
@@ -914,14 +944,13 @@ static status_t send_finished(private_tls_server_t *this,
 
 	*type = TLS_FINISHED;
 	this->state = STATE_FINISHED_SENT;
-	this->crypto->derive_eap_msk(this->crypto,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	this->crypto->append_handshake(this->crypto, *type, writer->get_buf(writer));
+
 	return NEED_MORE;
 }
 
 METHOD(tls_handshake_t, build, status_t,
-	private_tls_server_t *this, tls_handshake_type_t *type, tls_writer_t *writer)
+	private_tls_server_t *this, tls_handshake_type_t *type, bio_writer_t *writer)
 {
 	diffie_hellman_group_t group;
 
@@ -956,33 +985,52 @@ METHOD(tls_handshake_t, build, status_t,
 }
 
 METHOD(tls_handshake_t, cipherspec_changed, bool,
-	private_tls_server_t *this)
+	private_tls_server_t *this, bool inbound)
 {
-	if (this->state == STATE_FINISHED_RECEIVED)
+	if (inbound)
 	{
-		this->crypto->change_cipher(this->crypto, FALSE);
-		this->state = STATE_CIPHERSPEC_CHANGED_OUT;
-		return TRUE;
+		if (this->resume)
+		{
+			return this->state == STATE_FINISHED_SENT;
+		}
+		if (this->peer)
+		{
+			return this->state == STATE_CERT_VERIFY_RECEIVED;
+		}
+		return this->state == STATE_KEY_EXCHANGE_RECEIVED;
+	}
+	else
+	{
+		if (this->resume)
+		{
+			return this->state == STATE_HELLO_SENT;
+		}
+		return this->state == STATE_FINISHED_RECEIVED;
 	}
 	return FALSE;
 }
 
-METHOD(tls_handshake_t, change_cipherspec, bool,
-	private_tls_server_t *this)
+METHOD(tls_handshake_t, change_cipherspec, void,
+	private_tls_server_t *this, bool inbound)
 {
-	if ((this->peer && this->state == STATE_CERT_VERIFY_RECEIVED) ||
-	   (!this->peer && this->state == STATE_KEY_EXCHANGE_RECEIVED))
+	this->crypto->change_cipher(this->crypto, inbound);
+	if (inbound)
 	{
-		this->crypto->change_cipher(this->crypto, TRUE);
 		this->state = STATE_CIPHERSPEC_CHANGED_IN;
-		return TRUE;
 	}
-	return FALSE;
+	else
+	{
+		this->state = STATE_CIPHERSPEC_CHANGED_OUT;
+	}
 }
 
 METHOD(tls_handshake_t, finished, bool,
 	private_tls_server_t *this)
 {
+	if (this->resume)
+	{
+		return this->state == STATE_FINISHED_RECEIVED;
+	}
 	return this->state == STATE_FINISHED_SENT;
 }
 
@@ -995,6 +1043,7 @@ METHOD(tls_handshake_t, destroy, void,
 	this->server_auth->destroy(this->server_auth);
 	free(this->hashsig.ptr);
 	free(this->curves.ptr);
+	free(this->session.ptr);
 	free(this);
 }
 

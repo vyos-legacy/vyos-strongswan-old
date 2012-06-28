@@ -21,6 +21,7 @@
 #include <daemon.h>
 #include <utils/linked_list.h>
 #include <threading/mutex.h>
+#include <simaka_manager.h>
 
 typedef struct private_eap_sim_file_triplets_t private_eap_sim_file_triplets_t;
 
@@ -149,7 +150,7 @@ static void parse_token(char *to, char *from, size_t len)
 /**
  * Read the triplets from the file
  */
-static void read_triplets(private_eap_sim_file_triplets_t *this, char *path)
+static bool read_triplets(private_eap_sim_file_triplets_t *this, char *path)
 {
 	char line[512];
 	FILE *file;
@@ -160,7 +161,7 @@ static void read_triplets(private_eap_sim_file_triplets_t *this, char *path)
 	{
 		DBG1(DBG_CFG, "opening triplet file %s failed: %s",
 			 path, strerror(errno));
-		return;
+		return FALSE;
 	}
 
 	/* read line by line */
@@ -226,6 +227,7 @@ static void read_triplets(private_eap_sim_file_triplets_t *this, char *path)
 
 	DBG1(DBG_CFG, "read %d triplets from %s",
 		 this->triplets->get_count(this->triplets), path);
+	return TRUE;
 }
 
 METHOD(eap_sim_file_triplets_t, destroy, void,
@@ -251,8 +253,12 @@ eap_sim_file_triplets_t *eap_sim_file_triplets_create(char *file)
 		.triplets = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 	);
-	read_triplets(this, file);
 
+	if (!read_triplets(this, file))
+	{
+		destroy(this);
+		return NULL;
+	}
 	return &this->public;
 }
 

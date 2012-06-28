@@ -19,6 +19,9 @@
  * @defgroup asn1 asn1
  * @ingroup libstrongswan
  *
+ * @defgroup bio bio
+ * @ingroup libstrongswan
+ *
  * @defgroup credentials credentials
  * @ingroup libstrongswan
  *
@@ -69,7 +72,6 @@
 #include "chunk.h"
 #include "settings.h"
 #include "integrity_checker.h"
-#include "plugins/plugin_loader.h"
 #include "processing/processor.h"
 #include "processing/scheduler.h"
 #include "crypto/crypto_factory.h"
@@ -78,6 +80,8 @@
 #include "credentials/credential_factory.h"
 #include "credentials/credential_manager.h"
 #include "credentials/cred_encoding.h"
+#include "utils/leak_detective.h"
+#include "plugins/plugin_loader.h"
 
 typedef struct library_t library_t;
 
@@ -85,6 +89,23 @@ typedef struct library_t library_t;
  * Libstrongswan library context, contains library relevant globals.
  */
 struct library_t {
+
+	/**
+	 * Get an arbitrary object registered by name.
+	 *
+	 * @param name		name of the object to get
+	 * @return			object, NULL if none found
+	 */
+	void* (*get)(library_t *this, char *name);
+
+	/**
+	 * (Un-)Register an arbitrary object using the given name.
+	 *
+	 * @param name		name to register object under
+	 * @param object	object to register, NULL to unregister
+	 * @return			TRUE if registered, FALSE if name already taken
+	 */
+	bool (*set)(library_t *this, char *name, void *object);
 
 	/**
 	 * Printf hook registering facility
@@ -147,15 +168,15 @@ struct library_t {
 	integrity_checker_t *integrity;
 
 	/**
-	 * is leak detective running?
+	 * Leak detective, if built and enabled
 	 */
-	bool leak_detective;
+	leak_detective_t *leak_detective;
 };
 
 /**
  * Initialize library, creates "lib" instance.
  *
- * @param settings		file to read settings from, may be NULL for none
+ * @param settings		file to read settings from, may be NULL for default
  * @return				FALSE if integrity check failed
  */
 bool library_init(char *settings);
@@ -166,7 +187,7 @@ bool library_init(char *settings);
 void library_deinit();
 
 /**
- * Library instance, set after between library_init() and library_deinit() calls.
+ * Library instance, set after library_init() and before library_deinit() calls.
  */
 extern library_t *lib;
 

@@ -130,24 +130,23 @@ static void endpoint_pair_destroy(endpoint_pair_t *this)
 static endpoint_pair_t *endpoint_pair_create(endpoint_notify_t *initiator,
 		endpoint_notify_t *responder, bool initiator_is_local)
 {
-	endpoint_pair_t *this = malloc_thing(endpoint_pair_t);
-
-	this->id = 0;
+	endpoint_pair_t *this;
 
 	u_int32_t pi = initiator->get_priority(initiator);
 	u_int32_t pr = responder->get_priority(responder);
-	this->priority = pow(2, 32) * min(pi, pr) + 2 * max(pi, pr) + (pi > pr ? 1 : 0);
 
-	this->local = initiator_is_local ? initiator->get_base(initiator)
-									 : responder->get_base(responder);
+	INIT(this,
+		.priority = pow(2, 32) * min(pi, pr) + 2 * max(pi, pr)
+											 + (pi > pr ? 1 : 0),
+		.local = initiator_is_local ? initiator->get_base(initiator)
+									: responder->get_base(responder),
+		.remote = initiator_is_local ? responder->get_host(responder)
+									 : initiator->get_host(initiator),
+		.state = CHECK_WAITING,
+	);
+
 	this->local = this->local->clone(this->local);
-	this->remote = initiator_is_local ? responder->get_host(responder)
-									  : initiator->get_host(initiator);
 	this->remote = this->remote->clone(this->remote);
-
-	this->state = CHECK_WAITING;
-	this->retransmitted = 0;
-	this->packet = NULL;
 
 	return this;
 }
@@ -239,23 +238,24 @@ static check_list_t *check_list_create(identification_t *initiator,
 									   linked_list_t *initiator_endpoints,
 									   bool is_initiator)
 {
-	check_list_t *this = malloc_thing(check_list_t);
+	check_list_t *this;
 
-	this->connect_id = chunk_clone(connect_id);
-
-	this->initiator.id = initiator->clone(initiator);
-	this->initiator.key = chunk_clone(initiator_key);
-	this->initiator.endpoints = initiator_endpoints->clone_offset(initiator_endpoints, offsetof(endpoint_notify_t, clone));
-
-	this->responder.id = responder->clone(responder);
-	this->responder.key = chunk_empty;
-	this->responder.endpoints = NULL;
-
-	this->pairs = linked_list_create();
-	this->triggered = linked_list_create();
-	this->state = CHECK_NONE;
-	this->is_initiator = is_initiator;
-	this->is_finishing = FALSE;
+	INIT(this,
+		.connect_id = chunk_clone(connect_id),
+		.initiator = {
+			.id = initiator->clone(initiator),
+			.key = chunk_clone(initiator_key),
+			.endpoints = initiator_endpoints->clone_offset(initiator_endpoints,
+											offsetof(endpoint_notify_t, clone)),
+		},
+		.responder = {
+			.id = responder->clone(responder),
+		},
+		.pairs = linked_list_create(),
+		.triggered = linked_list_create(),
+		.state = CHECK_NONE,
+		.is_initiator = is_initiator,
+	);
 
 	return this;
 }
@@ -294,11 +294,13 @@ static void initiated_destroy(initiated_t *this)
 static initiated_t *initiated_create(identification_t *id,
 									 identification_t *peer_id)
 {
-	initiated_t *this = malloc_thing(initiated_t);
+	initiated_t *this;
 
-	this->id = id->clone(id);
-	this->peer_id = peer_id->clone(peer_id);
-	this->mediated = linked_list_create();
+	INIT(this,
+		.id = id->clone(id),
+		.peer_id = peer_id->clone(peer_id),
+		.mediated = linked_list_create(),
+	);
 
 	return this;
 }
@@ -351,16 +353,11 @@ static void check_destroy(check_t *this)
  */
 static check_t *check_create()
 {
-	check_t *this = malloc_thing(check_t);
+	check_t *this;
 
-	this->connect_id = chunk_empty;
-	this->auth = chunk_empty;
-	this->endpoint_raw = chunk_empty;
-	this->src = NULL;
-	this->dst = NULL;
-	this->endpoint = NULL;
-
-	this->mid = 0;
+	INIT(this,
+		.mid = 0,
+	);
 
 	return this;
 }
@@ -396,10 +393,12 @@ static void callback_data_destroy(callback_data_t *this)
 static callback_data_t *callback_data_create(private_connect_manager_t *connect_manager,
 											 chunk_t connect_id)
 {
-	callback_data_t *this = malloc_thing(callback_data_t);
-	this->connect_manager = connect_manager;
-	this->connect_id = chunk_clone(connect_id);
-	this->mid = 0;
+	callback_data_t *this;
+	INIT(this,
+		.connect_manager = connect_manager,
+		.connect_id = chunk_clone(connect_id),
+		.mid = 0,
+	);
 	return this;
 }
 
@@ -443,11 +442,11 @@ static void initiate_data_destroy(initiate_data_t *this)
 static initiate_data_t *initiate_data_create(check_list_t *checklist,
 											 initiated_t *initiated)
 {
-	initiate_data_t *this = malloc_thing(initiate_data_t);
-
-	this->checklist = checklist;
-	this->initiated = initiated;
-
+	initiate_data_t *this;
+	INIT(this,
+		.checklist = checklist,
+		.initiated = initiated,
+	);
 	return this;
 }
 
@@ -476,19 +475,19 @@ static status_t get_initiated_by_ids(private_connect_manager_t *this,
 static void remove_initiated(private_connect_manager_t *this,
 							 initiated_t *initiated)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	initiated_t *current;
 
-	iterator = this->initiated->create_iterator(this->initiated, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = this->initiated->create_enumerator(this->initiated);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
 		if (current == initiated)
 		{
-			iterator->remove(iterator);
+			this->initiated->remove_at(this->initiated, enumerator);
 			break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -514,19 +513,19 @@ static status_t get_checklist_by_id(private_connect_manager_t *this,
 static void remove_checklist(private_connect_manager_t *this,
 							 check_list_t *checklist)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	check_list_t *current;
 
-	iterator = this->checklists->create_iterator(this->checklists, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = this->checklists->create_enumerator(this->checklists);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
 		if (current == checklist)
 		{
-			iterator->remove(iterator);
+			this->checklists->remove_at(this->checklists, enumerator);
 			break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -550,26 +549,15 @@ static status_t endpoints_contain(linked_list_t *endpoints, host_t *host,
  */
 static void insert_pair_by_priority(linked_list_t *pairs, endpoint_pair_t *pair)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator = pairs->create_enumerator(pairs);
 	endpoint_pair_t *current;
-	bool inserted = FALSE;
-
-	iterator = pairs->create_iterator(pairs, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	while (enumerator->enumerate(enumerator, (void**)&current) &&
+		   current->priority >= pair->priority)
 	{
-		if (current->priority < pair->priority)
-		{
-			iterator->insert_before(iterator, pair);
-			inserted = TRUE;
-			break;
-		}
+		continue;
 	}
-	iterator->destroy(iterator);
-
-	if (!inserted)
-	{
-		pairs->insert_last(pairs, pair);
-	}
+	pairs->insert_before(pairs, enumerator, pair);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -631,14 +619,14 @@ static bool match_waiting_pair(endpoint_pair_t *current)
 static status_t get_triggered_pair(check_list_t *checklist,
 								   endpoint_pair_t **pair)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	endpoint_pair_t *current;
 	status_t status = NOT_FOUND;
 
-	iterator = checklist->triggered->create_iterator(checklist->triggered, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = checklist->triggered->create_enumerator(checklist->triggered);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
-		iterator->remove(iterator);
+		checklist->triggered->remove_at(checklist->triggered, enumerator);
 
 		if (current->state == CHECK_WAITING)
 		{
@@ -650,7 +638,7 @@ static status_t get_triggered_pair(check_list_t *checklist,
 			break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 
 	return status;
 }
@@ -660,17 +648,17 @@ static status_t get_triggered_pair(check_list_t *checklist,
  */
 static void print_checklist(check_list_t *checklist)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	endpoint_pair_t *current;
 
 	DBG1(DBG_IKE, "pairs on checklist %#B:", &checklist->connect_id);
-	iterator = checklist->pairs->create_iterator(checklist->pairs, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = checklist->pairs->create_enumerator(checklist->pairs);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
 		DBG1(DBG_IKE, " * %#H - %#H (%d)", current->local, current->remote,
 			 current->priority);
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -679,17 +667,17 @@ static void print_checklist(check_list_t *checklist)
  */
 static void prune_pairs(linked_list_t *pairs)
 {
-	iterator_t *iterator, *search;
+	enumerator_t *enumerator, *search;
 	endpoint_pair_t *current, *other;
 	u_int32_t id = 0;
 
-	iterator = pairs->create_iterator(pairs, TRUE);
-	search = pairs->create_iterator(pairs, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = pairs->create_enumerator(pairs);
+	search = pairs->create_enumerator(pairs);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
 		current->id = ++id;
 
-		while (search->iterate(search, (void**)&other))
+		while (search->enumerate(search, (void**)&other))
 		{
 			if (current == other)
 			{
@@ -705,14 +693,14 @@ static void prune_pairs(linked_list_t *pairs)
 				 * 'current', remove it */
 				DBG1(DBG_IKE, "pruning endpoint pair %#H - %#H with priority %d",
 					 other->local, other->remote, other->priority);
-				search->remove(search);
+				pairs->remove_at(pairs, search);
 				endpoint_pair_destroy(other);
 			}
 		}
-		search->reset(search);
+		pairs->reset_enumerator(pairs, search);
 	}
 	search->destroy(search);
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -721,16 +709,16 @@ static void prune_pairs(linked_list_t *pairs)
 static void build_pairs(check_list_t *checklist)
 {
 	/* FIXME: limit endpoints and pairs */
-	iterator_t *iterator_i, *iterator_r;
+	enumerator_t *enumerator_i, *enumerator_r;
 	endpoint_notify_t *initiator, *responder;
 
-	iterator_i = checklist->initiator.endpoints->create_iterator(
-										checklist->initiator.endpoints, TRUE);
-	while (iterator_i->iterate(iterator_i, (void**)&initiator))
+	enumerator_i = checklist->initiator.endpoints->create_enumerator(
+										checklist->initiator.endpoints);
+	while (enumerator_i->enumerate(enumerator_i, (void**)&initiator))
 	{
-		iterator_r = checklist->responder.endpoints->create_iterator(
-										checklist->responder.endpoints, TRUE);
-		while (iterator_r->iterate(iterator_r, (void**)&responder))
+		enumerator_r = checklist->responder.endpoints->create_enumerator(
+										checklist->responder.endpoints);
+		while (enumerator_r->enumerate(enumerator_r, (void**)&responder))
 		{
 			if (initiator->get_family(initiator) != responder->get_family(responder))
 			{
@@ -740,9 +728,9 @@ static void build_pairs(check_list_t *checklist)
 			insert_pair_by_priority(checklist->pairs, endpoint_pair_create(
 							initiator, responder, checklist->is_initiator));
 		}
-		iterator_r->destroy(iterator_r);
+		enumerator_r->destroy(enumerator_r);
 	}
-	iterator_i->destroy(iterator_i);
+	enumerator_i->destroy(enumerator_i);
 
 	print_checklist(checklist);
 
@@ -895,19 +883,19 @@ static job_requeue_t initiator_finish(callback_data_t *data)
 static void update_checklist_state(private_connect_manager_t *this,
 								   check_list_t *checklist)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	endpoint_pair_t *current;
 	bool in_progress = FALSE, succeeded = FALSE;
 
-	iterator = checklist->pairs->create_iterator(checklist->pairs, TRUE);
-	while (iterator->iterate(iterator, (void**)&current))
+	enumerator = checklist->pairs->create_enumerator(checklist->pairs);
+	while (enumerator->enumerate(enumerator, (void**)&current))
 	{
 		switch(current->state)
 		{
 			case CHECK_WAITING:
 				/* at least one is still waiting -> checklist remains
 				 * in waiting state */
-				iterator->destroy(iterator);
+				enumerator->destroy(enumerator);
 				return;
 			case CHECK_IN_PROGRESS:
 				in_progress = TRUE;
@@ -919,7 +907,7 @@ static void update_checklist_state(private_connect_manager_t *this,
 				break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 
 	if (checklist->is_initiator && succeeded && !checklist->is_finishing)
 	{
@@ -1185,8 +1173,9 @@ static job_requeue_t initiate_mediated(initiate_data_t *data)
 	if (get_best_valid_pair(checklist, &pair) == SUCCESS)
 	{
 		ike_sa_id_t *waiting_sa;
-		iterator_t *iterator = initiated->mediated->create_iterator(initiated->mediated, TRUE);
-		while (iterator->iterate(iterator, (void**)&waiting_sa))
+		enumerator_t *enumerator = initiated->mediated->create_enumerator(
+														initiated->mediated);
+		while (enumerator->enumerate(enumerator, (void**)&waiting_sa))
 		{
 			ike_sa_t *sa = charon->ike_sa_manager->checkout(charon->ike_sa_manager, waiting_sa);
 			if (sa->initiate_mediated(sa, pair->local, pair->remote, checklist->connect_id) != SUCCESS)
@@ -1199,7 +1188,7 @@ static job_requeue_t initiate_mediated(initiate_data_t *data)
 				charon->ike_sa_manager->checkin(charon->ike_sa_manager, sa);
 			}
 		}
-		iterator->destroy(iterator);
+		enumerator->destroy(enumerator);
 	}
 	else
 	{
@@ -1355,10 +1344,8 @@ static void process_request(private_connect_manager_t *this, check_t *check,
 	check_destroy(response);
 }
 
-/**
- * Implementation of connect_manager_t.process_check.
- */
-static void process_check(private_connect_manager_t *this, message_t *message)
+METHOD(connect_manager_t, process_check, void,
+	private_connect_manager_t *this, message_t *message)
 {
 	if (message->parse_body(message, NULL) != SUCCESS)
 	{
@@ -1421,12 +1408,9 @@ static void process_check(private_connect_manager_t *this, message_t *message)
 	check_destroy(check);
 }
 
-/**
- * Implementation of connect_manager_t.check_and_register.
- */
-static bool check_and_register(private_connect_manager_t *this,
-			identification_t *id, identification_t *peer_id,
-			ike_sa_id_t *mediated_sa)
+METHOD(connect_manager_t, check_and_register, bool,
+	private_connect_manager_t *this, identification_t *id,
+	identification_t *peer_id, ike_sa_id_t *mediated_sa)
 {
 	initiated_t *initiated;
 	bool already_there = TRUE;
@@ -1455,12 +1439,9 @@ static bool check_and_register(private_connect_manager_t *this,
 	return already_there;
 }
 
-/**
- * Implementation of connect_manager_t.check_and_initiate.
- */
-static void check_and_initiate(private_connect_manager_t *this,
-							   ike_sa_id_t *mediation_sa, identification_t *id,
-							   identification_t *peer_id)
+METHOD(connect_manager_t, check_and_initiate, void,
+	private_connect_manager_t *this, ike_sa_id_t *mediation_sa,
+	identification_t *id, identification_t *peer_id)
 {
 	initiated_t *initiated;
 
@@ -1474,27 +1455,23 @@ static void check_and_initiate(private_connect_manager_t *this,
 	}
 
 	ike_sa_id_t *waiting_sa;
-	iterator_t *iterator = initiated->mediated->create_iterator(
-													initiated->mediated, TRUE);
-	while (iterator->iterate(iterator, (void**)&waiting_sa))
+	enumerator_t *enumerator = initiated->mediated->create_enumerator(
+														initiated->mediated);
+	while (enumerator->enumerate(enumerator, (void**)&waiting_sa))
 	{
 		job_t *job = (job_t*)reinitiate_mediation_job_create(mediation_sa,
 															 waiting_sa);
 		lib->processor->queue_job(lib->processor, job);
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 
 	this->mutex->unlock(this->mutex);
 }
 
-/**
- * Implementation of connect_manager_t.set_initiator_data.
- */
-static status_t set_initiator_data(private_connect_manager_t *this,
-								   identification_t *initiator,
-								   identification_t *responder,
-								   chunk_t connect_id, chunk_t key,
-								   linked_list_t *endpoints, bool is_initiator)
+METHOD(connect_manager_t, set_initiator_data, status_t,
+	private_connect_manager_t *this, identification_t *initiator,
+	identification_t *responder, chunk_t connect_id, chunk_t key,
+	linked_list_t *endpoints, bool is_initiator)
 {
 	check_list_t *checklist;
 
@@ -1517,12 +1494,9 @@ static status_t set_initiator_data(private_connect_manager_t *this,
 	return SUCCESS;
 }
 
-/**
- * Implementation of connect_manager_t.set_responder_data.
- */
-static status_t set_responder_data(private_connect_manager_t *this,
-								   chunk_t connect_id, chunk_t key,
-								   linked_list_t *endpoints)
+METHOD(connect_manager_t, set_responder_data, status_t,
+	private_connect_manager_t *this, chunk_t connect_id, chunk_t key,
+	linked_list_t *endpoints)
 {
 	check_list_t *checklist;
 
@@ -1551,10 +1525,8 @@ static status_t set_responder_data(private_connect_manager_t *this,
 	return SUCCESS;
 }
 
-/**
- * Implementation of connect_manager_t.stop_checks.
- */
-static status_t stop_checks(private_connect_manager_t *this, chunk_t connect_id)
+METHOD(connect_manager_t, stop_checks, status_t,
+	private_connect_manager_t *this, chunk_t connect_id)
 {
 	check_list_t *checklist;
 
@@ -1578,16 +1550,16 @@ static status_t stop_checks(private_connect_manager_t *this, chunk_t connect_id)
 	return SUCCESS;
 }
 
-/**
- * Implementation of connect_manager_t.destroy.
- */
-static void destroy(private_connect_manager_t *this)
+METHOD(connect_manager_t, destroy, void,
+	private_connect_manager_t *this)
 {
 	this->mutex->lock(this->mutex);
 
-	this->hasher->destroy(this->hasher);
-	this->checklists->destroy_function(this->checklists, (void*)check_list_destroy);
-	this->initiated->destroy_function(this->initiated, (void*)initiated_destroy);
+	this->checklists->destroy_function(this->checklists,
+									   (void*)check_list_destroy);
+	this->initiated->destroy_function(this->initiated,
+									 (void*)initiated_destroy);
+	DESTROY_IF(this->hasher);
 
 	this->mutex->unlock(this->mutex);
 	this->mutex->destroy(this->mutex);
@@ -1599,28 +1571,30 @@ static void destroy(private_connect_manager_t *this)
  */
 connect_manager_t *connect_manager_create()
 {
-	private_connect_manager_t *this = malloc_thing(private_connect_manager_t);
+	private_connect_manager_t *this;
 
-	this->public.destroy = (void(*)(connect_manager_t*))destroy;
-	this->public.check_and_register = (bool(*)(connect_manager_t*,identification_t*,identification_t*,ike_sa_id_t*))check_and_register;
-	this->public.check_and_initiate = (void(*)(connect_manager_t*,ike_sa_id_t*,identification_t*,identification_t*))check_and_initiate;
-	this->public.set_initiator_data = (status_t(*)(connect_manager_t*,identification_t*,identification_t*,chunk_t,chunk_t,linked_list_t*,bool))set_initiator_data;
-	this->public.set_responder_data = (status_t(*)(connect_manager_t*,chunk_t,chunk_t,linked_list_t*))set_responder_data;
-	this->public.process_check = (void(*)(connect_manager_t*,message_t*))process_check;
-	this->public.stop_checks = (status_t(*)(connect_manager_t*,chunk_t))stop_checks;
+	INIT(this,
+		.public = {
+			.destroy = _destroy,
+			.check_and_register = _check_and_register,
+			.check_and_initiate = _check_and_initiate,
+			.set_initiator_data = _set_initiator_data,
+			.set_responder_data = _set_responder_data,
+			.process_check = _process_check,
+			.stop_checks = _stop_checks,
+		},
+		.hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1),
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.checklists = linked_list_create(),
+		.initiated = linked_list_create(),
+	);
 
-	this->hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
 	if (this->hasher == NULL)
 	{
 		DBG1(DBG_IKE, "unable to create connect manager, SHA1 not supported");
-		free(this);
+		destroy(this);
 		return NULL;
 	}
 
-	this->checklists = linked_list_create();
-	this->initiated = linked_list_create();
-
-	this->mutex = mutex_create(MUTEX_TYPE_DEFAULT);
-
-	return (connect_manager_t*)this;
+	return &this->public;
 }

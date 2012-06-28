@@ -55,6 +55,25 @@ struct tls_socket_t {
 	bool (*write)(tls_socket_t *this, chunk_t data);
 
 	/**
+	 * Read/write plain data from file descriptor.
+	 *
+	 * This call is blocking, but a thread cancellation point. Data is
+	 * exchanged until one of the sockets gets closed or an error occurs.
+	 *
+	 * @param rfd		file descriptor to read plain data from
+	 * @param wfd		file descriptor to write plain data to
+	 * @return			TRUE if data exchanged successfully
+	 */
+	bool (*splice)(tls_socket_t *this, int rfd, int wfd);
+
+	/**
+	 * Get the underlying file descriptor passed to the constructor.
+	 *
+	 * @return			file descriptor
+	 */
+	int (*get_fd)(tls_socket_t *this);
+
+	/**
 	 * Destroy a tls_socket_t.
 	 */
 	void (*destroy)(tls_socket_t *this);
@@ -67,9 +86,10 @@ struct tls_socket_t {
  * @param server			server identity
  * @param peer				client identity, NULL for no client authentication
  * @param fd				socket to read/write from
+ * @param cache				session cache to use, or NULL
  * @return					TLS socket wrapper
  */
 tls_socket_t *tls_socket_create(bool is_server, identification_t *server,
-								identification_t *peer, int fd);
+							identification_t *peer, int fd, tls_cache_t *cache);
 
 #endif /** TLS_SOCKET_H_ @}*/

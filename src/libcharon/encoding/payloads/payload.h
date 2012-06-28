@@ -79,7 +79,7 @@ enum payload_type_t{
 	AUTHENTICATION = 39,
 
 	/**
-	 * Nonces, for initator and responder (Ni, Nr, N)
+	 * Nonces, for initiator and responder (Ni, Nr, N)
 	 */
 	NONCE = 40,
 
@@ -122,6 +122,11 @@ enum payload_type_t{
 	 * Extensible authentication payload (EAP).
 	 */
 	EXTENSIBLE_AUTHENTICATION = 48,
+
+	/**
+	 * Generic Secure Password Method (GSPM).
+	 */
+	GENERIC_SECURE_PASSWORD_METHOD = 49,
 
 #ifdef ME
 	/**

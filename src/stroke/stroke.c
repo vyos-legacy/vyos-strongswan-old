@@ -1,5 +1,5 @@
 /* Stroke for charon is the counterpart to whack from pluto
- * Copyright (C) 2007 Tobias Brunner
+ * Copyright (C) 2007-2012 Tobias Brunner
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
@@ -90,9 +89,11 @@ static int send_stroke_msg (stroke_msg_t *msg)
 	{
 		buffer[byte_count] = '\0';
 
-		/* we prompt if we receive the "Passphrase:"/"PIN:" magic keyword */
+		/* we prompt if we receive a magic keyword */
 		if ((byte_count >= 12 &&
 			 strcmp(buffer + byte_count - 12, "Passphrase:\n") == 0) ||
+			(byte_count >= 10 &&
+			 strcmp(buffer + byte_count - 10, "Password:\n") == 0) ||
 			(byte_count >= 5 &&
 			 strcmp(buffer + byte_count - 5, "PIN:\n") == 0))
 		{
@@ -102,7 +103,11 @@ static int send_stroke_msg (stroke_msg_t *msg)
 			{
 				*pass = ' ';
 			}
+#ifdef HAVE_GETPASS
 			pass = getpass(buffer);
+#else
+			pass = "";
+#endif
 			if (pass)
 			{
 				ignore_result(write(sock, pass, strlen(pass)));
@@ -231,7 +236,18 @@ static int show_status(stroke_keyword_t kw, char *connection)
 {
 	stroke_msg_t msg;
 
-	msg.type = (kw == STROKE_STATUS)? STR_STATUS:STR_STATUS_ALL;
+	switch (kw)
+	{
+		case STROKE_STATUSALL:
+			msg.type = STR_STATUS_ALL;
+			break;
+		case STROKE_STATUSALL_NOBLK:
+			msg.type = STR_STATUS_ALL_NOBLK;
+			break;
+		default:
+			msg.type = STR_STATUS;
+			break;
+	}
 	msg.length = offsetof(stroke_msg_t, buffer);
 	msg.status.name = push_string(&msg, connection);
 	return send_stroke_msg(&msg);
@@ -249,6 +265,7 @@ static int list_flags[] = {
 	LIST_CRLS,
 	LIST_OCSP,
 	LIST_ALGS,
+	LIST_PLUGINS,
 	LIST_ALL
 };
 
@@ -326,6 +343,28 @@ static int leases(stroke_keyword_t kw, char *pool, char *address)
 	return send_stroke_msg(&msg);
 }
 
+static int memusage()
+{
+	stroke_msg_t msg;
+
+	msg.type = STR_MEMUSAGE;
+	msg.length = offsetof(stroke_msg_t, buffer);
+	return send_stroke_msg(&msg);
+}
+
+static int user_credentials(char *name, char *user, char *pass)
+{
+	stroke_msg_t msg;
+
+	msg.type = STR_USER_CREDS;
+	msg.length = offsetof(stroke_msg_t, buffer);
+	msg.user_creds.name = push_string(&msg, name);
+	msg.user_creds.username = push_string(&msg, user);
+	msg.user_creds.password = push_string(&msg, pass);
+	return send_stroke_msg(&msg);
+}
+
+
 static int set_loglevel(char *type, u_int level)
 {
 	stroke_msg_t msg;
@@ -369,10 +408,14 @@ static void exit_usage(char *error)
 	printf("    where: START and optional END define the clients source IP\n");
 	printf("  Set loglevel for a logging type:\n");
 	printf("    stroke loglevel TYPE LEVEL\n");
-	printf("    where: TYPE is any|dmn|mgr|ike|chd|job|cfg|knl|net|enc|lib\n");
+	printf("    where: TYPE is any|dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|lib\n");
 	printf("           LEVEL is -1|0|1|2|3|4\n");
 	printf("  Show connection status:\n");
 	printf("    stroke status\n");
+	printf("  Show extended status information:\n");
+	printf("    stroke statusall\n");
+	printf("  Show extended status information without blocking:\n");
+	printf("    stroke statusallnb\n");
 	printf("  Show list of authority and attribute certificates:\n");
 	printf("    stroke listcacerts|listocspcerts|listaacerts|listacerts\n");
 	printf("  Show list of end entity certificates, ca info records  and crls:\n");
@@ -393,8 +436,15 @@ static void exit_usage(char *error)
 	printf("    stroke purgeike\n");
 	printf("  Export credentials to the console:\n");
 	printf("    stroke exportx509 DN\n");
+	printf("  Show current memory usage:\n");
+	printf("    stroke memusage\n");
 	printf("  Show leases of a pool:\n");
 	printf("    stroke leases [POOL [ADDRESS]]\n");
+	printf("  Set username and password for a connection:\n");
+	printf("    stroke user-creds NAME USERNAME [PASSWORD]\n");
+	printf("    where: NAME is a connection name added with \"stroke add\"\n");
+	printf("           USERNAME is the username\n");
+	printf("           PASSWORD is the optional password, you'll be asked to enter it if not given\n");
 	exit_error(error);
 }
 
@@ -489,6 +539,7 @@ int main(int argc, char *argv[])
 			break;
 		case STROKE_STATUS:
 		case STROKE_STATUSALL:
+		case STROKE_STATUSALL_NOBLK:
 			res = show_status(token->kw, argc > 2 ? argv[2] : NULL);
 			break;
 		case STROKE_LIST_PUBKEYS:
@@ -501,6 +552,7 @@ int main(int argc, char *argv[])
 		case STROKE_LIST_CRLS:
 		case STROKE_LIST_OCSP:
 		case STROKE_LIST_ALGS:
+		case STROKE_LIST_PLUGINS:
 		case STROKE_LIST_ALL:
 			res = list(token->kw, argc > 2 && strcmp(argv[2], "--utc") == 0);
 			break;
@@ -529,6 +581,17 @@ int main(int argc, char *argv[])
 		case STROKE_LEASES:
 			res = leases(token->kw, argc > 2 ? argv[2] : NULL,
 						 argc > 3 ? argv[3] : NULL);
+			break;
+		case STROKE_MEMUSAGE:
+			res = memusage();
+			break;
+		case STROKE_USER_CREDS:
+			if (argc < 4)
+			{
+				exit_usage("\"user-creds\" needs a connection name, "
+						   "username and optionally a password");
+			}
+			res = user_credentials(argv[2], argv[3], argc > 4 ? argv[4] : NULL);
 			break;
 		default:
 			exit_usage(NULL);

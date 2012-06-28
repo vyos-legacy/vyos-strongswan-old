@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2011 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
  *
@@ -447,6 +450,123 @@ ENUM_NEXT(ck_mech_names, CKM_DSA_PARAMETER_GEN, CKM_X9_42_DH_PARAMETER_GEN,
 	"X9_42_DH_PARAMETER_GEN");
 ENUM_END(ck_mech_names, CKM_X9_42_DH_PARAMETER_GEN);
 
+
+ENUM_BEGIN(ck_attr_names, CKA_CLASS, CKA_LABEL,
+	"CLASS",
+	"TOKEN",
+	"PRIVATE",
+	"LABEL");
+ENUM_NEXT(ck_attr_names, CKA_APPLICATION, CKA_OBJECT_ID, CKA_LABEL,
+	"APPLICATION",
+	"VALUE",
+	"OBJECT_ID");
+ENUM_NEXT(ck_attr_names, CKA_CERTIFICATE_TYPE, CKA_HASH_OF_ISSUER_PUBLIC_KEY,
+		CKA_OBJECT_ID,
+	"CERTIFICATE_TYPE",
+	"ISSUER",
+	"SERIAL_NUMBER",
+	"AC_ISSUER",
+	"OWNER",
+	"ATTR_TYPES",
+	"TRUSTED",
+	"CERTIFICATE_CATEGORY",
+	"JAVA_MIDP_SECURITY_DOMAIN",
+	"URL",
+	"HASH_OF_SUBJECT_PUBLIC_KEY",
+	"HASH_OF_ISSUER_PUBLIC_KEY");
+ENUM_NEXT(ck_attr_names, CKA_CHECK_VALUE, CKA_CHECK_VALUE,
+		CKA_HASH_OF_ISSUER_PUBLIC_KEY,
+	"CHECK_VALUE");
+ENUM_NEXT(ck_attr_names, CKA_KEY_TYPE, CKA_DERIVE, CKA_CHECK_VALUE,
+	"KEY_TYPE",
+	"SUBJECT",
+	"ID",
+	"SENSITIVE",
+	"ENCRYPT",
+	"DECRYPT",
+	"WRAP",
+	"UNWRAP",
+	"SIGN",
+	"SIGN_RECOVER",
+	"VERIFY",
+	"VERIFY_RECOVER",
+	"DERIVE");
+ENUM_NEXT(ck_attr_names, CKA_START_DATE, CKA_END_DATE, CKA_DERIVE,
+	"START_DATE",
+	"END_DATE");
+ENUM_NEXT(ck_attr_names, CKA_MODULUS, CKA_COEFFICIENT, CKA_END_DATE,
+	"MODULUS",
+	"MODULUS_BITS",
+	"PUBLIC_EXPONENT",
+	"PRIVATE_EXPONENT",
+	"PRIME_1",
+	"PRIME_2",
+	"EXPONENT_1",
+	"EXPONENT_2",
+	"COEFFICIENT");
+ENUM_NEXT(ck_attr_names, CKA_PRIME, CKA_SUB_PRIME_BITS, CKA_COEFFICIENT,
+	"PRIME",
+	"SUBPRIME",
+	"BASE",
+	"PRIME_BITS",
+	"SUB_PRIME_BITS");
+ENUM_NEXT(ck_attr_names, CKA_VALUE_BITS, CKA_KEY_GEN_MECHANISM,
+		CKA_SUB_PRIME_BITS,
+	"VALUE_BITS",
+	"VALUE_LEN",
+	"EXTRACTABLE",
+	"LOCAL",
+	"NEVER_EXTRACTABLE",
+	"ALWAYS_SENSITIVE",
+	"KEY_GEN_MECHANISM");
+ENUM_NEXT(ck_attr_names, CKA_MODIFIABLE, CKA_MODIFIABLE, CKA_KEY_GEN_MECHANISM,
+	"MODIFIABLE");
+ENUM_NEXT(ck_attr_names, CKA_EC_PARAMS, CKA_EC_POINT, CKA_MODIFIABLE,
+	"EC_PARAMS",
+	"EC_POINT");
+ENUM_NEXT(ck_attr_names, CKA_SECONDARY_AUTH, CKA_ALWAYS_AUTHENTICATE,
+		CKA_EC_POINT,
+	"SECONDARY_AUTH",
+	"AUTH_PIN_FLAGS",
+	"ALWAYS_AUTHENTICATE");
+ENUM_NEXT(ck_attr_names, CKA_WRAP_WITH_TRUSTED, CKA_WRAP_WITH_TRUSTED,
+		CKA_ALWAYS_AUTHENTICATE,
+	"WRAP_WITH_TRUSTED");
+ENUM_NEXT(ck_attr_names, CKA_HW_FEATURE_TYPE, CKA_HAS_RESET,
+		CKA_WRAP_WITH_TRUSTED,
+	"HW_FEATURE_TYPE",
+	"RESET_ON_INIT",
+	"HAS_RESET");
+ENUM_NEXT(ck_attr_names, CKA_PIXEL_X, CKA_BITS_PER_PIXEL, CKA_HAS_RESET,
+	"PIXEL_X",
+	"RESOLUTION",
+	"CHAR_ROWS",
+	"CHAR_COLUMNS",
+	"COLOR",
+	"BITS_PER_PIXEL");
+ENUM_NEXT(ck_attr_names, CKA_CHAR_SETS, CKA_MIME_TYPES, CKA_BITS_PER_PIXEL,
+	"CHAR_SETS",
+	"ENCODING_METHODS",
+	"MIME_TYPES");
+ENUM_NEXT(ck_attr_names, CKA_MECHANISM_TYPE, CKA_SUPPORTED_CMS_ATTRIBUTES,
+		CKA_MIME_TYPES,
+	"MECHANISM_TYPE",
+	"REQUIRED_CMS_ATTRIBUTES",
+	"DEFAULT_CMS_ATTRIBUTES",
+	"SUPPORTED_CMS_ATTRIBUTES");
+ENUM_NEXT(ck_attr_names, CKA_WRAP_TEMPLATE, CKA_UNWRAP_TEMPLATE,
+		CKA_SUPPORTED_CMS_ATTRIBUTES,
+	"WRAP_TEMPLATE",
+	"UNWRAP_TEMPLATE");
+ENUM_NEXT(ck_attr_names, CKA_ALLOWED_MECHANISMS, CKA_ALLOWED_MECHANISMS,
+		CKA_UNWRAP_TEMPLATE,
+	"ALLOWED_MECHANISMS");
+ENUM_END(ck_attr_names, CKA_ALLOWED_MECHANISMS);
+/* the values in an enum_name_t are stored as int, thus CKA_VENDOR_DEFINED
+ * will overflow and is thus not defined here */
+
+
+
 /**
  * Private data of an pkcs11_library_t object.
  */
@@ -495,10 +615,12 @@ typedef struct {
 	CK_SESSION_HANDLE session;
 	/* pkcs11 library */
 	pkcs11_library_t *lib;
-	/* attributes to retreive */
+	/* attributes to retrieve */
 	CK_ATTRIBUTE_PTR attr;
 	/* number of attributes */
 	CK_ULONG count;
+	/* object handle in case of a single object */
+	CK_OBJECT_HANDLE object;
 	/* currently allocated attributes, to free */
 	linked_list_t *freelist;
 } object_enumerator_t;
@@ -552,7 +674,7 @@ static bool get_attributes(object_enumerator_t *this, CK_OBJECT_HANDLE object)
 	if (rv != CKR_OK)
 	{
 		free_attrs(this);
-		DBG1(DBG_CFG, "C_GetAttributeValue(NULL) error: %N", ck_rv_names, rv);
+		DBG1(DBG_CFG, "C_GetAttributeValue() error: %N", ck_rv_names, rv);
 		return FALSE;
 	}
 	return TRUE;
@@ -565,11 +687,19 @@ METHOD(enumerator_t, object_enumerate, bool,
 	CK_ULONG found;
 	CK_RV rv;
 
-	rv = this->lib->f->C_FindObjects(this->session, &object, 1, &found);
-	if (rv != CKR_OK)
+	if (!this->object)
 	{
-		DBG1(DBG_CFG, "C_FindObjects() failed: %N", ck_rv_names, rv);
-		return FALSE;
+		rv = this->lib->f->C_FindObjects(this->session, &object, 1, &found);
+		if (rv != CKR_OK)
+		{
+			DBG1(DBG_CFG, "C_FindObjects() failed: %N", ck_rv_names, rv);
+			return FALSE;
+		}
+	}
+	else
+	{
+		object = this->object;
+		found = 1;
 	}
 	if (found)
 	{
@@ -580,7 +710,10 @@ METHOD(enumerator_t, object_enumerate, bool,
 				return FALSE;
 			}
 		}
-		*out = object;
+		if (out)
+		{
+			*out = object;
+		}
 		return TRUE;
 	}
 	return FALSE;
@@ -589,7 +722,10 @@ METHOD(enumerator_t, object_enumerate, bool,
 METHOD(enumerator_t, object_destroy, void,
 	object_enumerator_t *this)
 {
-	this->lib->f->C_FindObjectsFinal(this->session);
+	if (!this->object)
+	{
+		this->lib->f->C_FindObjectsFinal(this->session);
+	}
 	free_attrs(this);
 	this->freelist->destroy(this->freelist);
 	free(this);
@@ -619,6 +755,27 @@ METHOD(pkcs11_library_t, create_object_enumerator, enumerator_t*,
 		.lib = &this->public,
 		.attr = attr,
 		.count = acount,
+		.freelist = linked_list_create(),
+	);
+	return &enumerator->public;
+}
+
+METHOD(pkcs11_library_t, create_object_attr_enumerator, enumerator_t*,
+	private_pkcs11_library_t *this, CK_SESSION_HANDLE session,
+	CK_OBJECT_HANDLE object, CK_ATTRIBUTE_PTR attr, CK_ULONG count)
+{
+	object_enumerator_t *enumerator;
+
+	INIT(enumerator,
+		.public = {
+			.enumerate = (void*)_object_enumerate,
+			.destroy = _object_destroy,
+		},
+		.session = session,
+		.lib = &this->public,
+		.attr = attr,
+		.count = count,
+		.object = object,
 		.freelist = linked_list_create(),
 	);
 	return &enumerator->public;
@@ -707,6 +864,32 @@ METHOD(pkcs11_library_t, create_mechanism_enumerator, enumerator_t*,
 	return &enumerator->public;
 }
 
+METHOD(pkcs11_library_t, get_ck_attribute, bool,
+	private_pkcs11_library_t *this, CK_SESSION_HANDLE session,
+	CK_OBJECT_HANDLE obj, CK_ATTRIBUTE_TYPE type, chunk_t *data)
+{
+	CK_ATTRIBUTE attr = { type, NULL, 0 };
+	CK_RV rv;
+	rv = this->public.f->C_GetAttributeValue(session, obj, &attr, 1);
+	if (rv != CKR_OK)
+	{
+		DBG1(DBG_CFG, "C_GetAttributeValue(%N) error: %N", ck_attr_names, type,
+			 ck_rv_names, rv);
+		return FALSE;
+	}
+	*data = chunk_alloc(attr.ulValueLen);
+	attr.pValue = data->ptr;
+	rv = this->public.f->C_GetAttributeValue(session, obj, &attr, 1);
+	if (rv != CKR_OK)
+	{
+		DBG1(DBG_CFG, "C_GetAttributeValue(%N) error: %N", ck_attr_names, type,
+			 ck_rv_names, rv);
+		chunk_free(data);
+		return FALSE;
+	}
+	return TRUE;
+}
+
 METHOD(pkcs11_library_t, destroy, void,
 	private_pkcs11_library_t *this)
 {
@@ -739,7 +922,7 @@ void pkcs11_library_trim(char *str, int len)
  */
 static CK_RV CreateMutex(CK_VOID_PTR_PTR data)
 {
-	*data = mutex_create(MUTEX_TYPE_DEFAULT);
+	*data = mutex_create(MUTEX_TYPE_RECURSIVE);
 	return CKR_OK;
 }
 
@@ -889,7 +1072,9 @@ pkcs11_library_t *pkcs11_library_create(char *name, char *file, bool os_locking)
 			.get_name = _get_name,
 			.get_features = _get_features,
 			.create_object_enumerator = _create_object_enumerator,
+			.create_object_attr_enumerator = _create_object_attr_enumerator,
 			.create_mechanism_enumerator = _create_mechanism_enumerator,
+			.get_ck_attribute = _get_ck_attribute,
 			.destroy = _destroy,
 		},
 		.name = name,

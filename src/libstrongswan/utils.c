@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Tobias Brunner
+ * Copyright (C) 2008-2011 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <limits.h>
 #include <dirent.h>
@@ -27,6 +28,7 @@
 
 #include "enum.h"
 #include "debug.h"
+#include "utils/enumerator.h"
 
 ENUM(status_names, SUCCESS, NEED_MORE,
 	"SUCCESS",
@@ -192,6 +194,49 @@ bool mkdir_p(const char *path, mode_t mode)
 	return TRUE;
 }
 
+#ifndef HAVE_CLOSEFROM
+/**
+ * Described in header.
+ */
+void closefrom(int lowfd)
+{
+	char fd_dir[PATH_MAX];
+	int maxfd, fd, len;
+
+	/* try to close only open file descriptors on Linux... */
+	len = snprintf(fd_dir, sizeof(fd_dir), "/proc/%u/fd", getpid());
+	if (len > 0 && len < sizeof(fd_dir) && access(fd_dir, F_OK) == 0)
+	{
+		enumerator_t *enumerator = enumerator_create_directory(fd_dir);
+		if (enumerator)
+		{
+			char *rel;
+			while (enumerator->enumerate(enumerator, &rel, NULL, NULL))
+			{
+				fd = atoi(rel);
+				if (fd >= lowfd)
+				{
+					close(fd);
+				}
+			}
+			enumerator->destroy(enumerator);
+			return;
+		}
+	}
+
+	/* ...fall back to closing all fds otherwise */
+	maxfd = (int)sysconf(_SC_OPEN_MAX);
+	if (maxfd < 0)
+	{
+		maxfd = 256;
+	}
+	for (fd = lowfd; fd < maxfd; fd++)
+	{
+		close(fd);
+	}
+}
+#endif /* HAVE_CLOSEFROM */
+
 /**
  * Return monotonic time
  */
@@ -299,6 +344,28 @@ bool ref_put(refcount_t *ref)
 	pthread_mutex_unlock(&ref_mutex);
 	return !more_refs;
 }
+
+/**
+ * Single mutex for all compare and swap operations.
+ */
+static pthread_mutex_t cas_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Compare and swap if equal to old value
+ */
+#define _cas_impl(name, type) \
+bool cas_##name(type *ptr, type oldval, type newval) \
+{ \
+	bool swapped; \
+	pthread_mutex_lock(&cas_mutex); \
+	if ((swapped = (*ptr == oldval))) { *ptr = newval; } \
+	pthread_mutex_unlock(&cas_mutex); \
+	return swapped; \
+}
+
+_cas_impl(bool, bool)
+_cas_impl(ptr, void*)
+
 #endif /* HAVE_GCC_ATOMIC_OPERATIONS */
 
 /**
@@ -342,7 +409,7 @@ int time_delta_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 	char* unit = "second";
 	time_t *arg1 = *((time_t**)(args[0]));
 	time_t *arg2 = *((time_t**)(args[1]));
-	time_t delta = abs(*arg1 - *arg2);
+	u_int64_t delta = llabs(*arg1 - *arg2);
 
 	if (delta > 2 * 60 * 60 * 24)
 	{
@@ -359,7 +426,8 @@ int time_delta_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 		delta /= 60;
 		unit = "minute";
 	}
-	return print_in_hook(dst, len, "%d %s%s", delta, unit, (delta == 1)? "":"s");
+	return print_in_hook(dst, len, "%" PRIu64 " %s%s", delta, unit,
+						 (delta == 1) ? "" : "s");
 }
 
 /**
@@ -376,7 +444,7 @@ int mem_printf_hook(char *dst, size_t dstlen,
 					printf_hook_spec_t *spec, const void *const *args)
 {
 	char *bytes = *((void**)(args[0]));
-	int len = *((size_t*)(args[1]));
+	u_int len = *((int*)(args[1]));
 
 	char buffer[BYTES_PER_LINE * 3];
 	char ascii_buffer[BYTES_PER_LINE + 1];
@@ -387,7 +455,7 @@ int mem_printf_hook(char *dst, size_t dstlen,
 	int i = 0;
 	int written = 0;
 
-	written += print_in_hook(dst, dstlen, "=> %d bytes @ %p", len, bytes);
+	written += print_in_hook(dst, dstlen, "=> %u bytes @ %p", len, bytes);
 
 	while (bytes_pos < bytes_roof)
 	{

@@ -65,8 +65,10 @@ enum list_flag_t {
 	LIST_OCSP =			0x0200,
 	/** list all supported algorithms */
 	LIST_ALGS =			0x0400,
+	/** list plugin information */
+	LIST_PLUGINS =		0x0800,
 	/** all list options */
-	LIST_ALL =			0x07FF,
+	LIST_ALL =			0x0FFF,
 };
 
 typedef enum reread_flag_t reread_flag_t;
@@ -144,6 +146,7 @@ struct stroke_end_t {
 	char *id;
 	char *id2;
 	char *eap_id;
+	char *rsakey;
 	char *cert;
 	char *cert2;
 	char *ca;
@@ -194,6 +197,8 @@ struct stroke_msg_t {
 		STR_STATUS,
 		/* show verbose connection status */
 		STR_STATUS_ALL,
+		/* show verbose connection status, non-blocking variant */
+		STR_STATUS_ALL_NOBLK,
 		/* add a ca information record */
 		STR_ADD_CA,
 		/* delete ca information record */
@@ -212,6 +217,10 @@ struct stroke_msg_t {
 		STR_LEASES,
 		/* export credentials */
 		STR_EXPORT,
+		/* print memory usage details */
+		STR_MEMUSAGE,
+		/* set username and password for a connection */
+		STR_USER_CREDS,
 		/* more to come */
 	} type;
 
@@ -247,6 +256,7 @@ struct stroke_msg_t {
 			time_t inactivity;
 			int proxy_mode;
 			int install_policy;
+			int close_action;
 			u_int32_t reqid;
 			u_int32_t tfc;
 
@@ -333,6 +343,13 @@ struct stroke_msg_t {
 			char *pool;
 			char *address;
 		} leases;
+
+		/* data for STR_USER_CREDS */
+		struct {
+			char *name;
+			char *username;
+			char *password;
+		} user_creds;
 	};
 	char buffer[STROKE_BUF_LEN];
 };

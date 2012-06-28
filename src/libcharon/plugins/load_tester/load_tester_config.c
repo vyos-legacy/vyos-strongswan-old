@@ -65,6 +65,16 @@ struct private_load_tester_config_t {
 	char *responder_auth;
 
 	/**
+	 * Initiator ID to enforce
+	 */
+	char *initiator_id;
+
+	/**
+	 * Responder ID to enforce
+	 */
+	char *responder_id;
+
+	/**
 	 * IKE_SA rekeying delay
 	 */
 	u_int ike_rekey;
@@ -73,6 +83,11 @@ struct private_load_tester_config_t {
 	 * CHILD_SA rekeying delay
 	 */
 	u_int child_rekey;
+
+	/**
+	 * DPD check delay
+	 */
+	u_int dpd_delay;
 
 	/**
 	 * incremental numbering of generated configs
@@ -102,24 +117,46 @@ static void generate_auth_cfg(private_load_tester_config_t *this, char *str,
 	enumerator = enumerator_create_token(str, "|", " ");
 	while (enumerator->enumerate(enumerator, &str))
 	{
+		id = NULL;
 		auth = auth_cfg_create();
 		rnd++;
+
+		if (this->initiator_id)
+		{
+			if ((local && num) || (!local && !num))
+			{
+				snprintf(buf, sizeof(buf), this->initiator_id, num, rnd);
+				id = identification_create_from_string(buf);
+			}
+		}
+		if (this->responder_id)
+		{
+			if ((local && !num) || (!local && num))
+			{
+				snprintf(buf, sizeof(buf), this->responder_id, num, rnd);
+				id = identification_create_from_string(buf);
+			}
+		}
 
 		if (streq(str, "psk"))
 		{	/* PSK authentication, use FQDNs */
 			class = AUTH_CLASS_PSK;
-			if ((local && !num) || (!local && num))
+			if (!id)
 			{
-				id = identification_create_from_string("srv.strongswan.org");
-			}
-			else if (local)
-			{
-				snprintf(buf, sizeof(buf), "c%d-r%d.strongswan.org", num, rnd);
-				id = identification_create_from_string(buf);
-			}
-			else
-			{
-				id = identification_create_from_string("*.strongswan.org");
+				if ((local && !num) || (!local && num))
+				{
+					id = identification_create_from_string("srv.strongswan.org");
+				}
+				else if (local)
+				{
+					snprintf(buf, sizeof(buf), "c%d-r%d.strongswan.org",
+							 num, rnd);
+					id = identification_create_from_string(buf);
+				}
+				else
+				{
+					id = identification_create_from_string("*.strongswan.org");
+				}
 			}
 		}
 		else if (strneq(str, "eap", strlen("eap")))
@@ -133,14 +170,18 @@ static void generate_auth_cfg(private_load_tester_config_t *this, char *str,
 					auth->add(auth, AUTH_RULE_EAP_TYPE, type);
 				}
 			}
-			if (local && num)
+			if (!id)
 			{
-				snprintf(buf, sizeof(buf), "1%.10d%.4d@strongswan.org", num, rnd);
-				id = identification_create_from_string(buf);
-			}
-			else
-			{
-				id = identification_create_from_encoding(ID_ANY, chunk_empty);
+				if (local && num)
+				{
+					snprintf(buf, sizeof(buf), "1%.10d%.4d@strongswan.org",
+							 num, rnd);
+					id = identification_create_from_string(buf);
+				}
+				else
+				{
+					id = identification_create_from_encoding(ID_ANY, chunk_empty);
+				}
 			}
 		}
 		else
@@ -152,21 +193,24 @@ static void generate_auth_cfg(private_load_tester_config_t *this, char *str,
 			}
 			/* certificate authentication, use distinguished names */
 			class = AUTH_CLASS_PUBKEY;
-			if ((local && !num) || (!local && num))
+			if (!id)
 			{
-				id = identification_create_from_string(
-							"CN=srv, OU=load-test, O=strongSwan");
-			}
-			else if (local)
-			{
-				snprintf(buf, sizeof(buf),
-						 "CN=c%d-r%d, OU=load-test, O=strongSwan", num, rnd);
-				id = identification_create_from_string(buf);
-			}
-			else
-			{
-				id = identification_create_from_string(
-								"CN=*, OU=load-test, O=strongSwan");
+				if ((local && !num) || (!local && num))
+				{
+					id = identification_create_from_string(
+								"CN=srv, OU=load-test, O=strongSwan");
+				}
+				else if (local)
+				{
+					snprintf(buf, sizeof(buf),
+							 "CN=c%d-r%d, OU=load-test, O=strongSwan", num, rnd);
+					id = identification_create_from_string(buf);
+				}
+				else
+				{
+					id = identification_create_from_string(
+									"CN=*, OU=load-test, O=strongSwan");
+				}
 			}
 		}
 		auth->add(auth, AUTH_RULE_AUTH_CLASS, class);
@@ -209,7 +253,7 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 							   CERT_SEND_IF_ASKED, UNIQUE_NO, 1, /* keytries */
 							   this->ike_rekey, 0, /* rekey, reauth */
 							   0, this->ike_rekey, /* jitter, overtime */
-							   FALSE, 0, /* mobike, dpddelay */
+							   FALSE, this->dpd_delay, /* mobike, dpddelay */
 							   this->vip ? this->vip->clone(this->vip) : NULL,
 							   this->pool, FALSE, NULL, NULL);
 	if (num)
@@ -236,21 +280,15 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 	return peer_cfg;
 }
 
-/**
- * Implementation of backend_t.create_peer_cfg_enumerator.
- */
-static enumerator_t* create_peer_cfg_enumerator(private_load_tester_config_t *this,
-												identification_t *me,
-												identification_t *other)
+METHOD(backend_t, create_peer_cfg_enumerator, enumerator_t*,
+	private_load_tester_config_t *this,
+	identification_t *me, identification_t *other)
 {
 	return enumerator_create_single(this->peer_cfg, NULL);
 }
 
-/**
- * Implementation of backend_t.create_ike_cfg_enumerator.
- */
-static enumerator_t* create_ike_cfg_enumerator(private_load_tester_config_t *this,
-											   host_t *me, host_t *other)
+METHOD(backend_t, create_ike_cfg_enumerator, enumerator_t*,
+	private_load_tester_config_t *this, host_t *me, host_t *other)
 {
 	ike_cfg_t *ike_cfg;
 
@@ -258,11 +296,8 @@ static enumerator_t* create_ike_cfg_enumerator(private_load_tester_config_t *thi
 	return enumerator_create_single(ike_cfg, NULL);
 }
 
-/**
- * implements backend_t.get_peer_cfg_by_name.
- */
-static peer_cfg_t *get_peer_cfg_by_name(private_load_tester_config_t *this,
-										char *name)
+METHOD(backend_t, get_peer_cfg_by_name, peer_cfg_t*,
+	private_load_tester_config_t *this, char *name)
 {
 	if (streq(name, "load-test"))
 	{
@@ -271,10 +306,8 @@ static peer_cfg_t *get_peer_cfg_by_name(private_load_tester_config_t *this,
 	return NULL;
 }
 
-/**
- * Implementation of load_tester_config_t.destroy.
- */
-static void destroy(private_load_tester_config_t *this)
+METHOD(load_tester_config_t, destroy, void,
+	private_load_tester_config_t *this)
 {
 	this->peer_cfg->destroy(this->peer_cfg);
 	DESTROY_IF(this->proposal);
@@ -287,14 +320,20 @@ static void destroy(private_load_tester_config_t *this)
  */
 load_tester_config_t *load_tester_config_create()
 {
-	private_load_tester_config_t *this = malloc_thing(private_load_tester_config_t);
+	private_load_tester_config_t *this;
 
-	this->public.backend.create_peer_cfg_enumerator = (enumerator_t*(*)(backend_t*, identification_t *me, identification_t *other))create_peer_cfg_enumerator;
-	this->public.backend.create_ike_cfg_enumerator = (enumerator_t*(*)(backend_t*, host_t *me, host_t *other))create_ike_cfg_enumerator;
-	this->public.backend.get_peer_cfg_by_name = (peer_cfg_t* (*)(backend_t*,char*))get_peer_cfg_by_name;
-	this->public.destroy = (void(*)(load_tester_config_t*))destroy;
+	INIT(this,
+		.public = {
+			.backend = {
+				.create_peer_cfg_enumerator = _create_peer_cfg_enumerator,
+				.create_ike_cfg_enumerator = _create_ike_cfg_enumerator,
+				.get_peer_cfg_by_name = _get_peer_cfg_by_name,
+			},
+			.destroy = _destroy,
+		},
+		.num = 1,
+	);
 
-	this->vip = NULL;
 	if (lib->settings->get_bool(lib->settings,
 				"charon.plugins.load-tester.request_virtual_ip", FALSE))
 	{
@@ -317,16 +356,21 @@ load_tester_config_t *load_tester_config_create()
 				"charon.plugins.load-tester.ike_rekey", 0);
 	this->child_rekey = lib->settings->get_int(lib->settings,
 				"charon.plugins.load-tester.child_rekey", 600);
+	this->dpd_delay = lib->settings->get_int(lib->settings,
+				"charon.plugins.load-tester.dpd_delay", 0);
 
 	this->initiator_auth = lib->settings->get_str(lib->settings,
 				"charon.plugins.load-tester.initiator_auth", "pubkey");
 	this->responder_auth = lib->settings->get_str(lib->settings,
 				"charon.plugins.load-tester.responder_auth", "pubkey");
+	this->initiator_id = lib->settings->get_str(lib->settings,
+				"charon.plugins.load-tester.initiator_id", NULL);
+	this->responder_id = lib->settings->get_str(lib->settings,
+				"charon.plugins.load-tester.responder_id", NULL);
 
 	this->port = lib->settings->get_int(lib->settings,
 				"charon.plugins.load-tester.dynamic_port", 0);
 
-	this->num = 1;
 	this->peer_cfg = generate_config(this, 0);
 
 	return &this->public;

@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2011 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
  *
@@ -27,6 +30,7 @@ typedef struct pkcs11_library_t pkcs11_library_t;
 #include "pkcs11.h"
 
 #include <enum.h>
+#include <chunk.h>
 #include <utils/enumerator.h>
 
 /**
@@ -72,13 +76,31 @@ struct pkcs11_library_t {
 	 *
 	 * @param session	session to use
 	 * @param tmpl		search template
-	 * @param tcount 	number of attributes in the search template
+	 * @param tcount	number of attributes in the search template
 	 * @param attr		attributes to read from object
 	 * @param acount	number of attributes to read
 	 */
 	enumerator_t* (*create_object_enumerator)(pkcs11_library_t *this,
 			CK_SESSION_HANDLE session, CK_ATTRIBUTE_PTR tmpl, CK_ULONG tcount,
 			CK_ATTRIBUTE_PTR attr, CK_ULONG acount);
+
+	/**
+	 * This is very similar to the object enumerator but is only used to
+	 * easily retrieve multiple attributes from a single object for which
+	 * a handle is already known.
+	 *
+	 * The given attribute array is automatically filled in with the
+	 * associated attributes. If the value of an output attribute is NULL,
+	 * the required memory gets allocated/freed during enumeration.
+	 *
+	 * @param session	session to use
+	 * @param object	object handle
+	 * @param attr		attributes to read from object
+	 * @param count		number of attributes to read
+	 */
+	enumerator_t* (*create_object_attr_enumerator)(pkcs11_library_t *this,
+			CK_SESSION_HANDLE session, CK_OBJECT_HANDLE object,
+			CK_ATTRIBUTE_PTR attr, CK_ULONG count);
 
 	/**
 	 * Create an enumerator over supported mechanisms of a token.
@@ -91,6 +113,21 @@ struct pkcs11_library_t {
 	 */
 	enumerator_t* (*create_mechanism_enumerator)(pkcs11_library_t *this,
 												 CK_SLOT_ID slot);
+
+	/**
+	 * Retrieve a single attribute from the given object.
+	 *
+	 * Memory for the data is allocated.
+	 *
+	 * @param session			session with the PKCS#11 library
+	 * @param obj				object handle
+	 * @param type				attribute type to extract
+	 * @param data				extracted data
+	 * @return					TRUE if successful
+	 */
+	bool (*get_ck_attribute)(pkcs11_library_t *this, CK_SESSION_HANDLE session,
+							 CK_OBJECT_HANDLE obj, CK_ATTRIBUTE_TYPE type,
+							 chunk_t *data);
 
 	/**
 	 * Destroy a pkcs11_library_t.
@@ -109,7 +146,12 @@ extern enum_name_t *ck_rv_names;
 extern enum_name_t *ck_mech_names;
 
 /**
- * Trim/null terminate a string returned by the varius PKCS#11 functions.
+ * Enum names for CK_ATTRIBUTE_TYPE values
+ */
+extern enum_name_t *ck_attr_names;
+
+/**
+ * Trim/null terminate a string returned by the various PKCS#11 functions.
  *
  * @param str		string to trim
  * @param len		max length of the string

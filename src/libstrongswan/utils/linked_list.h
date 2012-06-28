@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2008 Tobias Brunner
+ * Copyright (C) 2007-2011 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -25,7 +25,6 @@
 
 typedef struct linked_list_t linked_list_t;
 
-#include <utils/iterator.h>
 #include <utils/enumerator.h>
 
 /**
@@ -62,27 +61,29 @@ struct linked_list_t {
 	int (*get_count) (linked_list_t *this);
 
 	/**
-	 * Creates a iterator for the given list.
-	 *
-	 * @warning Created iterator_t object has to get destroyed by the caller.
-	 *
-	 * @deprecated Iterator is obsolete and will disappear, it is too
-	 * complicated to implement. Use enumerator instead.
-	 *
-	 * @param forward	iterator direction (TRUE: front to end)
-	 * @return			new iterator_t object
-	 */
-	iterator_t *(*create_iterator) (linked_list_t *this, bool forward);
-
-	/**
 	 * Create an enumerator over the list.
 	 *
-	 * The enumerator is a "lightweight" iterator. It only has two methods
-	 * and should therefore be much easier to implement.
+	 * @note The enumerator's position is invalid before the first call
+	 * to enumerate().
 	 *
 	 * @return			enumerator over list items
 	 */
 	enumerator_t* (*create_enumerator)(linked_list_t *this);
+
+	/**
+	 * Resets the enumerator's current position to the beginning of the list.
+	 *
+	 * @param enumerator	enumerator to reset
+	 */
+	void (*reset_enumerator)(linked_list_t *this, enumerator_t *enumerator);
+
+	/**
+	 * Checks if there are more elements following after the enumerator's
+	 * current position.
+	 *
+	 * @param enumerator	enumerator to check
+	 */
+	bool (*has_more)(linked_list_t *this, enumerator_t *enumerator);
 
 	/**
 	 * Inserts a new item at the beginning of the list.
@@ -98,6 +99,32 @@ struct linked_list_t {
 	 * @return			SUCCESS, or NOT_FOUND if list is empty
 	 */
 	status_t (*remove_first) (linked_list_t *this, void **item);
+
+	/**
+	 * Inserts a new item before the item the enumerator currently points to.
+	 *
+	 * If this method is called before starting the enumeration the item is
+	 * inserted first. If it is called after all items have been enumerated
+	 * the item is inserted last. This is helpful when inserting items into
+	 * a sorted list.
+	 *
+	 * @note The position of the enumerator is not changed.
+	 *
+	 * @param enumerator	enumerator with position
+	 * @param item			item value to insert in list
+	 */
+	void (*insert_before)(linked_list_t *this, enumerator_t *enumerator,
+						  void *item);
+
+	/**
+	 * Replaces the item the enumerator currently points to with the given item.
+	 *
+	 * @param enumerator	enumerator with position
+	 * @param item			item value to replace current item with
+	 * @return				current item or NULL if the enumerator is at an
+	 *						invalid position
+	 */
+	void *(*replace)(linked_list_t *this, enumerator_t *enumerator, void *item);
 
 	/**
 	 * Remove an item from the list where the enumerator points to.
@@ -125,7 +152,6 @@ struct linked_list_t {
 	/**
 	 * Returns the value of the first list item without removing it.
 	 *
-	 * @param this		calling object
 	 * @param item		returned value of first item
 	 * @return			SUCCESS, NOT_FOUND if list is empty
 	 */
@@ -141,7 +167,6 @@ struct linked_list_t {
 	/**
 	 * Removes the last item in the list and returns its value.
 	 *
-	 * @param this		calling object
 	 * @param item		returned value of last item, or NULL
 	 * @return			SUCCESS, NOT_FOUND if list is empty
 	 */
@@ -150,7 +175,6 @@ struct linked_list_t {
 	/**
 	 * Returns the value of the last list item without removing it.
 	 *
-	 * @param this		calling object
 	 * @param item		returned value of last item
 	 * @return			SUCCESS, NOT_FOUND if list is empty
 	 */

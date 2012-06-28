@@ -217,7 +217,7 @@ static void disconnect(private_maemo_service_t *this)
 		id = ike_sa->get_unique_id(ike_sa);
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 		charon->controller->terminate_ike(charon->controller, id,
-										  NULL, NULL);
+										  NULL, NULL, 0);
 	}
 	this->current = (g_free(this->current), NULL);
 	this->status = VPN_STATUS_DISCONNECTED;
@@ -502,7 +502,8 @@ maemo_service_t *maemo_service_create()
 	}
 
 	lib->processor->queue_job(lib->processor,
-		(job_t*)callback_job_create((callback_job_cb_t)run, this, NULL, NULL));
+				(job_t*)callback_job_create_with_prio((callback_job_cb_t)run,
+										this, NULL, NULL, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

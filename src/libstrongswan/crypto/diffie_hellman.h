@@ -57,7 +57,7 @@ enum diffie_hellman_group_t {
 	ECP_224_BIT   = 26,
 	/** insecure NULL diffie hellman group for testing, in PRIVATE USE */
 	MODP_NULL = 1024,
-	/** MODP group with custon generator, prime */
+	/** MODP group with custom generator/prime */
 	MODP_CUSTOM = 1025,
 };
 
@@ -74,8 +74,7 @@ struct diffie_hellman_t {
 	/**
 	 * Returns the shared secret of this diffie hellman exchange.
 	 *
-	 * Space for returned secret is allocated and must be
-	 * freed by the caller.
+	 * Space for returned secret is allocated and must be freed by the caller.
 	 *
 	 * @param secret	shared secret will be written into this chunk
 	 * @return			SUCCESS, FAILED if not both DH values are set
@@ -108,7 +107,7 @@ struct diffie_hellman_t {
 	diffie_hellman_group_t (*get_dh_group) (diffie_hellman_t *this);
 
 	/**
-	 * Destroys an diffie_hellman_t object.
+	 * Destroys a diffie_hellman_t object.
 	 */
 	void (*destroy) (diffie_hellman_t *this);
 };

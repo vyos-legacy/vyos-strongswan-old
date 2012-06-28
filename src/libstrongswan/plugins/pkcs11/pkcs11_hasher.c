@@ -260,7 +260,7 @@ static pkcs11_library_t* find_token(hash_algorithm_t algo,
 	{
 		return NULL;
 	}
-	manager = pkcs11_manager_get();
+	manager = lib->get(lib, "pkcs11-manager");
 	if (!manager)
 	{
 		return NULL;
@@ -315,6 +315,7 @@ pkcs11_hasher_t *pkcs11_hasher_create(hash_algorithm_t algo)
 	this->lib = find_token(algo, &this->session, &this->mech, &this->size);
 	if (!this->lib)
 	{
+		this->mutex->destroy(this->mutex);
 		free(this);
 		return NULL;
 	}

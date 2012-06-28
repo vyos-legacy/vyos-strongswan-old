@@ -192,6 +192,11 @@ then
     echo -n " --enable-eap-tnc" >> $INSTALLSHELL
 fi
 
+if [ "$USE_TNC_PDP" = "yes" ]
+then
+    echo -n " --enable-tnc-pdp" >> $INSTALLSHELL
+fi
+
 if [ "$USE_TNC_IMC" = "yes" ]
 then
     echo -n " --enable-tnc-imc" >> $INSTALLSHELL
@@ -215,6 +220,36 @@ fi
 if [ "$USE_TNCCS_DYNAMIC" = "yes" ]
 then
     echo -n " --enable-tnccs-dynamic" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMC_TEST" = "yes" ]
+then
+    echo -n " --enable-imc-test" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMV_TEST" = "yes" ]
+then
+    echo -n " --enable-imv-test" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMC_SCANNER" = "yes" ]
+then
+    echo -n " --enable-imc-scanner" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMV_SCANNER" = "yes" ]
+then
+    echo -n " --enable-imv-scanner" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMC_ATTESTATION" = "yes" ]
+then
+    echo -n " --enable-imc-attestation" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IMV_ATTESTATION" = "yes" ]
+then
+    echo -n " --enable-imv-attestation" >> $INSTALLSHELL
 fi
 
 if [ "$USE_SQL" = "yes" ]
@@ -307,6 +342,11 @@ then
     echo -n " --enable-gcm" >> $INSTALLSHELL
 fi
 
+if [ "$USE_CMAC" = "yes" ]
+then
+    echo -n " --enable-cmac" >> $INSTALLSHELL
+fi
+
 if [ "$USE_HA" = "yes" ]
 then
     echo -n " --enable-ha" >> $INSTALLSHELL
@@ -320,6 +360,16 @@ fi
 if [ "$USE_WHITELIST" = "yes" ]
 then
     echo -n " --enable-whitelist" >> $INSTALLSHELL
+fi
+
+if [ "$USE_PKCS8" = "yes" ]
+then
+    echo -n " --enable-pkcs8" >> $INSTALLSHELL
+fi
+
+if [ "$USE_IFMAP" = "yes" ]
+then
+    echo -n " --enable-tnc-ifmap" >> $INSTALLSHELL
 fi
 
 if [ "$USE_CISCO_QUIRKS" = "yes" ]

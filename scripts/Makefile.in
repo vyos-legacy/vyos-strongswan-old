@@ -37,7 +37,9 @@ host_triplet = @host@
 noinst_PROGRAMS = bin2array$(EXEEXT) bin2sql$(EXEEXT) id2sql$(EXEEXT) \
 	key2keyid$(EXEEXT) keyid2sql$(EXEEXT) oid2der$(EXEEXT) \
 	thread_analysis$(EXEEXT) dh_speed$(EXEEXT) \
-	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) fetch$(EXEEXT)
+	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) fetch$(EXEEXT) \
+	$(am__EXEEXT_1)
+@USE_TLS_TRUE@am__append_1 = tls_test
 subdir = scripts
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -55,6 +57,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+@USE_TLS_TRUE@am__EXEEXT_1 = tls_test$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am_bin2array_OBJECTS = bin2array.$(OBJEXT)
 bin2array_OBJECTS = $(am_bin2array_OBJECTS)
@@ -97,6 +100,11 @@ pubkey_speed_DEPENDENCIES =  \
 am_thread_analysis_OBJECTS = thread_analysis.$(OBJEXT)
 thread_analysis_OBJECTS = $(am_thread_analysis_OBJECTS)
 thread_analysis_LDADD = $(LDADD)
+am__tls_test_SOURCES_DIST = tls_test.c
+@USE_TLS_TRUE@am_tls_test_OBJECTS = tls_test.$(OBJEXT)
+tls_test_OBJECTS = $(am_tls_test_OBJECTS)
+@USE_TLS_TRUE@tls_test_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la \
+@USE_TLS_TRUE@	$(top_builddir)/src/libtls/libtls.la
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -114,12 +122,12 @@ SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(fetch_SOURCES) \
 	$(id2sql_SOURCES) $(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
 	$(oid2der_SOURCES) $(pubkey_speed_SOURCES) \
-	$(thread_analysis_SOURCES)
+	$(thread_analysis_SOURCES) $(tls_test_SOURCES)
 DIST_SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(fetch_SOURCES) \
 	$(id2sql_SOURCES) $(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
 	$(oid2der_SOURCES) $(pubkey_speed_SOURCES) \
-	$(thread_analysis_SOURCES)
+	$(thread_analysis_SOURCES) $(am__tls_test_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -214,6 +222,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -222,6 +233,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -238,11 +250,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -286,6 +300,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -299,6 +314,10 @@ xml_LIBS = @xml_LIBS@
 INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libtls
 AM_CFLAGS = \
 -DPLUGINS="\"${scripts_plugins}\""
+
+@USE_TLS_TRUE@tls_test_SOURCES = tls_test.c
+@USE_TLS_TRUE@tls_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la \
+@USE_TLS_TRUE@					$(top_builddir)/src/libtls/libtls.la
 
 bin2array_SOURCES = bin2array.c
 bin2sql_SOURCES = bin2sql.c
@@ -395,6 +414,9 @@ pubkey_speed$(EXEEXT): $(pubkey_speed_OBJECTS) $(pubkey_speed_DEPENDENCIES)
 thread_analysis$(EXEEXT): $(thread_analysis_OBJECTS) $(thread_analysis_DEPENDENCIES) 
 	@rm -f thread_analysis$(EXEEXT)
 	$(LINK) $(thread_analysis_OBJECTS) $(thread_analysis_LDADD) $(LIBS)
+tls_test$(EXEEXT): $(tls_test_OBJECTS) $(tls_test_DEPENDENCIES) 
+	@rm -f tls_test$(EXEEXT)
+	$(LINK) $(tls_test_OBJECTS) $(tls_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -413,6 +435,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oid2der.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pubkey_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread_analysis.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls_test.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -638,11 +661,6 @@ uninstall-am:
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags uninstall uninstall-am
 
-
-@USE_TLS_TRUE@	noinst_PROGRAMS += tls_test
-@USE_TLS_TRUE@	tls_test_SOURCES = tls_test.c
-@USE_TLS_TRUE@	tls_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la \
-@USE_TLS_TRUE@			$(top_builddir)/src/libtls/libtls.la
 
 key2keyid.o :	$(top_builddir)/config.status
 

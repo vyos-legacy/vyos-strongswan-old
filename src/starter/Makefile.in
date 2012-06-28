@@ -38,8 +38,10 @@ ipsec_PROGRAMS = starter$(EXEEXT)
 @USE_PLUTO_TRUE@am__append_1 = -DSTART_PLUTO
 @USE_CHARON_TRUE@am__append_2 = -DSTART_CHARON
 @USE_LOAD_WARNING_TRUE@am__append_3 = -DLOAD_WARNING
+@USE_TOOLS_TRUE@am__append_4 = -DGENERATE_SELFCERT
 subdir = src/starter
-DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	lexer.c parser.c parser.h
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -57,18 +59,18 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(ipsecdir)"
 PROGRAMS = $(ipsec_PROGRAMS)
-am_starter_OBJECTS = y.tab.$(OBJEXT) netkey.$(OBJEXT) \
+am_starter_OBJECTS = parser.$(OBJEXT) lexer.$(OBJEXT) netkey.$(OBJEXT) \
 	starterwhack.$(OBJEXT) starterstroke.$(OBJEXT) \
 	invokepluto.$(OBJEXT) confread.$(OBJEXT) interfaces.$(OBJEXT) \
 	args.$(OBJEXT) keywords.$(OBJEXT) cmp.$(OBJEXT) \
 	starter.$(OBJEXT) exec.$(OBJEXT) invokecharon.$(OBJEXT) \
-	lex.yy.$(OBJEXT) loglite.$(OBJEXT) klips.$(OBJEXT)
+	loglite.$(OBJEXT) klips.$(OBJEXT)
 starter_OBJECTS = $(am_starter_OBJECTS)
 am__DEPENDENCIES_1 =
 starter_DEPENDENCIES = defs.o \
 	$(top_builddir)/src/libfreeswan/libfreeswan.a \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(am__DEPENDENCIES_1)
+	$(top_builddir)/src/libhydra/libhydra.la $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -82,6 +84,13 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
+LEXCOMPILE = $(LEX) $(LFLAGS) $(AM_LFLAGS)
+LTLEXCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(LEX) $(LFLAGS) $(AM_LFLAGS)
+YLWRAP = $(top_srcdir)/ylwrap
+YACCCOMPILE = $(YACC) $(YFLAGS) $(AM_YFLAGS)
+LTYACCCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(YACC) $(YFLAGS) $(AM_YFLAGS)
 SOURCES = $(starter_SOURCES)
 DIST_SOURCES = $(starter_SOURCES)
 ETAGS = etags
@@ -178,6 +187,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -186,6 +198,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -202,11 +215,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -250,6 +265,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -260,11 +276,12 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-starter_SOURCES = y.tab.c netkey.c y.tab.h parser.h args.h netkey.h \
+starter_SOURCES = \
+parser.y lexer.l ipsec-parser.h netkey.c args.h netkey.h \
 starterwhack.c starterwhack.h starterstroke.c invokepluto.c confread.c \
 starterstroke.h interfaces.c invokepluto.h confread.h interfaces.h args.c \
 keywords.c files.h keywords.h cmp.c starter.c cmp.h exec.c invokecharon.c \
-exec.h invokecharon.h lex.yy.c loglite.c klips.c klips.h
+exec.h invokecharon.h loglite.c klips.c klips.h
 
 INCLUDES = \
 -I${linux_headers} \
@@ -278,17 +295,21 @@ INCLUDES = \
 AM_CFLAGS = -DIPSEC_DIR=\"${ipsecdir}\" \
 	-DIPSEC_CONFDIR=\"${sysconfdir}\" -DIPSEC_PIDDIR=\"${piddir}\" \
 	-DIPSEC_EAPDIR=\"${eapdir}\" -DDEV_RANDOM=\"${random_device}\" \
-	-DDEV_URANDOM=\"${urandom_device}\" -DDEBUG $(am__append_1) \
-	$(am__append_2) $(am__append_3)
-starter_LDADD = defs.o $(top_builddir)/src/libfreeswan/libfreeswan.a $(top_builddir)/src/libstrongswan/libstrongswan.la $(SOCKLIB)
-EXTRA_DIST = parser.l parser.y keywords.txt ipsec.conf
-MAINTAINERCLEANFILES = lex.yy.c y.tab.c y.tab.h keywords.c
+	-DDEV_URANDOM=\"${urandom_device}\" \
+	-DPLUGINS=\""${starter_plugins}\"" -DDEBUG $(am__append_1) \
+	$(am__append_2) $(am__append_3) $(am__append_4)
+AM_YFLAGS = -v -d
+starter_LDADD = defs.o $(top_builddir)/src/libfreeswan/libfreeswan.a $(top_builddir)/src/libstrongswan/libstrongswan.la $(top_builddir)/src/libhydra/libhydra.la $(SOCKLIB)
+EXTRA_DIST = keywords.txt ipsec.conf Android.mk
+MAINTAINERCLEANFILES = keywords.c
+BUILT_SOURCES = parser.h
 PLUTODIR = $(top_srcdir)/src/pluto
 SCEPCLIENTDIR = $(top_srcdir)/src/scepclient
-all: all-am
+all: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .l .lo .o .obj .y
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -362,6 +383,11 @@ clean-ipsecPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+parser.h: parser.c
+	@if test ! -f $@; then \
+	  rm -f parser.c; \
+	  $(MAKE) $(AM_MAKEFLAGS) parser.c; \
+	else :; fi
 starter$(EXEEXT): $(starter_OBJECTS) $(starter_DEPENDENCIES) 
 	@rm -f starter$(EXEEXT)
 	$(LINK) $(starter_OBJECTS) $(starter_LDADD) $(LIBS)
@@ -381,13 +407,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/invokepluto.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keywords.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/klips.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lex.yy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lexer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loglite.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/netkey.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/starter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/starterstroke.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/starterwhack.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/y.tab.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -409,6 +435,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+.l.c:
+	$(am__skiplex) $(SHELL) $(YLWRAP) $< $(LEX_OUTPUT_ROOT).c $@ -- $(LEXCOMPILE)
+
+.y.c:
+	$(am__skipyacc) $(SHELL) $(YLWRAP) $< y.tab.c $@ y.tab.h $*.h y.output $*.output -- $(YACCCOMPILE)
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -499,13 +531,15 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: check-am
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(PROGRAMS)
 installdirs:
 	for dir in "$(DESTDIR)$(ipsecdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-am
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-am
 install-exec: install-exec-am
 install-data: install-data-am
 uninstall: uninstall-am
@@ -530,6 +564,10 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-rm -f lexer.c
+	-rm -f parser.c
+	-rm -f parser.h
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 clean: clean-am
 
@@ -602,7 +640,7 @@ ps-am:
 
 uninstall-am: uninstall-ipsecPROGRAMS
 
-.MAKE: install-am install-strip
+.MAKE: all check install install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
 	clean-ipsecPROGRAMS clean-libtool ctags distclean \
@@ -618,15 +656,6 @@ uninstall-am: uninstall-ipsecPROGRAMS
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags uninstall uninstall-am uninstall-ipsecPROGRAMS
 
-
-lex.yy.c:	$(srcdir)/parser.l $(srcdir)/parser.y $(srcdir)/parser.h y.tab.h
-		$(LEX) $(srcdir)/parser.l
-
-y.tab.c:	$(srcdir)/parser.y $(srcdir)/parser.l $(srcdir)/parser.h
-		$(YACC) -v -d $(srcdir)/parser.y
-
-y.tab.h:	$(srcdir)/parser.y $(srcdir)/parser.l $(srcdir)/parser.h
-		$(YACC) -v -d $(srcdir)/parser.y
 
 keywords.c:	$(srcdir)/keywords.txt $(srcdir)/keywords.h
 		$(GPERF) -m 10 -C -G -D -t < $(srcdir)/keywords.txt > $@

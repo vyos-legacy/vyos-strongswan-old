@@ -1,4 +1,4 @@
-.TH IPSEC.CONF 5 "2010-10-19" "@IPSEC_VERSION@" "strongSwan"
+.TH IPSEC.CONF 5 "2011-12-14" "@IPSEC_VERSION@" "strongSwan"
 .SH NAME
 ipsec.conf \- IPsec configuration and connections
 .SH DESCRIPTION
@@ -268,7 +268,7 @@ IKEv1 additionally supports the values
 .B xauthpsk
 and
 .B xauthrsasig
-that will enable eXtended AUTHentication (XAUTH) in addition to IKEv1 main mode
+that will enable eXtended Authentication (XAuth) in addition to IKEv1 main mode
 based on shared secrets  or digital RSA signatures, respectively.
 IKEv2 additionally supports the value
 .BR eap ,
@@ -298,7 +298,7 @@ and
 .B rightsubnet
 , a connection is established.
 .B start
-loads a connection and brings it up immediatly.
+loads a connection and brings it up immediately.
 .B ignore
 ignores the connection. This is equal to delete a connection from the config
 file.
@@ -367,11 +367,17 @@ See
 .IR strongswan.conf (5)
 for a description of the IKEv2 retransmission timeout.
 .TP
+.BR closeaction " = " none " | clear | hold | restart"
+defines the action to take if the remote peer unexpectedly closes a CHILD_SA
+(IKEv2 only, see dpdaction for meaning of values). A closeaction should not be
+used if the peer uses reauthentication or uniquids checking, as these events
+might trigger a closeaction when not desired.
+.TP
 .BR inactivity " = <time>"
 defines the timeout interval, after which a CHILD_SA is closed if it did
 not send or receive any traffic. Currently supported in IKEv2 connections only.
 .TP
-.BR eap " = md5 | mschapv2 | radius | ... | <type> | <type>-<vendor>
+.BR eap " = aka | ... | radius | ... | <type> | <type>-<vendor>
 defines the EAP type to propose as server if the client requests EAP
 authentication. Currently supported values are
 .B aka
@@ -382,10 +388,17 @@ for EAP-GTC,
 for EAP-MD5,
 .B mschapv2
 for EAP-MS-CHAPv2,
+.B peap
+for EAP-PEAPv0,
 .B radius
-for the EAP-RADIUS proxy and
+for the EAP-RADIUS proxy,
 .B sim
-for EAP-SIM. Additionally, IANA assigned EAP method numbers are accepted, or a
+for EAP-SIM,
+.B tls
+for EAP-TLS, and
+.B ttls
+for EAP-TTLSv0.
+Additionally, IANA assigned EAP method numbers are accepted, or a
 definition in the form
 .B eap=type-vendor
 (e.g. eap=7-12345) can be used to specify vendor specific EAP types.
@@ -409,19 +422,34 @@ comma-separated list of ESP encryption/authentication algorithms to be used
 for the connection, e.g.
 .BR aes128-sha256 .
 The notation is
-.BR encryption-integrity[-dhgroup][-esnmodes] .
+.BR encryption-integrity[-dhgroup][-esnmode] .
+.br
+Defaults to
+.BR aes128-sha1,3des-sha1
+for IKEv1.  The IKEv2 daemon adds its extensive default proposal to this default
+or the configured value.  To restrict it to the configured proposal an
+exclamation mark
+.RB ( ! )
+can be added at the end.
+.br
+.BR Note :
+As a responder both daemons accept the first supported proposal received from
+the peer. In order to restrict a responder to only accept specific cipher
+suites, the strict flag
+.RB ( ! ,
+exclamation mark) can be used, e.g: aes256-sha512-modp4096!
 .br
 If
 .B dh-group
-is specified, CHILD_SA setup and rekeying include a separate diffe hellman
-exchange (IKEv2 only). Valid
-.B esnmodes
+is specified, CHILD_SA setup and rekeying include a separate Diffie-Hellman
+exchange (IKEv2 only).  Valid values for
+.B esnmode
 (IKEv2 only) are
 .B esn
 and
-.B noesn.
-Specifying both negotiates Extended Sequence number support with the peer,
-the defaut is
+.BR noesn .
+Specifying both negotiates Extended Sequence Number support with the peer,
+the default is
 .B noesn.
 .TP
 .BR forceencaps " = yes | " no
@@ -436,7 +464,22 @@ to be used, e.g.
 The notation is
 .BR encryption-integrity-dhgroup .
 In IKEv2, multiple algorithms and proposals may be included, such as
-.B aes128-aes256-sha1-modp1536-modp2048,3des-sha1-md5-modp1024.
+aes128-aes256-sha1-modp1536-modp2048,3des-sha1-md5-modp1024.
+.br
+Defaults to
+.B aes128-sha1-modp2048,3des-sha1-modp1536
+for IKEv1.  The IKEv2 daemon adds its extensive default proposal to this
+default or the configured value.  To restrict it to the configured proposal an
+exclamation mark
+.RB ( ! )
+can be added at the end.
+.br
+.BR Note :
+As a responder both daemons accept the first supported proposal received from
+the peer.  In order to restrict a responder to only accept specific cipher
+suites, the strict flag
+.BR ( ! ,
+exclamation mark) can be used, e.g: aes256-sha512-modp4096!
 .TP
 .BR ikelifetime " = " 3h " | <time>"
 how long the keying channel of a connection (ISAKMP or IKE SA)
@@ -468,11 +511,11 @@ whereas in older strongSwan releases
 .B ikev1
 was assumed.
 .TP
-.BR keyingtries " = " %forever " | <number>"
+.BR keyingtries " = " 3 " | <number> | %forever"
 how many attempts (a whole number or \fB%forever\fP) should be made to
 negotiate a connection, or a replacement for one, before giving up
 (default
-.BR %forever ).
+.BR 3 ).
 The value \fB%forever\fP
 means 'never give up'.
 Relevant only locally, other end need not agree on it.
@@ -564,10 +607,12 @@ an optional EAP method can be appended. Currently defined methods are
 .BR eap-aka ,
 .BR eap-gtc ,
 .BR eap-md5 ,
+.BR eap-mschapv2 ,
+.BR eap-peap ,
+.BR eap-sim ,
 .BR eap-tls ,
-.B eap-mschapv2
 and
-.BR eap-sim .
+.BR eap-ttls .
 Alternatively, IANA assigned EAP method numbers are accepted. Vendor specific
 EAP methods are defined in the form
 .B eap-type-vendor
@@ -995,15 +1040,9 @@ signifying that packets should be discarded; and
 signifying that packets should be discarded and a diagnostic ICMP returned
 .RB ( reject
 is currently not supported by the NETKEY stack of the Linux 2.6 kernel).
-The IKEv2 daemon charon currently supports
-.BR tunnel ,
-.BR transport ,
-and
-.BR transport_proxy
-connection types, only.
 .TP
 .BR xauth " = " client " | server"
-specifies the role in the XAUTH protocol if activated by
+specifies the role in the XAuth protocol if activated by
 .B authby=xauthpsk
 or
 .B authby=xauthrsasig.
@@ -1012,6 +1051,10 @@ Accepted values are
 and
 .B client
 (the default).
+.TP
+.BR xauth_identity " = <id>"
+defines the identity/username the client uses to reply to an XAuth request.
+If not defined, the IKEv1 identity will be used as XAuth identity.
 
 .SS "CONN PARAMETERS: IKEv2 MEDIATION EXTENSION"
 The following parameters are relevant to IKEv2 Mediation Extension
@@ -1166,7 +1209,7 @@ so a new (automatically-keyed) connection using the same ID is
 almost invariably intended to replace an old one.
 The IKEv2 daemon also accepts the value
 .B replace
-wich is identical to
+which is identical to
 .B yes
 and the value
 .B keep
@@ -1277,15 +1320,17 @@ parameters are used by the IKEv2 charon daemon only:
 .TP
 .BR charondebug " = <debug list>"
 how much charon debugging output should be logged.
-A comma separated list containing type level/pairs may
+A comma separated list containing type/level-pairs may
 be specified, e.g:
 .B dmn 3, ike 1, net -1.
 Acceptable values for types are
-.B dmn, mgr, ike, chd, job, cfg, knl, net, enc, lib
+.B dmn, mgr, ike, chd, job, cfg, knl, net, asn, enc, lib, tls, tnc, imc, imv, pts
 and the level is one of
 .B -1, 0, 1, 2, 3, 4
-(for silent, audit, control, controlmore, raw, private).
-For more flexibility see LOGGER CONFIGURATION in
+(for silent, audit, control, controlmore, raw, private).  By default, the level
+is set to
+.B 1
+for all types.  For more flexibility see LOGGER CONFIGURATION in
 .IR strongswan.conf (5).
 
 .SH IKEv2 EXPIRY/REKEY

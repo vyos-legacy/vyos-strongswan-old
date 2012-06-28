@@ -50,10 +50,8 @@ struct private_backtrace_t {
 	void *frames[];
 };
 
-/**
- * Implementation of backtrace_t.log
- */
-static void log_(private_backtrace_t *this, FILE *file, bool detailed)
+METHOD(backtrace_t, log_, void,
+	private_backtrace_t *this, FILE *file, bool detailed)
 {
 #ifdef HAVE_BACKTRACE
 	size_t i;
@@ -129,11 +127,8 @@ static void log_(private_backtrace_t *this, FILE *file, bool detailed)
 #endif /* HAVE_BACKTRACE */
 }
 
-/**
- * Implementation of backtrace_t.contains_function
- */
-static bool contains_function(private_backtrace_t *this,
-							  char *function[], int count)
+METHOD(backtrace_t, contains_function, bool,
+	private_backtrace_t *this, char *function[], int count)
 {
 #ifdef HAVE_DLADDR
 	int i, j;
@@ -157,10 +152,70 @@ static bool contains_function(private_backtrace_t *this,
 	return FALSE;
 }
 
+METHOD(backtrace_t, equals, bool,
+	private_backtrace_t *this, backtrace_t *other_public)
+{
+	private_backtrace_t *other = (private_backtrace_t*)other_public;
+	int i;
+
+	if (this == other)
+	{
+		return TRUE;
+	}
+	if (this->frame_count != other->frame_count)
+	{
+		return FALSE;
+	}
+	for (i = 0; i < this->frame_count; i++)
+	{
+		if (this->frames[i] != other->frames[i])
+		{
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
 /**
- * Implementation of backtrace_t.destroy.
+ * Frame enumerator
  */
-static void destroy(private_backtrace_t *this)
+typedef struct {
+	/** implements enumerator_t */
+	enumerator_t public;
+	/** reference to backtrace */
+	private_backtrace_t *bt;
+	/** current position */
+	int i;
+} frame_enumerator_t;
+
+METHOD(enumerator_t, frame_enumerate, bool,
+	frame_enumerator_t *this, void **addr)
+{
+	if (this->i < this->bt->frame_count)
+	{
+		*addr = this->bt->frames[this->i++];
+		return TRUE;
+	}
+	return FALSE;
+}
+
+METHOD(backtrace_t, create_frame_enumerator, enumerator_t*,
+	private_backtrace_t *this)
+{
+	frame_enumerator_t *enumerator;
+
+	INIT(enumerator,
+		.public = {
+			.enumerate = (void*)_frame_enumerate,
+			.destroy = (void*)free,
+		},
+		.bt = this,
+	);
+	return &enumerator->public;
+}
+
+METHOD(backtrace_t, destroy, void,
+	private_backtrace_t *this)
 {
 	free(this);
 }
@@ -182,9 +237,13 @@ backtrace_t *backtrace_create(int skip)
 	memcpy(this->frames, frames + skip, frame_count * sizeof(void*));
 	this->frame_count = frame_count;
 
-	this->public.log = (void(*)(backtrace_t*,FILE*,bool))log_;
-	this->public.contains_function = (bool(*)(backtrace_t*, char *function[], int count))contains_function;
-	this->public.destroy = (void(*)(backtrace_t*))destroy;
+	this->public = (backtrace_t) {
+		.log = _log_,
+		.contains_function = _contains_function,
+		.equals = _equals,
+		.create_frame_enumerator = _create_frame_enumerator,
+		.destroy = _destroy,
+	};
 
 	return &this->public;
 }

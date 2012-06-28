@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -417,10 +418,14 @@ METHOD(task_t, build_i, status_t,
 		cfg = this->ike_sa->get_auth_cfg(this->ike_sa, TRUE);
 		cfg->merge(cfg, get_auth_cfg(this, TRUE), TRUE);
 		idi = cfg->get(cfg, AUTH_RULE_IDENTITY);
-		if (!idi)
-		{
-			DBG1(DBG_CFG, "configuration misses IDi");
-			return FAILED;
+		if (!idi || idi->get_type(idi) == ID_ANY)
+		{	/* ID_ANY is invalid as IDi, use local IP address instead */
+			host_t *me;
+
+			DBG1(DBG_CFG, "no IDi configured, fall back on IP address");
+			me = this->ike_sa->get_my_host(this->ike_sa);
+			idi = identification_create_from_sockaddr(me->get_sockaddr(me));
+			cfg->add(cfg, AUTH_RULE_IDENTITY, idi);
 		}
 		this->ike_sa->set_my_id(this->ike_sa, idi->clone(idi));
 		id_payload = id_payload_create_from_identification(ID_INITIATOR, idi);
@@ -669,8 +674,7 @@ METHOD(task_t, build_r, status_t,
 
 	if (this->authentication_failed || this->peer_cfg == NULL)
 	{
-		message->add_notify(message, TRUE, AUTHENTICATION_FAILED, chunk_empty);
-		return FAILED;
+		goto peer_auth_failed;
 	}
 
 	if (this->my_auth == NULL && this->do_another_auth)
@@ -688,11 +692,14 @@ METHOD(task_t, build_r, status_t,
 		if (id->get_type(id) == ID_ANY)
 		{	/* no IDr received, apply configured ID */
 			if (!id_cfg || id_cfg->contains_wildcards(id_cfg))
-			{
-				DBG1(DBG_CFG, "IDr not configured and negotiation failed");
-				message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-									chunk_empty);
-				return FAILED;
+			{	/* no ID configured, use local IP address */
+				host_t *me;
+
+				DBG1(DBG_CFG, "no IDr configured, fall back on IP address");
+				me = this->ike_sa->get_my_host(this->ike_sa);
+				id_cfg = identification_create_from_sockaddr(
+														me->get_sockaddr(me));
+				cfg->add(cfg, AUTH_RULE_IDENTITY, id_cfg);
 			}
 			this->ike_sa->set_my_id(this->ike_sa, id_cfg->clone(id_cfg));
 			id = id_cfg;
@@ -702,9 +709,7 @@ METHOD(task_t, build_r, status_t,
 			if (id_cfg && !id->matches(id, id_cfg))
 			{
 				DBG1(DBG_CFG, "received IDr %Y, but require %Y", id, id_cfg);
-				message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-									chunk_empty);
-				return FAILED;
+				goto peer_auth_failed;
 			}
 		}
 
@@ -726,9 +731,7 @@ METHOD(task_t, build_r, status_t,
 			{
 				DBG1(DBG_IKE, "configured EAP-only authentication, but peer "
 					 "does not support it");
-				message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-									chunk_empty);
-				return FAILED;
+				goto peer_auth_failed;
 			}
 		}
 		else
@@ -741,9 +744,7 @@ METHOD(task_t, build_r, status_t,
 								this->reserved);
 			if (!this->my_auth)
 			{
-				message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-									chunk_empty);
-				return FAILED;
+				goto peer_auth_failed;
 			}
 		}
 	}
@@ -759,12 +760,11 @@ METHOD(task_t, build_r, status_t,
 			case NEED_MORE:
 				break;
 			default:
-				if (!message->get_payload(message, EXTENSIBLE_AUTHENTICATION))
+				if (message->get_payload(message, EXTENSIBLE_AUTHENTICATION))
 				{	/* skip AUTHENTICATION_FAILED if we have EAP_FAILURE */
-					message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-										chunk_empty);
+					goto peer_auth_failed_no_notify;
 				}
-				return FAILED;
+				goto peer_auth_failed;
 		}
 	}
 	if (this->my_auth)
@@ -802,7 +802,7 @@ METHOD(task_t, build_r, status_t,
 		if (charon->ike_sa_manager->check_uniqueness(charon->ike_sa_manager,
 													 this->ike_sa, FALSE))
 		{
-			DBG1(DBG_IKE, "cancelling IKE_SA setup due uniqueness policy");
+			DBG1(DBG_IKE, "cancelling IKE_SA setup due to uniqueness policy");
 			message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
 								chunk_empty);
 			return FAILED;
@@ -810,9 +810,7 @@ METHOD(task_t, build_r, status_t,
 		if (!charon->bus->authorize(charon->bus, TRUE))
 		{
 			DBG1(DBG_IKE, "final authorization hook forbids IKE_SA, cancelling");
-			message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-								chunk_empty);
-			return FAILED;
+			goto peer_auth_failed;
 		}
 		DBG0(DBG_IKE, "IKE_SA %s[%d] established between %H[%Y]...%H[%Y]",
 			 this->ike_sa->get_name(this->ike_sa),
@@ -826,6 +824,13 @@ METHOD(task_t, build_r, status_t,
 		return SUCCESS;
 	}
 	return NEED_MORE;
+
+peer_auth_failed:
+	message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
+						chunk_empty);
+peer_auth_failed_no_notify:
+	charon->bus->alert(charon->bus, ALERT_PEER_AUTH_FAILED);
+	return FAILED;
 }
 
 METHOD(task_t, process_i, status_t,
@@ -908,7 +913,7 @@ METHOD(task_t, process_i, status_t,
 			if (!id_payload)
 			{
 				DBG1(DBG_IKE, "IDr payload missing");
-				return FAILED;
+				goto peer_auth_failed;
 			}
 			id = id_payload->get_identification(id_payload);
 			get_reserved_id_bytes(this, id_payload);
@@ -926,7 +931,7 @@ METHOD(task_t, process_i, status_t,
 								this->reserved);
 				if (!this->other_auth)
 				{
-					return FAILED;
+					goto peer_auth_failed;
 				}
 			}
 			else
@@ -944,7 +949,7 @@ METHOD(task_t, process_i, status_t,
 				case NEED_MORE:
 					return NEED_MORE;
 				default:
-					return FAILED;
+					goto peer_auth_failed;
 			}
 			this->other_auth->destroy(this->other_auth);
 			this->other_auth = NULL;
@@ -953,7 +958,7 @@ METHOD(task_t, process_i, status_t,
 		if (!charon->bus->authorize(charon->bus, FALSE))
 		{
 			DBG1(DBG_IKE, "authorization forbids IKE_SA, cancelling");
-			return FAILED;
+			goto peer_auth_failed;
 		}
 
 		/* store authentication information, reset authenticator */
@@ -986,7 +991,7 @@ METHOD(task_t, process_i, status_t,
 		if (!this->my_auth || !this->my_auth->is_mutual(this->my_auth))
 		{
 			DBG1(DBG_IKE, "do not allow non-mutual EAP-only authentication");
-			return FAILED;
+			goto peer_auth_failed;
 		}
 		DBG1(DBG_IKE, "allow mutual EAP-only authentication");
 	}
@@ -999,12 +1004,13 @@ METHOD(task_t, process_i, status_t,
 	{
 		if (!update_cfg_candidates(this, TRUE))
 		{
-			return FAILED;
+			goto peer_auth_failed;
 		}
 		if (!charon->bus->authorize(charon->bus, TRUE))
 		{
-			DBG1(DBG_IKE, "final authorization hook forbids IKE_SA, cancelling");
-			return FAILED;
+			DBG1(DBG_IKE, "final authorization hook forbids IKE_SA, "
+					      "cancelling");
+			goto peer_auth_failed;
 		}
 		DBG0(DBG_IKE, "IKE_SA %s[%d] established between %H[%Y]...%H[%Y]",
 			 this->ike_sa->get_name(this->ike_sa),
@@ -1018,6 +1024,10 @@ METHOD(task_t, process_i, status_t,
 		return SUCCESS;
 	}
 	return NEED_MORE;
+
+peer_auth_failed:
+	charon->bus->alert(charon->bus, ALERT_PEER_AUTH_FAILED);
+	return FAILED;
 }
 
 METHOD(task_t, get_type, task_type_t,

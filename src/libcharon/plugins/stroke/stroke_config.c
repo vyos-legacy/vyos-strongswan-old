@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -263,7 +264,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 {
 	identification_t *identity;
 	certificate_t *certificate;
-	char *auth, *id, *cert, *ca;
+	char *auth, *id, *pubkey, *cert, *ca;
 	stroke_end_t *end, *other_end;
 	auth_cfg_t *cfg;
 	char eap_buf[32];
@@ -327,6 +328,9 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 						break;
 					case AUTH_CLASS_EAP:
 						auth = "eap";
+						break;
+					case AUTH_CLASS_ANY:
+						auth = "any";
 						break;
 				}
 			}
@@ -395,6 +399,18 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 		}
 	}
 	cfg->add(cfg, AUTH_RULE_IDENTITY, identity);
+
+	/* add raw RSA public key */
+	pubkey = end->rsakey;
+	if (pubkey && !streq(pubkey, "") && !streq(pubkey, "%cert"))
+	{
+		certificate = this->cred->load_pubkey(this->cred, KEY_RSA, pubkey,
+											  identity);
+		if (certificate)
+		{
+			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
+		}
+	}
 
 	/* CA constraint */
 	if (ca)
@@ -775,13 +791,28 @@ static void add_ts(private_stroke_config_t *this,
 }
 
 /**
+ * map starter magic values to our action type
+ */
+static action_t map_action(int starter_action)
+{
+	switch (starter_action)
+	{
+		case 2: /* =hold */
+			return ACTION_ROUTE;
+		case 3: /* =restart */
+			return ACTION_RESTART;
+		default:
+			return ACTION_NONE;
+	}
+}
+
+/**
  * build a child config from the stroke message
  */
 static child_cfg_t *build_child_cfg(private_stroke_config_t *this,
 									stroke_msg_t *msg)
 {
 	child_cfg_t *child_cfg;
-	action_t dpd;
 	lifetime_cfg_t lifetime = {
 		.time = {
 			.life = msg->add_conn.rekey.ipsec_lifetime,
@@ -808,23 +839,11 @@ static child_cfg_t *build_child_cfg(private_stroke_config_t *this,
 		.mask = msg->add_conn.mark_out.mask
 	};
 
-	switch (msg->add_conn.dpd.action)
-	{	/* map startes magic values to our action type */
-		case 2: /* =hold */
-			dpd = ACTION_ROUTE;
-			break;
-		case 3: /* =restart */
-			dpd = ACTION_RESTART;
-			break;
-		default:
-			dpd = ACTION_NONE;
-			break;
-	}
-
 	child_cfg = child_cfg_create(
-				msg->add_conn.name, &lifetime,
-				msg->add_conn.me.updown, msg->add_conn.me.hostaccess,
-				msg->add_conn.mode, ACTION_NONE, dpd, dpd, msg->add_conn.ipcomp,
+				msg->add_conn.name, &lifetime, msg->add_conn.me.updown,
+				msg->add_conn.me.hostaccess, msg->add_conn.mode, ACTION_NONE,
+				map_action(msg->add_conn.dpd.action),
+				map_action(msg->add_conn.close_action), msg->add_conn.ipcomp,
 				msg->add_conn.inactivity, msg->add_conn.reqid,
 				&mark_in, &mark_out, msg->add_conn.tfc);
 	child_cfg->set_mipv6_options(child_cfg, msg->add_conn.proxy_mode,
@@ -950,6 +969,175 @@ METHOD(stroke_config_t, del, void,
 	}
 }
 
+METHOD(stroke_config_t, set_user_credentials, void,
+	private_stroke_config_t *this, stroke_msg_t *msg, FILE *prompt)
+{
+	enumerator_t *enumerator, *children, *remote_auth;
+	peer_cfg_t *peer, *found = NULL;
+	auth_cfg_t *auth_cfg, *remote_cfg;
+	auth_class_t auth_class;
+	child_cfg_t *child;
+	identification_t *id, *identity, *gw = NULL;
+	shared_key_type_t type = SHARED_ANY;
+	chunk_t password = chunk_empty;
+
+	this->mutex->lock(this->mutex);
+	enumerator = this->list->create_enumerator(this->list);
+	while (enumerator->enumerate(enumerator, (void**)&peer))
+	{	/* find the peer (or child) config with the given name */
+		if (streq(peer->get_name(peer), msg->user_creds.name))
+		{
+			found = peer;
+		}
+		else
+		{
+			children = peer->create_child_cfg_enumerator(peer);
+			while (children->enumerate(children, &child))
+			{
+				if (streq(child->get_name(child), msg->user_creds.name))
+				{
+					found = peer;
+					break;
+				}
+			}
+			children->destroy(children);
+		}
+
+		if (found)
+		{
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (!found)
+	{
+		DBG1(DBG_CFG, "  no config named '%s'", msg->user_creds.name);
+		fprintf(prompt, "no config named '%s'\n", msg->user_creds.name);
+		this->mutex->unlock(this->mutex);
+		return;
+	}
+
+	id = identification_create_from_string(msg->user_creds.username);
+	if (strlen(msg->user_creds.username) == 0 ||
+		!id || id->get_type(id) == ID_ANY)
+	{
+		DBG1(DBG_CFG, "  invalid username '%s'", msg->user_creds.username);
+		fprintf(prompt, "invalid username '%s'\n", msg->user_creds.username);
+		this->mutex->unlock(this->mutex);
+		DESTROY_IF(id);
+		return;
+	}
+
+	/* replace/set the username in the first EAP auth_cfg, also look for a
+	 * suitable remote ID.
+	 * note that adding the identity here is not fully thread-safe as the
+	 * peer_cfg and in turn the auth_cfg could be in use. for the default use
+	 * case (setting user credentials before upping the connection) this will
+	 * not be a problem, though. */
+	enumerator = found->create_auth_cfg_enumerator(found, TRUE);
+	remote_auth = found->create_auth_cfg_enumerator(found, FALSE);
+	while (enumerator->enumerate(enumerator, (void**)&auth_cfg))
+	{
+		if (remote_auth->enumerate(remote_auth, (void**)&remote_cfg))
+		{	/* fall back on rightid, in case aaa_identity is not specified */
+			identity = remote_cfg->get(remote_cfg, AUTH_RULE_IDENTITY);
+			if (identity && identity->get_type(identity) != ID_ANY)
+			{
+				gw = identity;
+			}
+		}
+
+		auth_class = (uintptr_t)auth_cfg->get(auth_cfg, AUTH_RULE_AUTH_CLASS);
+		if (auth_class == AUTH_CLASS_EAP)
+		{
+			auth_cfg->add(auth_cfg, AUTH_RULE_EAP_IDENTITY, id->clone(id));
+			/* if aaa_identity is specified use that as remote ID */
+			identity = auth_cfg->get(auth_cfg, AUTH_RULE_AAA_IDENTITY);
+			if (identity && identity->get_type(identity) != ID_ANY)
+			{
+				gw = identity;
+			}
+			DBG1(DBG_CFG, "  configured EAP-Identity %Y", id);
+			type = SHARED_EAP;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	remote_auth->destroy(remote_auth);
+	/* clone the gw ID before unlocking the mutex */
+	if (gw)
+	{
+		gw = gw->clone(gw);
+	}
+	this->mutex->unlock(this->mutex);
+
+	if (type == SHARED_ANY)
+	{
+		DBG1(DBG_CFG, "  config '%s' unsuitable for user credentials",
+			 msg->user_creds.name);
+		fprintf(prompt, "config '%s' unsuitable for user credentials\n",
+				msg->user_creds.name);
+		id->destroy(id);
+		DESTROY_IF(gw);
+		return;
+	}
+
+	if (msg->user_creds.password)
+	{
+		char *pass;
+
+		pass = msg->user_creds.password;
+		password = chunk_clone(chunk_create(pass, strlen(pass)));
+		memwipe(pass, strlen(pass));
+	}
+	else
+	{	/* prompt the user for the password */
+		char buf[256];
+
+		fprintf(prompt, "Password:\n");
+		if (fgets(buf, sizeof(buf), prompt))
+		{
+			password = chunk_clone(chunk_create(buf, strlen(buf)));
+			if (password.len > 0)
+			{	/* trim trailing \n */
+				password.len--;
+			}
+			memwipe(buf, sizeof(buf));
+		}
+	}
+
+	if (password.len)
+	{
+		shared_key_t *shared;
+		linked_list_t *owners;
+
+		shared = shared_key_create(type, password);
+
+		owners = linked_list_create();
+		owners->insert_last(owners, id->clone(id));
+		if (gw && gw->get_type(gw) != ID_ANY)
+		{
+			owners->insert_last(owners, gw->clone(gw));
+			DBG1(DBG_CFG, "  added %N secret for %Y %Y", shared_key_type_names,
+				 type, id, gw);
+		}
+		else
+		{
+			DBG1(DBG_CFG, "  added %N secret for %Y", shared_key_type_names,
+				 type, id);
+		}
+		this->cred->add_shared(this->cred, shared, owners);
+		DBG4(DBG_CFG, "  secret: %#B", &password);
+	}
+	else
+	{	/* in case a user answers the password prompt by just pressing enter */
+		chunk_clear(&password);
+	}
+	id->destroy(id);
+	DESTROY_IF(gw);
+}
+
 METHOD(stroke_config_t, destroy, void,
 	private_stroke_config_t *this)
 {
@@ -974,6 +1162,7 @@ stroke_config_t *stroke_config_create(stroke_ca_t *ca, stroke_cred_t *cred)
 			},
 			.add = _add,
 			.del = _del,
+			.set_user_credentials = _set_user_credentials,
 			.destroy = _destroy,
 		},
 		.list = linked_list_create(),

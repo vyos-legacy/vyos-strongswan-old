@@ -21,30 +21,9 @@
 #ifndef PB_PA_MSG_H_
 #define PB_PA_MSG_H_
 
-typedef enum pa_tnc_subtype_t pa_tnc_subtype_t;
 typedef struct pb_pa_msg_t pb_pa_msg_t;
 
 #include "pb_tnc_msg.h"
-
-/**
- * PA-TNC Subtypes as defined in section 3.5 of RFC 5792
- */
- enum pa_tnc_subtype_t {
-	PA_SUBTYPE_TESTING =			0,
-	PA_SUBTYPE_OPERATING_SYSTEM =	1,
-	PA_SUBTYPE_ANTI_VIRUS =			2,
-	PA_SUBTYPE_ANTI_SPYWARE =		3,
-	PA_SUBTYPE_ANTI_MALWARE =		4,
-	PA_SUBTYPE_FIREWALL =			5,
-	PA_SUBTYPE_IDPS =				6,
-	PA_SUBTYPE_VPN =				7,
-	PA_SUBTYPE_NEA_CLIENT =			8
-};
-
-/**
- * enum name for pa_tnc_subtype_t.
- */
-extern enum_name_t *pa_tnc_subtype_names;
 
 /**
  * Class representing the PB-PA message type.
@@ -92,12 +71,6 @@ struct pb_pa_msg_t {
 	 */
 	bool (*get_exclusive_flag)(pb_pa_msg_t *this);
 
-	/**
-	 * Set the exclusive flag
-	 *
-	 * @param excl			vexclusive flag
-	 */
-	void (*set_exclusive_flag)(pb_pa_msg_t *this, bool excl);
 };
 
 /**
@@ -107,11 +80,12 @@ struct pb_pa_msg_t {
  * @param subtype			PA Subtype		
  * @param collector_id		Posture Collector ID
  * @param validator_id		Posture Validator ID
+ * @param excl				Exclusive Flag
  * @param msg_body		 	PA Message Body
  */
 pb_tnc_msg_t *pb_pa_msg_create(u_int32_t vendor_id, u_int32_t subtype,
 							   u_int16_t collector_id, u_int16_t validator_id,
-							   chunk_t msg_body);
+							   bool excl, chunk_t msg_body);
 
 /**
  * Create an unprocessed PB-PA message from raw data

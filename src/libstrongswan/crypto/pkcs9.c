@@ -68,8 +68,6 @@ struct attribute_t {
 
 	/**
 	 * Destroys the attribute.
-	 *
-	 * @param this			attribute to destroy
 	 */
 	void (*destroy) (attribute_t *this);
 
@@ -184,23 +182,24 @@ static void attribute_destroy(attribute_t *this)
  */
 static attribute_t *attribute_create(int oid, chunk_t value)
 {
-	attribute_t *this = malloc_thing(attribute_t);
+	attribute_t *this;
 
-	this->oid = oid;
-	this->value = chunk_clone(value);
-	this->encoding = asn1_wrap(ASN1_SEQUENCE, "cm",
-						asn1_attributeIdentifier(oid),
-						asn1_simple_object(ASN1_SET, value));
-	this->destroy = (void (*) (attribute_t*))attribute_destroy;
+	INIT(this,
+		.destroy = attribute_destroy,
+		.oid = oid,
+		.value = chunk_clone(value),
+		.encoding = asn1_wrap(ASN1_SEQUENCE, "cm",
+							asn1_attributeIdentifier(oid),
+							asn1_simple_object(ASN1_SET, value)),
+	);
+
 	return this;
 }
 
-/**
- * Implements pkcs9_t.build_encoding
- */
-static void build_encoding(private_pkcs9_t *this)
+METHOD(pkcs9_t, build_encoding, void,
+	private_pkcs9_t *this)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	attribute_t *attribute;
 	u_int attributes_len = 0;
 
@@ -214,33 +213,31 @@ static void build_encoding(private_pkcs9_t *this)
 	}
 
 	/* compute the total length of the encoded attributes */
-	iterator = this->attributes->create_iterator(this->attributes, TRUE);
+	enumerator = this->attributes->create_enumerator(this->attributes);
 
-	while (iterator->iterate(iterator, (void**)&attribute))
+	while (enumerator->enumerate(enumerator, (void**)&attribute))
 	{
 		attributes_len += attribute->encoding.len;
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 
 	/* allocate memory for the attributes and build the encoding */
 	{
 		u_char *pos = asn1_build_object(&this->encoding, ASN1_SET, attributes_len);
 
-		iterator = this->attributes->create_iterator(this->attributes, TRUE);
+		enumerator = this->attributes->create_enumerator(this->attributes);
 
-		while (iterator->iterate(iterator, (void**)&attribute))
+		while (enumerator->enumerate(enumerator, (void**)&attribute))
 		{
 			memcpy(pos, attribute->encoding.ptr, attribute->encoding.len);
 			pos += attribute->encoding.len;
 		}
-		iterator->destroy(iterator);
+		enumerator->destroy(enumerator);
 	}
 }
 
-/**
- * Implements pkcs9_t.get_encoding
- */
-static chunk_t get_encoding(private_pkcs9_t *this)
+METHOD(pkcs9_t, get_encoding, chunk_t,
+	private_pkcs9_t *this)
 {
 	if (this->encoding.ptr == NULL)
 	{
@@ -249,16 +246,15 @@ static chunk_t get_encoding(private_pkcs9_t *this)
 	return this->encoding;
 }
 
-/**
- * Implements pkcs9_t.get_attribute
- */
-static chunk_t get_attribute(private_pkcs9_t *this, int oid)
+METHOD(pkcs9_t, get_attribute, chunk_t,
+	private_pkcs9_t *this, int oid)
 {
-	iterator_t *iterator = this->attributes->create_iterator(this->attributes, TRUE);
+	enumerator_t *enumerator;
 	chunk_t value = chunk_empty;
 	attribute_t *attribute;
 
-	while (iterator->iterate(iterator, (void**)&attribute))
+	enumerator = this->attributes->create_enumerator(this->attributes);
+	while (enumerator->enumerate(enumerator, (void**)&attribute))
 	{
 		if (attribute->oid == oid)
 		{
@@ -266,24 +262,20 @@ static chunk_t get_attribute(private_pkcs9_t *this, int oid)
 			break;
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 	return value;
 }
 
-/**
- * Implements pkcs9_t.set_attribute
- */
-static void set_attribute(private_pkcs9_t *this, int oid, chunk_t value)
+METHOD(pkcs9_t, set_attribute, void,
+	private_pkcs9_t *this, int oid, chunk_t value)
 {
 	attribute_t *attribute = attribute_create(oid, value);
 
 	this->attributes->insert_last(this->attributes, (void*)attribute);
 }
 
-/**
- * Implements pkcs9_t.get_messageDigest
- */
-static chunk_t get_messageDigest(private_pkcs9_t *this)
+METHOD(pkcs9_t, get_messageDigest, chunk_t,
+	private_pkcs9_t *this)
 {
 	const int oid = OID_PKCS9_MESSAGE_DIGEST;
 	chunk_t value = get_attribute(this, oid);
@@ -300,10 +292,8 @@ static chunk_t get_messageDigest(private_pkcs9_t *this)
 	return chunk_clone(value);
 }
 
-/**
- * Implements pkcs9_t.set_attribute
- */
-static void set_messageDigest(private_pkcs9_t *this, chunk_t value)
+METHOD(pkcs9_t, set_messageDigest, void,
+	private_pkcs9_t *this, chunk_t value)
 {
 	const int oid = OID_PKCS9_MESSAGE_DIGEST;
 	chunk_t messageDigest = asn1_simple_object(asn1_attributeType(oid), value);
@@ -312,10 +302,8 @@ static void set_messageDigest(private_pkcs9_t *this, chunk_t value)
 	free(messageDigest.ptr);
 }
 
-/**
- * Implements pkcs9_t.destroy
- */
-static void destroy(private_pkcs9_t *this)
+METHOD(pkcs9_t, destroy, void,
+	private_pkcs9_t *this)
 {
 	this->attributes->destroy_offset(this->attributes, offsetof(attribute_t, destroy));
 	free(this->encoding.ptr);
@@ -327,20 +315,20 @@ static void destroy(private_pkcs9_t *this)
  */
 static private_pkcs9_t *pkcs9_create_empty(void)
 {
-	private_pkcs9_t *this = malloc_thing(private_pkcs9_t);
+	private_pkcs9_t *this;
 
-	/* initialize */
-	this->encoding = chunk_empty;
-	this->attributes = linked_list_create();
-
-	/*public functions */
-	this->public.build_encoding = (void (*) (pkcs9_t*))build_encoding;
-	this->public.get_encoding = (chunk_t (*) (pkcs9_t*))get_encoding;
-	this->public.get_attribute = (chunk_t (*) (pkcs9_t*,int))get_attribute;
-	this->public.set_attribute = (void (*) (pkcs9_t*,int,chunk_t))set_attribute;
-	this->public.get_messageDigest = (chunk_t (*) (pkcs9_t*))get_messageDigest;
-	this->public.set_messageDigest = (void (*) (pkcs9_t*,chunk_t))set_messageDigest;
-	this->public.destroy = (void (*) (pkcs9_t*))destroy;
+	INIT(this,
+		.public = {
+			.build_encoding = _build_encoding,
+			.get_encoding = _get_encoding,
+			.get_attribute = _get_attribute,
+			.set_attribute = _set_attribute,
+			.get_messageDigest = _get_messageDigest,
+			.set_messageDigest = _set_messageDigest,
+			.destroy = _destroy,
+		},
+		.attributes = linked_list_create(),
+	);
 
 	return this;
 }

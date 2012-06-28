@@ -84,6 +84,27 @@ METHOD(job_t, execute, void,
 	destroy(this);
 }
 
+METHOD(job_t, get_priority, job_priority_t,
+	private_process_message_job_t *this)
+{
+	switch (this->message->get_exchange_type(this->message))
+	{
+		case IKE_AUTH:
+			/* IKE auth is rather expensive and often blocking, low priority */
+			return JOB_PRIO_LOW;
+		case INFORMATIONAL:
+			/* INFORMATIONALs are inexpensive, for DPD we should have low
+			 * reaction times */
+			return JOB_PRIO_HIGH;
+		case IKE_SA_INIT:
+		case CREATE_CHILD_SA:
+		default:
+			/* IKE_SA_INIT is expensive, but we will drop them in the receiver
+			 * if we are overloaded */
+			return JOB_PRIO_MEDIUM;
+	}
+}
+
 /*
  * Described in header
  */
@@ -95,6 +116,7 @@ process_message_job_t *process_message_job_create(message_t *message)
 		.public = {
 			.job_interface = {
 				.execute = _execute,
+				.get_priority = _get_priority,
 				.destroy = _destroy,
 			},
 		},

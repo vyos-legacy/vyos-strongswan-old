@@ -16,6 +16,26 @@ if USE_TLS
   SUBDIRS += libtls
 endif
 
+if USE_RADIUS
+  SUBDIRS += libradius
+endif
+
+if USE_LIBTNCIF
+  SUBDIRS += libtncif
+endif
+
+if USE_LIBTNCCS
+  SUBDIRS += libtnccs
+endif
+
+if USE_IMCV
+  SUBDIRS += libimcv
+endif
+
+if USE_PTS
+  SUBDIRS += libpts
+endif
+
 if USE_LIBCHARON
   SUBDIRS += libcharon
 endif

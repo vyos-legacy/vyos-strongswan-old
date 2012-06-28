@@ -112,7 +112,7 @@ static void build_payloads(private_ike_init_t *this, message_t *message)
 	linked_list_t *proposal_list;
 	ike_sa_id_t *id;
 	proposal_t *proposal;
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 
 	id = this->ike_sa->get_id(this->ike_sa);
 
@@ -124,12 +124,12 @@ static void build_payloads(private_ike_init_t *this, message_t *message)
 		if (this->old_sa)
 		{
 			/* include SPI of new IKE_SA when we are rekeying */
-			iterator = proposal_list->create_iterator(proposal_list, TRUE);
-			while (iterator->iterate(iterator, (void**)&proposal))
+			enumerator = proposal_list->create_enumerator(proposal_list);
+			while (enumerator->enumerate(enumerator, (void**)&proposal))
 			{
 				proposal->set_spi(proposal, id->get_initiator_spi(id));
 			}
-			iterator->destroy(iterator);
+			enumerator->destroy(enumerator);
 		}
 
 		sa_payload = sa_payload_create_from_proposal_list(proposal_list);
@@ -221,10 +221,8 @@ static void process_payloads(private_ike_init_t *this, message_t *message)
 	enumerator->destroy(enumerator);
 }
 
-/**
- * Implementation of task_t.process for initiator
- */
-static status_t build_i(private_ike_init_t *this, message_t *message)
+METHOD(task_t, build_i, status_t,
+	private_ike_init_t *this, message_t *message)
 {
 	rng_t *rng;
 
@@ -287,10 +285,8 @@ static status_t build_i(private_ike_init_t *this, message_t *message)
 	return NEED_MORE;
 }
 
-/**
- * Implementation of task_t.process for responder
- */
-static status_t process_r(private_ike_init_t *this, message_t *message)
+METHOD(task_t, process_r,  status_t,
+	private_ike_init_t *this, message_t *message)
 {
 	rng_t *rng;
 
@@ -361,10 +357,8 @@ static bool derive_keys(private_ike_init_t *this,
 	return TRUE;
 }
 
-/**
- * Implementation of task_t.build for responder
- */
-static status_t build_r(private_ike_init_t *this, message_t *message)
+METHOD(task_t, build_r, status_t,
+	private_ike_init_t *this, message_t *message)
 {
 	/* check if we have everything we need */
 	if (this->proposal == NULL ||
@@ -409,10 +403,8 @@ static status_t build_r(private_ike_init_t *this, message_t *message)
 	return SUCCESS;
 }
 
-/**
- * Implementation of task_t.process for initiator
- */
-static status_t process_i(private_ike_init_t *this, message_t *message)
+METHOD(task_t, process_i, status_t,
+	private_ike_init_t *this, message_t *message)
 {
 	enumerator_t *enumerator;
 	payload_t *payload;
@@ -510,18 +502,41 @@ static status_t process_i(private_ike_init_t *this, message_t *message)
 	return SUCCESS;
 }
 
-/**
- * Implementation of task_t.get_type
- */
-static task_type_t get_type(private_ike_init_t *this)
+METHOD(task_t, get_type, task_type_t,
+	private_ike_init_t *this)
 {
 	return IKE_INIT;
 }
 
-/**
- * Implementation of task_t.get_type
- */
-static chunk_t get_lower_nonce(private_ike_init_t *this)
+METHOD(task_t, migrate, void,
+	private_ike_init_t *this, ike_sa_t *ike_sa)
+{
+	DESTROY_IF(this->proposal);
+	chunk_free(&this->other_nonce);
+
+	this->ike_sa = ike_sa;
+	this->keymat = ike_sa->get_keymat(ike_sa);
+	this->proposal = NULL;
+	if (this->dh && this->dh->get_dh_group(this->dh) != this->dh_group)
+	{	/* reset DH value only if group changed (INVALID_KE_PAYLOAD) */
+		this->dh->destroy(this->dh);
+		this->dh = this->keymat->create_dh(this->keymat, this->dh_group);
+	}
+}
+
+METHOD(task_t, destroy, void,
+	private_ike_init_t *this)
+{
+	DESTROY_IF(this->dh);
+	DESTROY_IF(this->proposal);
+	chunk_free(&this->my_nonce);
+	chunk_free(&this->other_nonce);
+	chunk_free(&this->cookie);
+	free(this);
+}
+
+METHOD(ike_init_t, get_lower_nonce, chunk_t,
+	private_ike_init_t *this)
 {
 	if (memcmp(this->my_nonce.ptr, this->other_nonce.ptr,
 			   min(this->my_nonce.len, this->other_nonce.len)) < 0)
@@ -534,68 +549,39 @@ static chunk_t get_lower_nonce(private_ike_init_t *this)
 	}
 }
 
-/**
- * Implementation of task_t.migrate
- */
-static void migrate(private_ike_init_t *this, ike_sa_t *ike_sa)
-{
-	DESTROY_IF(this->proposal);
-	chunk_free(&this->other_nonce);
-
-	this->ike_sa = ike_sa;
-	this->keymat = ike_sa->get_keymat(ike_sa);
-	this->proposal = NULL;
-	DESTROY_IF(this->dh);
-	this->dh = this->keymat->create_dh(this->keymat, this->dh_group);
-}
-
-/**
- * Implementation of task_t.destroy
- */
-static void destroy(private_ike_init_t *this)
-{
-	DESTROY_IF(this->dh);
-	DESTROY_IF(this->proposal);
-	chunk_free(&this->my_nonce);
-	chunk_free(&this->other_nonce);
-	chunk_free(&this->cookie);
-	free(this);
-}
-
 /*
  * Described in header.
  */
 ike_init_t *ike_init_create(ike_sa_t *ike_sa, bool initiator, ike_sa_t *old_sa)
 {
-	private_ike_init_t *this = malloc_thing(private_ike_init_t);
+	private_ike_init_t *this;
 
-	this->public.get_lower_nonce = (chunk_t(*)(ike_init_t*))get_lower_nonce;
-	this->public.task.get_type = (task_type_t(*)(task_t*))get_type;
-	this->public.task.migrate = (void(*)(task_t*,ike_sa_t*))migrate;
-	this->public.task.destroy = (void(*)(task_t*))destroy;
+	INIT(this,
+		.public = {
+			.task = {
+				.get_type = _get_type,
+				.migrate = _migrate,
+				.destroy = _destroy,
+			},
+			.get_lower_nonce = _get_lower_nonce,
+		},
+		.ike_sa = ike_sa,
+		.initiator = initiator,
+		.dh_group = MODP_NONE,
+		.keymat = ike_sa->get_keymat(ike_sa),
+		.old_sa = old_sa,
+	);
+
 	if (initiator)
 	{
-		this->public.task.build = (status_t(*)(task_t*,message_t*))build_i;
-		this->public.task.process = (status_t(*)(task_t*,message_t*))process_i;
+		this->public.task.build = _build_i;
+		this->public.task.process = _process_i;
 	}
 	else
 	{
-		this->public.task.build = (status_t(*)(task_t*,message_t*))build_r;
-		this->public.task.process = (status_t(*)(task_t*,message_t*))process_r;
+		this->public.task.build = _build_r;
+		this->public.task.process = _process_r;
 	}
-
-	this->ike_sa = ike_sa;
-	this->initiator = initiator;
-	this->dh_group = MODP_NONE;
-	this->dh = NULL;
-	this->keymat = ike_sa->get_keymat(ike_sa);
-	this->my_nonce = chunk_empty;
-	this->other_nonce = chunk_empty;
-	this->cookie = chunk_empty;
-	this->proposal = NULL;
-	this->config = NULL;
-	this->old_sa = old_sa;
-	this->retry = 0;
 
 	return &this->public;
 }

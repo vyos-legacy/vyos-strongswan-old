@@ -32,6 +32,7 @@
 #include "daemon.h"
 
 #include <library.h>
+#include <plugins/plugin.h>
 #include <config/proposal.h>
 #include <kernel/kernel_handler.h>
 #include <processing/jobs/start_action_job.h>
@@ -104,8 +105,18 @@ static void destroy(private_daemon_t *this)
 	{
 		this->public.ike_sa_manager->flush(this->public.ike_sa_manager);
 	}
+	if (this->public.traps)
+	{
+		this->public.traps->flush(this->public.traps);
+	}
 	DESTROY_IF(this->public.receiver);
 	DESTROY_IF(this->public.sender);
+#ifdef ME
+	DESTROY_IF(this->public.connect_manager);
+	DESTROY_IF(this->public.mediation_manager);
+#endif /* ME */
+	/* make sure the cache is clear before unloading plugins */
+	lib->credmgr->flush_cache(lib->credmgr, CERT_ANY);
 	/* unload plugins to release threads */
 	lib->plugins->unload(lib->plugins);
 #ifdef CAPABILITIES_LIBCAP
@@ -113,15 +124,10 @@ static void destroy(private_daemon_t *this)
 #endif /* CAPABILITIES_LIBCAP */
 	DESTROY_IF(this->kernel_handler);
 	DESTROY_IF(this->public.traps);
+	DESTROY_IF(this->public.shunts);
 	DESTROY_IF(this->public.ike_sa_manager);
 	DESTROY_IF(this->public.controller);
 	DESTROY_IF(this->public.eap);
-	DESTROY_IF(this->public.sim);
-	DESTROY_IF(this->public.tnccs);
-#ifdef ME
-	DESTROY_IF(this->public.connect_manager);
-	DESTROY_IF(this->public.mediation_manager);
-#endif /* ME */
 	DESTROY_IF(this->public.backends);
 	DESTROY_IF(this->public.socket);
 
@@ -195,27 +201,6 @@ METHOD(daemon_t, start, void,
 											   DEFAULT_THREADS));
 }
 
-/**
- * Log loaded plugins
- */
-static void print_plugins()
-{
-	char buf[512];
-	int len = 0;
-	enumerator_t *enumerator;
-	plugin_t *plugin;
-
-	buf[0] = '\0';
-	enumerator = lib->plugins->create_plugin_enumerator(lib->plugins);
-	while (len < sizeof(buf) && enumerator->enumerate(enumerator, &plugin))
-	{
-		len += snprintf(&buf[len], sizeof(buf)-len, "%s ",
-						plugin->get_name(plugin));
-	}
-	enumerator->destroy(enumerator);
-	DBG1(DBG_DMN, "loaded plugins: %s", buf);
-}
-
 METHOD(daemon_t, initialize, bool,
 	private_daemon_t *this)
 {
@@ -236,8 +221,8 @@ METHOD(daemon_t, initialize, bool,
 	{
 		return FALSE;
 	}
-
-	print_plugins();
+	DBG1(DBG_DMN, "loaded plugins: %s",
+		 lib->plugins->loaded_plugins(lib->plugins));
 
 	this->public.ike_sa_manager = ike_sa_manager_create();
 	if (this->public.ike_sa_manager == NULL)
@@ -287,11 +272,10 @@ private_daemon_t *daemon_create()
 	charon = &this->public;
 	this->public.controller = controller_create();
 	this->public.eap = eap_manager_create();
-	this->public.sim = sim_manager_create();
-	this->public.tnccs = tnccs_manager_create();
 	this->public.backends = backend_manager_create();
 	this->public.socket = socket_manager_create();
 	this->public.traps = trap_manager_create();
+	this->public.shunts = shunt_manager_create();
 	this->kernel_handler = kernel_handler_create();
 
 #ifdef CAPABILITIES
@@ -322,9 +306,7 @@ void libcharon_deinit()
  */
 bool libcharon_init()
 {
-	private_daemon_t *this;
-
-	this = daemon_create();
+	daemon_create();
 
 	/* for uncritical pseudo random numbers */
 	srandom(time(NULL) + getpid());

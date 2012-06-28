@@ -42,134 +42,44 @@ struct private_ike_reauth_t {
 	ike_delete_t *ike_delete;
 };
 
-/**
- * Implementation of task_t.build for initiator
- */
-static status_t build_i(private_ike_reauth_t *this, message_t *message)
+METHOD(task_t, build_i, status_t,
+	private_ike_reauth_t *this, message_t *message)
 {
 	return this->ike_delete->task.build(&this->ike_delete->task, message);
 }
 
-/**
- * Implementation of task_t.process for initiator
- */
-static status_t process_i(private_ike_reauth_t *this, message_t *message)
+METHOD(task_t, process_i, status_t,
+	private_ike_reauth_t *this, message_t *message)
 {
-	ike_sa_t *new;
-	host_t *host;
-	iterator_t *iterator;
-	child_sa_t *child_sa;
-	peer_cfg_t *peer_cfg;
-
 	/* process delete response first */
 	this->ike_delete->task.process(&this->ike_delete->task, message);
 
-	peer_cfg = this->ike_sa->get_peer_cfg(this->ike_sa);
-
-	/* reauthenticate only if we have children */
-	iterator = this->ike_sa->create_child_sa_iterator(this->ike_sa);
-	if (iterator->get_count(iterator) == 0
-#ifdef ME
-		/* we allow peers to reauth mediation connections (without children) */
-		&& !peer_cfg->is_mediation(peer_cfg)
-#endif /* ME */
-		)
+	/* reestablish the IKE_SA with all children */
+	if (this->ike_sa->reestablish(this->ike_sa) != SUCCESS)
 	{
-		DBG1(DBG_IKE, "unable to reauthenticate IKE_SA, no CHILD_SA to recreate");
-		iterator->destroy(iterator);
+		DBG1(DBG_IKE, "reauthenticating IKE_SA failed");
 		return FAILED;
 	}
 
-	new = charon->ike_sa_manager->checkout_new(charon->ike_sa_manager, TRUE);
-
-	new->set_peer_cfg(new, peer_cfg);
-	host = this->ike_sa->get_other_host(this->ike_sa);
-	new->set_other_host(new, host->clone(host));
-	host = this->ike_sa->get_my_host(this->ike_sa);
-	new->set_my_host(new, host->clone(host));
-	/* if we already have a virtual IP, we reuse it */
-	host = this->ike_sa->get_virtual_ip(this->ike_sa, TRUE);
-	if (host)
-	{
-		new->set_virtual_ip(new, TRUE, host);
-	}
-
-#ifdef ME
-	/* we initiate the new IKE_SA of the mediation connection without CHILD_SA */
-	if (peer_cfg->is_mediation(peer_cfg))
-	{
-		if (new->initiate(new, NULL, 0, NULL, NULL) == DESTROY_ME)
-		{
-			charon->ike_sa_manager->checkin_and_destroy(
-								charon->ike_sa_manager, new);
-			/* set threads active IKE_SA after checkin */
-			charon->bus->set_sa(charon->bus, this->ike_sa);
-			DBG1(DBG_IKE, "reauthenticating IKE_SA failed");
-			return FAILED;
-		}
-	}
-#endif /* ME */
-
-	while (iterator->iterate(iterator, (void**)&child_sa))
-	{
-		switch (child_sa->get_state(child_sa))
-		{
-			case CHILD_ROUTED:
-			{
-				/* move routed child directly */
-				iterator->remove(iterator);
-				new->add_child_sa(new, child_sa);
-				break;
-			}
-			default:
-			{
-				/* initiate/queue all child SAs */
-				child_cfg_t *child_cfg = child_sa->get_config(child_sa);
-				child_cfg->get_ref(child_cfg);
-				if (new->initiate(new, child_cfg, 0, NULL, NULL) == DESTROY_ME)
-				{
-					iterator->destroy(iterator);
-					charon->ike_sa_manager->checkin_and_destroy(
-										charon->ike_sa_manager, new);
-					/* set threads active IKE_SA after checkin */
-					charon->bus->set_sa(charon->bus, this->ike_sa);
-					DBG1(DBG_IKE, "reauthenticating IKE_SA failed");
-					return FAILED;
-				}
-				break;
-			}
-		}
-	}
-	iterator->destroy(iterator);
-	charon->ike_sa_manager->checkin(charon->ike_sa_manager, new);
-	/* set threads active IKE_SA after checkin */
-	charon->bus->set_sa(charon->bus, this->ike_sa);
-
-	/* we always return failed to delete the obsolete IKE_SA */
-	return FAILED;
+	/* we always destroy the obsolete IKE_SA */
+	return DESTROY_ME;
 }
 
-/**
- * Implementation of task_t.get_type
- */
-static task_type_t get_type(private_ike_reauth_t *this)
+METHOD(task_t, get_type, task_type_t,
+	private_ike_reauth_t *this)
 {
 	return IKE_REAUTH;
 }
 
-/**
- * Implementation of task_t.migrate
- */
-static void migrate(private_ike_reauth_t *this, ike_sa_t *ike_sa)
+METHOD(task_t, migrate, void,
+	private_ike_reauth_t *this, ike_sa_t *ike_sa)
 {
 	this->ike_delete->task.migrate(&this->ike_delete->task, ike_sa);
 	this->ike_sa = ike_sa;
 }
 
-/**
- * Implementation of task_t.destroy
- */
-static void destroy(private_ike_reauth_t *this)
+METHOD(task_t, destroy, void,
+	private_ike_reauth_t *this)
 {
 	this->ike_delete->task.destroy(&this->ike_delete->task);
 	free(this);
@@ -180,16 +90,21 @@ static void destroy(private_ike_reauth_t *this)
  */
 ike_reauth_t *ike_reauth_create(ike_sa_t *ike_sa)
 {
-	private_ike_reauth_t *this = malloc_thing(private_ike_reauth_t);
+	private_ike_reauth_t *this;
 
-	this->public.task.get_type = (task_type_t(*)(task_t*))get_type;
-	this->public.task.migrate = (void(*)(task_t*,ike_sa_t*))migrate;
-	this->public.task.destroy = (void(*)(task_t*))destroy;
-	this->public.task.build = (status_t(*)(task_t*,message_t*))build_i;
-	this->public.task.process = (status_t(*)(task_t*,message_t*))process_i;
-
-	this->ike_sa = ike_sa;
-	this->ike_delete = ike_delete_create(ike_sa, TRUE);
+	INIT(this,
+		.public = {
+			.task = {
+				.get_type = _get_type,
+				.migrate = _migrate,
+				.build = _build_i,
+				.process = _process_i,
+				.destroy = _destroy,
+			},
+		},
+		.ike_sa = ike_sa,
+		.ike_delete = ike_delete_create(ike_sa, TRUE),
+	);
 
 	return &this->public;
 }

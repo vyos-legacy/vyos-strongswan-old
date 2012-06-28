@@ -48,13 +48,60 @@ METHOD(plugin_t, get_name, char*,
 	return "eap-simaka-reauth";
 }
 
+/**
+ * Callback providing our card to register
+ */
+static simaka_card_t* get_card(private_eap_simaka_reauth_t *this)
+{
+	if (!this->card)
+	{
+		this->card = eap_simaka_reauth_card_create();
+	}
+	return &this->card->card;
+}
+
+/**
+ * Callback providing our provider to register
+ */
+static simaka_provider_t* get_provider(private_eap_simaka_reauth_t *this)
+{
+	if (!this->provider)
+	{
+		this->provider = eap_simaka_reauth_provider_create();
+		if (!this->provider)
+		{
+			return NULL;
+		}
+	}
+	return &this->provider->provider;
+}
+
+METHOD(plugin_t, get_features, int,
+	private_eap_simaka_reauth_t *this, plugin_feature_t *features[])
+{
+	static plugin_feature_t f[] = {
+		PLUGIN_CALLBACK(simaka_manager_register, get_card),
+			PLUGIN_PROVIDE(CUSTOM, "aka-card"),
+				PLUGIN_DEPENDS(CUSTOM, "aka-manager"),
+			PLUGIN_PROVIDE(CUSTOM, "sim-card"),
+				PLUGIN_DEPENDS(CUSTOM, "sim-manager"),
+		PLUGIN_CALLBACK(simaka_manager_register, get_provider),
+			PLUGIN_PROVIDE(CUSTOM, "aka-provider"),
+				PLUGIN_DEPENDS(CUSTOM, "aka-manager"),
+				PLUGIN_DEPENDS(RNG, RNG_WEAK),
+			PLUGIN_PROVIDE(CUSTOM, "sim-provider"),
+				PLUGIN_DEPENDS(CUSTOM, "sim-manager"),
+				PLUGIN_DEPENDS(RNG, RNG_WEAK),
+	};
+	*features = f;
+	return countof(f);
+}
+
 METHOD(plugin_t, destroy, void,
 	private_eap_simaka_reauth_t *this)
 {
-	charon->sim->remove_card(charon->sim, &this->card->card);
-	charon->sim->remove_provider(charon->sim, &this->provider->provider);
-	this->card->destroy(this->card);
-	this->provider->destroy(this->provider);
+	DESTROY_IF(this->card);
+	DESTROY_IF(this->provider);
 	free(this);
 }
 
@@ -69,22 +116,11 @@ plugin_t *eap_simaka_reauth_plugin_create()
 		.public = {
 			.plugin = {
 				.get_name = _get_name,
-				.reload = (void*)return_false,
+				.get_features = _get_features,
 				.destroy = _destroy,
 			},
 		},
-		.provider = eap_simaka_reauth_provider_create(),
 	);
-
-	if (!this->provider)
-	{
-		free(this);
-		return NULL;
-	}
-	this->card = eap_simaka_reauth_card_create();
-
-	charon->sim->add_card(charon->sim, &this->card->card);
-	charon->sim->add_provider(charon->sim, &this->provider->provider);
 
 	return &this->public.plugin;
 }

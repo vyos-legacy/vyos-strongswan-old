@@ -17,22 +17,12 @@
 
 #include "pb_pa_msg.h"
 
-#include <tls_writer.h>
-#include <tls_reader.h>
 #include <tnc/tnccs/tnccs.h>
-#include <debug.h>
 
-ENUM(pa_tnc_subtype_names, PA_SUBTYPE_TESTING, PA_SUBTYPE_NEA_CLIENT,
-	"Testing",
-	"Operating System",
-	"Anti-Virus",
-	"Anti-Spyware",
-	"Anti-Malware",
-	"Firewall",
-	"IDPS",
-	"VPN",
-	"NEA Client"
-);
+#include <bio/bio_writer.h>
+#include <bio/bio_reader.h>
+#include <pen/pen.h>
+#include <debug.h>
 
 typedef struct private_pb_pa_msg_t private_pb_pa_msg_t;
 
@@ -124,10 +114,10 @@ METHOD(pb_tnc_msg_t, build, void,
 	private_pb_pa_msg_t *this)
 {
 	chunk_t msg_header;
-	tls_writer_t *writer;
+	bio_writer_t *writer;
 
 	/* build message header */
-	writer = tls_writer_create(64);
+	writer = bio_writer_create(64);
 	writer->write_uint8 (writer, this->excl ? PA_FLAG_EXCL : PA_FLAG_NONE);
 	writer->write_uint24(writer, this->vendor_id);
 	writer->write_uint32(writer, this->subtype);
@@ -146,10 +136,10 @@ METHOD(pb_tnc_msg_t, process, status_t,
 {
 	u_int8_t flags;
 	size_t msg_body_len;
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 
 	/* process message header */
-	reader = tls_reader_create(this->encoding);
+	reader = bio_reader_create(this->encoding);
 	reader->read_uint8 (reader, &flags);
 	reader->read_uint24(reader, &this->vendor_id);
 	reader->read_uint32(reader, &this->subtype);
@@ -166,9 +156,9 @@ METHOD(pb_tnc_msg_t, process, status_t,
 	}
 	reader->destroy(reader);
 
-	if (this->vendor_id == RESERVED_VENDOR_ID)
+	if (this->vendor_id == PEN_RESERVED)
 	{
-		DBG1(DBG_TNC, "Vendor ID 0x%06x is reserved", RESERVED_VENDOR_ID);
+		DBG1(DBG_TNC, "Vendor ID 0x%06x is reserved", PEN_RESERVED);
 		*offset = 1;
 		return FAILED;
 	}
@@ -221,12 +211,6 @@ METHOD(pb_pa_msg_t, get_exclusive_flag, bool,
 	return this->excl;
 }
 
-METHOD(pb_pa_msg_t, set_exclusive_flag, void,
-	private_pb_pa_msg_t *this, bool excl)
-{
-	this->excl = excl;
-}
-
 /**
  * See header
  */
@@ -247,7 +231,6 @@ pb_tnc_msg_t *pb_pa_msg_create_from_data(chunk_t data)
 			.get_validator_id = _get_validator_id,
 			.get_body = _get_body,
 			.get_exclusive_flag = _get_exclusive_flag,
-			.set_exclusive_flag = _set_exclusive_flag,
 		},
 		.type = PB_MSG_PA,
 		.encoding = chunk_clone(data),
@@ -261,7 +244,7 @@ pb_tnc_msg_t *pb_pa_msg_create_from_data(chunk_t data)
  */
 pb_tnc_msg_t *pb_pa_msg_create(u_int32_t vendor_id, u_int32_t subtype,
 							   u_int16_t collector_id, u_int16_t validator_id,
-							   chunk_t msg_body)
+							   bool excl, chunk_t msg_body)
 {
 	private_pb_pa_msg_t *this;
 
@@ -279,13 +262,13 @@ pb_tnc_msg_t *pb_pa_msg_create(u_int32_t vendor_id, u_int32_t subtype,
 			.get_validator_id = _get_validator_id,
 			.get_body = _get_body,
 			.get_exclusive_flag = _get_exclusive_flag,
-			.set_exclusive_flag = _set_exclusive_flag,
 		},
 		.type = PB_MSG_PA,
 		.vendor_id = vendor_id,
 		.subtype = subtype,
 		.collector_id = collector_id,
 		.validator_id = validator_id,
+		.excl = excl,
 		.msg_body = chunk_clone(msg_body),
 	);
 

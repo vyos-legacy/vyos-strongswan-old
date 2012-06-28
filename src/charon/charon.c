@@ -41,7 +41,7 @@
 #include <threading/thread.h>
 
 #ifdef ANDROID
-#include <private/android_filesystem_config.h>
+#include <private/android_filesystem_config.h> /* for AID_VPN */
 #endif
 
 #ifndef LOG_AUTHPRIV /* not defined on OpenSolaris */
@@ -242,6 +242,7 @@ static bool check_pidfile()
 			memset(buf, 0, sizeof(buf));
 			if (fread(buf, 1, sizeof(buf), pidfile))
 			{
+				buf[sizeof(buf) - 1] = '\0';
 				pid = atoi(buf);
 			}
 			fclose(pidfile);
@@ -290,7 +291,7 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 	sys_logger_t *sys_logger;
 	file_logger_t *file_logger;
 	enumerator_t *enumerator;
-	char *facility, *filename;
+	char *identifier, *facility, *filename;
 	int loggers_defined = 0;
 	debug_t group;
 	level_t  def;
@@ -298,6 +299,12 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 	FILE *file;
 
 	/* setup sysloggers */
+	identifier = lib->settings->get_str(lib->settings,
+										"charon.syslog.identifier", NULL);
+	if (identifier)
+	{	/* set identifier, which is prepended to each log line */
+		openlog(identifier, 0, 0);
+	}
 	enumerator = lib->settings->create_section_enumerator(lib->settings,
 														  "charon.syslog");
 	while (enumerator->enumerate(enumerator, &facility))
@@ -425,7 +432,7 @@ static void usage(const char *msg)
 					"         [--version]\n"
 					"         [--use-syslog]\n"
 					"         [--debug-<type> <level>]\n"
-					"           <type>:  log context type (dmn|mgr|ike|chd|job|cfg|knl|net|enc|tnc|tls|lib)\n"
+					"           <type>:  log context type (dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|lib)\n"
 					"           <level>: log verbosity (-1 = silent, 0 = audit, 1 = control,\n"
 					"                                    2 = controlmore, 3 = raw, 4 = private)\n"
 					"\n"
@@ -496,8 +503,12 @@ int main(int argc, char *argv[])
 			{ "debug-cfg", required_argument, &group, DBG_CFG },
 			{ "debug-knl", required_argument, &group, DBG_KNL },
 			{ "debug-net", required_argument, &group, DBG_NET },
+			{ "debug-asn", required_argument, &group, DBG_ASN },
 			{ "debug-enc", required_argument, &group, DBG_ENC },
 			{ "debug-tnc", required_argument, &group, DBG_TNC },
+			{ "debug-imc", required_argument, &group, DBG_IMC },
+			{ "debug-imv", required_argument, &group, DBG_IMV },
+			{ "debug-pts", required_argument, &group, DBG_PTS },
 			{ "debug-tls", required_argument, &group, DBG_TLS },
 			{ "debug-lib", required_argument, &group, DBG_LIB },
 			{ 0,0,0,0 }

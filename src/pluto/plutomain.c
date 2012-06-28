@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -29,6 +30,7 @@
 #include <arpa/nameser.h>       /* missing from <resolv.h> on old systems */
 #include <sys/queue.h>
 #include <sys/prctl.h>
+#include <signal.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -79,10 +81,31 @@
 #include "whack_attribute.h"
 #include "pluto.h"
 
+#ifdef ANDROID
+#include <private/android_filesystem_config.h> /* for AID_VPN */
+#endif
+
 /**
  * Number of threads in the thread pool, if not specified in config.
  */
 #define DEFAULT_THREADS 4
+
+/**
+ * PID file, in which pluto stores its process id
+ */
+static char pluto_lock[sizeof(ctl_addr.sun_path)] = DEFAULT_CTLBASE LOCK_SUFFIX;
+
+/**
+ * TRUE if the lock has been checked.  This helps to avoid any unintended
+ * deletion of the lock or control socket.
+ */
+static bool pluto_lock_checked = FALSE;
+
+/**
+ * Global reference to PID file (required to truncate, if undeletable)
+ */
+static FILE *pidfile = NULL;
+
 
 static void usage(const char *mess)
 {
@@ -148,59 +171,66 @@ static void usage(const char *mess)
 	exit_pluto(mess == NULL? 0 : 1);
 }
 
-
-/* lock file support
- * - provides convenient way for scripts to find Pluto's pid
- * - prevents multiple Plutos competing for the same port
- * - same basename as unix domain control socket
- * NOTE: will not take account of sharing LOCK_DIR with other systems.
- */
-
-static char pluto_lock[sizeof(ctl_addr.sun_path)] = DEFAULT_CTLBASE LOCK_SUFFIX;
-static bool pluto_lock_created = FALSE;
-
-/* create lockfile, or die in the attempt */
-static int create_lock(void)
+static bool check_lock()
 {
-	int fd = open(pluto_lock, O_WRONLY | O_CREAT | O_EXCL | O_TRUNC
-		, S_IRUSR | S_IRGRP | S_IROTH);
+	struct stat stb;
+	FILE *fpid;
 
-	if (fd < 0)
+	if (stat(pluto_lock, &stb) == 0)
 	{
-		if (errno == EEXIST)
+		fpid = fopen(pluto_lock, "r");
+		if (fpid)
 		{
-			fprintf(stderr, "pluto: lock file \"%s\" already exists\n"
-				, pluto_lock);
-			exit_pluto(10);
+			char buf[64];
+			pid_t pid = 0;
+
+			memset(buf, 0, sizeof(buf));
+			if (fread(buf, 1, sizeof(buf), fpid))
+			{
+				buf[sizeof(buf) - 1] = '\0';
+				pid = atoi(buf);
+			}
+			fclose(fpid);
+			if (pid && kill(pid, 0) == 0)
+			{	/* such a process is running */
+				return TRUE;
+			}
 		}
-		else
-		{
-			fprintf(stderr
-				, "pluto: unable to create lock file \"%s\" (%d %s)\n"
-				, pluto_lock, errno, strerror(errno));
-			exit_pluto(1);
-		}
+		fprintf(stderr, "pluto: removing lock file \"%s\", process not "
+				"running\n", pluto_lock);
+		unlink(pluto_lock);
 	}
-	pluto_lock_created = TRUE;
-	return fd;
+	pluto_lock_checked = TRUE;
+	return FALSE;
 }
 
-static bool fill_lock(int lockfd, pid_t pid)
+static void fill_lock(void)
 {
-	char buf[30];       /* holds "<pid>\n" */
-	int len = snprintf(buf, sizeof(buf), "%u\n", (unsigned int) pid);
-	bool ok = len > 0 && write(lockfd, buf, len) == len;
-
-	close(lockfd);
-	return ok;
+	pidfile = fopen(pluto_lock, "w");
+	if (pidfile)
+	{
+		fprintf(pidfile, "%u\n", (u_int)getpid());
+		fflush(pidfile);
+	}
+	/* keep pidfile open so we can truncate it, if we cannot delete it */
 }
 
 static void delete_lock(void)
 {
-	if (pluto_lock_created)
+	/* because unlinking the PID file may fail, we truncate it to ensure the
+	 * daemon can be properly restarted.  one probable cause for this is the
+	 * combination of not running as root and the effective user lacking
+	 * permissions on the parent dir(s) of the PID file */
+	if (pluto_lock_checked)
 	{
+		if (pidfile)
+		{
+			ignore_result(ftruncate(fileno(pidfile), 0));
+			fclose(pidfile);
+		}
+		unlink(pluto_lock);
+		/* delete this here to avoid that exit_pluto calls delete the socket */
 		delete_ctl_socket();
-		unlink(pluto_lock);     /* is noting failure useful? */
 	}
 }
 
@@ -234,26 +264,6 @@ static const char *pkcs11_init_args = NULL;
 /* options read by optionsfrom */
 options_t *options;
 
-/**
- * Log loaded plugins
- */
-static void print_plugins()
-{
-	char buf[BUF_LEN];
-	plugin_t *plugin;
-	int len = 0;
-	enumerator_t *enumerator;
-
-	buf[0] = '\0';
-	enumerator = lib->plugins->create_plugin_enumerator(lib->plugins);
-	while (len < BUF_LEN && enumerator->enumerate(enumerator, &plugin))
-	{
-		len += snprintf(&buf[len], BUF_LEN-len, "%s ", plugin->get_name(plugin));
-	}
-	enumerator->destroy(enumerator);
-	DBG1(DBG_DMN, "loaded plugins: %s", buf);
-}
-
 int main(int argc, char **argv)
 {
 	bool fork_desired = TRUE;
@@ -263,9 +273,14 @@ int main(int argc, char **argv)
 	unsigned int keep_alive = 0;
 	bool force_keepalive = FALSE;
 	char *virtual_private = NULL;
-	int lockfd;
 #ifdef CAPABILITIES
-	int keep[] = { CAP_NET_ADMIN, CAP_NET_BIND_SERVICE };
+	int keep[] = {
+			CAP_NET_ADMIN,
+			CAP_NET_BIND_SERVICE,
+#ifdef ANDROID
+			CAP_NET_RAW,
+#endif
+	};
 #endif /* CAPABILITIES */
 
 	/* initialize library and optionsfrom */
@@ -313,11 +328,7 @@ int main(int argc, char **argv)
 			{ "perpeerlogbase", required_argument, NULL, 'P' },
 			{ "perpeerlog", no_argument, NULL, 'l' },
 			{ "policygroupsdir", required_argument, NULL, 'f' },
-#ifdef USE_LWRES
-			{ "lwdnsq", required_argument, NULL, 'a' },
-#else /* !USE_LWRES */
 			{ "adns", required_argument, NULL, 'a' },
-#endif /* !USE_LWRES */
 			{ "pkcs11module", required_argument, NULL, 'm' },
 			{ "pkcs11keepstate", no_argument, NULL, 'k' },
 			{ "pkcs11initargs", required_argument, NULL, 'z' },
@@ -471,11 +482,11 @@ int main(int argc, char **argv)
 		case 'f':       /* --policygroupsdir <policygroups-dir> */
 			policygroups_dir = optarg;
 			continue;
-
+#ifdef ADNS
 		case 'a':       /* --adns <pathname> */
 			pluto_adns_option = optarg;
 			continue;
-
+#endif
 		case 'm':       /* --pkcs11module <pathname> */
 			pkcs11_module_path = optarg;
 			continue;
@@ -545,7 +556,12 @@ int main(int argc, char **argv)
 	if (optind != argc)
 		usage("unexpected argument");
 	reset_debugging();
-	lockfd = create_lock();
+
+	if (check_lock())
+	{
+		fprintf(stderr, "pluto: lock file \"%s\" already exists\n", pluto_lock);
+		exit_pluto(10);
+	}
 
 	/* select between logging methods */
 
@@ -598,11 +614,13 @@ int main(int argc, char **argv)
 
 			if (pid != 0)
 			{
-				/* parent: die, after filling PID into lock file.
+				/* parent: die
 				 * must not use exit_pluto: lock would be removed!
 				 */
-				exit(fill_lock(lockfd, pid)? 0 : 1);
+				exit(0);
 			}
+			/* child: fill PID into lock file */
+			fill_lock();
 		}
 
 		if (setsid() < 0)
@@ -617,7 +635,7 @@ int main(int argc, char **argv)
 	else
 	{
 		/* no daemon fork: we have to fill in lock file */
-		(void) fill_lock(lockfd, getpid());
+		fill_lock();
 		fprintf(stdout, "Pluto initialized\n");
 		fflush(stdout);
 	}
@@ -636,6 +654,9 @@ int main(int argc, char **argv)
 			abort();
 		close(fd);
 	}
+
+	/* for uncritical pseudo random numbers */
+	srand(time(NULL) + getpid());
 
 	init_constants();
 	init_log("pluto");
@@ -660,7 +681,8 @@ int main(int argc, char **argv)
 	{
 		exit(SS_RC_INITIALIZATION_FAILED);
 	}
-	print_plugins();
+	DBG1(DBG_DMN, "loaded plugins: %s",
+		 lib->plugins->loaded_plugins(lib->plugins));
 
 	init_builder();
 	if (!init_secret() || !init_crypto())
@@ -674,22 +696,24 @@ int main(int argc, char **argv)
 	init_states();
 	init_demux();
 	init_kernel();
+#ifdef ADNS
 	init_adns();
+#endif
 	init_myid();
 	fetch_initialize();
 	ac_initialize();
 	whack_attribute_initialize();
 
 	/* drop unneeded capabilities and change UID/GID */
-	prctl(PR_SET_KEEPCAPS, 1);
+	prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
 
 #ifdef IPSEC_GROUP
 	{
 		struct group group, *grp;
-	char buf[1024];
+		char buf[1024];
 
 		if (getgrnam_r(IPSEC_GROUP, &group, buf, sizeof(buf), &grp) != 0 ||
-				grp == NULL || setgid(grp->gr_gid) != 0)
+			grp == NULL || setgid(grp->gr_gid) != 0)
 		{
 			plog("unable to change daemon group");
 			abort();
@@ -699,15 +723,22 @@ int main(int argc, char **argv)
 #ifdef IPSEC_USER
 	{
 		struct passwd passwd, *pwp;
-	char buf[1024];
+		char buf[1024];
 
 		if (getpwnam_r(IPSEC_USER, &passwd, buf, sizeof(buf), &pwp) != 0 ||
-				pwp == NULL || setuid(pwp->pw_uid) != 0)
+			pwp == NULL || setuid(pwp->pw_uid) != 0)
 		{
 			plog("unable to change daemon user");
 			abort();
 		}
-		}
+	}
+#endif
+#ifdef ANDROID
+	if (setuid(AID_VPN) != 0)
+	{
+		plog("unable to change daemon user");
+		abort();
+	}
 #endif
 
 #ifdef CAPABILITIES_LIBCAP
@@ -793,7 +824,9 @@ void exit_pluto(int status)
 	free_ifaces();
 	ac_finalize();              /* free X.509 attribute certificates */
 	scx_finalize();             /* finalize and unload PKCS #11 module */
+#ifdef ADNS
 	stop_adns();
+#endif
 	free_md_pool();
 	free_crypto();
 	free_myid();                /* free myids */
@@ -803,6 +836,7 @@ void exit_pluto(int status)
 	delete_lock();
 	options->destroy(options);
 	pluto_deinit();
+	lib->credmgr->flush_cache(lib->credmgr, CERT_ANY);
 	lib->plugins->unload(lib->plugins);
 	libhydra_deinit();
 	library_deinit();

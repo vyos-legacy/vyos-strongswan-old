@@ -27,9 +27,11 @@
 #include <arpa/nameser.h>       /* missing from <resolv.h> on old systems */
 #include <sys/queue.h>
 
+#ifdef HAVE_GLOB_H
 #include <glob.h>
 #ifndef GLOB_ABORTED
 # define GLOB_ABORTED    GLOB_ABEND     /* fix for old versions */
+#endif
 #endif
 
 #include <freeswan.h>
@@ -833,14 +835,7 @@ static void process_secret(secret_t *s, int whackfd)
 	err_t ugh = NULL;
 
 	s->kind = SECRET_PSK;  /* default */
-	if (*tok == '"' || *tok == '\'')
-	{
-		log_psk("PSK", s);
-
-		/* old PSK format: just a string */
-		ugh = process_psk_secret(&s->u.preshared_secret);
-	}
-	else if (tokeqword("psk"))
+	if (tokeqword("psk"))
 	{
 		log_psk("PSK", s);
 
@@ -987,13 +982,7 @@ static void process_secret_records(int whackfd)
 
 			for (;;)
 			{
-				if (tok[0] == '"' || tok[0] == '\'')
-				{
-					/* found key part */
-					process_secret(s, whackfd);
-					break;
-				}
-				else if (tokeq(":"))
+				if (tokeq(":"))
 				{
 					/* found key part */
 					shift();    /* discard explicit separator */
@@ -1033,7 +1022,6 @@ static void process_secrets_file(const char *file_pat, int whackfd)
 {
 	struct file_lex_position pos;
 	char **fnp;
-	glob_t globbuf;
 
 	pos.depth = flp == NULL? 0 : flp->depth + 1;
 
@@ -1043,8 +1031,10 @@ static void process_secrets_file(const char *file_pat, int whackfd)
 		return;
 	}
 
+#ifdef HAVE_GLOB_H
 	/* do globbing */
 	{
+		glob_t globbuf;
 		int r = glob(file_pat, GLOB_ERR, globugh, &globbuf);
 
 		if (r != 0)
@@ -1066,21 +1056,31 @@ static void process_secrets_file(const char *file_pat, int whackfd)
 			globfree(&globbuf);
 			return;
 		}
-	}
 
-	/* for each file... */
-	for (fnp = globbuf.gl_pathv; *fnp != NULL; fnp++)
-	{
-		if (lexopen(&pos, *fnp, FALSE))
+		/* for each file... */
+		for (fnp = globbuf.gl_pathv; *fnp != NULL; fnp++)
 		{
-			plog("loading secrets from \"%s\"", *fnp);
-			(void) flushline("file starts with indentation (continuation notation)");
-			process_secret_records(whackfd);
-			lexclose();
+			if (lexopen(&pos, *fnp, FALSE))
+			{
+				plog("loading secrets from \"%s\"", *fnp);
+				flushline("file starts with indentation (continuation notation)");
+				process_secret_records(whackfd);
+				lexclose();
+			}
 		}
-	}
 
-	globfree(&globbuf);
+		globfree(&globbuf);
+	}
+#else /* HAVE_GLOB_H */
+	/* if glob(3) is not available, try to load pattern directly */
+	if (lexopen(&pos, file_pat, FALSE))
+	{
+		plog("loading secrets from \"%s\"", file_pat);
+		flushline("file starts with indentation (continuation notation)");
+		process_secret_records(whackfd);
+		lexclose();
+	}
+#endif /* HAVE_GLOB_H */
 }
 
 void free_preshared_secrets(void)
@@ -1435,6 +1435,7 @@ void remove_x509_public_key(const cert_t *cert)
 void list_public_keys(bool utc)
 {
 	pubkey_list_t *p = pubkeys;
+	chunk_t serial;
 
 	if (p != NULL)
 	{
@@ -1465,7 +1466,8 @@ void list_public_keys(bool utc)
 		}
 		if (key->serial.len)
 		{
-			whack_log(RC_COMMENT,"  serial:    %#B", &key->serial);
+			serial = chunk_skip_zero(key->serial);
+			whack_log(RC_COMMENT,"  serial:    %#B", &serial);
 		}
 		p = p->next;
 	}

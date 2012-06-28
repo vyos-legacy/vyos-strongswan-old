@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Tobias Brunner
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -17,12 +17,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
-#include <glob.h>
 #include <libgen.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+
+#ifdef HAVE_GLOB_H
+#include <glob.h>
+#endif
 
 #include "stroke_cred.h"
 
@@ -68,15 +71,19 @@ struct private_stroke_cred_t {
 	mem_cred_t *creds;
 
 	/**
+	 * ignore missing CA basic constraint (i.e. treat all certificates in
+	 * ipsec.conf ca sections and ipsec.d/cacert as CA certificates)
+	 */
+	bool force_ca_cert;
+
+	/**
 	 * cache CRLs to disk?
 	 */
 	bool cachecrl;
 };
 
-/**
- * Implementation of stroke_cred_t.load_ca.
- */
-static certificate_t* load_ca(private_stroke_cred_t *this, char *filename)
+METHOD(stroke_cred_t, load_ca, certificate_t*,
+	private_stroke_cred_t *this, char *filename)
 {
 	certificate_t *cert;
 	char path[PATH_MAX];
@@ -90,10 +97,21 @@ static certificate_t* load_ca(private_stroke_cred_t *this, char *filename)
 		snprintf(path, sizeof(path), "%s/%s", CA_CERTIFICATE_DIR, filename);
 	}
 
-	cert = lib->creds->create(lib->creds,
+	if (this->force_ca_cert)
+	{	/* we treat this certificate as a CA certificate even if it has no
+		 * CA basic constraint */
+		cert = lib->creds->create(lib->creds,
+							  CRED_CERTIFICATE, CERT_X509,
+							  BUILD_FROM_FILE, path, BUILD_X509_FLAG, X509_CA,
+							  BUILD_END);
+	}
+	else
+	{
+		cert = lib->creds->create(lib->creds,
 							  CRED_CERTIFICATE, CERT_X509,
 							  BUILD_FROM_FILE, path,
 							  BUILD_END);
+	}
 	if (cert)
 	{
 		x509_t *x509 = (x509_t*)cert;
@@ -110,10 +128,8 @@ static certificate_t* load_ca(private_stroke_cred_t *this, char *filename)
 	return NULL;
 }
 
-/**
- * Implementation of stroke_cred_t.load_peer.
- */
-static certificate_t* load_peer(private_stroke_cred_t *this, char *filename)
+METHOD(stroke_cred_t, load_peer, certificate_t*,
+	private_stroke_cred_t *this, char *filename)
 {
 	certificate_t *cert;
 	char path[PATH_MAX];
@@ -139,6 +155,78 @@ static certificate_t* load_peer(private_stroke_cred_t *this, char *filename)
 		return cert;
 	}
 	DBG1(DBG_CFG, "  loading certificate from '%s' failed", filename);
+	return NULL;
+}
+
+METHOD(stroke_cred_t, load_pubkey, certificate_t*,
+	private_stroke_cred_t *this, key_type_t type, char *filename,
+	identification_t *identity)
+{
+	certificate_t *cert;
+	char path[PATH_MAX];
+
+	if (streq(filename, "%dns"))
+	{
+
+	}
+	else if (strncaseeq(filename, "0x", 2) || strncaseeq(filename, "0s", 2))
+	{
+		chunk_t printable_key, rfc3110_key;
+		public_key_t *key;
+
+		printable_key = chunk_create(filename + 2, strlen(filename) - 2);
+		rfc3110_key = strncaseeq(filename, "0x", 2) ?
+								 chunk_from_hex(printable_key, NULL) :
+								 chunk_from_base64(printable_key, NULL);
+		key = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, KEY_RSA,
+								 BUILD_BLOB_DNSKEY, rfc3110_key,
+								 BUILD_END);
+		free(rfc3110_key.ptr);
+		if (key)
+		{
+			cert = lib->creds->create(lib->creds, CRED_CERTIFICATE,
+									  CERT_TRUSTED_PUBKEY,
+									  BUILD_PUBLIC_KEY, key,
+									  BUILD_SUBJECT, identity,
+									  BUILD_END);
+			key->destroy(key);
+			if (cert)
+			{
+				cert = this->creds->add_cert_ref(this->creds, TRUE, cert);
+				DBG1(DBG_CFG, "  loaded %N public key for \"%Y\"",
+					 key_type_names, type, identity);
+				return cert;
+			}
+		}
+		DBG1(DBG_CFG, "  loading %N public key for \"%Y\" failed",
+			 key_type_names, type, identity);
+	}
+	else
+	{
+		if (*filename == '/')
+		{
+			snprintf(path, sizeof(path), "%s", filename);
+		}
+		else
+		{
+			snprintf(path, sizeof(path), "%s/%s", CERTIFICATE_DIR, filename);
+		}
+
+		cert = lib->creds->create(lib->creds,
+								  CRED_CERTIFICATE, CERT_TRUSTED_PUBKEY,
+								  BUILD_FROM_FILE, path,
+								  BUILD_SUBJECT, identity,
+								  BUILD_END);
+		if (cert)
+		{
+			cert = this->creds->add_cert_ref(this->creds, TRUE, cert);
+			DBG1(DBG_CFG, "  loaded %N public key for \"%Y\" from '%s'",
+				 key_type_names, type, identity, filename);
+			return cert;
+		}
+		DBG1(DBG_CFG, "  loading %N public key for \"%Y\" from '%s' failed",
+			 key_type_names, type, identity, filename);
+	}
 	return NULL;
 }
 
@@ -172,11 +260,21 @@ static void load_certdir(private_stroke_cred_t *this, char *path,
 		{
 			case CERT_X509:
 				if (flag & X509_CA)
-				{	/* for CA certificates, we strictly require
-					 * the CA basic constraint to be set */
-					cert = lib->creds->create(lib->creds,
+				{
+					if (this->force_ca_cert)
+					{	/* treat this certificate as CA cert even it has no
+						 * CA basic constraint */
+						cert = lib->creds->create(lib->creds,
+										CRED_CERTIFICATE, CERT_X509,
+										BUILD_FROM_FILE, file, BUILD_X509_FLAG,
+										X509_CA, BUILD_END);
+					}
+					else
+					{
+						cert = lib->creds->create(lib->creds,
 										CRED_CERTIFICATE, CERT_X509,
 										BUILD_FROM_FILE, file, BUILD_END);
+					}
 					if (cert)
 					{
 						x509_t *x509 = (x509_t*)cert;
@@ -262,10 +360,8 @@ static void load_certdir(private_stroke_cred_t *this, char *path,
 	enumerator->destroy(enumerator);
 }
 
-/**
- * Implementation of credential_set_t.cache_cert.
- */
-static void cache_cert(private_stroke_cred_t *this, certificate_t *cert)
+METHOD(stroke_cred_t, cache_cert, void,
+	private_stroke_cred_t *this, certificate_t *cert)
 {
 	if (cert->get_type(cert) == CERT_X509_CRL && this->cachecrl)
 	{
@@ -292,10 +388,8 @@ static void cache_cert(private_stroke_cred_t *this, certificate_t *cert)
 	}
 }
 
-/**
- * Implementation of stroke_cred_t.cachecrl.
- */
-static void cachecrl(private_stroke_cred_t *this, bool enabled)
+METHOD(stroke_cred_t, cachecrl, void,
+	private_stroke_cred_t *this, bool enabled)
 {
 	DBG1(DBG_CFG, "crl caching to %s %s",
 		 CRL_DIR, enabled ? "enabled" : "disabled");
@@ -852,7 +946,6 @@ static void load_secrets(private_stroke_cred_t *this, char *file, int level,
 		if (line.len > strlen("include ") &&
 			strneq(line.ptr, "include ", strlen("include ")))
 		{
-			glob_t buf;
 			char **expanded, *dir, pattern[PATH_MAX];
 			u_char *pos;
 
@@ -894,18 +987,27 @@ static void load_secrets(private_stroke_cred_t *this, char *file, int level,
 						 dir, (int)line.len, line.ptr);
 				free(dir);
 			}
-			if (glob(pattern, GLOB_ERR, NULL, &buf) != 0)
+#ifdef HAVE_GLOB_H
 			{
-				DBG1(DBG_CFG, "expanding file expression '%s' failed", pattern);
-			}
-			else
-			{
-				for (expanded = buf.gl_pathv; *expanded != NULL; expanded++)
+				glob_t buf;
+				if (glob(pattern, GLOB_ERR, NULL, &buf) != 0)
 				{
-					load_secrets(this, *expanded, level + 1, prompt);
+					DBG1(DBG_CFG, "expanding file expression '%s' failed",
+						 pattern);
 				}
+				else
+				{
+					for (expanded = buf.gl_pathv; *expanded != NULL; expanded++)
+					{
+						load_secrets(this, *expanded, level + 1, prompt);
+					}
+				}
+				globfree(&buf);
 			}
-			globfree(&buf);
+#else /* HAVE_GLOB_H */
+			/* if glob(3) is not available, try to load pattern directly */
+			load_secrets(this, pattern, level + 1, prompt);
+#endif /* HAVE_GLOB_H */
 			continue;
 		}
 
@@ -994,10 +1096,8 @@ static void load_certs(private_stroke_cred_t *this)
 	load_certdir(this, CRL_DIR, CERT_X509_CRL, 0);
 }
 
-/**
- * Implementation of stroke_cred_t.reread.
- */
-static void reread(private_stroke_cred_t *this, stroke_msg_t *msg, FILE *prompt)
+METHOD(stroke_cred_t, reread, void,
+	private_stroke_cred_t *this, stroke_msg_t *msg, FILE *prompt)
 {
 	if (msg->reread.flags & REREAD_SECRETS)
 	{
@@ -1037,10 +1137,14 @@ static void reread(private_stroke_cred_t *this, stroke_msg_t *msg, FILE *prompt)
 	}
 }
 
-/**
- * Implementation of stroke_cred_t.destroy
- */
-static void destroy(private_stroke_cred_t *this)
+METHOD(stroke_cred_t, add_shared, void,
+	private_stroke_cred_t *this, shared_key_t *shared, linked_list_t *owners)
+{
+	this->creds->add_shared_list(this->creds, shared, owners);
+}
+
+METHOD(stroke_cred_t, destroy, void,
+	private_stroke_cred_t *this)
 {
 	lib->credmgr->remove_set(lib->credmgr, &this->creds->set);
 	this->creds->destroy(this->creds);
@@ -1052,26 +1156,35 @@ static void destroy(private_stroke_cred_t *this)
  */
 stroke_cred_t *stroke_cred_create()
 {
-	private_stroke_cred_t *this = malloc_thing(private_stroke_cred_t);
+	private_stroke_cred_t *this;
 
-	this->public.set.create_private_enumerator = (void*)return_null;
-	this->public.set.create_cert_enumerator = (void*)return_null;
-	this->public.set.create_shared_enumerator = (void*)return_null;
-	this->public.set.create_cdp_enumerator = (void*)return_null;
-	this->public.set.cache_cert = (void*)cache_cert;
-	this->public.reread = (void(*)(stroke_cred_t*, stroke_msg_t *msg, FILE*))reread;
-	this->public.load_ca = (certificate_t*(*)(stroke_cred_t*, char *filename))load_ca;
-	this->public.load_peer = (certificate_t*(*)(stroke_cred_t*, char *filename))load_peer;
-	this->public.cachecrl = (void(*)(stroke_cred_t*, bool enabled))cachecrl;
-	this->public.destroy = (void(*)(stroke_cred_t*))destroy;
+	INIT(this,
+		.public = {
+			.set = {
+				.create_private_enumerator = (void*)return_null,
+				.create_cert_enumerator = (void*)return_null,
+				.create_shared_enumerator = (void*)return_null,
+				.create_cdp_enumerator = (void*)return_null,
+				.cache_cert = (void*)_cache_cert,
+			},
+			.reread = _reread,
+			.load_ca = _load_ca,
+			.load_peer = _load_peer,
+			.load_pubkey = _load_pubkey,
+			.add_shared = _add_shared,
+			.cachecrl = _cachecrl,
+			.destroy = _destroy,
+		},
+		.creds = mem_cred_create(),
+	);
 
-	this->creds = mem_cred_create();
 	lib->credmgr->add_set(lib->credmgr, &this->creds->set);
+
+	this->force_ca_cert = lib->settings->get_bool(lib->settings,
+			"charon.plugins.stroke.ignore_missing_ca_basic_constraint", FALSE);
 
 	load_certs(this);
 	load_secrets(this, SECRETS_FILE, 0, NULL);
-
-	this->cachecrl = FALSE;
 
 	return &this->public;
 }

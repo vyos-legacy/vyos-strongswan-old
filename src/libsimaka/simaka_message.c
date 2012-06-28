@@ -15,6 +15,11 @@
 
 #include "simaka_message.h"
 
+#include "simaka_manager.h"
+
+#include <debug.h>
+#include <utils/linked_list.h>
+
 typedef struct private_simaka_message_t private_simaka_message_t;
 typedef struct hdr_t hdr_t;
 typedef struct attr_hdr_t attr_hdr_t;
@@ -134,9 +139,9 @@ ENUM(simaka_client_error_names, SIM_UNABLE_TO_PROCESS, SIM_RANDS_NOT_FRESH,
  */
 bool simaka_attribute_skippable(simaka_attribute_t attribute)
 {
-	bool skippable = !(attribute >= 0 && attribute <= 127);
+	bool skippable = !((int)attribute >= 0 && attribute <= 127);
 
-	DBG1(DBG_IKE, "%sskippable EAP-SIM/AKA attribute %N",
+	DBG1(DBG_LIB, "%sskippable EAP-SIM/AKA attribute %N",
 		 skippable ? "ignoring " : "found non-",
 		 simaka_attribute_names, attribute);
 	return skippable;
@@ -193,34 +198,26 @@ struct private_simaka_message_t {
 	chunk_t iv;
 };
 
-/**
- * Implementation of simaka_message_t.is_request
- */
-static bool is_request(private_simaka_message_t *this)
+METHOD(simaka_message_t, is_request, bool,
+	private_simaka_message_t *this)
 {
 	return this->hdr->code == EAP_REQUEST;
 }
 
-/**
- * Implementation of simaka_message_t.get_identifier
- */
-static u_int8_t get_identifier(private_simaka_message_t *this)
+METHOD(simaka_message_t, get_identifier, u_int8_t,
+	private_simaka_message_t *this)
 {
 	return this->hdr->identifier;
 }
 
-/**
- * Implementation of simaka_message_t.get_subtype
- */
-static simaka_subtype_t get_subtype(private_simaka_message_t *this)
+METHOD(simaka_message_t, get_subtype, simaka_subtype_t,
+	private_simaka_message_t *this)
 {
 	return this->hdr->subtype;
 }
 
-/**
- * Implementation of simaka_message_t.get_type
- */
-static eap_type_t get_type(private_simaka_message_t *this)
+METHOD(simaka_message_t, get_type, eap_type_t,
+	private_simaka_message_t *this)
 {
 	return this->hdr->type;
 }
@@ -238,21 +235,16 @@ static bool attr_enum_filter(void *null, attr_t **in, simaka_attribute_t *type,
 	return TRUE;
 }
 
-/**
- * Implementation of simaka_message_t.create_attribute_enumerator
- */
-static enumerator_t* create_attribute_enumerator(private_simaka_message_t *this)
+METHOD(simaka_message_t, create_attribute_enumerator, enumerator_t*,
+	private_simaka_message_t *this)
 {
 	return enumerator_create_filter(
 						this->attributes->create_enumerator(this->attributes),
 						(void*)attr_enum_filter, NULL, NULL);
 }
 
-/**
- * Implementation of simaka_message_t.add_attribute
- */
-static void add_attribute(private_simaka_message_t *this,
-						  simaka_attribute_t type, chunk_t data)
+METHOD(simaka_message_t, add_attribute, void,
+	private_simaka_message_t *this, simaka_attribute_t type, chunk_t data)
 {
 	attr_t *attr;
 
@@ -269,7 +261,7 @@ static void add_attribute(private_simaka_message_t *this,
  */
 static bool not_encrypted(simaka_attribute_t type)
 {
-	DBG1(DBG_IKE, "received unencrypted %N", simaka_attribute_names, type);
+	DBG1(DBG_LIB, "received unencrypted %N", simaka_attribute_names, type);
 	return FALSE;
 }
 
@@ -278,8 +270,30 @@ static bool not_encrypted(simaka_attribute_t type)
  */
 static bool invalid_length(simaka_attribute_t type)
 {
-	DBG1(DBG_IKE, "invalid length of %N", simaka_attribute_names, type);
+	DBG1(DBG_LIB, "invalid length of %N", simaka_attribute_names, type);
 	return FALSE;
+}
+
+/**
+ * Call SIM/AKA message hooks
+ */
+static void call_hook(private_simaka_message_t *this,
+					  bool inbound, bool decrypted)
+{
+	simaka_manager_t *mgr;
+
+	switch (this->hdr->type)
+	{
+		case EAP_SIM:
+			mgr = lib->get(lib, "sim-manager");
+			break;
+		case EAP_AKA:
+			mgr = lib->get(lib, "aka-manager");
+			break;
+		default:
+			return;
+	}
+	mgr->message_hook(mgr, &this->public, inbound, decrypted);
 }
 
 /**
@@ -294,7 +308,7 @@ static bool parse_attributes(private_simaka_message_t *this, chunk_t in)
 
 		if (in.len < sizeof(attr_hdr_t))
 		{
-			DBG1(DBG_IKE, "found short %N attribute header",
+			DBG1(DBG_LIB, "found short %N attribute header",
 				 eap_type_names, this->hdr->type);
 			return FALSE;
 		}
@@ -450,7 +464,7 @@ static bool parse_attributes(private_simaka_message_t *this, chunk_t in)
 				}
 				else if (!this->encrypted)
 				{
-					DBG1(DBG_IKE, "found P-bit 0 notify in unencrypted message");
+					DBG1(DBG_LIB, "found P-bit 0 notify in unencrypted message");
 					return FALSE;
 				}
 				/* FALL */
@@ -460,7 +474,7 @@ static bool parse_attributes(private_simaka_message_t *this, chunk_t in)
 		}
 	}
 
-	charon->sim->message_hook(charon->sim, &this->public, TRUE, this->encrypted);
+	call_hook(this, TRUE, this->encrypted);
 
 	return TRUE;
 }
@@ -481,7 +495,7 @@ static bool decrypt(private_simaka_message_t *this)
 	}
 	if (this->encr.len % crypter->get_block_size(crypter))
 	{
-		DBG1(DBG_IKE, "%N ENCR_DATA not a multiple of block size",
+		DBG1(DBG_LIB, "%N ENCR_DATA not a multiple of block size",
 			 eap_type_names, this->hdr->type);
 		return FALSE;
 	}
@@ -495,10 +509,8 @@ static bool decrypt(private_simaka_message_t *this)
 	return success;
 }
 
-/**
- * Implementation of simaka_message_t.parse
- */
-static bool parse(private_simaka_message_t *this)
+METHOD(simaka_message_t, parse, bool,
+	private_simaka_message_t *this)
 {
 	chunk_t in;
 
@@ -516,10 +528,8 @@ static bool parse(private_simaka_message_t *this)
 	return decrypt(this);
 }
 
-/**
- * Implementation of simaka_message_t.verify
- */
-static bool verify(private_simaka_message_t *this, chunk_t sigdata)
+METHOD(simaka_message_t, verify, bool,
+	private_simaka_message_t *this, chunk_t sigdata)
 {
 	chunk_t data, backup;
 	signer_t *signer;
@@ -543,7 +553,7 @@ static bool verify(private_simaka_message_t *this, chunk_t sigdata)
 		{
 			if (!this->mac.ptr || !signer)
 			{	/* require MAC, but not found */
-				DBG1(DBG_IKE, "%N message requires a MAC, but none found",
+				DBG1(DBG_LIB, "%N message requires a MAC, but none found",
 					 simaka_subtype_names, this->hdr->subtype);
 				return FALSE;
 			}
@@ -558,7 +568,7 @@ static bool verify(private_simaka_message_t *this, chunk_t sigdata)
 			}
 			if (!this->mac.ptr || !signer)
 			{
-				DBG1(DBG_IKE, "%N message has a phase 0 notify, but "
+				DBG1(DBG_LIB, "%N message has a phase 0 notify, but "
 					 "no MAC found", simaka_subtype_names, this->hdr->subtype);
 				return FALSE;
 			}
@@ -566,7 +576,7 @@ static bool verify(private_simaka_message_t *this, chunk_t sigdata)
 		}
 		default:
 			/* unknown message? */
-			DBG1(DBG_IKE, "signature rule for %N messages missing",
+			DBG1(DBG_LIB, "signature rule for %N messages missing",
 				 simaka_subtype_names, this->hdr->subtype);
 			return FALSE;
 	}
@@ -582,17 +592,15 @@ static bool verify(private_simaka_message_t *this, chunk_t sigdata)
 	}
 	if (!signer->verify_signature(signer, data, backup))
 	{
-		DBG1(DBG_IKE, "%N MAC verification failed",
+		DBG1(DBG_LIB, "%N MAC verification failed",
 			 eap_type_names, this->hdr->type);
 		return FALSE;
 	}
 	return TRUE;
 }
 
-/**
- * Implementation of simaka_message_t.generate
- */
-static eap_payload_t* generate(private_simaka_message_t *this, chunk_t sigdata)
+METHOD(simaka_message_t, generate, chunk_t,
+	private_simaka_message_t *this, chunk_t sigdata)
 {
 	/* buffers large enough for messages we generate */
 	char out_buf[1024], encr_buf[512];
@@ -603,7 +611,7 @@ static eap_payload_t* generate(private_simaka_message_t *this, chunk_t sigdata)
 	u_int16_t len;
 	signer_t *signer;
 
-	charon->sim->message_hook(charon->sim, &this->public, FALSE, TRUE);
+	call_hook(this, FALSE, TRUE);
 
 	out = chunk_create(out_buf, sizeof(out_buf));
 	encr = chunk_create(encr_buf, sizeof(encr_buf));
@@ -723,7 +731,7 @@ static eap_payload_t* generate(private_simaka_message_t *this, chunk_t sigdata)
 			}
 			default:
 			{
-				DBG1(DBG_IKE, "no rule to encode %N, skipped",
+				DBG1(DBG_LIB, "no rule to encode %N, skipped",
 					 simaka_attribute_names, type);
 				break;
 			}
@@ -817,15 +825,13 @@ static eap_payload_t* generate(private_simaka_message_t *this, chunk_t sigdata)
 		signer->get_signature(signer, data, mac.ptr);
 	}
 
-	charon->sim->message_hook(charon->sim, &this->public, FALSE, FALSE);
+	call_hook(this, FALSE, FALSE);
 
-	return eap_payload_create_data(out);
+	return chunk_clone(out);
 }
 
-/**
- * Implementation of simaka_message_t.destroy.
- */
-static void destroy(private_simaka_message_t *this)
+METHOD(simaka_message_t, destroy, void,
+	private_simaka_message_t *this)
 {
 	this->attributes->destroy_function(this->attributes, free);
 	free(this->hdr);
@@ -843,43 +849,40 @@ static simaka_message_t *simaka_message_create_data(chunk_t data,
 
 	if (data.len < sizeof(hdr_t) || hdr->length != htons(data.len))
 	{
-		DBG1(DBG_IKE, "EAP-SIM/AKA header has invalid length");
+		DBG1(DBG_LIB, "EAP-SIM/AKA header has invalid length");
 		return NULL;
 	}
 	if (hdr->code != EAP_REQUEST && hdr->code != EAP_RESPONSE)
 	{
-		DBG1(DBG_IKE, "invalid EAP code in EAP-SIM/AKA message",
+		DBG1(DBG_LIB, "invalid EAP code in EAP-SIM/AKA message",
 			 eap_type_names, hdr->type);
 		return NULL;
 	}
 	if (hdr->type != EAP_SIM && hdr->type != EAP_AKA)
 	{
-		DBG1(DBG_IKE, "invalid EAP type in EAP-SIM/AKA message",
+		DBG1(DBG_LIB, "invalid EAP type in EAP-SIM/AKA message",
 			 eap_type_names, hdr->type);
 		return NULL;
 	}
 
-	this = malloc_thing(private_simaka_message_t);
-
-	this->public.is_request = (bool(*)(simaka_message_t*))is_request;
-	this->public.get_identifier = (u_int8_t(*)(simaka_message_t*))get_identifier;
-	this->public.get_type = (eap_type_t(*)(simaka_message_t*))get_type;
-	this->public.get_subtype = (simaka_subtype_t(*)(simaka_message_t*))get_subtype;
-	this->public.create_attribute_enumerator = (enumerator_t*(*)(simaka_message_t*))create_attribute_enumerator;
-	this->public.add_attribute = (void(*)(simaka_message_t*, simaka_attribute_t type, chunk_t data))add_attribute;
-	this->public.parse = (bool(*)(simaka_message_t*))parse;
-	this->public.verify = (bool(*)(simaka_message_t*, chunk_t sigdata))verify;
-	this->public.generate = (eap_payload_t*(*)(simaka_message_t*, chunk_t sigdata))generate;
-	this->public.destroy = (void(*)(simaka_message_t*))destroy;
-
-	this->attributes = linked_list_create();
-	this->encrypted = FALSE;
-	this->crypto = crypto;
-	this->p_bit = TRUE;
-	this->mac = chunk_empty;
-	this->encr = chunk_empty;
-	this->iv = chunk_empty;
-	this->hdr = malloc(data.len);
+	INIT(this,
+		.public = {
+			.is_request = _is_request,
+			.get_identifier = _get_identifier,
+			.get_type = _get_type,
+			.get_subtype = _get_subtype,
+			.create_attribute_enumerator = _create_attribute_enumerator,
+			.add_attribute = _add_attribute,
+			.parse = _parse,
+			.verify = _verify,
+			.generate = _generate,
+			.destroy = _destroy,
+		},
+		.attributes = linked_list_create(),
+		.crypto = crypto,
+		.p_bit = TRUE,
+		.hdr = malloc(data.len),
+	);
 	memcpy(this->hdr, hdr, data.len);
 
 	return &this->public;
@@ -888,10 +891,10 @@ static simaka_message_t *simaka_message_create_data(chunk_t data,
 /**
  * See header.
  */
-simaka_message_t *simaka_message_create_from_payload(eap_payload_t *payload,
+simaka_message_t *simaka_message_create_from_payload(chunk_t data,
 													 simaka_crypto_t *crypto)
 {
-	return simaka_message_create_data(payload->get_data(payload), crypto);
+	return simaka_message_create_data(data, crypto);
 }
 
 /**

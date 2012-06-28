@@ -56,7 +56,7 @@ typedef struct controller_t controller_t;
  *
  * Passing NULL as callback to the managers function calls them asynchronously.
  * If a callback is specified, they are called synchronously. There is a default
- * callback "controller_cb_empty" if you wan't to call a function
+ * callback "controller_cb_empty" if you want to call a function
  * synchronously, but don't need a callback.
  */
 struct controller_t {
@@ -65,11 +65,12 @@ struct controller_t {
 	 * Create an enumerator for all IKE_SAs.
 	 *
 	 * The enumerator blocks the IKE_SA manager until it gets destroyed. Do
-	 * not call another interface/manager method while the iterator is alive.
+	 * not call another interface/manager method while the enumerator is alive.
 	 *
+	 * @param wait			TRUE to wait for checked out SAs, FALSE to skip
 	 * @return				enumerator, locks IKE_SA manager until destroyed
 	 */
-	enumerator_t* (*create_ike_sa_enumerator)(controller_t *this);
+	enumerator_t* (*create_ike_sa_enumerator)(controller_t *this, bool wait);
 
 	/**
 	 * Initiate a CHILD_SA, and if required, an IKE_SA.
@@ -82,14 +83,16 @@ struct controller_t {
 	 * @param child_cfg		child_cfg to set up CHILD_SA from
 	 * @param cb			logging callback
 	 * @param param			parameter to include in each call of cb
+	 * @param timeout		timeout in ms to wait for callbacks, 0 to disable
 	 * @return
 	 *						- SUCCESS, if CHILD_SA established
 	 *						- FAILED, if setup failed
 	 *						- NEED_MORE, if callback returned FALSE
+	 *						- OUT_OF_RES if timed out
 	 */
 	status_t (*initiate)(controller_t *this,
 						 peer_cfg_t *peer_cfg, child_cfg_t *child_cfg,
-						 controller_cb_t callback, void *param);
+						 controller_cb_t callback, void *param, u_int timeout);
 
 	/**
 	 * Terminate an IKE_SA and all of its CHILD_SAs.
@@ -101,13 +104,16 @@ struct controller_t {
 	 * @param unique_id		unique id of the IKE_SA to terminate.
 	 * @param cb			logging callback
 	 * @param param			parameter to include in each call of cb
+	 * @param timeout		timeout in ms to wait for callbacks, 0 to disable
 	 * @return
 	 *						- SUCCESS, if CHILD_SA terminated
 	 *						- NOT_FOUND, if no such CHILD_SA found
 	 *						- NEED_MORE, if callback returned FALSE
+	 *						- OUT_OF_RES if timed out
 	 */
 	status_t (*terminate_ike)(controller_t *this, u_int32_t unique_id,
-							  controller_cb_t callback, void *param);
+							  controller_cb_t callback, void *param,
+							  u_int timeout);
 
 	/**
 	 * Terminate a CHILD_SA.
@@ -115,13 +121,16 @@ struct controller_t {
 	 * @param reqid			reqid of the CHILD_SA to terminate
 	 * @param cb			logging callback
 	 * @param param			parameter to include in each call of cb
+	 * @param timeout		timeout in ms to wait for callbacks, 0 to disable
 	 * @return
 	 *						- SUCCESS, if CHILD_SA terminated
 	 *						- NOT_FOUND, if no such CHILD_SA found
 	 *						- NEED_MORE, if callback returned FALSE
+	 *						- OUT_OF_RES if timed out
 	 */
 	status_t (*terminate_child)(controller_t *this, u_int32_t reqid,
-								controller_cb_t callback, void *param);
+								controller_cb_t callback, void *param,
+								u_int timeout);
 
 	/**
 	 * Destroy a controller_t instance.

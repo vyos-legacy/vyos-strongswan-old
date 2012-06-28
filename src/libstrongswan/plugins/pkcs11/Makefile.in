@@ -77,7 +77,8 @@ LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_pkcs11_la_LIBADD =
 am_libstrongswan_pkcs11_la_OBJECTS = pkcs11_plugin.lo \
 	pkcs11_library.lo pkcs11_creds.lo pkcs11_private_key.lo \
-	pkcs11_public_key.lo pkcs11_hasher.lo pkcs11_manager.lo
+	pkcs11_public_key.lo pkcs11_hasher.lo pkcs11_rng.lo \
+	pkcs11_dh.lo pkcs11_manager.lo
 libstrongswan_pkcs11_la_OBJECTS =  \
 	$(am_libstrongswan_pkcs11_la_OBJECTS)
 libstrongswan_pkcs11_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -195,6 +196,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -203,6 +207,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -219,11 +224,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -267,6 +274,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -288,6 +296,8 @@ libstrongswan_pkcs11_la_SOURCES = \
 	pkcs11_private_key.h pkcs11_private_key.c \
 	pkcs11_public_key.h pkcs11_public_key.c \
 	pkcs11_hasher.h pkcs11_hasher.c \
+	pkcs11_rng.h pkcs11_rng.c \
+	pkcs11_dh.h pkcs11_dh.c \
 	pkcs11_manager.h pkcs11_manager.c
 
 libstrongswan_pkcs11_la_LDFLAGS = -module -avoid-version
@@ -375,12 +385,14 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_creds.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_dh.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_hasher.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_library.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_plugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_private_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_public_key.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs11_rng.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

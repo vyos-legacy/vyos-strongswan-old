@@ -14,6 +14,7 @@
  */
 
 #include "tnccs_reason_strings_msg.h"
+#include "tnccs_error_msg.h"
 
 #include <debug.h>
 
@@ -85,6 +86,10 @@ tnccs_msg_t *tnccs_reason_strings_msg_create_from_node(xmlNodePtr node,
 													   linked_list_t *errors)
 {
 	private_tnccs_reason_strings_msg_t *this;
+	char *error_msg, *lang_string, *reason_string;
+	tnccs_error_type_t error_type = TNCCS_ERROR_MALFORMED_BATCH;
+	tnccs_msg_t *msg;
+	xmlNodePtr child;
 
 	INIT(this,
 		.public = {
@@ -99,7 +104,45 @@ tnccs_msg_t *tnccs_reason_strings_msg_create_from_node(xmlNodePtr node,
 		.node = node,
 	);
 
+	if (xmlStrcmp(node->name, (const xmlChar*)"TNCCS-ReasonStrings"))
+	{
+		error_msg = "TNCCS-ReasonStrings tag expected";
+		goto fatal;
+	}
+
+	child = node->xmlChildrenNode;
+	while (child)
+	{
+		if (xmlIsBlankNode(child))
+		{
+			child = child->next;
+			continue;
+		}
+		if (xmlStrcmp(child->name, (const xmlChar*)"ReasonString"))
+		{
+			error_msg = "ReasonString tag expected";
+			goto fatal;
+		}
+		break;
+	}
+
+	lang_string = (char*)xmlGetProp(child, (const xmlChar*)"lang");
+	if (!lang_string)
+	{
+		lang_string = "";
+	}
+	this->language = chunk_create(strdup(lang_string), strlen(lang_string));
+
+	reason_string = (char*)xmlNodeGetContent(child);
+	this->reason = chunk_create(strdup(reason_string), strlen(reason_string));
+
 	return &this->public.tnccs_msg_interface;
+
+fatal:
+	msg = tnccs_error_msg_create(error_type, error_msg);
+	errors->insert_last(errors, msg);
+	destroy(this);
+	return NULL;
 }
 
 /**
@@ -140,10 +183,12 @@ tnccs_msg_t *tnccs_reason_strings_msg_create(chunk_t reason, chunk_t language)
 	n2 = xmlNewNode(NULL, BAD_CAST enum_to_name(tnccs_msg_type_names, this->type));
 
 	/* could add multiple reasons here, if we had them */
+
 	n3 = xmlNewNode(NULL, BAD_CAST "ReasonString");
 	xmlNewProp(n3, BAD_CAST "xml:lang", BAD_CAST this->language.ptr);
 	xmlNodeSetContent(n3, BAD_CAST this->reason.ptr);
 	xmlAddChild(n2, n3);
+	xmlAddChild(n, n2);
 
 	return &this->public.tnccs_msg_interface;
 }

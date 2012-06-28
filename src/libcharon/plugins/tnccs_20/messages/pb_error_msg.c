@@ -15,10 +15,12 @@
 
 #include "pb_error_msg.h"
 
-#include <debug.h>
-#include <tls_writer.h>
-#include <tls_reader.h>
 #include <tnc/tnccs/tnccs.h>
+
+#include <bio/bio_writer.h>
+#include <bio/bio_reader.h>
+#include <pen/pen.h>
+#include <debug.h>
 
 ENUM(pb_tnc_error_code_names, PB_ERROR_UNEXPECTED_BATCH_TYPE,
 							  PB_ERROR_VERSION_NOT_SUPPORTED,
@@ -116,10 +118,10 @@ METHOD(pb_tnc_msg_t, get_encoding, chunk_t,
 METHOD(pb_tnc_msg_t, build, void,
 	private_pb_error_msg_t *this)
 {
-	tls_writer_t *writer;
+	bio_writer_t *writer;
 
 	/* build message header */
-	writer = tls_writer_create(ERROR_HEADER_SIZE);
+	writer = bio_writer_create(ERROR_HEADER_SIZE);
 	writer->write_uint8 (writer, this->fatal ?
 						 ERROR_FLAG_FATAL : ERROR_FLAG_NONE);
 	writer->write_uint24(writer, this->vendor_id);
@@ -152,24 +154,25 @@ METHOD(pb_tnc_msg_t, process, status_t,
 {
 	u_int8_t flags, max_version, min_version;
 	u_int16_t reserved;
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 
 	if (this->encoding.len < ERROR_HEADER_SIZE)
 	{
 		DBG1(DBG_TNC,"%N message is shorter than header size of %u bytes",
 			 pb_tnc_msg_type_names, PB_MSG_ERROR, ERROR_HEADER_SIZE);
+		*offset = 0;
 		return FAILED;
 	}
 
 	/* process message header */
-	reader = tls_reader_create(this->encoding);
+	reader = bio_reader_create(this->encoding);
 	reader->read_uint8 (reader, &flags);
 	reader->read_uint24(reader, &this->vendor_id);
 	reader->read_uint16(reader, &this->error_code);
 	reader->read_uint16(reader, &reserved);
 	this->fatal = (flags & ERROR_FLAG_FATAL) != ERROR_FLAG_NONE;
 
-	if (this->vendor_id == IETF_VENDOR_ID && reader->remaining(reader) == 4)
+	if (this->vendor_id == PEN_IETF && reader->remaining(reader) == 4)
 	{
 		if (this->error_code == PB_ERROR_VERSION_NOT_SUPPORTED)
 		{

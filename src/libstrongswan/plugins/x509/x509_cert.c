@@ -275,8 +275,8 @@ static const asn1Object_t basicConstraintsObjects[] = {
 	{ 0, "basicConstraints",	ASN1_SEQUENCE,	ASN1_NONE			}, /*  0 */
 	{ 1,   "CA",				ASN1_BOOLEAN,	ASN1_DEF|ASN1_BODY	}, /*  1 */
 	{ 1,   "pathLenConstraint",	ASN1_INTEGER,	ASN1_OPT|ASN1_BODY	}, /*  2 */
-	{ 1,   "end opt",			ASN1_EOC,		ASN1_END  			}, /*  3 */
-	{ 0, "exit",				ASN1_EOC,		ASN1_EXIT  			}
+	{ 1,   "end opt",			ASN1_EOC,		ASN1_END			}, /*  3 */
+	{ 0, "exit",				ASN1_EOC,		ASN1_EXIT			}
 };
 #define BASIC_CONSTRAINTS_CA		1
 #define BASIC_CONSTRAINTS_PATH_LEN	2
@@ -301,7 +301,7 @@ static void parse_basicConstraints(chunk_t blob, int level0,
 		{
 			case BASIC_CONSTRAINTS_CA:
 				isCA = object.len && *object.ptr;
-				DBG2(DBG_LIB, "  %s", isCA ? "TRUE" : "FALSE");
+				DBG2(DBG_ASN, "  %s", isCA ? "TRUE" : "FALSE");
 				if (isCA)
 				{
 					this->flags |= X509_CA;
@@ -394,7 +394,7 @@ static const asn1Object_t generalNameObjects[] = {
 	{ 0, "otherName",		ASN1_CONTEXT_C_0,  ASN1_OPT|ASN1_BODY	}, /*  0 */
 	{ 0, "end choice",		ASN1_EOC,          ASN1_END				}, /*  1 */
 	{ 0, "rfc822Name",		ASN1_CONTEXT_S_1,  ASN1_OPT|ASN1_BODY	}, /*  2 */
-	{ 0, "end choice",		ASN1_EOC,          ASN1_END 			}, /*  3 */
+	{ 0, "end choice",		ASN1_EOC,          ASN1_END				}, /*  3 */
 	{ 0, "dnsName",			ASN1_CONTEXT_S_2,  ASN1_OPT|ASN1_BODY	}, /*  4 */
 	{ 0, "end choice",		ASN1_EOC,          ASN1_END				}, /*  5 */
 	{ 0, "x400Address",		ASN1_CONTEXT_S_3,  ASN1_OPT|ASN1_BODY	}, /*  6 */
@@ -482,7 +482,7 @@ static identification_t *parse_generalName(chunk_t blob, int level0)
 		if (id_type != ID_ANY)
 		{
 			gn = identification_create_from_encoding(id_type, object);
-			DBG2(DBG_LIB, "  '%Y'", gn);
+			DBG2(DBG_ASN, "  '%Y'", gn);
 			goto end;
 		}
 	}
@@ -536,14 +536,14 @@ void x509_parse_generalNames(chunk_t blob, int level0, bool implicit, linked_lis
  * ASN.1 definition of a authorityKeyIdentifier extension
  */
 static const asn1Object_t authKeyIdentifierObjects[] = {
-	{ 0, "authorityKeyIdentifier",		ASN1_SEQUENCE,		ASN1_NONE 			}, /* 0 */
+	{ 0, "authorityKeyIdentifier",		ASN1_SEQUENCE,		ASN1_NONE			}, /* 0 */
 	{ 1,   "keyIdentifier",				ASN1_CONTEXT_S_0,	ASN1_OPT|ASN1_BODY	}, /* 1 */
-	{ 1,   "end opt",					ASN1_EOC,			ASN1_END  			}, /* 2 */
+	{ 1,   "end opt",					ASN1_EOC,			ASN1_END			}, /* 2 */
 	{ 1,   "authorityCertIssuer",		ASN1_CONTEXT_C_1,	ASN1_OPT|ASN1_OBJ	}, /* 3 */
-	{ 1,   "end opt",					ASN1_EOC,			ASN1_END  			}, /* 4 */
+	{ 1,   "end opt",					ASN1_EOC,			ASN1_END			}, /* 4 */
 	{ 1,   "authorityCertSerialNumber",	ASN1_CONTEXT_S_2,	ASN1_OPT|ASN1_BODY	}, /* 5 */
-	{ 1,   "end opt",					ASN1_EOC,			ASN1_END  			}, /* 6 */
-	{ 0, "exit",						ASN1_EOC,			ASN1_EXIT  			}
+	{ 1,   "end opt",					ASN1_EOC,			ASN1_END			}, /* 6 */
+	{ 0, "exit",						ASN1_EOC,			ASN1_EXIT			}
 };
 #define AUTH_KEY_ID_KEY_ID			1
 #define AUTH_KEY_ID_CERT_ISSUER		3
@@ -638,7 +638,7 @@ static void parse_authorityInfoAccess(chunk_t blob, int level0,
 								/* parsing went wrong - abort */
 								goto end;
 							}
-							DBG2(DBG_LIB, "  '%Y'", id);
+							DBG2(DBG_ASN, "  '%Y'", id);
 							if (accessMethod == OID_OCSP &&
 								asprintf(&uri, "%Y", id) > 0)
 							{
@@ -1107,10 +1107,10 @@ static void parse_policyConstraints(chunk_t blob, int level0,
 static const asn1Object_t ipAddrBlocksObjects[] = {
 	{ 0, "ipAddrBlocks",	        ASN1_SEQUENCE,		ASN1_LOOP			}, /*  0 */
 	{ 1,   "ipAddressFamily",		ASN1_SEQUENCE,		ASN1_NONE			}, /*  1 */
-	{ 2,     "addressFamily",	    ASN1_OCTET_STRING,	ASN1_BODY          	}, /*  2 */
+	{ 2,     "addressFamily",	    ASN1_OCTET_STRING,	ASN1_BODY			}, /*  2 */
 	{ 2,     "inherit",             ASN1_NULL,          ASN1_OPT|ASN1_NONE  }, /*  3 */
 	{ 2,     "end choice",          ASN1_EOC,           ASN1_END            }, /*  4 */
-	{ 2,     "addressesOrRanges",	ASN1_SEQUENCE,	    ASN1_OPT|ASN1_LOOP 	}, /*  5 */
+	{ 2,     "addressesOrRanges",	ASN1_SEQUENCE,	    ASN1_OPT|ASN1_LOOP	}, /*  5 */
 	{ 3,       "addressPrefix",	    ASN1_BIT_STRING,	ASN1_OPT|ASN1_BODY  }, /*  6 */
 	{ 3,       "end choice",        ASN1_EOC,           ASN1_END            }, /*  7 */
 	{ 3,       "addressRange",      ASN1_SEQUENCE,      ASN1_OPT|ASN1_NONE  }, /*  8 */
@@ -1134,36 +1134,36 @@ static bool check_address_object(ts_type_t ts_type, chunk_t object)
 		case TS_IPV4_ADDR_RANGE:
 			if (object.len > 5)
 			{
-				DBG1(DBG_LIB, "IPv4 address object is larger than 5 octets");
+				DBG1(DBG_ASN, "IPv4 address object is larger than 5 octets");
 				return FALSE;
 			}
 			break;
 		case TS_IPV6_ADDR_RANGE:
 			if (object.len > 17)
 			{
-				DBG1(DBG_LIB, "IPv6 address object is larger than 17 octets");
+				DBG1(DBG_ASN, "IPv6 address object is larger than 17 octets");
 				return FALSE;
 			}
 			break;
 		default:
-			DBG1(DBG_LIB, "unknown address family");
+			DBG1(DBG_ASN, "unknown address family");
 			return FALSE;
 	}
 	if (object.len == 0)
 	{
-		DBG1(DBG_LIB, "An ASN.1 bit string must contain at least the "
+		DBG1(DBG_ASN, "An ASN.1 bit string must contain at least the "
 			 "initial octet");
 		return FALSE;
 	}
 	if (object.len == 1 && object.ptr[0] != 0)
 	{
-		DBG1(DBG_LIB, "An empty ASN.1 bit string must contain a zero "
+		DBG1(DBG_ASN, "An empty ASN.1 bit string must contain a zero "
 			 "initial octet");
 		return FALSE;
 	}
 	if (object.ptr[0] > 7)
 	{
-		DBG1(DBG_LIB, "number of unused bits is too large");
+		DBG1(DBG_ASN, "number of unused bits is too large");
 		return FALSE;
 	}
 	return TRUE;
@@ -1201,11 +1201,11 @@ static void parse_ipAddrBlocks(chunk_t blob, int level0,
 					{
 						break;
 					}
-					DBG2(DBG_LIB, "  %N", ts_type_name, ts_type);
+					DBG2(DBG_ASN, "  %N", ts_type_name, ts_type);
 				}
 				break;
 			case IP_ADDR_BLOCKS_INHERIT:
-				DBG1(DBG_LIB, "inherit choice is not supported");
+				DBG1(DBG_ASN, "inherit choice is not supported");
 				break;
 			case IP_ADDR_BLOCKS_PREFIX:
 				if (!check_address_object(ts_type, object))
@@ -1214,7 +1214,7 @@ static void parse_ipAddrBlocks(chunk_t blob, int level0,
 				}
 				ts = traffic_selector_create_from_rfc3779_format(ts_type,
 													object, object);
-				DBG2(DBG_LIB, "  %R", ts);
+				DBG2(DBG_ASN, "  %R", ts);
 				this->ipAddrBlocks->insert_last(this->ipAddrBlocks, ts);
 				break;
 			case IP_ADDR_BLOCKS_MIN:
@@ -1231,7 +1231,7 @@ static void parse_ipAddrBlocks(chunk_t blob, int level0,
 				}
 				ts = traffic_selector_create_from_rfc3779_format(ts_type,
 													min_object, object);
-				DBG2(DBG_LIB, "  %R", ts);
+				DBG2(DBG_ASN, "  %R", ts);
 				this->ipAddrBlocks->insert_last(this->ipAddrBlocks, ts);
 				break;
 			default:
@@ -1280,7 +1280,7 @@ static const asn1Object_t certObjects[] = {
 #define X509_OBJ_VERSION						 3
 #define X509_OBJ_SERIAL_NUMBER					 4
 #define X509_OBJ_SIG_ALG						 5
-#define X509_OBJ_ISSUER 						 6
+#define X509_OBJ_ISSUER							 6
 #define X509_OBJ_NOT_BEFORE						 8
 #define X509_OBJ_NOT_AFTER						 9
 #define X509_OBJ_SUBJECT						10
@@ -1320,12 +1320,12 @@ static bool parse_certificate(private_x509_cert_t *this)
 				this->version = (object.len) ? (1+(u_int)*object.ptr) : 1;
 				if (this->version < 1 || this->version > 3)
 				{
-					DBG1(DBG_LIB, "X.509v%d not supported", this->version);
+					DBG1(DBG_ASN, "X.509v%d not supported", this->version);
 					goto end;
 				}
 				else
 				{
-					DBG2(DBG_LIB, "  X.509v%d", this->version);
+					DBG2(DBG_ASN, "  X.509v%d", this->version);
 				}
 				break;
 			case X509_OBJ_SERIAL_NUMBER:
@@ -1336,7 +1336,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 				break;
 			case X509_OBJ_ISSUER:
 				this->issuer = identification_create_from_encoding(ID_DER_ASN1_DN, object);
-				DBG2(DBG_LIB, "  '%Y'", this->issuer);
+				DBG2(DBG_ASN, "  '%Y'", this->issuer);
 				break;
 			case X509_OBJ_NOT_BEFORE:
 				this->notBefore = asn1_parse_time(object, level);
@@ -1346,13 +1346,13 @@ static bool parse_certificate(private_x509_cert_t *this)
 				break;
 			case X509_OBJ_SUBJECT:
 				this->subject = identification_create_from_encoding(ID_DER_ASN1_DN, object);
-				DBG2(DBG_LIB, "  '%Y'", this->subject);
+				DBG2(DBG_ASN, "  '%Y'", this->subject);
 				break;
 			case X509_OBJ_SUBJECT_PUBLIC_KEY_INFO:
-				DBG2(DBG_LIB, "-- > --");
+				DBG2(DBG_ASN, "-- > --");
 				this->public_key = lib->creds->create(lib->creds, CRED_PUBLIC_KEY,
 						KEY_ANY, BUILD_BLOB_ASN1_DER, object, BUILD_END);
-				DBG2(DBG_LIB, "-- < --");
+				DBG2(DBG_ASN, "-- < --");
 				if (this->public_key == NULL)
 				{
 					goto end;
@@ -1361,7 +1361,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 			case X509_OBJ_OPTIONAL_EXTENSIONS:
 				if (this->version != 3)
 				{
-					DBG1(DBG_LIB, "Only X.509v3 certificates have extensions");
+					DBG1(DBG_ASN, "Only X.509v3 certificates have extensions");
 					goto end;
 				}
 				break;
@@ -1370,7 +1370,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 				break;
 			case X509_OBJ_CRITICAL:
 				critical = object.len && *object.ptr;
-				DBG2(DBG_LIB, "  %s", critical ? "TRUE" : "FALSE");
+				DBG2(DBG_ASN, "  %s", critical ? "TRUE" : "FALSE");
 				break;
 			case X509_OBJ_EXTN_VALUE:
 			{
@@ -1445,7 +1445,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 						if (critical && lib->settings->get_bool(lib->settings,
 							"libstrongswan.x509.enforce_critical", TRUE))
 						{
-							DBG1(DBG_LIB, "critical '%s' extension not supported",
+							DBG1(DBG_ASN, "critical '%s' extension not supported",
 								 (extn_oid == OID_UNKNOWN) ? "unknown" :
 								 (char*)oid_names[extn_oid].name);
 							goto end;
@@ -1458,7 +1458,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 				this->algorithm = asn1_parse_algorithmIdentifier(object, level, NULL);
 				if (this->algorithm != sig_alg)
 				{
-					DBG1(DBG_LIB, "  signature algorithms do not agree");
+					DBG1(DBG_ASN, "  signature algorithms do not agree");
 					goto end;
 				}
 				break;
@@ -1488,8 +1488,8 @@ end:
 		hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
 		if (hasher == NULL)
 		{
-			DBG1(DBG_LIB, "  unable to create hash of certificate, SHA1 not supported");
-			return NULL;
+			DBG1(DBG_ASN, "  unable to create hash of certificate, SHA1 not supported");
+			return FALSE;
 		}
 		hasher->allocate_hash(hasher, this->encoding, &this->encoding_hash);
 		hasher->destroy(hasher);
@@ -1706,7 +1706,7 @@ METHOD(x509_t, get_subjectKeyIdentifier, chunk_t,
 		chunk_t fingerprint;
 
 		if (this->public_key->get_fingerprint(this->public_key,
-					 				KEYID_PUBKEY_SHA1, &fingerprint))
+									KEYID_PUBKEY_SHA1, &fingerprint))
 		{
 			return fingerprint;
 		}
@@ -1901,7 +1901,7 @@ chunk_t build_generalName(identification_t *id)
 			context = ASN1_CONTEXT_S_7;
 			break;
 		default:
-			DBG1(DBG_LIB, "encoding %N as generalName not supported",
+			DBG1(DBG_ASN, "encoding %N as generalName not supported",
 				 id_type_names, id->get_type(id));
 			return chunk_empty;
 	}

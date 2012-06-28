@@ -31,7 +31,6 @@
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <linux/types.h>
 #include <linux/filter.h>
@@ -259,6 +258,8 @@ METHOD(socket_t, receiver, status_t,
 				DBG1(DBG_NET, "error reading IPv6 ancillary data");
 				return FAILED;
 			}
+
+#ifdef HAVE_IN6_PKTINFO
 			if (cmsgptr->cmsg_level == SOL_IPV6 &&
 				cmsgptr->cmsg_type == IPV6_2292PKTINFO)
 			{
@@ -273,6 +274,7 @@ METHOD(socket_t, receiver, status_t,
 				src.sin6_port = udp->source;
 				dest = host_create_from_sockaddr((sockaddr_t*)&dst);
 			}
+#endif /* HAVE_IN6_PKTINFO */
 		}
 		/* ancillary data missing? */
 		if (dest == NULL)
@@ -397,6 +399,7 @@ METHOD(socket_t, sender, status_t,
 			sin = (struct sockaddr_in*)src->get_sockaddr(src);
 			memcpy(&pktinfo->ipi_spec_dst, &sin->sin_addr, sizeof(struct in_addr));
 		}
+#ifdef HAVE_IN6_PKTINFO
 		else
 		{
 			char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
@@ -414,6 +417,7 @@ METHOD(socket_t, sender, status_t,
 			sin = (struct sockaddr_in6*)src->get_sockaddr(src);
 			memcpy(&pktinfo->ipi6_addr, &sin->sin6_addr, sizeof(struct in6_addr));
 		}
+#endif /* HAVE_IN6_PKTINFO */
 	}
 
 	bytes_sent = sendmsg(skt, &msg, 0);
@@ -435,29 +439,25 @@ static int open_send_socket(private_socket_raw_socket_t *this,
 	int on = TRUE;
 	int type = UDP_ENCAP_ESPINUDP;
 	struct sockaddr_storage addr;
-	u_int sol;
 	int skt;
 
 	memset(&addr, 0, sizeof(addr));
+	addr.ss_family = family;
 	/* precalculate constants depending on address family */
 	switch (family)
 	{
 		case AF_INET:
 		{
 			struct sockaddr_in *sin = (struct sockaddr_in *)&addr;
-			sin->sin_family = AF_INET;
-			sin->sin_addr.s_addr = INADDR_ANY;
-			sin->sin_port = htons(port);
-			sol = SOL_IP;
+			htoun32(&sin->sin_addr.s_addr, INADDR_ANY);
+			htoun16(&sin->sin_port, port);
 			break;
 		}
 		case AF_INET6:
 		{
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&addr;
-			sin6->sin6_family = AF_INET6;
 			memcpy(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
-			sin6->sin6_port = htons(port);
-			sol = SOL_IPV6;
+			htoun16(&sin6->sin6_port, port);
 			break;
 		}
 		default:
@@ -514,18 +514,16 @@ static int open_recv_socket(private_socket_raw_socket_t *this, int family)
 {
 	int skt;
 	int on = TRUE;
-	u_int proto_offset, ip_len, sol, udp_header, ike_header;
+	u_int ip_len, sol, udp_header, ike_header;
 
 	/* precalculate constants depending on address family */
 	switch (family)
 	{
 		case AF_INET:
-			proto_offset = IP_PROTO_OFFSET;
 			ip_len = IP_LEN;
 			sol = SOL_IP;
 			break;
 		case AF_INET6:
-			proto_offset = IP6_PROTO_OFFSET;
 			ip_len = 0; /* IPv6 raw sockets contain no IP header */
 			sol = SOL_IPV6;
 			break;
