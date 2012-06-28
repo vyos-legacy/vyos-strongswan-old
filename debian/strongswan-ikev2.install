@@ -1,4 +1,4 @@
-usr/lib/libcharon.so*
+usr/lib/ipsec/libcharon.so*
 usr/lib/ipsec/charon
 usr/lib/ipsec/plugins/libstrongswan-kernel-netlink.so*
 usr/lib/ipsec/plugins/libstrongswan-socket*.so*

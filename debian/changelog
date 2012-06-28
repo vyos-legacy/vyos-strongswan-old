@@ -5,7 +5,10 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
   * debian/patches:
     - drop all patches, they're all included upstream now.
   * debian/*.install:
-    - drop destination path.
+    - drop destination path
+    - libs are in ipsec folder now
+    - add libradius, libtls, libtnccs and libsimaka to libstrongswan.
+    - add tnc-tnccs, pkcs8 and cmac plugins to libstrongswan.
   * debian/control:
     - update standards version to 3.9.3.
     - add depend on adduser to strongswan-starter for use in maintainer
