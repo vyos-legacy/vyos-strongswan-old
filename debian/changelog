@@ -1,3 +1,12 @@
+strongswan (4.5.2-1.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Drop libopensc2-dev from Build-Depends; that library is now private to
+    opensc and is not required at build time as it's loaded by dlopen() anyway.
+    (Closes: #635890)
+
+ -- Laurent Bigonville <bigon@debian.org>  Thu, 08 Sep 2011 16:50:11 +0200
+
 strongswan (4.5.2-1.1) unstable; urgency=low
 
   * Non-maintainer upload.
