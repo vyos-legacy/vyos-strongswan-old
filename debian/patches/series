@@ -1,1 +1,3 @@
 0001-fix-fprintf-format.patch
+0001-Fix-boolean-return-value-if-an-empty-RSA-signature-i.patch
+0001-Added-support-for-the-resolvconf-framework-in-resolv.patch

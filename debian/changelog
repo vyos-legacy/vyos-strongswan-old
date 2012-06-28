@@ -1,3 +1,15 @@
+strongswan (4.5.2-1.4) unstable; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * debian/patches:
+    - 0001-Fix-boolean-return-value-if-an-empty-RSA-signature-i added,
+      backported from upstream. Fix CVE-2012-2388 (when using gmp plugin,
+      zero length RSA signatures are considered valid).
+    - 0001-Added-support-for-the-resolvconf-framework-in-resolv added,
+      correctly handle resolvconf-managed /etc/resolv.conf.     closes: #664873
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 24 May 2012 17:55:51 +0200
+
 strongswan (4.5.2-1.3) unstable; urgency=low
 
   * Non-maintainer upload.
