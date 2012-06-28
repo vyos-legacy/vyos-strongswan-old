@@ -1,27 +1,27 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 #
-# Bjørn Steensrud <bjornst@skogkatt.homelinux.org>, 2009.
+# Bjørn Steensrud <bjornst@skogkatt.homelinux.org>, 2009, 2012.
 msgid ""
 msgstr ""
 "Project-Id-Version: nb\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
-"POT-Creation-Date: 2010-08-09 12:15+0200\n"
-"PO-Revision-Date: 2009-05-25 14:59+0100\n"
+"POT-Creation-Date: 2010-08-16 14:23+0200\n"
+"PO-Revision-Date: 2012-01-03 15:56+0100\n"
 "Last-Translator: Bjørn Steensrud <bjornst@skogkatt.homelinux.org>\n"
 "Language-Team: Norwegian Bokmål <i18n-nb@lister.ping.uio.no>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Lokalize 0.3\n"
+"X-Generator: Lokalize 1.2\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. Type: note
 #. Description
 #: ../strongswan-starter.templates:2001
 msgid "Old runlevel management superseded"
-msgstr ""
+msgstr "Gammel kjørenivåstyring erstattet"
 
 #. Type: note
 #. Description
@@ -35,33 +35,36 @@ msgid ""
 "changed your strongSwan startup parameters, then please take a look at NEWS."
 "Debian for instructions on how to modify your setup accordingly."
 msgstr ""
+"Tidligere versjoner av  strongSwan-pakka ga et valg mellom tre forskjellige "
+"nivåer for start/stopp. På grunn av endringer i standard oppstartsprosedyre "
+"for systemet er dette ikke lenger verken nødvendig eller nyttig. Det blir nå "
+"satt opp fornuftige standardnivåer både for nye installasjoner og for gamle "
+"som kjører på en av de forhåndsinnstilte nivåene. Hvis du er i ferd med å "
+"oppgradere fra en tidligere versjon og har endret oppstartsparametrene for "
+"strongSwan, kan du lese NEWS.Debian for å finne ut hvordan du kan endre "
+"oppsettet ditt tilsvarende."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:3001
 msgid "Restart strongSwan now?"
-msgstr "Start strongSwan på nytt nå"
+msgstr " Start strongSwan på nytt nå"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:3001
-#, fuzzy
-#| msgid ""
-#| "Restarting strongSwan is recommended, because if there is a security fix, "
-#| "it will not be applied until the daemon restarts. However, this might "
-#| "close existing connections and then bring them back up."
 msgid ""
 "Restarting strongSwan is recommended, since if there is a security fix, it "
 "will not be applied until the daemon restarts. Most people expect the daemon "
 "to restart, so this is generally a good idea. However, this might take down "
-"existing connections and then bring them back up, so if you are using such "
-"a strongSwan tunnel to connect for this update, restarting is not "
-"recommended."
+"existing connections and then bring them back up, so if you are using such a "
+"strongSwan tunnel to connect for this update, restarting is not recommended."
 msgstr ""
 "Det anbefales å starte strongSwan på nytt nå, for om det var en "
 "sikkerhetsrettelse, så får den ikke effekt før daemonen startes på nytt. "
 "Imidlertid kan dette lukke eksisterende forbindelser og deretter koble dem "
-"opp igjen."
+"opp igjen, så hvis du bruker en slik strongSwan-tilkobling for denne "
+"oppdateringen er det best å ikke starte på nytt."
 
 #. Type: boolean
 #. Description
@@ -98,10 +101,8 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:6001
-#, fuzzy
-#| msgid "Use an existing X.509 certificate for strongSwan?"
 msgid "Use an X.509 certificate for this host?"
-msgstr "Skal et eksisterende X.509-sertifikat brukes for strongSwan?"
+msgstr "Skal et X.509-sertifikat brukes for denne vertsmaskinen?"
 
 #. Type: boolean
 #. Description
@@ -115,6 +116,13 @@ msgid ""
 "connections, key based authentication is easier to administer and more "
 "secure."
 msgstr ""
+"Et X.509-sertifikat for denne verten kan importeres eller lages automatisk. "
+"Det kan brukes til å autentisere IPSec-tilkoblinger til andre verter og er "
+"den foretrukne måten å bygge opp sikre IPSec-tilkoblinger. Den andre "
+"muligheten er å bruke felles hemmeligheter (passord som er de samme på begge "
+"sider av tunnelen) til å autentisere en tilkobling, men for større antall "
+"tilkoblinger er det lettere å administrere nøkkel-basert autentisering, og "
+"det er også sikrere."
 
 #. Type: boolean
 #. Description
@@ -123,24 +131,27 @@ msgid ""
 "Alternatively you can reject this option and later use the command \"dpkg-"
 "reconfigure strongswan\" to come back."
 msgstr ""
+"Du kan også avvise dette valget og senere bruke kommandoen «dpkg -"
+"reconfigure strongswan»  for å komme tilbake hit."
 
 #. Type: select
 #. Choices
 #: ../strongswan-starter.templates:7001
 msgid "create"
-msgstr ""
+msgstr "opprett"
 
 #. Type: select
 #. Choices
 #: ../strongswan-starter.templates:7001
 msgid "import"
-msgstr ""
+msgstr "importer"
 
 #. Type: select
 #. Description
 #: ../strongswan-starter.templates:7002
 msgid "Methods for using a X.509 certificate to authenticate this host:"
 msgstr ""
+"Metoder for å bruke et X.509-sertifikat til å autentisere denne verten:"
 
 #. Type: select
 #. Description
@@ -150,6 +161,9 @@ msgid ""
 "or to import an existing public and private key stored in PEM file(s) for "
 "authenticating IPsec connections."
 msgstr ""
+"Det er mulig å opprette et nytt X.509-sertifikat med brukerdefinerte "
+"innstillinger, eller å importere en eksisterende offentlig og privat nøkkel "
+"lagret i PEM-fil(er) til å autentisere IPSec-tilkoblinger."
 
 #. Type: select
 #. Description
@@ -162,6 +176,12 @@ msgid ""
 "certificate and all the answers given must match exactly the requirements of "
 "the CA, otherwise the certificate request may be rejected."
 msgstr ""
+"Hvis du velger å opprette et nytt X.509-sertifikat blir det først stilt noen "
+"spørsmål som du må svare på før det kan lages et sertifikat. Husk på at hvis "
+"du vil at en eksisterende sertifikatutsteder (CA) skal signere den "
+"offentlige nøkkelen, så må du ikke lage et selvsignert sertifikat, og alle "
+"svarene du gir må stemme nøyaktig overens med CA-ens krav, ellers kan "
+"sertifikatsøknaden bli avvist."
 
 #. Type: select
 #. Description
@@ -175,60 +195,52 @@ msgid ""
 "for the X.509 certificates has to be PEM and that the private key must not "
 "be encrypted or the import procedure will fail."
 msgstr ""
+"Hvis du vil importere en eksisterende offentlig og privat nøkkel blir du "
+"spurt etter filnavnene, som kan være samme navn hvis begge nøklene er lagret "
+"i én fil. Du kan også om du vil oppgi et filnavn der offentlig(e) nøkkel/"
+"nøkler for sertifikatutstederen er lagret, men dette kan ikke være samme fil "
+"som de forrige. Vær også oppmerksom på at formatet for X.509-sertifikatene "
+"må være PEM og at den private nøkkelen ikke må være kryptert, ellers kan "
+"nøklene ikke importeres."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:8001
-#, fuzzy
-#| msgid "File name of your X.509 certificate in PEM format:"
 msgid "File name of your PEM format X.509 certificate:"
 msgstr "Filnavn for ditt X.509-sertifikat i PEM-format:"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:8001
-#, fuzzy
-#| msgid ""
-#| "Please enter the full location of the file containing your X.509 "
-#| "certificate in PEM format."
 msgid ""
 "Please enter the location of the file containing your X.509 certificate in "
 "PEM format."
 msgstr ""
-"Oppgi full sti til fila som inneholder ditt X.509-sertifikat i PEM-format."
+"Skriv inn stien til fila som inneholder ditt X.509-sertifikat i PEM-format."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:9001
-#, fuzzy
-#| msgid "File name of your existing X.509 private key in PEM format:"
 msgid "File name of your PEM format X.509 private key:"
 msgstr "Filnavn for din eksisterende private X.509-nøkkel i PEM-format:"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:9001
-#, fuzzy
-#| msgid ""
-#| "Please enter the full location of the file containing the private RSA key "
-#| "matching your X.509 certificate in PEM format. This can be the same file "
-#| "as the X.509 certificate."
 msgid ""
 "Please enter the location of the file containing the private RSA key "
 "matching your X.509 certificate in PEM format. This can be the same file "
 "that contains the X.509 certificate."
 msgstr ""
-"Oppgi full sti til fila som inneholder den private nøkkelen som tilsvarer "
+"Skriv inn sti til fila som inneholder den private nøkkelen som tilsvarer "
 "ditt X.509-sertifikat i PEM-format. Dette kan være den samme fila som X.509-"
 "sertifikatet."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:10001
-#, fuzzy
-#| msgid "File name of your X.509 certificate in PEM format:"
 msgid "File name of your PEM format X.509 RootCA:"
-msgstr "Filnavn for ditt X.509-sertifikat i PEM-format:"
+msgstr "Filnavn for ditt rot-sertifikat i PEM-format:"
 
 #. Type: string
 #. Description
@@ -240,12 +252,17 @@ msgid ""
 "Please note that it's not possible to store the RootCA in the same file as "
 "your X.509 certificate or private key."
 msgstr ""
+"Om du vil kan du nå skrive inn stien til fila som inneholder rotsertifikatet "
+"til den sertifikatutstederen som brukes til å signere ditt sertifikat, i PEM-"
+"format. Hvis du ikke har ett eller ikke vil bruke det, så la det være tomt. "
+"Merk at det ikke er mulig å lagre rot-sertifikatet (RootCA) i samme fil som "
+"ditt X.509-sertifikat eller provate nøkkel."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:11001
 msgid "Please enter which length the created RSA key should have:"
-msgstr ""
+msgstr "Skriv inn hvilken lengde det skal være på den genererte RSA-nøkkelen:"
 
 #. Type: string
 #. Description
@@ -256,12 +273,14 @@ msgid ""
 "not need anything more than 4096 bits because it only slows the "
 "authentication process down and is not needed at the moment."
 msgstr ""
+"Skriv inn lengden for den RSA-nøkkelen som blir laget. Den bør ikke være "
+"kortere enn 1024 bit fordi dette blir betraktet som usikkert, og du trenger "
+"antakelig ikke mer enn 4096 bit fordi det bare forsinker "
+"autentiseringsprosessen og ikke trengs nå."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:12001
-#, fuzzy
-#| msgid "Create a self-signed X.509 certificate?"
 msgid "Create a self-signed X.509 certificate?"
 msgstr "Skal det lages et selvsignert X.509-sertifikat?"
 
@@ -277,29 +296,29 @@ msgid ""
 "features requires all certificates to be signed by a single Certificate "
 "Authority to create a trust path."
 msgstr ""
+"Bare selvsignerte X.509-sertifikater kan opprettes automatisk, fordi ellers "
+"må en sertifikatutsteder (CA) signere sertifikatsøknaden. Hvis du velger å "
+"lage et selvsignert sertifikat, kan du straks bruke det til å koble til "
+"andre IPSec-verter som støtter X.509-sertifikater for autentisering av IPSec-"
+"tilkoblinger. Men bruk av strongSwans PKI-funksjoner krever at alle "
+"sertifikater må være signert av en enkelt sertifikatutsteder for å lage en "
+"tiltrodd kjede."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:12001
-#, fuzzy
-#| msgid ""
-#| "If you do not accept this option, only the RSA private key will be "
-#| "created, along with a certificate request which you will need to have "
-#| "signed by a certificate authority."
 msgid ""
 "If you do not choose to create a self-signed certificate, only the RSA "
 "private key and the certificate request will be created, and you will have "
 "to sign the certificate request with your Certificate Authority."
 msgstr ""
-"Hvis du ikke godtar dette, så blir bare en privat RSA-nøkkel opprettet, "
-"sammen med en sertifikatsøknad som du må få en sertifikatutsteder til å "
-"signere."
+"Hvis du velger å ikke lage et selvsignert sertifikat, så blir bare en privat "
+"RSA-nøkkel opprettet, sammen med en sertifikatsøknad som du må signere med "
+"din CA (Certificate Authority)."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:13001
-#, fuzzy
-#| msgid "Country code for the X.509 certificate request:"
 msgid "Country code for the X.509 certificate request:"
 msgstr "Landskode for X.509-sertifikatsøknaden:"
 
@@ -310,6 +329,8 @@ msgid ""
 "Please enter the two-letter code for the country the server resides in (such "
 "as \"AT\" for Austria)."
 msgstr ""
+"Skriv inn to-bokstavskoden for landet der tjeneren holder til (slik som «NO» "
+"for Norge)."
 
 #. Type: string
 #. Description
@@ -319,33 +340,29 @@ msgid ""
 "ISO-3166 country code; an empty field is allowed elsewhere in the X.509 "
 "certificate, but not here."
 msgstr ""
+"OpenSSL vil ikke lage et sertifikat hvis dette ikke er en gyldig landskode i "
+"følge ISO-3166, tomme felter godtas andre steder i X.509-sertifikatet, men "
+"ikke her."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:14001
-#, fuzzy
-#| msgid "State or province name for the X.509 certificate request:"
 msgid "State or province name for the X.509 certificate request:"
 msgstr "Stat eller provinsnavn for X.509-sertifikatsøknaden:"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:14001
-#, fuzzy
-#| msgid ""
-#| "Please enter the full name of the state or province to include in the "
-#| "certificate request."
 msgid ""
 "Please enter the full name of the state or province the server resides in "
 "(such as \"Upper Austria\")."
 msgstr ""
-"Oppgi fullt navn på stat eller provins som skal tas med i sertifikatsøknaden."
+"Skriv inn fullt navn på stat eller provins der tjeneren holder til (f.eks. "
+"«Troms»)"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:15001
-#, fuzzy
-#| msgid "Locality name for the X.509 certificate request:"
 msgid "Locality name for the X.509 certificate request:"
 msgstr "Stedsnavn for X.509-sertifikatsøknaden:"
 
@@ -356,12 +373,12 @@ msgid ""
 "Please enter the locality the server resides in (often a city, such as "
 "\"Vienna\")."
 msgstr ""
+"Skriv inn navnet på stedet der tjeneren holder til (ofte en by, slik som "
+"«Tromsø»)"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:16001
-#, fuzzy
-#| msgid "Organization name for the X.509 certificate request:"
 msgid "Organization name for the X.509 certificate request:"
 msgstr "Organisasjonsnavn for X.509-sertifikatsøknaden:"
 
@@ -370,33 +387,29 @@ msgstr "Organisasjonsnavn for X.509-sertifikatsøknaden:"
 #: ../strongswan-starter.templates:16001
 msgid ""
 "Please enter the organization the server belongs to (such as \"Debian\")."
-msgstr ""
+msgstr "Skriv inn organisasjonen som tjeneren tilhører (slik som «Debian»)"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:17001
-#, fuzzy
-#| msgid "Organizational unit for the X.509 certificate request:"
 msgid "Organizational unit for the X.509 certificate request:"
 msgstr "Organisasjonsenhet for X.509-sertifikatsøknaden:"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:17001
-#, fuzzy
-#| msgid "Organizational unit for the X.509 certificate request:"
 msgid ""
 "Please enter the organizational unit the server belongs to (such as "
 "\"security group\")."
-msgstr "Organisasjonsenhet for X.509-sertifikatsøknaden:"
+msgstr ""
+"Skriv inn organisasjonsenhet som tjeneren tilhører (slik som "
+"«sikkerhetsgruppa»)."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:18001
-#, fuzzy
-#| msgid "Common name for the X.509 certificate request:"
 msgid "Common Name for the X.509 certificate request:"
-msgstr "Vanlig navn for X.509-sertifikatsøknaden:"
+msgstr "Entydig navn for X.509-sertifikatsøknaden:"
 
 #. Type: string
 #. Description
@@ -404,28 +417,23 @@ msgstr "Vanlig navn for X.509-sertifikatsøknaden:"
 msgid ""
 "Please enter the Common Name for this host (such as \"gateway.example.org\")."
 msgstr ""
+"Skriv inn entydig navn for denne verten (slik som «gateway.example.org»)."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid "Email address for the X.509 certificate request:"
 msgid "Email address for the X.509 certificate request:"
 msgstr "E-postadresse for X.509-sertifikatsøknaden:"
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid ""
-#| "Please enter the email address (for the individual or organization "
-#| "responsible) that should be used in the certificate request."
 msgid ""
 "Please enter the email address of the person or organization responsible for "
 "the X.509 certificate."
 msgstr ""
-"Oppgi e-postadressen (for ansvarlig person eller organisasjon) som skal "
-"brukes i sertifikatsøknaden."
+"Oppgi e-postadressen til person eller organisasjon som er ansvarlig for "
+"X.509-sertifikatet."
 
 #. Type: boolean
 #. Description
@@ -456,8 +464,8 @@ msgid ""
 "starts."
 msgstr ""
 "Du bør bare slå på opportunistisk kryptering hvis du er sikker på at du vil "
-"ha det. Det kan koble ut Internett-forbindelsen (standardruten) når pluto."
-"nissen starter."
+"ha det. Det kan koble ut Internett-forbindelsen (standardruten) når pluto- "
+"daemonen starter."
 
 #, fuzzy
 #~| msgid "When to start strongSwan:"

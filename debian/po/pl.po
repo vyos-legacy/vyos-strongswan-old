@@ -1,28 +1,28 @@
-# Dutch translation of strongswan debconf templates.
-# Copyright (C) 2005-2011 THE PACKAGE'S COPYRIGHT HOLDER
+# Copyright (C) 2010
 # This file is distributed under the same license as the strongswan package.
-# Luk Claes <luk.claes@ugent.be>, 2005
-# Kurt De Bree <kdebree@telenet.be>, 2006.
-# Jeroen Schot <schot@a-eskwadraat.nl>, 2011.
 #
+# Michał Kułach <michal.kulach@gmail.com>, 2012.
 msgid ""
 msgstr ""
-"Project-Id-Version: strongswan 4.5.0-1\n"
+"Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
-"POT-Creation-Date: 2010-08-09 12:15+0200\n"
-"PO-Revision-Date: 2011-06-17 12:00+0200\n"
-"Last-Translator: Jeroen Schot <schot@a-eskwadraat.nl>\n"
-"Language-Team: Debian l10n Dutch <debian-l10n-dutch@lists.debian.org>\n"
-"Language: nl\n"
+"POT-Creation-Date: 2010-08-16 14:23+0200\n"
+"PO-Revision-Date: 2012-01-31 15:36+0100\n"
+"Last-Translator: Michał Kułach <michal.kulach@gmail.com>\n"
+"Language-Team: Polish <debian-l10n-polish@lists.debian.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Lokalize 1.2\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
 
 #. Type: note
 #. Description
 #: ../strongswan-starter.templates:2001
 msgid "Old runlevel management superseded"
-msgstr "Het oude runlevel-beheer is vervangen"
+msgstr "Zastąpiono stare zarządzanie poziomami uruchamiania"
 
 #. Type: note
 #. Description
@@ -36,19 +36,20 @@ msgid ""
 "changed your strongSwan startup parameters, then please take a look at NEWS."
 "Debian for instructions on how to modify your setup accordingly."
 msgstr ""
-"Vorige versies van het strongSwan-pakket gaven de keuze tussen drie "
-"verschillende Start/Stop-niveaus. Vanwege veranderingen aan de standaard "
-"opstartprocedure van het systeem is dit niet langer nodig of nuttig. Er "
-"worden nu logische standaardwaardes ingesteld voor zowel nieuwe installaties "
-"als oude waarvoor één van de keuzes is gemaakt. Als u opwaardeert van een "
-"vorige versie en uw strongSwan-opstartparameters heeft aangepast vindt u in "
-"NEWS.Debian instructies over het aanpassen van uw opstelling."
+"Poprzednie wersje pakietu strongSwan umożliwiały wybór pomiędzy trzema "
+"różnymi Start/Stop-Level. Z powodu zmian w procedurze uruchamiania systemu "
+"podstawowego nie jest to dłużej ani potrzebne, ani użyteczne. W przypadku "
+"zarównowszystkich nowych instalacji, jak i starych z którymś z działających "
+"trybów predefiniowanych, zostaną przyjęte domyślne, rozsądne poziomy. Jeśli "
+"jest to aktualizacja z poprzedniej wersji i zmieniono parametry uruchamiania "
+"strongSwan, proszę zapoznać się z plikiem NEWS.Debian, aby dowiedzieć się "
+"jak odpowiednio zmodyfikować swoją konfigurację."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:3001
 msgid "Restart strongSwan now?"
-msgstr "StrongSwan nu herstarten?"
+msgstr "Zrestartować strongSwan?"
 
 #. Type: boolean
 #. Description
@@ -60,19 +61,18 @@ msgid ""
 "existing connections and then bring them back up, so if you are using such a "
 "strongSwan tunnel to connect for this update, restarting is not recommended."
 msgstr ""
-"U wordt aanbevolen om strongSwan te herstarten, want indien deze nieuwe "
-"versie veiligheidsproblemen verhelpt worden deze pas echt opgelost bij een "
-"herstart van de achtergronddienst. De meeste mensen verwachten dat de "
-"achtergronddienst herstart, dus dit is meestal een goed idee. Hoewel, dit "
-"kan bestaande verbindingen verbreken en ze dan opnieuw herstellen. Dus als u "
-"een strongSwan-tunnel gebruikt voor deze verbinding kunt u beter niet "
-"herstarten."
+"Restart strongSwan jest zalecany, ponieważ jest to poprawka bezpieczeństwa, "
+"która nie zostanie uwzględniona przed zrestartowaniem demona. Większość "
+"użytkowników oczekuje restartu demona, więc jest to z reguły dobry pomysł. Z "
+"drugiej strony może spowodować zerwanie i ponowne nawiązanie istniejących "
+"połączeń, więc jeśli aktualizacja jest przeprowadzana przez tunel "
+"strongSwan, restartowanie nie jest wskazane."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
 msgid "Start strongSwan's IKEv1 daemon?"
-msgstr "IKEv1-achtergronddienst van strongSwan starten?"
+msgstr "Uruchomić demona IKEv1 strongSwan?"
 
 #. Type: boolean
 #. Description
@@ -81,14 +81,14 @@ msgid ""
 "The pluto daemon must be running to support version 1 of the Internet Key "
 "Exchange protocol."
 msgstr ""
-"De pluto-achtergronddienst moet actief zijn om versie 1 van het Internet Key "
-"Exchange protocol te ondersteunen."
+"Demon pluto musi być uruchomiony, aby obsłużyć 1 wersję protokołu Internet "
+"Key Exchange."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:5001
 msgid "Start strongSwan's IKEv2 daemon?"
-msgstr "IKEv2-achtergronddienst van strongSwan starten?"
+msgstr "Uruchomić demona IKEv2 strongSwan?"
 
 #. Type: boolean
 #. Description
@@ -97,14 +97,14 @@ msgid ""
 "The charon daemon must be running to support version 2 of the Internet Key "
 "Exchange protocol."
 msgstr ""
-"De charon-achtergronddienst moet actief zijn om versie 2 van het Internet "
-"Key Exchange protocol te ondersteunen."
+"Demon charon musi być uruchomiony, aby obsłużyć 2 wersję protokołu Internet "
+"Key Exchange."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:6001
 msgid "Use an X.509 certificate for this host?"
-msgstr "Moet er een X.509-certificaat voor deze computer gebruikt worden?"
+msgstr "Użyć certyfikatu X.509 dla tego komputera?"
 
 #. Type: boolean
 #. Description
@@ -118,14 +118,13 @@ msgid ""
 "connections, key based authentication is easier to administer and more "
 "secure."
 msgstr ""
-"Een X.509-certificaat voor deze computer kan automatisch worden aangemaakt "
-"of geïmporteerd. Deze kan worden gebruikt voor het authenticeren van IPsec-"
-"verbindingen naar andere computers en is de beste manier om veilige IPsec-"
-"verbindingen op te bouwen. Een andere mogelijkheid is om het gebruik van "
-"shared secrets (wachtwoorden die hetzelfde zijn aan beide kanten van de "
-"tunnel) voor het authenticeren van een verbinding, maar voor een groter "
-"aantal verbindingen is authenticatie gebaseerd op sleutels makkelijker om te "
-"beheren en veiliger."
+"Certyfikat X.509 dla tego komputera może być automatycznie utworzony lub "
+"zaimportowany. Może zostać wykorzystany do uwierzytelnienia połączeń IPsec "
+"do innych hostów i jest zalecaną metodą tworzenia bezpiecznych połączeń "
+"IPsec. Inną możliwością jest użycie takich samych haseł znanych obu stronom "
+"tunelu (ang. shared secret) do uwierzytelnienia połączenia, ale przy "
+"większej liczbie połączeń łatwiej jest zarządzać uwierzytelnieniem za pomocą "
+"kluczy; jest to również bezpieczniejsze."
 
 #. Type: boolean
 #. Description
@@ -134,28 +133,26 @@ msgid ""
 "Alternatively you can reject this option and later use the command \"dpkg-"
 "reconfigure strongswan\" to come back."
 msgstr ""
-"U kunt deze optie ook weigeren en op een later moment hier terug komen met "
-"het commando \"dpkg-reconfigure strongswan\"."
+"Można również wybrać \"nie\" i użyć później polecenia \"dpkg-reconfigure "
+"strongswan\", aby powrócić do niniejszego wyboru opcji."
 
 #. Type: select
 #. Choices
 #: ../strongswan-starter.templates:7001
 msgid "create"
-msgstr "aanmaken"
+msgstr "utwórz"
 
 #. Type: select
 #. Choices
 #: ../strongswan-starter.templates:7001
 msgid "import"
-msgstr "importeren"
+msgstr "zaimportuj"
 
 #. Type: select
 #. Description
 #: ../strongswan-starter.templates:7002
 msgid "Methods for using a X.509 certificate to authenticate this host:"
-msgstr ""
-"Methodes bij het gebruik van een X.509-certificaat voor authenticatie van "
-"deze computer:"
+msgstr "Metody używające certyfikatu X.509 do uwierzytelniania tego komputera:"
 
 #. Type: select
 #. Description
@@ -165,9 +162,9 @@ msgid ""
 "or to import an existing public and private key stored in PEM file(s) for "
 "authenticating IPsec connections."
 msgstr ""
-"U kunt een nieuw X.509-certificaat aanmaken met eigen instellingen of een "
-"bestaand sleutelpaar in PEM-indeling importeren voor de authenticatie van "
-"IPsec-verbindingen."
+"Istnieje możliwość stworzenia nowego certyfikatu X.509 z ustawieniami "
+"użytkownika lub zaimportowania istniejącego klucza publicznego i prywatnego "
+"z pliku/plików PEM do uwierzytelniania połączeń IPsec."
 
 #. Type: select
 #. Description
@@ -180,12 +177,14 @@ msgid ""
 "certificate and all the answers given must match exactly the requirements of "
 "the CA, otherwise the certificate request may be rejected."
 msgstr ""
-"Als u ervoor kiest om een nieuw X.509-certificaat te maken zal u antwoord "
-"moeten geven op een aantal vragen voordat het aanmaken kan beginnen. Wanneer "
-"u uw publieke sleutel door een bestaande certificaat-autoriteit wilt laten "
-"ondertekenen moet u niet voor een door uzelf getekend certificaat kiezen. "
-"Ook moet u er op letten dat al uw antwoorden voldoen aan de eisen van deze "
-"CA om te voorkomen dat deze uw ondertekeningsaanvraag zal weigeren."
+"Jeśli zostanie wybrana opcja stworzenia nowego certyfikatu X.509, najpierw "
+"zostaną zadane pytania, na które będzie trzeba odpowiedzieć przed "
+"uruchomieniem procesu tworzenia certyfikatu. Proszę wziąć pod uwagę, że aby "
+"używać klucza publicznego podpisanego przez istniejący ośrodek certyfikacji "
+"(CA), nie powinno się wybierać opcji tworzenia podpisanego przez siebie "
+"samego (ang. self-signed) certyfikatu, a wszystkie odpowiedzi muszą idealnie "
+"spełniać wymagania CA, w  innym przypadku bowiem, certyfikat może zostać "
+"odrzucony."
 
 #. Type: select
 #. Description
@@ -199,19 +198,20 @@ msgid ""
 "for the X.509 certificates has to be PEM and that the private key must not "
 "be encrypted or the import procedure will fail."
 msgstr ""
-"Als u een bestaand sleutelpaar wilt importeren zal u gevraagd worden naar "
-"hun bestandsnamen (deze kunnen hetzelfde zijn als beide delen in één bestand "
-"zijn opgeslagen). U krijgt daarna ook de mogelijkheid om de bestandsnaam van "
-"de publieke sleutel(s) van de certificaat-autoriteit op te geven. Dit moet "
-"wel een ander bestand zijn. Let er ook op dat de X.509-certificaten in PEM-"
-"indeling moeten zijn en dat de geheime sleutel niet versleuteld mag zijn, "
-"anders zal de import-procedure mislukken."
+"W przypadku importowania istniejącego klucza publicznego i prywatnego, "
+"pojawią się pytania o ich nazwy (mogą być identyczne, jeśli obie części są "
+"przechowywane w jednym pliku). Opcjonalnie, można również określić nazwę "
+"pliku, gdzie będzie przechowywany klucz (lub klucze) publiczny ośrodka "
+"certyfikacji (CA), nie może być jednak taka sama jak dwie poprzednie. Proszę "
+"zauważyć, że formatem certyfikatów X.509 musi być PEM, a klucz prywatny nie "
+"może być zaszyfrowany - w przeciwnym wypadku procedura zakończy się "
+"niepowodzeniem."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:8001
 msgid "File name of your PEM format X.509 certificate:"
-msgstr "Bestandsnaam van uw X.509-certificaat in PEM-indeling:"
+msgstr "Nazwa pliku certyfikatu X.509 użytkownika, w formacie PEM:"
 
 #. Type: string
 #. Description
@@ -220,14 +220,14 @@ msgid ""
 "Please enter the location of the file containing your X.509 certificate in "
 "PEM format."
 msgstr ""
-"Geef de volledige locatie van het bestand dat uw X.509-certificaat in PEM-"
-"indeling bevat."
+"Proszę określić położenie pliku zawierającego certyfikat X.509 w formacie "
+"PEM."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:9001
 msgid "File name of your PEM format X.509 private key:"
-msgstr "Bestandsnaam van uw geheime X.509-sleutel in PEM-indeling:"
+msgstr "Nazwa pliku klucza prywatnego X.509 użytkownika, w formacie PEM:"
 
 #. Type: string
 #. Description
@@ -237,15 +237,15 @@ msgid ""
 "matching your X.509 certificate in PEM format. This can be the same file "
 "that contains the X.509 certificate."
 msgstr ""
-"Geef de volledige locatie van het bestand dat uw geheime RSA-sleutel bevat "
-"die behoort bij uw X.509-certificaat in PEM-indeling. Dit kan hetzelfde "
-"bestand zijn als dat wat uw X.509-certificaat bevat."
+"Proszę określić położenie pliku zawierającego certyfikat klucza publicznego "
+"RSA użytkownika, odpowiadającego certyfikatowi X.509 użytkownika w formacie "
+"PEM. Może być to ten sam plik, który zawiera certyfikat X.509."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:10001
 msgid "File name of your PEM format X.509 RootCA:"
-msgstr "Bestandsnaam van uw X.509-RootCA in PEM-indeling:"
+msgstr "Nazwa pliku X.509 RootCA użytkownika, w formacie PEM:"
 
 #. Type: string
 #. Description
@@ -257,18 +257,17 @@ msgid ""
 "Please note that it's not possible to store the RootCA in the same file as "
 "your X.509 certificate or private key."
 msgstr ""
-"U heeft nu de mogelijkheid om de locatie van het bestand (in PEM-indeling) "
-"dat het X.509-certificaat van de certificaat-autoriteit op te geven waarmee "
-"uw certificaat wordt ondertekend. Als u deze niet heeft of als u geen "
-"gebruik wilt maken van deze mogelijkheid dient u het veld leeg te laten. Let "
-"op: Het is niet mogelijk om de RootCA in hetzelfde bestand te bewaren als uw "
-"X.509-certificaat of geheime sleutel."
+"Opcjonalnie, można teraz podać lokalizację pliku zawierającego główny urząd "
+"certyfikacji użyty do podpisu certyfikatu użytkownika w formacie PEM. W "
+"przypadku nieposiadania takowego, proszę pozostawić pole puste. Proszę "
+"zauważyć, że nie można przechowywać RootCA w tym samym pliku co certyfikat "
+"X.509 lub klucz publiczny."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:11001
 msgid "Please enter which length the created RSA key should have:"
-msgstr "Geef de lengte voor de aan te maken RSA-sleutel:"
+msgstr "Proszę wprowadzić długość tworzonego klucza RSA:"
 
 #. Type: string
 #. Description
@@ -279,16 +278,17 @@ msgid ""
 "not need anything more than 4096 bits because it only slows the "
 "authentication process down and is not needed at the moment."
 msgstr ""
-"Geef de lengte van de aan te maken RSA-sleutel. Het mag niet minder dan 1024 "
-"bits zijn omdat dit als onveilig wordt beschouwd en u zult waarschijnlijk "
-"niet meer dan 4096 bits nodig hebben omdat het enkel het authenticatieproces "
-"vertraagt en op dit moment niet nodig is."
+"Proszę wprowadzić długość tworzonego klucza RSA. Nie powinna być ona "
+"mniejsza niż 1024 bity, ponieważ może być wtedy niebezpieczna; nie ma "
+"również potrzeby aby była większa niż 4096 bity, ponieważ będzie wtedy tylko "
+"spowalniać proces uwierzytelnienia, a aktualnie nie ma potrzeby używania tak "
+"długich kluczy."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:12001
 msgid "Create a self-signed X.509 certificate?"
-msgstr "Wilt u een door uzelf getekend X.509-certificaat aanmaken?"
+msgstr "Utworzyć podpisany przez samego siebie certyfikat X.509?"
 
 #. Type: boolean
 #. Description
@@ -302,14 +302,14 @@ msgid ""
 "features requires all certificates to be signed by a single Certificate "
 "Authority to create a trust path."
 msgstr ""
-"Deze installatie kan enkel een door uzelf getekend X.509-certificaat "
-"automatisch aanmaken omdat anders een certificaat-autoriteit nodig is om de "
-"certificaataanvraag te tekenen. Als u een door uzelf getekend certificaat "
-"wilt aanmaken, dan kunt u het onmiddellijk gebruiken om een verbinding te "
-"leggen met andere IPsec-hosts die X.509-certificaten ondersteunen voor IPSec-"
-"verbindingen. Als u echter strongSwan's PKI-mogelijkheden wilt gebruiken, "
-"dan zult u alle X.509-certificaten moeten laten tekenen door één enkele "
-"certificaat-autoriteit om een vertrouwenspad aan te maken."
+"Wyłącznie certyfikaty X.509 podpisane przez siebie mogą być tworzone "
+"automatycznie, ponieważ w przeciwnym wypadku potrzebny jest urząd "
+"certyfikacji, aby podpisać żądany certyfikat. W przypadku wybrania opcji "
+"utworzenia podpisanego przez siebie samego certyfikatu, można użyć go od "
+"razu do połączenia z innymi hostami IPsec, które obsługują certyfikat X.509 "
+"do uwierzytelniania połączeń IPsec. Jednakże, używanie funkcji PKI "
+"strongSwan wymaga, aby wszystkie certyfikaty były podpisane przez pojedynczy "
+"urząd certyfikacji, aby utworzyć zaufaną ścieżkę."
 
 #. Type: boolean
 #. Description
@@ -319,15 +319,16 @@ msgid ""
 "private key and the certificate request will be created, and you will have "
 "to sign the certificate request with your Certificate Authority."
 msgstr ""
-"Als u geen door uzelf getekend certificaat wilt aanmaken, dan zullen enkel "
-"de geheime RSA-sleutel en de certificaataanvraag worden aangemaakt en zult "
-"ude certificaataanvraag moeten laten tekenen door uw certificaat-autoriteit."
+"W przypadku niewybrania opcji tworzenia certyfikatu podpisanego przez siebie "
+"samego, utworzone zostaną tylko klucz prywatny RSA i żądanie podpisania "
+"certyfikatu, które będzie musiało zostać podpisane przez odpowiedni urząd "
+"certyfikacji, już za pośrednictwem użytkownika."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:13001
 msgid "Country code for the X.509 certificate request:"
-msgstr "Landcode van de X.509-certificaataanvraag:"
+msgstr "Kod kraju do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -336,8 +337,8 @@ msgid ""
 "Please enter the two-letter code for the country the server resides in (such "
 "as \"AT\" for Austria)."
 msgstr ""
-"Geef de tweeletterige code voor het land waarin de server staat (zoals \"NL"
-"\" voor Nederland)."
+"Proszę wprowadzić dwuliterowy kod kraju, w którym położony jest serwer (np. "
+"\"PL\" dla Polski)."
 
 #. Type: string
 #. Description
@@ -347,15 +348,15 @@ msgid ""
 "ISO-3166 country code; an empty field is allowed elsewhere in the X.509 "
 "certificate, but not here."
 msgstr ""
-"OpenSSL zal geen certificaat genereren als dit niet een geldige landcode uit "
-"ISO-3166 is. Voor andere velden van het X.509-certificaat is het toegestaan "
-"om ze leeg te laten, maar niet voor dit veld."
+"OpenSSL odmówi utworzenia certyfikatu, jeśli nie jest to właściwy kod kraju "
+"ISO-3166; pozostawienie pustego pola, przy certyfikacie X.509, jest "
+"dozwolone we wszystkich innych przypadkach, poza tym."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:14001
 msgid "State or province name for the X.509 certificate request:"
-msgstr "Staat of provincie voor de X.509-certificaataanvraag:"
+msgstr "Nazwa regionu lub prowincji do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -364,14 +365,14 @@ msgid ""
 "Please enter the full name of the state or province the server resides in "
 "(such as \"Upper Austria\")."
 msgstr ""
-"Geef de volledige naam van de staat of provincie waarin de server staat "
-"(zoals \"Noord-Holland\")."
+"Proszę wprowadzić pełną nazwę regionu lub prowincji w której położony jest "
+"serwer (np. \"Malopolska\")."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:15001
 msgid "Locality name for the X.509 certificate request:"
-msgstr "Plaatsnaam voor de X.509-certificaataanvraag:"
+msgstr "Nazwa lokalizacji do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -380,13 +381,14 @@ msgid ""
 "Please enter the locality the server resides in (often a city, such as "
 "\"Vienna\")."
 msgstr ""
-"Geef de plaats waar de server staat (vaak een stad zoals \"Amsterdam\")."
+"Proszę wprowadzić nazwę lokalizacji serwera (z reguły miasto, np. \"Krakow"
+"\")."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:16001
 msgid "Organization name for the X.509 certificate request:"
-msgstr "Naam van de organisatie voor de X.509-certificaataanvraag:"
+msgstr "Nazwa organizacji do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -394,13 +396,14 @@ msgstr "Naam van de organisatie voor de X.509-certificaataanvraag:"
 msgid ""
 "Please enter the organization the server belongs to (such as \"Debian\")."
 msgstr ""
-"Geef op van welke organisatie deze server deel uitmaakt (zoals \"Debian\")."
+"Proszę wprowadzić nazwę organizacji, do której należy serwer (np. \"Debian"
+"\")."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:17001
 msgid "Organizational unit for the X.509 certificate request:"
-msgstr "Organisatie-eenheid voor de X.509-certificaataanvraag:"
+msgstr "Jednostka organizacyjna do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -409,14 +412,15 @@ msgid ""
 "Please enter the organizational unit the server belongs to (such as "
 "\"security group\")."
 msgstr ""
-"Geef op van welke organisatie-eenheid deze server deel uitmaakt (zoals "
-"\"Afdeling beveiliging\")."
+"Proszę wprowadzić nazwę jednostki organizacyjnej do której należy serwer "
+"(np. \"grupa bezpieczeństwa\")."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:18001
 msgid "Common Name for the X.509 certificate request:"
-msgstr "Naam (Common Name) voor de X.509-certificaataanvraag:"
+msgstr ""
+"Nazwa domeny (ang. Common Name) do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -424,14 +428,14 @@ msgstr "Naam (Common Name) voor de X.509-certificaataanvraag:"
 msgid ""
 "Please enter the Common Name for this host (such as \"gateway.example.org\")."
 msgstr ""
-"Geef de naam (Common Name) voor deze computer op (zoals \"gateway.example.org"
-"\")."
+"Proszę wprowadzić nazwę domeny (ang. Common Name) dla tego komputera (np. "
+"\"gateway.example.org\")."
 
 #. Type: string
 #. Description
 #: ../strongswan-starter.templates:19001
 msgid "Email address for the X.509 certificate request:"
-msgstr "E-mailadres voor de X.509-certificaataanvraag:"
+msgstr "Adres poczty elektronicznej do żądania podpisania certyfikatu X.509:"
 
 #. Type: string
 #. Description
@@ -440,14 +444,14 @@ msgid ""
 "Please enter the email address of the person or organization responsible for "
 "the X.509 certificate."
 msgstr ""
-"Geef het e-mailadres van de persoon of organisatie die verantwoordelijk is "
-"voor het X.509-certificaat."
+"Proszę wprowadzić adres poczty elektronicznej osoby lub organizacji "
+"odpowiedzialnej za certyfikat X.509."
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:20001
 msgid "Enable opportunistic encryption?"
-msgstr "Wilt u opportunistische encryptie inschakelen?"
+msgstr "Włączyć szyfrowanie oportunistyczne?"
 
 #. Type: boolean
 #. Description
@@ -458,10 +462,11 @@ msgid ""
 "deployed, activating it will cause a significant delay for every new "
 "outgoing connection."
 msgstr ""
-"Deze versie van strongSwan ondersteunt opportunistische versleuteling (OE), "
-"welke IPsec-authenticatie-informatie opslaat in DNS-velden. Totdat dit op "
-"grote schaal wordt toegepast zal het inschakelen hiervan voor een "
-"significante vertraging zorgen voor nieuwe verbindingen."
+"Ta wersja stronSwan obsługuje tzw. szyfrowanie oportunistyczne (ang. "
+"opportunistic encryption - OE), które przechowuje informacje o "
+"uwierzytelnieniu IPSec w rekordach DNS. Dopóki nie zostanie ono szeroko "
+"wdrożone, aktywacja tej opcji spowoduje odczuwalne opóźnienie dla każdego "
+"nowego połączenia wychodzącego."
 
 #. Type: boolean
 #. Description
@@ -471,6 +476,6 @@ msgid ""
 "It may break the Internet connection (default route) as the pluto daemon "
 "starts."
 msgstr ""
-"Schakel opportunistische versleuteling alleen in als u er zeker van bent dat "
-"u dit wilt. Het kan er voor zorgen dat uw internetverbinding "
-"(standaardroute) niet meer werkt zodra de pluto-achtergronddienst opstart."
+"Szyfrowanie oportunistyczne powinno być włączone tylko przez osoby, które go "
+"potrzebują. Może bowiem doprowadzić do przerwania połączenia internetowego "
+"(domyślnej trasy), kiedy tylko uruchomi się demon pluto."
