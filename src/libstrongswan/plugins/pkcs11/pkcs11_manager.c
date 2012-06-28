@@ -323,17 +323,11 @@ METHOD(pkcs11_manager_t, create_token_enumerator, enumerator_t*,
 	return &enumerator->public;
 }
 
-/**
- * Singleton instance
- */
-static private_pkcs11_manager_t *singleton = NULL;
-
 METHOD(pkcs11_manager_t, destroy, void,
 	private_pkcs11_manager_t *this)
 {
 	this->libs->destroy_function(this->libs, (void*)lib_entry_destroy);
 	free(this);
-	singleton = NULL;
 }
 
 /**
@@ -386,14 +380,12 @@ pkcs11_manager_t *pkcs11_manager_create(pkcs11_manager_token_event_t cb,
 	}
 	enumerator->destroy(enumerator);
 
-	singleton = this;
-
 	enumerator = this->libs->create_enumerator(this->libs);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
 		query_slots(entry);
-		entry->job = callback_job_create((void*)dispatch_slot_events,
-										 entry, (void*)end_dispatch, NULL);
+		entry->job = callback_job_create_with_prio((void*)dispatch_slot_events,
+						 entry, (void*)end_dispatch, NULL, JOB_PRIO_CRITICAL);
 		lib->processor->queue_job(lib->processor, (job_t*)entry->job);
 	}
 	enumerator->destroy(enumerator);
@@ -401,10 +393,3 @@ pkcs11_manager_t *pkcs11_manager_create(pkcs11_manager_token_event_t cb,
 	return &this->public;
 }
 
-/**
- * See header
- */
-pkcs11_manager_t *pkcs11_manager_get()
-{
-	return (pkcs11_manager_t*)singleton;
-}

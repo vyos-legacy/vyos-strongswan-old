@@ -220,7 +220,7 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 	ike_sa_t *ike_sa = NULL;
 	peer_cfg_t *peer_cfg = NULL;
 	auth_cfg_t *auth;
-	bool received_vip = FALSE;
+	bool received_vip = FALSE, first_peer_addr = TRUE;
 
 	enumerator = message->create_attribute_enumerator(message);
 	while (enumerator->enumerate(enumerator, &attribute, &value))
@@ -260,9 +260,13 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				ike_sa->set_virtual_ip(ike_sa, FALSE, value.host);
 				received_vip = TRUE;
 				break;
-			case HA_ADDITIONAL_ADDR:
-				ike_sa->add_additional_address(ike_sa,
-											   value.host->clone(value.host));
+			case HA_PEER_ADDR:
+				if (first_peer_addr)
+				{
+					ike_sa->clear_peer_addresses(ike_sa);
+					first_peer_addr = FALSE;
+				}
+				ike_sa->add_peer_address(ike_sa, value.host->clone(value.host));
 				break;
 			case HA_CONFIG_NAME:
 				peer_cfg = charon->backends->get_peer_cfg_by_name(
@@ -281,6 +285,10 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				set_extension(ike_sa, value.u32, EXT_NATT);
 				set_extension(ike_sa, value.u32, EXT_MOBIKE);
 				set_extension(ike_sa, value.u32, EXT_HASH_AND_URL);
+				set_extension(ike_sa, value.u32, EXT_MULTIPLE_AUTH);
+				set_extension(ike_sa, value.u32, EXT_STRONGSWAN);
+				set_extension(ike_sa, value.u32, EXT_EAP_ONLY_AUTHENTICATION);
+				set_extension(ike_sa, value.u32, EXT_MS_WINDOWS);
 				break;
 			case HA_CONDITIONS:
 				set_condition(ike_sa, value.u32, COND_NAT_ANY);
@@ -290,6 +298,7 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				set_condition(ike_sa, value.u32, COND_EAP_AUTHENTICATED);
 				set_condition(ike_sa, value.u32, COND_CERTREQ_SEEN);
 				set_condition(ike_sa, value.u32, COND_ORIGINAL_INITIATOR);
+				set_condition(ike_sa, value.u32, COND_STALE);
 				break;
 			default:
 				break;
@@ -872,8 +881,8 @@ ha_dispatcher_t *ha_dispatcher_create(ha_socket_t *socket,
 		.kernel = kernel,
 		.attr = attr,
 	);
-	this->job = callback_job_create((callback_job_cb_t)dispatch,
-									this, NULL, NULL);
+	this->job = callback_job_create_with_prio((callback_job_cb_t)dispatch,
+										this, NULL, NULL, JOB_PRIO_CRITICAL);
 	lib->processor->queue_job(lib->processor, (job_t*)this->job);
 
 	return &this->public;

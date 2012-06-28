@@ -171,6 +171,8 @@ enum id_part_t {
 	ID_PART_RDN_G,
 	/** Initials RDN of a DN */
 	ID_PART_RDN_I,
+	/** DN Qualifier RDN of a DN */
+	ID_PART_RDN_DNQ,
 	/** UniqueIdentifier RDN of a DN */
 	ID_PART_RDN_ID,
 	/** Locality RDN of a DN */
@@ -293,12 +295,12 @@ struct identification_t {
  *
  * In favour of pluto, domainnames are prepended with an @, since
  * pluto resolves domainnames without an @ to IPv4 addresses. Since
- * we use a seperate host_t class for addresses, this doesn't
+ * we use a separate host_t class for addresses, this doesn't
  * make sense for us.
  *
  * A distinguished name may contain one or more of the following RDNs:
  * ND, UID, DC, CN, S, SN, serialNumber, C, L, ST, O, OU, T, D,
- * N, G, I, ID, EN, EmployeeNumber, E, Email, emailAddress, UN,
+ * N, G, I, dnQualifier, ID, EN, EmployeeNumber, E, Email, emailAddress, UN,
  * unstructuredName, TCGID.
  *
  * This constructor never returns NULL. If it does not find a suitable

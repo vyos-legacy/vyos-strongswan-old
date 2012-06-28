@@ -15,7 +15,9 @@
 
 #include "stroke_control.h"
 
+#include <hydra.h>
 #include <daemon.h>
+
 #include <processing/jobs/delete_ike_sa_job.h>
 #include <processing/jobs/rekey_ike_sa_job.h>
 #include <processing/jobs/rekey_child_sa_job.h>
@@ -101,14 +103,14 @@ static void charon_initiate(peer_cfg_t *peer_cfg, child_cfg_t *child_cfg,
 	if (msg->output_verbosity < 0)
 	{
 		charon->controller->initiate(charon->controller, peer_cfg, child_cfg,
-									 NULL, NULL);
+									 NULL, NULL, 0);
 	}
 	else
 	{
 		stroke_log_info_t info = { msg->output_verbosity, out };
 
 		charon->controller->initiate(charon->controller, peer_cfg, child_cfg,
-									 (controller_cb_t)stroke_log, &info);
+									 (controller_cb_t)stroke_log, &info, 0);
 	}
 }
 
@@ -275,28 +277,29 @@ METHOD(stroke_control_t, terminate, void,
 		if (child)
 		{
 			charon->controller->terminate_child(charon->controller, id,
-									(controller_cb_t)stroke_log, &info);
+									(controller_cb_t)stroke_log, &info, 0);
 		}
 		else
 		{
 			charon->controller->terminate_ike(charon->controller, id,
-									(controller_cb_t)stroke_log, &info);
+									(controller_cb_t)stroke_log, &info, 0);
 		}
 		return;
 	}
 
 	ike_list = linked_list_create();
 	child_list = linked_list_create();
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		child_sa_t *child_sa;
-		iterator_t *children;
+		enumerator_t *children;
 
 		if (child)
 		{
-			children = ike_sa->create_child_sa_iterator(ike_sa);
-			while (children->iterate(children, (void**)&child_sa))
+			children = ike_sa->create_child_sa_enumerator(ike_sa);
+			while (children->enumerate(children, (void**)&child_sa))
 			{
 				if (streq(name, child_sa->get_name(child_sa)))
 				{
@@ -330,7 +333,7 @@ METHOD(stroke_control_t, terminate, void,
 	while (enumerator->enumerate(enumerator, &del))
 	{
 		charon->controller->terminate_child(charon->controller, del,
-									(controller_cb_t)stroke_log, &info);
+									(controller_cb_t)stroke_log, &info, 0);
 	}
 	enumerator->destroy(enumerator);
 
@@ -338,7 +341,7 @@ METHOD(stroke_control_t, terminate, void,
 	while (enumerator->enumerate(enumerator, &del))
 	{
 		charon->controller->terminate_ike(charon->controller, del,
-									(controller_cb_t)stroke_log, &info);
+									(controller_cb_t)stroke_log, &info, 0);
 	}
 	enumerator->destroy(enumerator);
 
@@ -366,16 +369,17 @@ METHOD(stroke_control_t, rekey, void,
 		DBG1(DBG_CFG, "error parsing specifier string");
 		return;
 	}
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		child_sa_t *child_sa;
-		iterator_t *children;
+		enumerator_t *children;
 
 		if (child)
 		{
-			children = ike_sa->create_child_sa_iterator(ike_sa);
-			while (children->iterate(children, (void**)&child_sa))
+			children = ike_sa->create_child_sa_enumerator(ike_sa);
+			while (children->enumerate(children, (void**)&child_sa))
 			{
 				if ((name && streq(name, child_sa->get_name(child_sa))) ||
 					(id && id == child_sa->get_reqid(child_sa)))
@@ -442,7 +446,8 @@ METHOD(stroke_control_t, terminate_srcip, void,
 		chunk_end = end->get_address(end);
 	}
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		vip = ike_sa->get_virtual_ip(ike_sa, FALSE);
@@ -481,8 +486,7 @@ METHOD(stroke_control_t, terminate_srcip, void,
 METHOD(stroke_control_t, purge_ike, void,
 	private_stroke_control_t *this, stroke_msg_t *msg, FILE *out)
 {
-	enumerator_t *enumerator;
-	iterator_t *iterator;
+	enumerator_t *enumerator, *children;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
 	linked_list_t *list;
@@ -493,16 +497,17 @@ METHOD(stroke_control_t, purge_ike, void,
 	info.level = msg->output_verbosity;
 
 	list = linked_list_create();
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
-		iterator = ike_sa->create_child_sa_iterator(ike_sa);
-		if (!iterator->iterate(iterator, (void**)&child_sa))
+		children = ike_sa->create_child_sa_enumerator(ike_sa);
+		if (!children->enumerate(children, (void**)&child_sa))
 		{
 			list->insert_last(list,
 						(void*)(uintptr_t)ike_sa->get_unique_id(ike_sa));
 		}
-		iterator->destroy(iterator);
+		children->destroy(children);
 	}
 	enumerator->destroy(enumerator);
 
@@ -510,25 +515,44 @@ METHOD(stroke_control_t, purge_ike, void,
 	while (enumerator->enumerate(enumerator, &del))
 	{
 		charon->controller->terminate_ike(charon->controller, del,
-									(controller_cb_t)stroke_log, &info);
+									(controller_cb_t)stroke_log, &info, 0);
 	}
 	enumerator->destroy(enumerator);
 	list->destroy(list);
 }
 
 /**
- * call charon to install a trap
+ * call charon to install a shunt or trap
  */
 static void charon_route(peer_cfg_t *peer_cfg, child_cfg_t *child_cfg,
 						 char *name, FILE *out)
 {
-	if (charon->traps->install(charon->traps, peer_cfg, child_cfg))
+	ipsec_mode_t mode;
+
+	mode = child_cfg->get_mode(child_cfg);
+	if (mode == MODE_PASS || mode == MODE_DROP)
 	{
-		fprintf(out, "'%s' routed\n", name);
+		if (charon->shunts->install(charon->shunts, child_cfg))
+		{
+			fprintf(out, "'%s' shunt %N policy installed\n",
+					name, ipsec_mode_names, mode);
+		}
+		else
+		{
+			fprintf(out, "'%s' shunt %N policy installation failed\n",
+					name, ipsec_mode_names, mode);
+		}
 	}
 	else
 	{
-		fprintf(out, "routing '%s' failed\n", name);
+		if (charon->traps->install(charon->traps, peer_cfg, child_cfg))
+		{
+			fprintf(out, "'%s' routed\n", name);
+		}
+		else
+		{
+			fprintf(out, "routing '%s' failed\n", name);
+		}
 	}
 }
 
@@ -609,7 +633,13 @@ METHOD(stroke_control_t, unroute, void,
 {
 	child_sa_t *child_sa;
 	enumerator_t *enumerator;
-	u_int32_t id;
+	u_int32_t id = 0;
+
+	if (charon->shunts->uninstall(charon->shunts, msg->unroute.name))
+	{
+		fprintf(out, "shunt policy '%s' uninstalled\n", msg->unroute.name);
+		return;
+	}
 
 	enumerator = charon->traps->create_enumerator(charon->traps);
 	while (enumerator->enumerate(enumerator, NULL, &child_sa))
@@ -617,14 +647,20 @@ METHOD(stroke_control_t, unroute, void,
 		if (streq(msg->unroute.name, child_sa->get_name(child_sa)))
 		{
 			id = child_sa->get_reqid(child_sa);
-			enumerator->destroy(enumerator);
-			charon->traps->uninstall(charon->traps, id);
-			fprintf(out, "configuration '%s' unrouted\n", msg->unroute.name);
-			return;
+			break;
 		}
 	}
 	enumerator->destroy(enumerator);
-	fprintf(out, "configuration '%s' not found\n", msg->unroute.name);
+
+	if (id)
+	{
+		charon->traps->uninstall(charon->traps, id);
+		fprintf(out, "configuration '%s' unrouted\n", msg->unroute.name);
+	}
+	else
+	{
+		fprintf(out, "configuration '%s' not found\n", msg->unroute.name);
+	}
 }
 
 METHOD(stroke_control_t, destroy, void,

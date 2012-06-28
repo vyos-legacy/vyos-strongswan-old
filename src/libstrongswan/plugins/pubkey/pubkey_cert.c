@@ -15,6 +15,8 @@
 
 #include "pubkey_cert.h"
 
+#include <time.h>
+
 #include <debug.h>
 
 typedef struct private_pubkey_cert_t private_pubkey_cert_t;
@@ -45,40 +47,41 @@ struct private_pubkey_cert_t {
 	identification_t *subject;
 
 	/**
+	 * key inception time
+	 */
+	time_t notBefore;
+
+	/**
+	 * key expiration time
+	 */
+	time_t notAfter;
+
+	/**
 	 * reference count
 	 */
 	refcount_t ref;
 };
 
-/**
- * Implementation of certificate_t.get_type
- */
-static certificate_type_t get_type(private_pubkey_cert_t *this)
+METHOD(certificate_t, get_type, certificate_type_t,
+	private_pubkey_cert_t *this)
 {
 	return CERT_TRUSTED_PUBKEY;
 }
 
-/**
- * Implementation of certificate_t.get_subject
- */
-static identification_t* get_subject(private_pubkey_cert_t *this)
+METHOD(certificate_t, get_subject, identification_t*,
+	private_pubkey_cert_t *this)
 {
 	return this->subject;
 }
 
-/**
- * Implementation of certificate_t.get_issuer
- */
-static identification_t* get_issuer(private_pubkey_cert_t *this)
+METHOD(certificate_t, get_issuer, identification_t*,
+	private_pubkey_cert_t *this)
 {
 	return this->issuer;
 }
 
-/**
- * Implementation of certificate_t.has_subject.
- */
-static id_match_t has_subject(private_pubkey_cert_t *this,
-							  identification_t *subject)
+METHOD(certificate_t, has_subject, id_match_t,
+	private_pubkey_cert_t *this, identification_t *subject)
 {
 	if (subject->get_type(subject) == ID_KEY_ID)
 	{
@@ -94,22 +97,18 @@ static id_match_t has_subject(private_pubkey_cert_t *this,
 			}
 		}
 	}
-	return ID_MATCH_NONE;
+
+	return this->subject->matches(this->subject, subject);
 }
 
-/**
- * Implementation of certificate_t.has_subject.
- */
-static id_match_t has_issuer(private_pubkey_cert_t *this,
-							 identification_t *issuer)
+METHOD(certificate_t, has_issuer, id_match_t,
+	private_pubkey_cert_t *this, identification_t *issuer)
 {
 	return ID_MATCH_NONE;
 }
 
-/**
- * Implementation of certificate_t.equals.
- */
-static bool equals(private_pubkey_cert_t *this, certificate_t *other)
+METHOD(certificate_t, equals, bool,
+	private_pubkey_cert_t *this, certificate_t *other)
 {
 	public_key_t *other_key;
 
@@ -126,62 +125,52 @@ static bool equals(private_pubkey_cert_t *this, certificate_t *other)
 	return FALSE;
 }
 
-/**
- * Implementation of certificate_t.issued_by
- */
-static bool issued_by(private_pubkey_cert_t *this, certificate_t *issuer)
+METHOD(certificate_t, issued_by, bool,
+	private_pubkey_cert_t *this, certificate_t *issuer)
 {
 	return equals(this, issuer);
 }
 
-/**
- * Implementation of certificate_t.get_public_key
- */
-static public_key_t* get_public_key(private_pubkey_cert_t *this)
+METHOD(certificate_t, get_public_key,  public_key_t*,
+	private_pubkey_cert_t *this)
 {
 	this->key->get_ref(this->key);
 	return this->key;
 }
 
-/**
- * Implementation of certificate_t.get_validity.
- */
-static bool get_validity(private_pubkey_cert_t *this, time_t *when,
-						 time_t *not_before, time_t *not_after)
+METHOD(certificate_t, get_validity, bool,
+	private_pubkey_cert_t *this, time_t *when, time_t *not_before,
+	time_t *not_after)
 {
+	time_t t = when ? *when : time(NULL);
+
 	if (not_before)
 	{
-		*not_before = 0;
+		*not_before = this->notBefore;
 	}
 	if (not_after)
 	{
-		*not_after = ~0;
+		*not_after = this->notAfter;
 	}
-	return TRUE;
+	return ((this->notBefore == UNDEFINED_TIME || t >= this->notBefore) &&
+			(this->notAfter  == UNDEFINED_TIME || t <= this->notAfter));
 }
 
-/**
- * Implementation of certificate_t.get_encoding.
- */
-static bool get_encoding(private_pubkey_cert_t *this, cred_encoding_type_t type,
-						 chunk_t *encoding)
+METHOD(certificate_t, get_encoding, bool,
+	private_pubkey_cert_t *this, cred_encoding_type_t type, chunk_t *encoding)
 {
-	return this->key->get_encoding(this->key, PUBKEY_ASN1_DER, encoding);
+	return this->key->get_encoding(this->key, type, encoding);
 }
 
-/**
- * Implementation of certificate_t.get_ref
- */
-static private_pubkey_cert_t* get_ref(private_pubkey_cert_t *this)
+METHOD(certificate_t, get_ref, certificate_t*,
+	private_pubkey_cert_t *this)
 {
 	ref_get(&this->ref);
-	return this;
+	return &this->public.interface;
 }
 
-/**
- * Implementation of pubkey_cert_t.destroy
- */
-static void destroy(private_pubkey_cert_t *this)
+METHOD(certificate_t, destroy, void,
+	private_pubkey_cert_t *this)
 {
 	if (ref_put(&this->ref))
 	{
@@ -195,28 +184,42 @@ static void destroy(private_pubkey_cert_t *this)
 /*
  * see header file
  */
-static pubkey_cert_t *pubkey_cert_create(public_key_t *key)
+static pubkey_cert_t *pubkey_cert_create(public_key_t *key,
+										 time_t notBefore, time_t notAfter,
+										 identification_t *subject)
 {
-	private_pubkey_cert_t *this = malloc_thing(private_pubkey_cert_t);
+	private_pubkey_cert_t *this;
 	chunk_t fingerprint;
 
-	this->public.interface.get_type = (certificate_type_t (*)(certificate_t *this))get_type;
-	this->public.interface.get_subject = (identification_t* (*)(certificate_t *this))get_subject;
-	this->public.interface.get_issuer = (identification_t* (*)(certificate_t *this))get_issuer;
-	this->public.interface.has_subject = (id_match_t (*)(certificate_t*, identification_t *subject))has_subject;
-	this->public.interface.has_issuer = (id_match_t (*)(certificate_t*, identification_t *issuer))has_issuer;
-	this->public.interface.issued_by = (bool (*)(certificate_t *this, certificate_t *issuer))issued_by;
-	this->public.interface.get_public_key = (public_key_t* (*)(certificate_t *this))get_public_key;
-	this->public.interface.get_validity = (bool (*)(certificate_t*, time_t *when, time_t *, time_t*))get_validity;
-	this->public.interface.get_encoding = (bool (*)(certificate_t*,cred_encoding_type_t,chunk_t*))get_encoding;
-	this->public.interface.equals = (bool (*)(certificate_t*, certificate_t *other))equals;
-	this->public.interface.get_ref = (certificate_t* (*)(certificate_t *this))get_ref;
-	this->public.interface.destroy = (void (*)(certificate_t *this))destroy;
+	INIT(this,
+		.public = {
+			.interface = {
+				.get_type = _get_type,
+				.get_subject = _get_subject,
+				.get_issuer = _get_issuer,
+				.has_subject = _has_subject,
+				.has_issuer = _has_issuer,
+				.issued_by = _issued_by,
+				.get_public_key = _get_public_key,
+				.get_validity = _get_validity,
+				.get_encoding = _get_encoding,
+				.equals = _equals,
+				.get_ref = _get_ref,
+				.destroy = _destroy,
+			},
+		},
+		.ref = 1,
+		.key = key,
+		.notBefore = notBefore,
+		.notAfter = notAfter,
+		.issuer = identification_create_from_encoding(ID_ANY, chunk_empty),
+	);
 
-	this->ref = 1;
-	this->key = key;
-	this->issuer = identification_create_from_encoding(ID_ANY, chunk_empty);
-	if (key->get_fingerprint(key, KEYID_PUBKEY_INFO_SHA1, &fingerprint))
+	if (subject)
+	{
+		this->subject = subject->clone(subject);
+	}
+	else if (key->get_fingerprint(key, KEYID_PUBKEY_INFO_SHA1, &fingerprint))
 	{
 		this->subject = identification_create_from_encoding(ID_KEY_ID, fingerprint);
 	}
@@ -235,6 +238,8 @@ pubkey_cert_t *pubkey_cert_wrap(certificate_type_t type, va_list args)
 {
 	public_key_t *key = NULL;
 	chunk_t blob = chunk_empty;
+	identification_t *subject = NULL;
+	time_t notBefore = UNDEFINED_TIME, notAfter = UNDEFINED_TIME;
 
 	while (TRUE)
 	{
@@ -245,6 +250,15 @@ pubkey_cert_t *pubkey_cert_wrap(certificate_type_t type, va_list args)
 				continue;
 			case BUILD_PUBLIC_KEY:
 				key = va_arg(args, public_key_t*);
+				continue;
+			case BUILD_NOT_BEFORE_TIME:
+				notBefore = va_arg(args, time_t);
+				continue;
+			case BUILD_NOT_AFTER_TIME:
+				notAfter = va_arg(args, time_t);
+				continue;
+			case BUILD_SUBJECT:
+				subject = va_arg(args, identification_t*);
 				continue;
 			case BUILD_END:
 				break;
@@ -264,7 +278,7 @@ pubkey_cert_t *pubkey_cert_wrap(certificate_type_t type, va_list args)
 	}
 	if (key)
 	{
-		return pubkey_cert_create(key);
+		return pubkey_cert_create(key, notBefore, notAfter, subject);
 	}
 	return NULL;
 }

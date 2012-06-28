@@ -18,11 +18,13 @@
 #include "messages/pb_error_msg.h"
 #include "state_machine/pb_tnc_state_machine.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
-#include <tls_writer.h>
-#include <tls_reader.h>
 #include <tnc/tnccs/tnccs.h>
+
+#include <utils/linked_list.h>
+#include <bio/bio_writer.h>
+#include <bio/bio_reader.h>
+#include <pen/pen.h>
+#include <debug.h>
 
 ENUM(pb_tnc_batch_type_names, PB_BATCH_CDATA, PB_BATCH_CLOSE,
 	"CDATA",
@@ -142,7 +144,7 @@ METHOD(pb_tnc_batch_t, build, void,
 	enumerator_t *enumerator;
 	pb_tnc_msg_type_t msg_type;
 	pb_tnc_msg_t *msg;
-	tls_writer_t *writer;
+	bio_writer_t *writer;
 
 	/* compute total PB-TNC batch size by summing over all messages */
 	batch_len = PB_TNC_BATCH_HEADER_SIZE;
@@ -156,7 +158,7 @@ METHOD(pb_tnc_batch_t, build, void,
 	enumerator->destroy(enumerator);
 
 	/* build PB-TNC batch header */
-	writer = tls_writer_create(batch_len);	
+	writer = bio_writer_create(batch_len);	
 	writer->write_uint8 (writer, PB_TNC_VERSION);
 	writer->write_uint8 (writer, this->is_server ?
 								 PB_TNC_BATCH_FLAG_D : PB_TNC_BATCH_FLAG_NONE);
@@ -178,7 +180,7 @@ METHOD(pb_tnc_batch_t, build, void,
 			flags |= PB_TNC_FLAG_NOSKIP;
 		}
 		writer->write_uint8 (writer, flags);
-		writer->write_uint24(writer, IETF_VENDOR_ID);
+		writer->write_uint24(writer, PEN_IETF);
 		writer->write_uint32(writer, msg_type);
 		writer->write_uint32(writer, msg_len);
 		writer->write_data  (writer, msg_value);
@@ -192,7 +194,7 @@ METHOD(pb_tnc_batch_t, build, void,
 static status_t process_batch_header(private_pb_tnc_batch_t *this,
 									 pb_tnc_state_machine_t *state_machine)
 {
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 	pb_tnc_msg_t *msg;
 	pb_error_msg_t *err_msg;
 	u_int8_t version, flags, reserved, type;
@@ -203,12 +205,12 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	{
 		DBG1(DBG_TNC, "%u bytes insufficient to parse PB-TNC batch header",
 					   this->encoding.len);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, 0);
 		goto fatal;
 	}
 
-	reader = tls_reader_create(this->encoding);
+	reader = bio_reader_create(this->encoding);
 	reader->read_uint8 (reader, &version);
 	reader->read_uint8 (reader, &flags);
 	reader->read_uint8 (reader, &reserved);
@@ -220,7 +222,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	if (version != PB_TNC_VERSION)
 	{
 		DBG1(DBG_TNC, "unsupported TNCCS batch version 0x%01x", version);
-		msg = pb_error_msg_create(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create(TRUE, PEN_IETF,
 								  PB_ERROR_VERSION_NOT_SUPPORTED);
 		err_msg = (pb_error_msg_t*)msg;
 		err_msg->set_bad_version(err_msg, version);
@@ -233,7 +235,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	{
 		DBG1(DBG_TNC, "wrong Directionality: batch is from a PB %s",
 			 directionality ? "server" : "client");
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, 1);
 		goto fatal;
 	}
@@ -243,7 +245,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	if (this->type > PB_BATCH_ROOF)
 	{
 		DBG1(DBG_TNC, "unknown PB-TNC batch type: %d", this->type);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, 3);
 		goto fatal;
 	}
@@ -252,7 +254,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	{
 		DBG1(DBG_TNC, "unexpected PB-TNC batch type: %N",
 					   pb_tnc_batch_type_names, this->type);
-		msg = pb_error_msg_create(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create(TRUE, PEN_IETF,
 								  PB_ERROR_UNEXPECTED_BATCH_TYPE);
 		goto fatal;
 	}
@@ -262,7 +264,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	{
 		DBG1(DBG_TNC, "%u bytes of data is not equal to batch length of %u bytes",
 					   this->encoding.len, batch_len);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, 4);
 		goto fatal;
 	}
@@ -277,7 +279,7 @@ fatal:
 
 static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 {
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 	pb_tnc_msg_t *pb_tnc_msg, *msg;
 	u_int8_t flags;
 	u_int32_t vendor_id, msg_type, msg_len, offset;
@@ -291,12 +293,12 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	{
 		DBG1(DBG_TNC, "%u bytes insufficient to parse PB-TNC message header",
 					  data.len);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, this->offset);
 		goto fatal;
 	}
 
-	reader = tls_reader_create(data);
+	reader = bio_reader_create(data);
 	reader->read_uint8 (reader, &flags);
 	reader->read_uint24(reader, &vendor_id);
 	reader->read_uint32(reader, &msg_type);
@@ -308,15 +310,15 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	if (msg_len > data.len)
 	{
 		DBG1(DBG_TNC, "%u bytes insufficient to parse PB-TNC message", data.len);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, this->offset + 8);
 		goto fatal;
 	}
 
-	if (vendor_id == RESERVED_VENDOR_ID)
+	if (vendor_id == PEN_RESERVED)
 	{
-		DBG1(DBG_TNC, "Vendor ID 0x%06x is reserved", RESERVED_VENDOR_ID);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		DBG1(DBG_TNC, "Vendor ID 0x%06x is reserved", PEN_RESERVED);
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, this->offset + 1);
 		goto fatal;
 
@@ -326,19 +328,19 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	{
 		DBG1(DBG_TNC, "PB-TNC message Type 0x%08x is reserved",
 			 PB_TNC_RESERVED_MSG_TYPE);
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, this->offset + 4);
 		goto fatal;
 	}
 
 
-	if (vendor_id != IETF_VENDOR_ID || msg_type > PB_MSG_ROOF)
+	if (vendor_id != PEN_IETF || msg_type > PB_MSG_ROOF)
 	{
 		if (msg_len < PB_TNC_HEADER_SIZE)
 		{
 			DBG1(DBG_TNC, "%u bytes too small for PB-TNC message length",
 						   msg_len);
-			msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_INVALID_PARAMETER, this->offset + 8);
 			goto fatal;
 		}
@@ -347,7 +349,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 		{
 			DBG1(DBG_TNC, "reject PB-TNC message (Vendor ID 0x%06x / "
 						  "Type 0x%08x)", vendor_id, msg_type);
-			msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_UNSUPPORTED_MANDATORY_MSG, this->offset);
 			goto fatal;
 		}
@@ -367,7 +369,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 			DBG1(DBG_TNC, "%N message must%s have NOSKIP flag set",
 				 pb_tnc_msg_type_names, msg_type,
 				 pb_tnc_msg_infos[msg_type].has_noskip_flag ? "" : " not");
-			msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 								PB_ERROR_INVALID_PARAMETER, this->offset);
 			goto fatal;
 		}
@@ -380,7 +382,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 				 pb_tnc_msg_type_names, msg_type,
 				 pb_tnc_msg_infos[msg_type].exact_size ? "exactly" : "at least",
 				 pb_tnc_msg_infos[msg_type].min_size, msg_len);
-			msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 								PB_ERROR_INVALID_PARAMETER, this->offset);
 			goto fatal;
 		}
@@ -393,7 +395,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 		{
 			DBG1(DBG_TNC,"reject %N message received from a PB-TNC client",
 						  pb_tnc_msg_type_names, msg_type);
-			msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 								PB_ERROR_INVALID_PARAMETER, this->offset);
 			goto fatal;
 		}
@@ -415,8 +417,8 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	status = pb_tnc_msg->process(pb_tnc_msg, &offset);
 	if (status == FAILED || status == VERIFY_ERROR)
 	{
-		msg = pb_error_msg_create_with_offset(TRUE, IETF_VENDOR_ID,
-							PB_ERROR_INVALID_PARAMETER, this->offset);
+		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
+							PB_ERROR_INVALID_PARAMETER, this->offset + offset);
 		this->errors->insert_last(this->errors, msg);
 	}
 	if (status == FAILED)

@@ -14,13 +14,13 @@
  */
 
 #include "eap_radius.h"
+#include "eap_radius_plugin.h"
+#include "eap_radius_forward.h"
 
-#include "radius_message.h"
-#include "radius_client.h"
+#include <radius_message.h>
+#include <radius_client.h>
 
 #include <daemon.h>
-
-#define TUNNEL_TYPE_ESP		9
 
 typedef struct private_eap_radius_t private_eap_radius_t;
 
@@ -162,7 +162,7 @@ METHOD(eap_method_t, initiate, status_t,
 	status_t status = FAILED;
 	chunk_t username;
 
-	request = radius_message_create_request();
+	request = radius_message_create(RMC_ACCESS_REQUEST);
 	username = chunk_create(this->id_prefix, strlen(this->id_prefix));
 	username = chunk_cata("cc", username, this->peer->get_encoding(this->peer));
 	request->add(request, RAT_USER_NAME, username);
@@ -175,15 +175,21 @@ METHOD(eap_method_t, initiate, status_t,
 	{
 		add_eap_identity(this, request);
 	}
+	eap_radius_forward_from_ike(request);
 
 	response = this->client->request(this->client, request);
 	if (response)
 	{
+		eap_radius_forward_to_ike(response);
 		if (radius2ike(this, response, out))
 		{
 			status = NEED_MORE;
 		}
 		response->destroy(response);
+	}
+	else
+	{
+		charon->bus->alert(charon->bus, ALERT_RADIUS_NOT_RESPONDING);
 	}
 	request->destroy(request);
 	return status;
@@ -253,7 +259,7 @@ static void process_filter_id(private_eap_radius_t *this, radius_message_t *msg)
 				tunnel_type = untoh32(data.ptr);
 				DBG1(DBG_IKE, "received RADIUS attribute Tunnel-Type: "
 							  "tag = %u, value = %u", tunnel_tag, tunnel_type);
-				is_esp_tunnel = (tunnel_type == TUNNEL_TYPE_ESP);
+				is_esp_tunnel = (tunnel_type == RADIUS_TUNNEL_TYPE_ESP);
 				break;
 			case RAT_FILTER_ID:
 				filter_id = data;
@@ -282,6 +288,31 @@ static void process_filter_id(private_eap_radius_t *this, radius_message_t *msg)
 	}
 }
 
+/**
+ * Handle Session-Timeout attribte
+ */
+static void process_timeout(private_eap_radius_t *this, radius_message_t *msg)
+{
+	enumerator_t *enumerator;
+	ike_sa_t *ike_sa;
+	chunk_t data;
+	int type;
+
+	enumerator = msg->create_enumerator(msg);
+	while (enumerator->enumerate(enumerator, &type, &data))
+	{
+		if (type == RAT_SESSION_TIMEOUT && data.len == 4)
+		{
+			ike_sa = charon->bus->get_sa(charon->bus);
+			if (ike_sa)
+			{
+				ike_sa->set_auth_lifetime(ike_sa, untoh32(data.ptr));
+			}
+		}
+	}
+	enumerator->destroy(enumerator);
+}
+
 METHOD(eap_method_t, process, status_t,
 	private_eap_radius_t *this, eap_payload_t *in, eap_payload_t **out)
 {
@@ -289,22 +320,25 @@ METHOD(eap_method_t, process, status_t,
 	status_t status = FAILED;
 	chunk_t data;
 
-	request = radius_message_create_request();
+	request = radius_message_create(RMC_ACCESS_REQUEST);
 	request->add(request, RAT_USER_NAME, this->peer->get_encoding(this->peer));
 	data = in->get_data(in);
 	DBG3(DBG_IKE, "%N payload %B", eap_type_names, this->type, &data);
- 
-	/* fragment data suitable for RADIUS (not more than 253 bytes) */
-	while (data.len > 253)
+
+	/* fragment data suitable for RADIUS */
+	while (data.len > MAX_RADIUS_ATTRIBUTE_SIZE)
 	{
-		request->add(request, RAT_EAP_MESSAGE, chunk_create(data.ptr, 253));
-		data = chunk_skip(data, 253);
+		request->add(request, RAT_EAP_MESSAGE,
+					 chunk_create(data.ptr,MAX_RADIUS_ATTRIBUTE_SIZE));
+		data = chunk_skip(data, MAX_RADIUS_ATTRIBUTE_SIZE);
 	}
 	request->add(request, RAT_EAP_MESSAGE, data);
 
+	eap_radius_forward_from_ike(request);
 	response = this->client->request(this->client, request);
 	if (response)
 	{
+		eap_radius_forward_to_ike(response);
 		switch (response->get_code(response))
 		{
 			case RMC_ACCESS_CHALLENGE:
@@ -324,6 +358,7 @@ METHOD(eap_method_t, process, status_t,
 				{
 					process_filter_id(this, response);
 				}
+				process_timeout(this, response);
 				DBG1(DBG_IKE, "RADIUS authentication of '%Y' successful",
 					 this->peer);
 				status = SUCCESS;
@@ -427,7 +462,7 @@ eap_radius_t *eap_radius_create(identification_t *server, identification_t *peer
 								"charon.plugins.eap-radius.filter_id", FALSE),
 
 	);
-	this->client = radius_client_create();
+	this->client = eap_radius_create_client();
 	if (!this->client)
 	{
 		free(this);

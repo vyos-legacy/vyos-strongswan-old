@@ -38,28 +38,33 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-ipsec_PROGRAMS = pluto$(EXEEXT) _pluto_adns$(EXEEXT)
+ipsec_PROGRAMS = pluto$(EXEEXT) $(am__EXEEXT_1)
+@USE_ADNS_TRUE@am__append_1 = _pluto_adns
+@USE_ADNS_TRUE@am__append_2 = \
+@USE_ADNS_TRUE@dnskey.c dnskey.h
+
 
 # compile options
 #################
 
 # This compile option activates the sending of a strongSwan VID
-@USE_VENDORID_TRUE@am__append_1 = -DVENDORID
+@USE_VENDORID_TRUE@am__append_3 = -DVENDORID
 
 # This compile option activates the sending of the XAUTH VID
-@USE_XAUTH_VID_TRUE@am__append_2 = -DXAUTH_VID
+@USE_XAUTH_VID_TRUE@am__append_4 = -DXAUTH_VID
 
 # This compile option activates the support of the Cisco VPN client
-@USE_CISCO_QUIRKS_TRUE@am__append_3 = -DCISCO_QUIRKS
+@USE_CISCO_QUIRKS_TRUE@am__append_5 = -DCISCO_QUIRKS
 
 # This compile option activates NAT traversal with IPSec transport mode
-@USE_NAT_TRANSPORT_TRUE@am__append_4 = -DI_KNOW_TRANSPORT_MODE_HAS_SECURITY_CONCERN_BUT_I_WANT_IT
+@USE_NAT_TRANSPORT_TRUE@am__append_6 = -DI_KNOW_TRANSPORT_MODE_HAS_SECURITY_CONCERN_BUT_I_WANT_IT
 
 # This compile option activates smartcard support
-@USE_SMARTCARD_TRUE@am__append_5 = -DSMARTCARD
-@USE_LIBCAP_TRUE@am__append_6 = -lcap
-@USE_THREADS_TRUE@am__append_7 = -DTHREADS
-@USE_XAUTH_TRUE@am__append_8 = plugins/xauth
+@USE_SMARTCARD_TRUE@am__append_7 = -DSMARTCARD
+@USE_LIBCAP_TRUE@am__append_8 = -lcap
+@USE_THREADS_TRUE@am__append_9 = -DTHREADS
+@USE_ADNS_TRUE@am__append_10 = -DADNS
+@USE_XAUTH_TRUE@am__append_11 = plugins/xauth
 subdir = src/pluto
 DIST_COMMON = $(dist_man_MANS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -78,28 +83,50 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+@USE_ADNS_TRUE@am__EXEEXT_1 = _pluto_adns$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(man8dir)"
 PROGRAMS = $(ipsec_PROGRAMS)
-am__pluto_adns_OBJECTS = adns.$(OBJEXT)
+am___pluto_adns_SOURCES_DIST = adns.c adns.h
+@USE_ADNS_TRUE@am__pluto_adns_OBJECTS = adns.$(OBJEXT)
 _pluto_adns_OBJECTS = $(am__pluto_adns_OBJECTS)
 am__DEPENDENCIES_1 =
-_pluto_adns_DEPENDENCIES = $(LIBFREESWANDIR)/libfreeswan.a \
-	$(am__DEPENDENCIES_1)
+@USE_ADNS_TRUE@_pluto_adns_DEPENDENCIES =  \
+@USE_ADNS_TRUE@	$(LIBFREESWANDIR)/libfreeswan.a \
+@USE_ADNS_TRUE@	$(am__DEPENDENCIES_1)
+am__pluto_SOURCES_DIST = ac.c ac.h alg_info.c alg_info.h ca.c ca.h \
+	certs.c certs.h connections.c connections.h constants.c \
+	constants.h cookie.c cookie.h crl.c crl.h crypto.c crypto.h \
+	db_ops.c db_ops.h defs.c defs.h demux.c demux.h event_queue.c \
+	event_queue.h fetch.c fetch.h foodgroups.c foodgroups.h \
+	ike_alg.c ike_alg.h ipsec_doi.c ipsec_doi.h kameipsec.h \
+	kernel.c kernel.h kernel_alg.c kernel_alg.h kernel_pfkey.c \
+	kernel_pfkey.h keys.c keys.h lex.c lex.h log.c log.h myid.c \
+	myid.h modecfg.c modecfg.h nat_traversal.c nat_traversal.h \
+	ocsp.c ocsp.h packet.c packet.h pkcs7.c pkcs7.h plugin_list.c \
+	plugin_list.h pluto.c pluto.h plutomain.c rcv_whack.c \
+	rcv_whack.h server.c server.h smartcard.c smartcard.h spdb.c \
+	spdb.h state.c state.h timer.c timer.h vendor.c vendor.h \
+	virtual.c virtual.h whack_attribute.c whack_attribute.h \
+	xauth/xauth_manager.c xauth/xauth_manager.h \
+	xauth/xauth_provider.h xauth/xauth_verifier.h x509.c x509.h \
+	builder.c builder.h rsaref/pkcs11t.h rsaref/pkcs11.h \
+	rsaref/unix.h rsaref/pkcs11f.h dnskey.c dnskey.h
+@USE_ADNS_TRUE@am__objects_1 = dnskey.$(OBJEXT)
 am_pluto_OBJECTS = ac.$(OBJEXT) alg_info.$(OBJEXT) ca.$(OBJEXT) \
 	certs.$(OBJEXT) connections.$(OBJEXT) constants.$(OBJEXT) \
 	cookie.$(OBJEXT) crl.$(OBJEXT) crypto.$(OBJEXT) \
 	db_ops.$(OBJEXT) defs.$(OBJEXT) demux.$(OBJEXT) \
-	dnskey.$(OBJEXT) event_queue.$(OBJEXT) fetch.$(OBJEXT) \
-	foodgroups.$(OBJEXT) ike_alg.$(OBJEXT) ipsec_doi.$(OBJEXT) \
-	kernel.$(OBJEXT) kernel_alg.$(OBJEXT) kernel_pfkey.$(OBJEXT) \
-	keys.$(OBJEXT) lex.$(OBJEXT) log.$(OBJEXT) myid.$(OBJEXT) \
-	modecfg.$(OBJEXT) nat_traversal.$(OBJEXT) ocsp.$(OBJEXT) \
-	packet.$(OBJEXT) pkcs7.$(OBJEXT) pluto.$(OBJEXT) \
+	event_queue.$(OBJEXT) fetch.$(OBJEXT) foodgroups.$(OBJEXT) \
+	ike_alg.$(OBJEXT) ipsec_doi.$(OBJEXT) kernel.$(OBJEXT) \
+	kernel_alg.$(OBJEXT) kernel_pfkey.$(OBJEXT) keys.$(OBJEXT) \
+	lex.$(OBJEXT) log.$(OBJEXT) myid.$(OBJEXT) modecfg.$(OBJEXT) \
+	nat_traversal.$(OBJEXT) ocsp.$(OBJEXT) packet.$(OBJEXT) \
+	pkcs7.$(OBJEXT) plugin_list.$(OBJEXT) pluto.$(OBJEXT) \
 	plutomain.$(OBJEXT) rcv_whack.$(OBJEXT) server.$(OBJEXT) \
 	smartcard.$(OBJEXT) spdb.$(OBJEXT) state.$(OBJEXT) \
 	timer.$(OBJEXT) vendor.$(OBJEXT) virtual.$(OBJEXT) \
 	whack_attribute.$(OBJEXT) xauth_manager.$(OBJEXT) \
-	x509.$(OBJEXT) builder.$(OBJEXT)
+	x509.$(OBJEXT) builder.$(OBJEXT) $(am__objects_1)
 pluto_OBJECTS = $(am_pluto_OBJECTS)
 pluto_DEPENDENCIES = $(LIBSTRONGSWANDIR)/libstrongswan.la \
 	$(LIBFREESWANDIR)/libfreeswan.a $(LIBHYDRADIR)/libhydra.la \
@@ -119,7 +146,8 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(_pluto_adns_SOURCES) $(pluto_SOURCES)
-DIST_SOURCES = $(_pluto_adns_SOURCES) $(pluto_SOURCES)
+DIST_SOURCES = $(am___pluto_adns_SOURCES_DIST) \
+	$(am__pluto_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-dvi-recursive install-exec-recursive \
@@ -276,6 +304,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -284,6 +315,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -300,11 +332,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -348,6 +382,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -358,56 +393,27 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-pluto_SOURCES = \
-ac.c ac.h \
-alg_info.c alg_info.h \
-ca.c ca.h \
-certs.c certs.h \
-connections.c connections.h \
-constants.c constants.h \
-cookie.c cookie.h \
-crl.c crl.h \
-crypto.c crypto.h \
-db_ops.c db_ops.h \
-defs.c defs.h \
-demux.c demux.h \
-dnskey.c dnskey.h \
-event_queue.c event_queue.h \
-fetch.c fetch.h \
-foodgroups.c foodgroups.h \
-ike_alg.c ike_alg.h \
-ipsec_doi.c ipsec_doi.h \
-kameipsec.h \
-kernel.c kernel.h \
-kernel_alg.c kernel_alg.h \
-kernel_pfkey.c kernel_pfkey.h \
-keys.c keys.h \
-lex.c lex.h \
-log.c log.h \
-myid.c myid.h \
-modecfg.c modecfg.h \
-nat_traversal.c nat_traversal.h \
-ocsp.c ocsp.h \
-packet.c packet.h \
-pkcs7.c pkcs7.h \
-pluto.c pluto.h \
-plutomain.c \
-rcv_whack.c rcv_whack.h \
-server.c server.h \
-smartcard.c smartcard.h \
-spdb.c spdb.h \
-state.c state.h \
-timer.c timer.h \
-vendor.c vendor.h \
-virtual.c virtual.h \
-whack_attribute.c whack_attribute.h \
-xauth/xauth_manager.c xauth/xauth_manager.h \
-xauth/xauth_provider.h xauth/xauth_verifier.h \
-x509.c x509.h \
-builder.c builder.h \
-rsaref/pkcs11t.h rsaref/pkcs11.h rsaref/unix.h rsaref/pkcs11f.h
+pluto_SOURCES = ac.c ac.h alg_info.c alg_info.h ca.c ca.h certs.c \
+	certs.h connections.c connections.h constants.c constants.h \
+	cookie.c cookie.h crl.c crl.h crypto.c crypto.h db_ops.c \
+	db_ops.h defs.c defs.h demux.c demux.h event_queue.c \
+	event_queue.h fetch.c fetch.h foodgroups.c foodgroups.h \
+	ike_alg.c ike_alg.h ipsec_doi.c ipsec_doi.h kameipsec.h \
+	kernel.c kernel.h kernel_alg.c kernel_alg.h kernel_pfkey.c \
+	kernel_pfkey.h keys.c keys.h lex.c lex.h log.c log.h myid.c \
+	myid.h modecfg.c modecfg.h nat_traversal.c nat_traversal.h \
+	ocsp.c ocsp.h packet.c packet.h pkcs7.c pkcs7.h plugin_list.c \
+	plugin_list.h pluto.c pluto.h plutomain.c rcv_whack.c \
+	rcv_whack.h server.c server.h smartcard.c smartcard.h spdb.c \
+	spdb.h state.c state.h timer.c timer.h vendor.c vendor.h \
+	virtual.c virtual.h whack_attribute.c whack_attribute.h \
+	xauth/xauth_manager.c xauth/xauth_manager.h \
+	xauth/xauth_provider.h xauth/xauth_verifier.h x509.c x509.h \
+	builder.c builder.h rsaref/pkcs11t.h rsaref/pkcs11.h \
+	rsaref/unix.h rsaref/pkcs11f.h $(am__append_2)
+@USE_ADNS_TRUE@_pluto_adns_SOURCES = \
+@USE_ADNS_TRUE@adns.c adns.h
 
-_pluto_adns_SOURCES = adns.c adns.h
 LIBSTRONGSWANDIR = $(top_builddir)/src/libstrongswan
 LIBFREESWANDIR = $(top_builddir)/src/libfreeswan
 LIBHYDRADIR = $(top_builddir)/src/libhydra
@@ -422,22 +428,23 @@ AM_CFLAGS = -rdynamic -DIPSEC_DIR=\"${ipsecdir}\" \
 	-DIPSEC_CONFDIR=\"${sysconfdir}\" -DIPSEC_PIDDIR=\"${piddir}\" \
 	-DSHARED_SECRETS_FILE=\"${sysconfdir}/ipsec.secrets\" \
 	-DPLUGINS=\""${pluto_plugins}\"" \
-	-DPKCS11_DEFAULT_LIB=\"${default_pkcs11}\" -DKERNEL26_SUPPORT \
-	-DKERNEL26_HAS_KAME_DUPLICATES -DPLUTO -DDEBUG $(am__append_1) \
-	$(am__append_2) $(am__append_3) $(am__append_4) \
-	$(am__append_5) $(am__append_7)
+	-DPKCS11_DEFAULT_LIB=\"${default_pkcs11}\" \
+	-DKERNEL26_HAS_KAME_DUPLICATES -DPLUTO -DDEBUG $(am__append_3) \
+	$(am__append_4) $(am__append_5) $(am__append_6) \
+	$(am__append_7) $(am__append_9) $(am__append_10)
 pluto_LDADD = $(LIBSTRONGSWANDIR)/libstrongswan.la \
 	$(LIBFREESWANDIR)/libfreeswan.a $(LIBHYDRADIR)/libhydra.la \
-	-lresolv $(PTHREADLIB) $(DLLIB) $(am__append_6)
-_pluto_adns_LDADD = \
-$(LIBFREESWANDIR)/libfreeswan.a \
--lresolv $(DLLIB)
+	-lresolv $(PTHREADLIB) $(DLLIB) $(am__append_8)
+@USE_ADNS_TRUE@_pluto_adns_LDADD = \
+@USE_ADNS_TRUE@$(LIBFREESWANDIR)/libfreeswan.a \
+@USE_ADNS_TRUE@-lresolv $(DLLIB)
 
 dist_man_MANS = pluto.8
+EXTRA_DIST = Android.mk
 
 # build optional plugins
 ########################
-SUBDIRS = . $(am__append_8)
+SUBDIRS = . $(am__append_11)
 all: all-recursive
 
 .SUFFIXES:
@@ -560,6 +567,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ocsp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/packet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs7.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plugin_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pluto.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plutomain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rcv_whack.Po@am__quote@

@@ -92,20 +92,15 @@ plugin_t *android_plugin_create()
 			},
 		},
 		.logger = android_logger_create(),
-		.handler = android_handler_create(),
 		.creds = android_creds_create(),
 	);
+
+	this->service = android_service_create(this->creds);
+	this->handler = android_handler_create(this->service != NULL);
 
 	charon->bus->add_listener(charon->bus, &this->logger->listener);
 	lib->credmgr->add_set(lib->credmgr, &this->creds->set);
 	hydra->attributes->add_handler(hydra->attributes, &this->handler->handler);
-
-	this->service = android_service_create(this->creds);
-	if (!this->service)
-	{
-		destroy(this);
-		return NULL;
-	}
 
 	return &this->public.plugin;
 }

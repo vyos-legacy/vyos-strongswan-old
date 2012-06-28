@@ -143,7 +143,7 @@ METHOD(listener_t, ike_updown, bool,
 
 	if (up)
 	{
-		iterator_t *iterator;
+		enumerator_t *enumerator;
 		peer_cfg_t *peer_cfg;
 		u_int32_t extension, condition;
 		host_t *addr;
@@ -158,11 +158,16 @@ METHOD(listener_t, ike_updown, bool,
 				  | copy_condition(ike_sa, COND_NAT_FAKE)
 				  | copy_condition(ike_sa, COND_EAP_AUTHENTICATED)
 				  | copy_condition(ike_sa, COND_CERTREQ_SEEN)
-				  | copy_condition(ike_sa, COND_ORIGINAL_INITIATOR);
+				  | copy_condition(ike_sa, COND_ORIGINAL_INITIATOR)
+				  | copy_condition(ike_sa, COND_STALE);
 
 		extension = copy_extension(ike_sa, EXT_NATT)
 				  | copy_extension(ike_sa, EXT_MOBIKE)
-				  | copy_extension(ike_sa, EXT_HASH_AND_URL);
+				  | copy_extension(ike_sa, EXT_HASH_AND_URL)
+				  | copy_extension(ike_sa, EXT_MULTIPLE_AUTH)
+				  | copy_extension(ike_sa, EXT_STRONGSWAN)
+				  | copy_extension(ike_sa, EXT_EAP_ONLY_AUTHENTICATION)
+				  | copy_extension(ike_sa, EXT_MS_WINDOWS);
 
 		id = ike_sa->get_id(ike_sa);
 
@@ -180,12 +185,12 @@ METHOD(listener_t, ike_updown, bool,
 		m->add_attribute(m, HA_CONDITIONS, condition);
 		m->add_attribute(m, HA_EXTENSIONS, extension);
 		m->add_attribute(m, HA_CONFIG_NAME, peer_cfg->get_name(peer_cfg));
-		iterator = ike_sa->create_additional_address_iterator(ike_sa);
-		while (iterator->iterate(iterator, (void**)&addr))
+		enumerator = ike_sa->create_peer_address_enumerator(ike_sa);
+		while (enumerator->enumerate(enumerator, (void**)&addr))
 		{
-			m->add_attribute(m, HA_ADDITIONAL_ADDR, addr);
+			m->add_attribute(m, HA_PEER_ADDR, addr);
 		}
-		iterator->destroy(iterator);
+		enumerator->destroy(enumerator);
 	}
 	else
 	{

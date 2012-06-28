@@ -51,9 +51,32 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-LTLIBRARIES = $(noinst_LTLIBRARIES)
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__installdirs = "$(DESTDIR)$(ipseclibdir)"
+LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 libsimaka_la_LIBADD =
-am_libsimaka_la_OBJECTS = simaka_message.lo simaka_crypto.lo
+am_libsimaka_la_OBJECTS = simaka_message.lo simaka_crypto.lo \
+	simaka_manager.lo
 libsimaka_la_OBJECTS = $(am_libsimaka_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -164,6 +187,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -172,6 +198,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -188,11 +215,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -236,6 +265,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -247,9 +277,10 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libhydra -I$(top_srcdir)/src/libcharon
-noinst_LTLIBRARIES = libsimaka.la
+ipseclib_LTLIBRARIES = libsimaka.la
 libsimaka_la_SOURCES = simaka_message.h simaka_message.c \
-  simaka_crypto.h simaka_crypto.c
+  simaka_crypto.h simaka_crypto.c simaka_manager.h simaka_manager.c \
+  simaka_card.h simaka_provider.h simaka_hooks.h
 
 all: all-am
 
@@ -285,17 +316,39 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-ipseclibLTLIBRARIES: $(ipseclib_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(ipseclibdir)" || $(MKDIR_P) "$(DESTDIR)$(ipseclibdir)"
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(ipseclibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(ipseclibdir)"; \
+	}
 
-clean-noinstLTLIBRARIES:
-	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
-	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
+uninstall-ipseclibLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
+	for p in $$list; do \
+	  $(am__strip_dir) \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(ipseclibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(ipseclibdir)/$$f"; \
+	done
+
+clean-ipseclibLTLIBRARIES:
+	-test -z "$(ipseclib_LTLIBRARIES)" || rm -f $(ipseclib_LTLIBRARIES)
+	@list='$(ipseclib_LTLIBRARIES)'; for p in $$list; do \
 	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
 	  test "$$dir" != "$$p" || dir=.; \
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
 libsimaka.la: $(libsimaka_la_OBJECTS) $(libsimaka_la_DEPENDENCIES) 
-	$(LINK)  $(libsimaka_la_OBJECTS) $(libsimaka_la_LIBADD) $(LIBS)
+	$(LINK) -rpath $(ipseclibdir) $(libsimaka_la_OBJECTS) $(libsimaka_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -304,6 +357,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simaka_crypto.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simaka_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simaka_message.Plo@am__quote@
 
 .c.o:
@@ -419,6 +473,9 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(LTLIBRARIES)
 installdirs:
+	for dir in "$(DESTDIR)$(ipseclibdir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -446,7 +503,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
+clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-am
@@ -467,7 +524,7 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-ipseclibLTLIBRARIES
 
 install-dvi: install-dvi-am
 
@@ -513,22 +570,23 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-ipseclibLTLIBRARIES
 
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-noinstLTLIBRARIES ctags distclean \
+	clean-ipseclibLTLIBRARIES clean-libtool ctags distclean \
 	distclean-compile distclean-generic distclean-libtool \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am
+	install-html-am install-info install-info-am \
+	install-ipseclibLTLIBRARIES install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags uninstall uninstall-am uninstall-ipseclibLTLIBRARIES
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

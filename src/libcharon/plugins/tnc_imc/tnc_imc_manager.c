@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Mike McCauley
- * Copyright (C) 2010 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2010-2011 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,13 +15,12 @@
  */
 
 #include "tnc_imc_manager.h"
+#include "tnc_imc.h"
 
-#include <tnc/imc/imc_manager.h>
-#include <tnc/tncifimc.h>
+#include <tncifimc.h>
 
-#include <debug.h>
-#include <library.h>
 #include <utils/linked_list.h>
+#include <debug.h>
 
 typedef struct private_tnc_imc_manager_t private_tnc_imc_manager_t;
 
@@ -94,6 +94,33 @@ METHOD(imc_manager_t, remove_, imc_t*,
 	return removed_imc;
 }
 
+METHOD(imc_manager_t, load, bool,
+	private_tnc_imc_manager_t *this, char *name, char *path)
+{
+	imc_t *imc;
+
+	imc = tnc_imc_create(name, path);
+	if (!imc)
+	{
+		free(name);
+		free(path);
+		return FALSE;
+	}
+	if (!add(this, imc))
+	{
+		if (imc->terminate &&
+			imc->terminate(imc->get_id(imc)) != TNC_RESULT_SUCCESS)
+		{
+			DBG1(DBG_TNC, "IMC \"%s\" not terminated successfully",
+						   imc->get_name(imc));
+		}
+		imc->destroy(imc);
+		return FALSE;
+	}
+	DBG1(DBG_TNC, "IMC %u \"%s\" loaded from '%s'", imc->get_id(imc), name, path);
+	return TRUE;
+}
+
 METHOD(imc_manager_t, is_registered, bool,
 	private_tnc_imc_manager_t *this, TNC_IMCID id)
 {
@@ -104,9 +131,34 @@ METHOD(imc_manager_t, is_registered, bool,
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
-		if (id == imc->get_id(imc))
+		if (imc->has_id(imc, id))
 		{
 			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	return found;
+}
+
+METHOD(imc_manager_t, reserve_id, bool,
+	private_tnc_imc_manager_t *this, TNC_IMCID id, TNC_UInt32 *new_id)
+{
+	enumerator_t *enumerator;
+	imc_t *imc;
+	bool found = FALSE;
+
+	enumerator = this->imcs->create_enumerator(this->imcs);
+	while (enumerator->enumerate(enumerator, &imc))
+	{
+		if (imc->get_id(imc))
+		{
+			found = TRUE;
+			*new_id = this->next_imc_id++;
+			imc->add_id(imc, *new_id);
+			DBG2(DBG_TNC, "additional ID %u reserved for IMC with primary ID %u",
+						  *new_id, id);
 			break;
 		}
 	}
@@ -177,30 +229,77 @@ METHOD(imc_manager_t, set_message_types, TNC_Result,
 	return result;
 }
 
+METHOD(imc_manager_t, set_message_types_long, TNC_Result,
+	private_tnc_imc_manager_t *this, TNC_IMCID id,
+									 TNC_VendorIDList supported_vids,
+									 TNC_MessageSubtypeList supported_subtypes,
+									 TNC_UInt32 type_count)
+{
+	enumerator_t *enumerator;
+	imc_t *imc;
+	TNC_Result result = TNC_RESULT_FATAL;
+
+	enumerator = this->imcs->create_enumerator(this->imcs);
+	while (enumerator->enumerate(enumerator, &imc))
+	{
+		if (id == imc->get_id(imc))
+		{
+			imc->set_message_types_long(imc, supported_vids, supported_subtypes,
+										type_count);
+			result = TNC_RESULT_SUCCESS;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	return result;
+}
+
 METHOD(imc_manager_t, receive_message, void,
 	private_tnc_imc_manager_t *this, TNC_ConnectionID connection_id,
-									 TNC_BufferReference message,
-									 TNC_UInt32 message_len,
-									 TNC_MessageType message_type)
+									 bool excl,
+									 TNC_BufferReference msg,
+									 TNC_UInt32 msg_len,
+									 TNC_VendorID msg_vid,
+									 TNC_MessageSubtype msg_subtype,
+									 TNC_UInt32 src_imv_id,
+									 TNC_UInt32 dst_imc_id)
 {
 	bool type_supported = FALSE;
+	TNC_MessageType	msg_type;
+	TNC_UInt32 msg_flags;
 	enumerator_t *enumerator;
 	imc_t *imc;
 
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
-		if (imc->receive_message && imc->type_supported(imc, message_type))
+		if (imc->type_supported(imc, msg_vid, msg_subtype) &&
+		   (!excl || (excl && imc->has_id(imc, dst_imc_id)) ))
 		{
-			type_supported = TRUE;
-			imc->receive_message(imc->get_id(imc), connection_id,
-								 message, message_len, message_type);
+			if (imc->receive_message_long && src_imv_id)
+			{
+				type_supported = TRUE;
+				msg_flags = excl ? TNC_MESSAGE_FLAGS_EXCLUSIVE : 0;
+				imc->receive_message_long(imc->get_id(imc), connection_id,
+								msg_flags, msg, msg_len, msg_vid, msg_subtype,
+								src_imv_id, dst_imc_id);
+
+			}
+			else if (imc->receive_message && msg_vid <= TNC_VENDORID_ANY &&
+					 msg_subtype <= TNC_SUBTYPE_ANY)
+			{
+				type_supported = TRUE;
+				msg_type = (msg_vid << 8) | msg_subtype;
+				imc->receive_message(imc->get_id(imc), connection_id,
+									 msg, msg_len, msg_type);
+			}
 		}
 	}
 	enumerator->destroy(enumerator);
 	if (!type_supported)
 	{
-		DBG2(DBG_TNC, "message type 0x%08x not supported by any IMC", message_type);
+		DBG2(DBG_TNC, "message type 0x%06x/0x%08x not supported by any IMC",
+			 msg_vid, msg_subtype);
 	}
 }
 
@@ -251,11 +350,14 @@ imc_manager_t* tnc_imc_manager_create(void)
 		.public = {
 			.add = _add,
 			.remove = _remove_, /* avoid name conflict with stdio.h */
+			.load = _load,
 			.is_registered = _is_registered,
+			.reserve_id = _reserve_id,
 			.get_preferred_language = _get_preferred_language,
 			.notify_connection_change = _notify_connection_change,
 			.begin_handshake = _begin_handshake,
 			.set_message_types = _set_message_types,
+			.set_message_types_long = _set_message_types_long,
 			.receive_message = _receive_message,
 			.batch_ending = _batch_ending,
 			.destroy = _destroy,

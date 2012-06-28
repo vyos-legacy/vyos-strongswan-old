@@ -24,6 +24,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <credentials/auth_cfg.h>
+
 #include <freeswan.h>
 
 #include <constants.h>
@@ -38,15 +40,6 @@
 
 #define IPV4_LEN	 4
 #define IPV6_LEN	16
-
-/**
- * Authentication methods, must be the same as in charons authenticator.h
- */
-enum auth_method_t {
-	AUTH_PUBKEY =	1,
-	AUTH_PSK =		2,
-	AUTH_EAP =		3
-};
 
 static char* push_string(stroke_msg_t *msg, char *string)
 {
@@ -169,6 +162,7 @@ static void starter_stroke_add_end(stroke_msg_t *msg, stroke_end_t *msg_end, sta
 	msg_end->auth2 = push_string(msg, conn_end->auth2);
 	msg_end->id = push_string(msg, conn_end->id);
 	msg_end->id2 = push_string(msg, conn_end->id2);
+	msg_end->rsakey = push_string(msg, conn_end->rsakey);
 	msg_end->cert = push_string(msg, conn_end->cert);
 	msg_end->cert2 = push_string(msg, conn_end->cert2);
 	msg_end->cert_policy = push_string(msg, conn_end->cert_policy);
@@ -176,8 +170,15 @@ static void starter_stroke_add_end(stroke_msg_t *msg, stroke_end_t *msg_end, sta
 	msg_end->ca2 = push_string(msg, conn_end->ca2);
 	msg_end->groups = push_string(msg, conn_end->groups);
 	msg_end->updown = push_string(msg, conn_end->updown);
-	ip_address2string(&conn_end->addr, buffer, sizeof(buffer));
-	msg_end->address = push_string(msg, buffer);
+	if (conn_end->host)
+	{
+		msg_end->address = push_string(msg, conn_end->host);
+	}
+	else
+	{
+		ip_address2string(&conn_end->addr, buffer, sizeof(buffer));
+		msg_end->address = push_string(msg, buffer);
+	}
 	msg_end->ikeport = conn_end->ikeport;
 	msg_end->subnets = push_string(msg, conn_end->subnet);
 	msg_end->sourceip = push_string(msg, conn_end->sourceip);
@@ -202,15 +203,19 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	/* PUBKEY is preferred to PSK and EAP */
 	if (conn->policy & POLICY_PUBKEY)
 	{
-		msg.add_conn.auth_method = AUTH_PUBKEY;
+		msg.add_conn.auth_method = AUTH_CLASS_PUBKEY;
 	}
 	else if (conn->policy & POLICY_PSK)
 	{
-		msg.add_conn.auth_method = AUTH_PSK;
+		msg.add_conn.auth_method = AUTH_CLASS_PSK;
+	}
+	else if (conn->policy & POLICY_XAUTH_PSK)
+	{
+		msg.add_conn.auth_method = AUTH_CLASS_EAP;
 	}
 	else
 	{
-		msg.add_conn.auth_method = AUTH_EAP;
+		msg.add_conn.auth_method = AUTH_CLASS_ANY;
 	}
 	msg.add_conn.eap_type = conn->eap_type;
 	msg.add_conn.eap_vendor = conn->eap_vendor;
@@ -229,6 +234,14 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	{
 		msg.add_conn.mode = MODE_TRANSPORT;
 		msg.add_conn.proxy_mode = TRUE;
+	}
+	else if (conn->policy & POLICY_SHUNT_PASS)
+	{
+		msg.add_conn.mode = MODE_PASS;
+	}
+	else if (conn->policy & (POLICY_SHUNT_DROP | POLICY_SHUNT_REJECT))
+	{
+		msg.add_conn.mode = MODE_DROP;
 	}
 	else
 	{
@@ -258,6 +271,7 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	msg.add_conn.algorithms.esp = push_string(&msg, conn->esp);
 	msg.add_conn.dpd.delay = conn->dpd_delay;
 	msg.add_conn.dpd.action = conn->dpd_action;
+	msg.add_conn.close_action = conn->close_action;
 	msg.add_conn.inactivity = conn->inactivity;
 	msg.add_conn.ikeme.mediation = conn->me_mediation;
 	msg.add_conn.ikeme.mediated_by = push_string(&msg, conn->me_mediated_by);

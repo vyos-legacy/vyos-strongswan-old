@@ -57,7 +57,7 @@ chunk_t chunk_create_clone(u_char *ptr, chunk_t chunk)
 }
 
 /**
- * Decribed in header.
+ * Described in header.
  */
 size_t chunk_length(const char* mode, ...)
 {
@@ -87,7 +87,7 @@ size_t chunk_length(const char* mode, ...)
 }
 
 /**
- * Decribed in header.
+ * Described in header.
  */
 chunk_t chunk_create_cat(u_char *ptr, const char* mode, ...)
 {
@@ -133,7 +133,7 @@ chunk_t chunk_create_cat(u_char *ptr, const char* mode, ...)
 }
 
 /**
- * Decribed in header.
+ * Described in header.
  */
 void chunk_split(chunk_t chunk, const char *mode, ...)
 {
@@ -313,7 +313,7 @@ chunk_t chunk_from_hex(chunk_t hex, char *buf)
    /* subtract the number of optional ':' separation characters */
 	len = hex.len;
 	ptr = hex.ptr;
- 	for (i = 0; i < hex.len; i++)
+	for (i = 0; i < hex.len; i++)
 	{
 		if (*ptr++ == ':')
 		{
@@ -668,7 +668,8 @@ int chunk_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 
 	if (!spec->hash)
 	{
-		const void *new_args[] = {&chunk->ptr, &chunk->len};
+		u_int chunk_len = chunk->len;
+		const void *new_args[] = {&chunk->ptr, &chunk_len};
 		return mem_printf_hook(dst, len, spec, new_args);
 	}
 

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Mike McCauley
- * Copyright (C) 2010 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2010-2011 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,13 +15,22 @@
  */
 
 #include "tnc_imv_manager.h"
+#include "tnc_imv.h"
 #include "tnc_imv_recommendations.h"
 
-#include <tnc/imv/imv_manager.h>
-#include <tnc/tncifimv.h>
+#include <tncifimv.h>
+#include <tncif_names.h>
 
-#include <debug.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+
 #include <daemon.h>
+#include <utils/lexparser.h>
+#include <debug.h>
 #include <threading/mutex.h>
 
 typedef struct private_tnc_imv_manager_t private_tnc_imv_manager_t;
@@ -101,6 +111,33 @@ METHOD(imv_manager_t, remove_, imv_t*,
 	return removed_imv;
 }
 
+METHOD(imv_manager_t, load, bool,
+	private_tnc_imv_manager_t *this, char *name, char *path)
+{
+	imv_t *imv;
+
+	imv = tnc_imv_create(name, path);
+	if (!imv)
+	{
+		free(name);
+		free(path);
+		return FALSE;
+	}
+	if (!add(this, imv))
+	{
+		if (imv->terminate &&
+			imv->terminate(imv->get_id(imv)) != TNC_RESULT_SUCCESS)
+		{
+			DBG1(DBG_TNC, "IMV \"%s\" not terminated successfully",
+						   imv->get_name(imv));
+		}
+		imv->destroy(imv);
+		return FALSE;
+	}
+	DBG1(DBG_TNC, "IMV %u \"%s\" loaded from '%s'", imv->get_id(imv), name, path);
+	return TRUE;
+}
+
 METHOD(imv_manager_t, is_registered, bool,
 	private_tnc_imv_manager_t *this, TNC_IMVID id)
 {
@@ -111,9 +148,34 @@ METHOD(imv_manager_t, is_registered, bool,
 	enumerator = this->imvs->create_enumerator(this->imvs);
 	while (enumerator->enumerate(enumerator, &imv))
 	{
-		if (id == imv->get_id(imv))
+		if (imv->has_id(imv, id))
 		{
 			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	return found;
+}
+
+METHOD(imv_manager_t, reserve_id, bool,
+	private_tnc_imv_manager_t *this, TNC_IMVID id, TNC_UInt32 *new_id)
+{
+	enumerator_t *enumerator;
+	imv_t *imv;
+	bool found = FALSE;
+
+	enumerator = this->imvs->create_enumerator(this->imvs);
+	while (enumerator->enumerate(enumerator, &imv))
+	{
+		if (imv->get_id(imv))
+		{
+			found = TRUE;
+			*new_id = this->next_imv_id++;
+			imv->add_id(imv, *new_id);
+			DBG2(DBG_TNC, "additional ID %u reserved for IMV with primary ID %u",
+						  *new_id, id);
 			break;
 		}
 	}
@@ -231,6 +293,31 @@ METHOD(imv_manager_t, set_message_types, TNC_Result,
 	return result;
 }
 
+METHOD(imv_manager_t, set_message_types_long, TNC_Result,
+	private_tnc_imv_manager_t *this, TNC_IMVID id,
+									 TNC_VendorIDList supported_vids,
+									 TNC_MessageSubtypeList supported_subtypes,
+									 TNC_UInt32 type_count)
+{
+	enumerator_t *enumerator;
+	imv_t *imv;
+	TNC_Result result = TNC_RESULT_FATAL;
+
+	enumerator = this->imvs->create_enumerator(this->imvs);
+	while (enumerator->enumerate(enumerator, &imv))
+	{
+		if (id == imv->get_id(imv))
+		{
+			imv->set_message_types_long(imv, supported_vids, supported_subtypes,
+										type_count);
+			result = TNC_RESULT_SUCCESS;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	return result;
+}
+
 METHOD(imv_manager_t, solicit_recommendation, void,
 	private_tnc_imv_manager_t *this, TNC_ConnectionID id)
 {
@@ -247,28 +334,52 @@ METHOD(imv_manager_t, solicit_recommendation, void,
 
 METHOD(imv_manager_t, receive_message, void,
 	private_tnc_imv_manager_t *this, TNC_ConnectionID connection_id,
-									 TNC_BufferReference message,
-									 TNC_UInt32 message_len,
-									 TNC_MessageType message_type)
+									 bool excl,
+									 TNC_BufferReference msg,
+									 TNC_UInt32 msg_len,
+									 TNC_VendorID msg_vid,
+									 TNC_MessageSubtype msg_subtype,
+									 TNC_UInt32 src_imc_id,
+									 TNC_UInt32 dst_imv_id)
 {
 	bool type_supported = FALSE;
+	TNC_MessageType	msg_type;
+	TNC_UInt32 msg_flags;
 	enumerator_t *enumerator;
 	imv_t *imv;
+
+	msg_type = (msg_vid << 8) | msg_subtype;
 
 	enumerator = this->imvs->create_enumerator(this->imvs);
 	while (enumerator->enumerate(enumerator, &imv))
 	{
-		if (imv->receive_message && imv->type_supported(imv, message_type))
+		if (imv->type_supported(imv, msg_vid, msg_subtype) &&
+		   (!excl || (excl && imv->has_id(imv, dst_imv_id)) ))
 		{
-			type_supported = TRUE;
-			imv->receive_message(imv->get_id(imv), connection_id,
-								 message, message_len, message_type);
+			if (imv->receive_message_long && src_imc_id)
+			{
+				type_supported = TRUE;
+				msg_flags = excl ? TNC_MESSAGE_FLAGS_EXCLUSIVE : 0;
+				imv->receive_message_long(imv->get_id(imv), connection_id,
+								msg_flags, msg, msg_len, msg_vid, msg_subtype,
+								src_imc_id, dst_imv_id);
+
+			}
+			else if (imv->receive_message && msg_vid <= TNC_VENDORID_ANY &&
+					 msg_subtype <= TNC_SUBTYPE_ANY)
+			{
+				type_supported = TRUE;
+				msg_type = (msg_vid << 8) | msg_subtype;
+				imv->receive_message(imv->get_id(imv), connection_id,
+									 msg, msg_len, msg_type);
+			}
 		}
 	}
 	enumerator->destroy(enumerator);
 	if (!type_supported)
 	{
-		DBG2(DBG_TNC, "message type 0x%08x not supported by any IMV", message_type);
+		DBG2(DBG_TNC, "message type 0x%06x/0x%08x not supported by any IMV",
+			 msg_vid, msg_subtype);
 	}
 }
 
@@ -288,6 +399,7 @@ METHOD(imv_manager_t, batch_ending, void,
 	}
 	enumerator->destroy(enumerator);
 }
+
 
 METHOD(imv_manager_t, destroy, void,
 	private_tnc_imv_manager_t *this)
@@ -320,12 +432,15 @@ imv_manager_t* tnc_imv_manager_create(void)
 		.public = {
 			.add = _add,
 			.remove = _remove_, /* avoid name conflict with stdio.h */
+			.load = _load,
 			.is_registered = _is_registered,
+			.reserve_id = _reserve_id,
 			.get_recommendation_policy = _get_recommendation_policy,
 			.create_recommendations = _create_recommendations,
 			.enforce_recommendation = _enforce_recommendation,
 			.notify_connection_change = _notify_connection_change,
 			.set_message_types = _set_message_types,
+			.set_message_types_long = _set_message_types_long,
 			.solicit_recommendation = _solicit_recommendation,
 			.receive_message = _receive_message,
 			.batch_ending = _batch_ending,
@@ -334,6 +449,7 @@ imv_manager_t* tnc_imv_manager_create(void)
 		.imvs = linked_list_create(),
 		.next_imv_id = 1,
 	);
+
 	policy = enum_from_name(recommendation_policy_names,
 				lib->settings->get_str(lib->settings,
 					"charon.plugins.tnc-imv.recommendation_policy", "default"));

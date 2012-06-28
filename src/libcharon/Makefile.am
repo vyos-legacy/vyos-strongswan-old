@@ -1,4 +1,4 @@
-lib_LTLIBRARIES = libcharon.la
+ipseclib_LTLIBRARIES = libcharon.la
 
 libcharon_la_SOURCES = \
 bus/bus.c bus/bus.h \
@@ -39,10 +39,9 @@ encoding/payloads/ts_payload.c encoding/payloads/ts_payload.h \
 encoding/payloads/unknown_payload.c encoding/payloads/unknown_payload.h \
 encoding/payloads/vendor_id_payload.c encoding/payloads/vendor_id_payload.h \
 kernel/kernel_handler.c kernel/kernel_handler.h \
-network/packet.c network/packet.h \
-network/receiver.c network/receiver.h \
-network/sender.c network/sender.h \
-network/socket_manager.c network/socket_manager.h network/socket.h \
+network/receiver.c network/receiver.h network/sender.c network/sender.h \
+network/packet.c network/packet.h network/socket.c network/socket.h \
+network/socket_manager.c network/socket_manager.h \
 processing/jobs/acquire_job.c processing/jobs/acquire_job.h \
 processing/jobs/delete_child_sa_job.c processing/jobs/delete_child_sa_job.h \
 processing/jobs/delete_ike_sa_job.c processing/jobs/delete_ike_sa_job.h \
@@ -61,9 +60,6 @@ sa/authenticators/authenticator.c sa/authenticators/authenticator.h \
 sa/authenticators/eap_authenticator.c sa/authenticators/eap_authenticator.h \
 sa/authenticators/eap/eap_method.c sa/authenticators/eap/eap_method.h \
 sa/authenticators/eap/eap_manager.c sa/authenticators/eap/eap_manager.h \
-sa/authenticators/eap/sim_manager.c sa/authenticators/eap/sim_manager.h \
-sa/authenticators/eap/sim_card.h sa/authenticators/eap/sim_provider.h \
-sa/authenticators/eap/sim_hooks.h \
 sa/authenticators/psk_authenticator.c sa/authenticators/psk_authenticator.h \
 sa/authenticators/pubkey_authenticator.c sa/authenticators/pubkey_authenticator.h \
 sa/child_sa.c sa/child_sa.h \
@@ -72,6 +68,7 @@ sa/ike_sa_id.c sa/ike_sa_id.h \
 sa/ike_sa_manager.c sa/ike_sa_manager.h \
 sa/task_manager.c sa/task_manager.h \
 sa/keymat.c sa/keymat.h \
+sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
 sa/tasks/child_create.c sa/tasks/child_create.h \
 sa/tasks/child_delete.c sa/tasks/child_delete.h \
@@ -89,13 +86,7 @@ sa/tasks/ike_rekey.c sa/tasks/ike_rekey.h \
 sa/tasks/ike_reauth.c sa/tasks/ike_reauth.h \
 sa/tasks/ike_auth_lifetime.c sa/tasks/ike_auth_lifetime.h \
 sa/tasks/ike_vendor.c sa/tasks/ike_vendor.h \
-sa/tasks/task.c sa/tasks/task.h \
-tnc/tncif.h tnc/tncifimc.h tnc/tncifimv.h tnc/tncifimv.c \
-tnc/imc/imc.h tnc/imc/imc_manager.h \
-tnc/imv/imv.h tnc/imv/imv_manager.h \
-tnc/imv/imv_recommendations.c tnc/imv/imv_recommendations.h \
-tnc/tnccs/tnccs.c tnc/tnccs/tnccs.h \
-tnc/tnccs/tnccs_manager.c tnc/tnccs/tnccs_manager.h
+sa/tasks/task.c sa/tasks/task.h
 
 daemon.lo :		$(top_builddir)/config.status
 
@@ -335,6 +326,27 @@ if MONOLITHIC
 endif
 endif
 
+if USE_RADIUS
+if MONOLITHIC
+  # otherwise this library is linked to eap_radius
+  libcharon_la_LIBADD += $(top_builddir)/src/libradius/libradius.la
+endif
+endif
+
+if USE_TNC_IFMAP
+  SUBDIRS += plugins/tnc_ifmap
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/tnc_ifmap/libstrongswan-tnc-ifmap.la
+endif
+endif
+
+if USE_TNC_PDP
+  SUBDIRS += plugins/tnc_pdp
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/tnc_pdp/libstrongswan-tnc-pdp.la
+endif
+endif
+
 if USE_TNC_IMC
   SUBDIRS += plugins/tnc_imc
 if MONOLITHIC
@@ -346,6 +358,13 @@ if USE_TNC_IMV
   SUBDIRS += plugins/tnc_imv
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/tnc_imv/libstrongswan-tnc-imv.la
+endif
+endif
+
+if USE_TNC_TNCCS
+  SUBDIRS += plugins/tnc_tnccs
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/tnc_tnccs/libstrongswan-tnc-tnccs.la
 endif
 endif
 
@@ -367,6 +386,13 @@ if USE_TNCCS_DYNAMIC
   SUBDIRS += plugins/tnccs_dynamic
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/tnccs_dynamic/libstrongswan-tnccs-dynamic.la
+endif
+endif
+
+if USE_LIBTNCCS
+if MONOLITHIC
+  # otherwise this library is linked to the respective plugins
+  libcharon_la_LIBADD += $(top_builddir)/src/libtnccs/libtnccs.la
 endif
 endif
 
@@ -426,6 +452,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_CERTEXPIRE
+  SUBDIRS += plugins/certexpire
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/certexpire/libstrongswan-certexpire.la
+endif
+endif
+
 if USE_LED
   SUBDIRS += plugins/led
 if MONOLITHIC
@@ -444,6 +477,13 @@ if USE_COUPLING
   SUBDIRS += plugins/coupling
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/coupling/libstrongswan-coupling.la
+endif
+endif
+
+if USE_RADATTR
+  SUBDIRS += plugins/radattr
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/radattr/libstrongswan-radattr.la
 endif
 endif
 

@@ -176,6 +176,13 @@ int command_usage(char *error)
 		fprintf(out, "Error: %s\n", error);
 	}
 	fprintf(out, "strongSwan %s PKI tool\n", VERSION);
+
+	if (active == help_idx)
+	{
+		fprintf(out, "loaded plugins: %s\n",
+				lib->plugins->loaded_plugins(lib->plugins));
+	}
+
 	fprintf(out, "usage:\n");
 	if (active == help_idx)
 	{

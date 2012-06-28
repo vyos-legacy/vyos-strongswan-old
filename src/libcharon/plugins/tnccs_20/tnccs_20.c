@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Sansar Choinyanbuu
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2011 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,12 +26,17 @@
 #include "messages/pb_language_preference_msg.h"
 #include "state_machine/pb_tnc_state_machine.h"
 
+#include <tncif_names.h>
+#include <tncif_pa_subtypes.h>
+
+#include <tnc/tnc.h>
+#include <tnc/tnccs/tnccs_manager.h>
+#include <tnc/imc/imc_manager.h>
+#include <tnc/imv/imv_manager.h>
+
 #include <debug.h>
-#include <daemon.h>
 #include <threading/mutex.h>
-#include <tnc/tncif.h>
-#include <tnc/tncifimv.h>
-#include <tnc/tnccs/tnccs.h>
+#include <pen/pen.h>
 
 typedef struct private_tnccs_20_t private_tnccs_20_t;
 
@@ -89,18 +94,21 @@ struct private_tnccs_20_t {
 	 * Set of IMV recommendations  (TNC Server only)
 	 */
 	recommendations_t *recs;
+
 };
 
 METHOD(tnccs_t, send_msg, TNC_Result,
 	private_tnccs_20_t* this, TNC_IMCID imc_id, TNC_IMVID imv_id,
+						      TNC_UInt32 msg_flags,
 							  TNC_BufferReference msg,
 							  TNC_UInt32 msg_len,
-							  TNC_MessageType msg_type)
+						      TNC_VendorID msg_vid,
+						      TNC_MessageSubtype msg_subtype)
 {
-	TNC_MessageSubtype msg_sub_type;
-	TNC_VendorID msg_vendor_id;
 	pb_tnc_msg_t *pb_tnc_msg;
 	pb_tnc_batch_type_t batch_type;
+	enum_name_t *pa_subtype_names;
+	bool excl;
 
 	if (!this->send_msg)
 	{
@@ -109,12 +117,23 @@ METHOD(tnccs_t, send_msg, TNC_Result,
 			this->is_server ? imv_id : imc_id);
 		return TNC_RESULT_ILLEGAL_OPERATION;
 	}
+	excl = (msg_flags & TNC_MESSAGE_FLAGS_EXCLUSIVE) != 0;
 
-	msg_sub_type =   msg_type       & TNC_SUBTYPE_ANY;
-	msg_vendor_id = (msg_type >> 8) & TNC_VENDORID_ANY;
+	pb_tnc_msg = pb_pa_msg_create(msg_vid, msg_subtype, imc_id, imv_id,
+								  excl, chunk_create(msg, msg_len));
 
-	pb_tnc_msg = pb_pa_msg_create(msg_vendor_id, msg_sub_type, imc_id, imv_id,
-									  chunk_create(msg, msg_len));
+	pa_subtype_names = get_pa_subtype_names(msg_vid);
+	if (pa_subtype_names)
+	{
+		DBG2(DBG_TNC, "creating PB-PA message type '%N/%N' 0x%06x/0x%08x",
+					   pen_names, msg_vid, pa_subtype_names, msg_subtype,
+					   msg_vid, msg_subtype);
+	}
+	else
+	{
+		DBG2(DBG_TNC, "creating PB-PA message type '%N' 0x%06x/0x%08x",
+					   pen_names, msg_vid, msg_vid, msg_subtype);
+	}
 
 	/* adding PA message to SDATA or CDATA batch only */
 	batch_type = this->is_server ? PB_BATCH_SDATA : PB_BATCH_CDATA;
@@ -148,27 +167,44 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 		case PB_MSG_PA:
 		{
 			pb_pa_msg_t *pa_msg;
-			TNC_MessageType msg_type;
-			u_int32_t vendor_id, subtype;
+			u_int32_t msg_vid, msg_subtype;
+			u_int16_t imc_id, imv_id;
 			chunk_t msg_body;
+			bool excl;
+			enum_name_t *pa_subtype_names;
 
 			pa_msg = (pb_pa_msg_t*)msg;
-			vendor_id = pa_msg->get_vendor_id(pa_msg, &subtype);
-			msg_type = (vendor_id << 8) | (subtype & 0xff);
+			msg_vid = pa_msg->get_vendor_id(pa_msg, &msg_subtype);
 			msg_body = pa_msg->get_body(pa_msg);
+			imc_id = pa_msg->get_collector_id(pa_msg);
+			imv_id = pa_msg->get_validator_id(pa_msg);
+			excl = pa_msg->get_exclusive_flag(pa_msg);
 
-			DBG2(DBG_TNC, "handling PB-PA message type 0x%08x", msg_type);
+			pa_subtype_names = get_pa_subtype_names(msg_vid);
+			if (pa_subtype_names)
+			{
+				DBG2(DBG_TNC, "handling PB-PA message type '%N/%N' 0x%06x/0x%08x",
+					 pen_names, msg_vid, pa_subtype_names, msg_subtype,
+					 msg_vid, msg_subtype);
+			}
+			else
+			{
+				DBG2(DBG_TNC, "handling PB-PA message type '%N' 0x%06x/0x%08x",
+					 pen_names, msg_vid, msg_vid, msg_subtype);
+			}
 
 			this->send_msg = TRUE;
 			if (this->is_server)
 			{
-				charon->imvs->receive_message(charon->imvs,
-				this->connection_id, msg_body.ptr, msg_body.len, msg_type);
+				tnc->imvs->receive_message(tnc->imvs, this->connection_id,
+										   excl, msg_body.ptr, msg_body.len,
+										   msg_vid, msg_subtype, imc_id, imv_id);
 			}
 			else
 			{
-				charon->imcs->receive_message(charon->imcs,
-				this->connection_id, msg_body.ptr, msg_body.len,msg_type);
+				tnc->imcs->receive_message(tnc->imcs, this->connection_id,
+										   excl, msg_body.ptr, msg_body.len,
+										   msg_vid, msg_subtype, imv_id, imc_id);
 			}
 			this->send_msg = FALSE;
 			break;
@@ -205,8 +241,8 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 				case PB_REC_QUARANTINED:
 					state = TNC_CONNECTION_STATE_ACCESS_ISOLATED;
 			}
-			charon->imcs->notify_connection_change(charon->imcs,
-												   this->connection_id, state);
+			tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+												state);
 			break;
 		}
 		case PB_MSG_REMEDIATION_PARAMETERS:
@@ -231,7 +267,7 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 				this->fatal_error = TRUE;
 			}
 
-			if (vendor_id == IETF_VENDOR_ID)
+			if (vendor_id == PEN_IETF)
 			{
 				switch (error_code)
 				{
@@ -289,10 +325,10 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			reason_msg = (pb_reason_string_msg_t*)msg;
 			reason_string = reason_msg->get_reason_string(reason_msg);
 			language_code = reason_msg->get_language_code(reason_msg);
-			DBG2(DBG_TNC, "reason string is '%.*s", reason_string.len,
-													reason_string.ptr);
-			DBG2(DBG_TNC, "language code is '%.*s", language_code.len,
-													language_code.ptr);
+			DBG2(DBG_TNC, "reason string is '%.*s'", reason_string.len,
+													 reason_string.ptr);
+			DBG2(DBG_TNC, "language code is '%.*s'", language_code.len,
+													 language_code.ptr);
 			break;
 		}
 		default:
@@ -319,6 +355,11 @@ static void build_retry_batch(private_tnccs_20_t *this)
 			pb_tnc_batch_type_names, this->batch->get_type(this->batch));
 		this->batch->destroy(this->batch);
 	 }
+	if (this->is_server)
+	{
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											TNC_CONNECTION_STATE_HANDSHAKE);
+	}
 	this->batch = pb_tnc_batch_create(this->is_server, batch_retry_type);
 }
 
@@ -333,17 +374,17 @@ METHOD(tls_t, process, status_t,
 
 	if (this->is_server && !this->connection_id)
 	{
-		this->connection_id = charon->tnccs->create_connection(charon->tnccs,
-								(tnccs_t*)this,	_send_msg,
+		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
+								TNCCS_2_0, (tnccs_t*)this, _send_msg,
 								&this->request_handshake_retry, &this->recs);
 		if (!this->connection_id)
 		{
 			return FAILED;
 		}
-		charon->imvs->notify_connection_change(charon->imvs,
-							this->connection_id, TNC_CONNECTION_STATE_CREATE);
-		charon->imvs->notify_connection_change(charon->imvs,
-							this->connection_id, TNC_CONNECTION_STATE_HANDSHAKE);
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											TNC_CONNECTION_STATE_CREATE);
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											TNC_CONNECTION_STATE_HANDSHAKE);
 	}
 
 	data = chunk_create(buf, buflen);
@@ -372,10 +413,10 @@ METHOD(tls_t, process, status_t,
 		else if (batch_type == PB_BATCH_SRETRY)
 		{
 			/* Restart the measurements */
-			charon->imcs->notify_connection_change(charon->imcs,
+			tnc->imcs->notify_connection_change(tnc->imcs,
 			this->connection_id, TNC_CONNECTION_STATE_HANDSHAKE);
 			this->send_msg = TRUE;
-			charon->imcs->begin_handshake(charon->imcs, this->connection_id);
+			tnc->imcs->begin_handshake(tnc->imcs, this->connection_id);
 			this->send_msg = FALSE;
 		}
 
@@ -406,11 +447,11 @@ METHOD(tls_t, process, status_t,
 		this->send_msg = TRUE;
 		if (this->is_server)
 		{
-			charon->imvs->batch_ending(charon->imvs, this->connection_id);
+			tnc->imvs->batch_ending(tnc->imvs, this->connection_id);
 		}
 		else
 		{
-			charon->imcs->batch_ending(charon->imcs, this->connection_id);
+			tnc->imcs->batch_ending(tnc->imcs, this->connection_id);
 		}
 		this->send_msg = FALSE;
 	}
@@ -459,10 +500,11 @@ static void check_and_build_recommendation(private_tnccs_20_t *this)
 	chunk_t reason, language;
 	enumerator_t *enumerator;
 	pb_tnc_msg_t *msg;
+	pb_access_recommendation_code_t pb_rec;
 
 	if (!this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
-		charon->imvs->solicit_recommendation(charon->imvs, this->connection_id);
+		tnc->imvs->solicit_recommendation(tnc->imvs, this->connection_id);
 	}
 	if (this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
@@ -472,10 +514,22 @@ static void check_and_build_recommendation(private_tnccs_20_t *this)
 		this->batch->add_msg(this->batch, msg);
 
 		/**
-		 * IMV Action Recommendation and PB Access Recommendation codes
-		 * are shifted by one.
+		 * Map IMV Action Recommendation codes to PB Access Recommendation codes
 		 */
-		msg = pb_access_recommendation_msg_create(rec + 1);
+		switch (rec)
+		{
+			case TNC_IMV_ACTION_RECOMMENDATION_ALLOW:
+				pb_rec = PB_REC_ACCESS_ALLOWED;
+				break;
+			case TNC_IMV_ACTION_RECOMMENDATION_ISOLATE:
+				pb_rec = PB_REC_QUARANTINED;
+				break;
+			case TNC_IMV_ACTION_RECOMMENDATION_NO_ACCESS:
+			case TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION:
+			default:
+				pb_rec = PB_REC_ACCESS_DENIED;
+		}
+		msg = pb_access_recommendation_msg_create(pb_rec);
 		this->batch->add_msg(this->batch, msg);
 
 		enumerator = this->recs->create_reason_enumerator(this->recs);
@@ -485,6 +539,7 @@ static void check_and_build_recommendation(private_tnccs_20_t *this)
 			this->batch->add_msg(this->batch, msg);
 		}
 		enumerator->destroy(enumerator);
+		this->recs->clear_reasons(this->recs);
 	}
 }
 
@@ -500,8 +555,8 @@ METHOD(tls_t, build, status_t,
 		pb_tnc_msg_t *msg;
 		char *pref_lang;
 
-		this->connection_id = charon->tnccs->create_connection(charon->tnccs,
-										(tnccs_t*)this, _send_msg,
+		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
+										TNCCS_2_0, (tnccs_t*)this, _send_msg,
 										&this->request_handshake_retry, NULL);
 		if (!this->connection_id)
 		{
@@ -509,7 +564,7 @@ METHOD(tls_t, build, status_t,
 		}
 
 		/* Create PB-TNC Language Preference message */
-		pref_lang = charon->imcs->get_preferred_language(charon->imcs);
+		pref_lang = tnc->imcs->get_preferred_language(tnc->imcs);
 		msg = pb_language_preference_msg_create(chunk_create(pref_lang,
 													strlen(pref_lang)));
 		this->mutex->lock(this->mutex);
@@ -517,12 +572,12 @@ METHOD(tls_t, build, status_t,
 		this->batch->add_msg(this->batch, msg);
 		this->mutex->unlock(this->mutex);
 
-		charon->imcs->notify_connection_change(charon->imcs,
-							this->connection_id, TNC_CONNECTION_STATE_CREATE);
-		charon->imcs->notify_connection_change(charon->imcs,
-							this->connection_id, TNC_CONNECTION_STATE_HANDSHAKE);
+		tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+											TNC_CONNECTION_STATE_CREATE);
+		tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+											TNC_CONNECTION_STATE_HANDSHAKE);
 		this->send_msg = TRUE;
-		charon->imcs->begin_handshake(charon->imcs, this->connection_id);
+		tnc->imcs->begin_handshake(tnc->imcs, this->connection_id);
 		this->send_msg = FALSE;
 	}
 
@@ -639,7 +694,7 @@ METHOD(tls_t, is_complete, bool,
 
 	if (this->recs && this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
-		return charon->imvs->enforce_recommendation(charon->imvs, rec, eval);
+		return tnc->imvs->enforce_recommendation(tnc->imvs, rec, eval);
 	}
 	else
 	{
@@ -656,8 +711,8 @@ METHOD(tls_t, get_eap_msk, chunk_t,
 METHOD(tls_t, destroy, void,
 	private_tnccs_20_t *this)
 {
-	charon->tnccs->remove_connection(charon->tnccs, this->connection_id,
-													this->is_server);
+	tnc->tnccs->remove_connection(tnc->tnccs, this->connection_id,
+											  this->is_server);
 	this->state_machine->destroy(this->state_machine);
 	this->mutex->destroy(this->mutex);
 	DESTROY_IF(this->batch);

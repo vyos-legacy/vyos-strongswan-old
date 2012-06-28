@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2011 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
  *
@@ -46,14 +49,23 @@ struct pkcs11_private_key_t {
  *
  * @param type		type of the key
  * @param args		builder_part_t argument list
- * @return 			loaded key, NULL on failure
+ * @return			loaded key, NULL on failure
  */
 pkcs11_private_key_t *pkcs11_private_key_connect(key_type_t type, va_list args);
 
 /**
  * Get the Cryptoki mechanism for a signature scheme.
+ *
+ * Verifies that the given key is usable for this scheme.
+ *
+ * @param scheme		signature scheme
+ * @param type			key type
+ * @param keylen		key length in bits
+ * @param hash			hash algorithm to apply first (HASH_UNKNOWN if none)
  */
-CK_MECHANISM_PTR pkcs11_signature_scheme_to_mech(signature_scheme_t scheme);
+CK_MECHANISM_PTR pkcs11_signature_scheme_to_mech(signature_scheme_t scheme,
+												 key_type_t type, size_t keylen,
+												 hash_algorithm_t *hash);
 
 /**
  * Get the Cryptoki mechanism for a encryption scheme.

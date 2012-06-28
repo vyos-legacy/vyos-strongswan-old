@@ -82,8 +82,9 @@ extern enum_name_t *unique_policy_names;
  * Configuration of a peer, specified by IDs.
  *
  * The peer config defines a connection between two given IDs. It contains
- * exactly one ike_cfg_t, which is use for initiation. Additionally, it contains
- * multiple child_cfg_t defining which CHILD_SAs are allowed for this peer.
+ * exactly one ike_cfg_t, which is used for initiation. Additionally, it
+ * contains multiple child_cfg_t defining which CHILD_SAs are allowed for this
+ * peer.
  * @verbatim
                           +-------------------+        +---------------+
    +---------------+      |     peer_cfg      |      +---------------+ |
@@ -110,7 +111,7 @@ extern enum_name_t *unique_policy_names;
  * peer. Each config is enforced using the multiple authentication extension
  * (RFC4739).
  * The remote authentication configs are handled as constraints. The peer has
- * to fullfill each of these rules (using multiple authentication, in any order)
+ * to fulfill each of these rules (using multiple authentication, in any order)
  * to gain access to the configuration.
  */
 struct peer_cfg_t {
@@ -127,7 +128,7 @@ struct peer_cfg_t {
 	/**
 	 * Get the IKE version to use for initiating.
 	 *
-	 * @return 				IKE major version
+	 * @return				IKE major version
 	 */
 	u_int (*get_ike_version)(peer_cfg_t *this);
 
@@ -328,14 +329,14 @@ struct peer_cfg_t {
  * (rekeylifetime - random(0, jitter)).
  *
  * @param name				name of the peer_cfg
- * @param ike_version		which IKE version we sould use for this peer
+ * @param ike_version		which IKE version we should use for this peer
  * @param ike_cfg			IKE config to use when acting as initiator
  * @param cert_policy		should we send a certificate payload?
  * @param unique			uniqueness of an IKE_SA
  * @param keyingtries		how many keying tries should be done before giving up
  * @param rekey_time		timeout before starting rekeying
  * @param reauth_time		timeout before starting reauthentication
- * @param jitter_time		timerange to randomly substract from rekey/reauth time
+ * @param jitter_time		timerange to randomly subtract from rekey/reauth time
  * @param over_time			maximum overtime before closing a rekeying/reauth SA
  * @param mobike			use MOBIKE (RFC4555) if peer supports it
  * @param dpd				DPD check interval, 0 to disable
@@ -344,7 +345,7 @@ struct peer_cfg_t {
  * @param mediation			TRUE if this is a mediation connection
  * @param mediated_by		peer_cfg_t of the mediation connection to mediate through
  * @param peer_id			ID that identifies our peer at the mediation server
- * @return 					peer_cfg_t object
+ * @return					peer_cfg_t object
  */
 peer_cfg_t *peer_cfg_create(char *name, u_int ike_version, ike_cfg_t *ike_cfg,
 							cert_policy_t cert_policy, unique_policy_t unique,

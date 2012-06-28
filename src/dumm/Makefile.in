@@ -74,8 +74,8 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(ipsecdir)"
-LTLIBRARIES = $(lib_LTLIBRARIES)
+am__installdirs = "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(ipsecdir)"
+LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 libdumm_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am_libdumm_la_OBJECTS = dumm.lo guest.lo iface.lo bridge.lo \
@@ -85,10 +85,12 @@ PROGRAMS = $(ipsec_PROGRAMS)
 am_dumm_OBJECTS = main.$(OBJEXT)
 dumm_OBJECTS = $(am_dumm_OBJECTS)
 am__DEPENDENCIES_1 =
-dumm_DEPENDENCIES = libdumm.la $(am__DEPENDENCIES_1)
+dumm_DEPENDENCIES = libdumm.la $(am__DEPENDENCIES_1) \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am_irdumm_OBJECTS = irdumm.$(OBJEXT)
 irdumm_OBJECTS = $(am_irdumm_OBJECTS)
-irdumm_DEPENDENCIES = libdumm.la
+irdumm_DEPENDENCIES = libdumm.la \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -198,6 +200,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -206,6 +211,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -222,11 +228,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -270,6 +278,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -283,17 +292,15 @@ xml_LIBS = @xml_LIBS@
 EXTRA_DIST = ext/dumm.c ext/README \
   ext/lib/dumm.rb ext/lib/dumm/guest.rb
 
-lib_LTLIBRARIES = libdumm.la
+ipseclib_LTLIBRARIES = libdumm.la
 libdumm_la_SOURCES = dumm.c dumm.h guest.c guest.h iface.c iface.h \
   bridge.c bridge.h mconsole.c mconsole.h cowfs.h cowfs.c
 
 dumm_SOURCES = main.c
 irdumm_SOURCES = irdumm.c
-libdumm_la_LIBADD = $(top_builddir)/src/libstrongswan/libstrongswan.la \
-  -lbridge -lfuse -lutil
-
-dumm_LDADD = libdumm.la ${gtk_LIBS}
-irdumm_LDADD = libdumm.la -lruby1.8
+libdumm_la_LIBADD = -lbridge -lfuse -lutil $(top_builddir)/src/libstrongswan/libstrongswan.la
+dumm_LDADD = libdumm.la ${gtk_LIBS} $(top_builddir)/src/libstrongswan/libstrongswan.la
+irdumm_LDADD = libdumm.la -lruby1.8 $(top_builddir)/src/libstrongswan/libstrongswan.la
 INCLUDES = -I$(top_srcdir)/src/libstrongswan ${gtk_CFLAGS} \
   ${RUBYINCLUDE}
 
@@ -332,39 +339,39 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
-install-libLTLIBRARIES: $(lib_LTLIBRARIES)
+install-ipseclibLTLIBRARIES: $(ipseclib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
-	test -z "$(libdir)" || $(MKDIR_P) "$(DESTDIR)$(libdir)"
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
+	test -z "$(ipseclibdir)" || $(MKDIR_P) "$(DESTDIR)$(ipseclibdir)"
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
 	list2=; for p in $$list; do \
 	  if test -f $$p; then \
 	    list2="$$list2 $$p"; \
 	  else :; fi; \
 	done; \
 	test -z "$$list2" || { \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(libdir)'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(libdir)"; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(ipseclibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(ipseclibdir)"; \
 	}
 
-uninstall-libLTLIBRARIES:
+uninstall-ipseclibLTLIBRARIES:
 	@$(NORMAL_UNINSTALL)
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
 	for p in $$list; do \
 	  $(am__strip_dir) \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(libdir)/$$f'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(libdir)/$$f"; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(ipseclibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(ipseclibdir)/$$f"; \
 	done
 
-clean-libLTLIBRARIES:
-	-test -z "$(lib_LTLIBRARIES)" || rm -f $(lib_LTLIBRARIES)
-	@list='$(lib_LTLIBRARIES)'; for p in $$list; do \
+clean-ipseclibLTLIBRARIES:
+	-test -z "$(ipseclib_LTLIBRARIES)" || rm -f $(ipseclib_LTLIBRARIES)
+	@list='$(ipseclib_LTLIBRARIES)'; for p in $$list; do \
 	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
 	  test "$$dir" != "$$p" || dir=.; \
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
 libdumm.la: $(libdumm_la_OBJECTS) $(libdumm_la_DEPENDENCIES) 
-	$(LINK) -rpath $(libdir) $(libdumm_la_OBJECTS) $(libdumm_la_LIBADD) $(LIBS)
+	$(LINK) -rpath $(ipseclibdir) $(libdumm_la_OBJECTS) $(libdumm_la_LIBADD) $(LIBS)
 install-ipsecPROGRAMS: $(ipsec_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(ipsecdir)" || $(MKDIR_P) "$(DESTDIR)$(ipsecdir)"
@@ -543,7 +550,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) all-local
 installdirs:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(ipsecdir)"; do \
+	for dir in "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(ipsecdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -573,7 +580,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-ipsecPROGRAMS clean-libLTLIBRARIES \
+clean-am: clean-generic clean-ipsecPROGRAMS clean-ipseclibLTLIBRARIES \
 	clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-am
@@ -594,13 +601,14 @@ info: info-am
 
 info-am:
 
-install-data-am: install-data-local install-ipsecPROGRAMS
+install-data-am: install-data-local install-ipsecPROGRAMS \
+	install-ipseclibLTLIBRARIES
 
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-libLTLIBRARIES
+install-exec-am:
 
 install-html: install-html-am
 
@@ -640,25 +648,25 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-ipsecPROGRAMS uninstall-libLTLIBRARIES
+uninstall-am: uninstall-ipsecPROGRAMS uninstall-ipseclibLTLIBRARIES
 
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am all-local check check-am clean \
-	clean-generic clean-ipsecPROGRAMS clean-libLTLIBRARIES \
+	clean-generic clean-ipsecPROGRAMS clean-ipseclibLTLIBRARIES \
 	clean-libtool clean-local ctags distclean distclean-compile \
 	distclean-generic distclean-libtool distclean-tags distdir dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-data install-data-am install-data-local install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am \
-	install-ipsecPROGRAMS install-libLTLIBRARIES install-man \
+	install-ipsecPROGRAMS install-ipseclibLTLIBRARIES install-man \
 	install-pdf install-pdf-am install-ps install-ps-am \
 	install-strip installcheck installcheck-am installdirs \
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags uninstall uninstall-am \
-	uninstall-ipsecPROGRAMS uninstall-libLTLIBRARIES
+	uninstall-ipsecPROGRAMS uninstall-ipseclibLTLIBRARIES
 
 
 all-local: ext

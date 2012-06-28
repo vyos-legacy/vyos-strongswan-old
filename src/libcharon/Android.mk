@@ -41,10 +41,9 @@ encoding/payloads/ts_payload.c encoding/payloads/ts_payload.h \
 encoding/payloads/unknown_payload.c encoding/payloads/unknown_payload.h \
 encoding/payloads/vendor_id_payload.c encoding/payloads/vendor_id_payload.h \
 kernel/kernel_handler.c kernel/kernel_handler.h \
-network/packet.c network/packet.h \
-network/receiver.c network/receiver.h \
-network/sender.c network/sender.h \
-network/socket_manager.c network/socket_manager.h network/socket.h \
+network/receiver.c network/receiver.h network/sender.c network/sender.h \
+network/packet.c network/packet.h network/socket.c network/socket.h \
+network/socket_manager.c network/socket_manager.h \
 processing/jobs/acquire_job.c processing/jobs/acquire_job.h \
 processing/jobs/delete_child_sa_job.c processing/jobs/delete_child_sa_job.h \
 processing/jobs/delete_ike_sa_job.c processing/jobs/delete_ike_sa_job.h \
@@ -63,9 +62,6 @@ sa/authenticators/authenticator.c sa/authenticators/authenticator.h \
 sa/authenticators/eap_authenticator.c sa/authenticators/eap_authenticator.h \
 sa/authenticators/eap/eap_method.c sa/authenticators/eap/eap_method.h \
 sa/authenticators/eap/eap_manager.c sa/authenticators/eap/eap_manager.h \
-sa/authenticators/eap/sim_manager.c sa/authenticators/eap/sim_manager.h \
-sa/authenticators/eap/sim_card.h sa/authenticators/eap/sim_provider.h \
-sa/authenticators/eap/sim_hooks.h \
 sa/authenticators/psk_authenticator.c sa/authenticators/psk_authenticator.h \
 sa/authenticators/pubkey_authenticator.c sa/authenticators/pubkey_authenticator.h \
 sa/child_sa.c sa/child_sa.h \
@@ -74,6 +70,7 @@ sa/ike_sa_id.c sa/ike_sa_id.h \
 sa/ike_sa_manager.c sa/ike_sa_manager.h \
 sa/task_manager.c sa/task_manager.h \
 sa/keymat.c sa/keymat.h \
+sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
 sa/tasks/child_create.c sa/tasks/child_create.h \
 sa/tasks/child_delete.c sa/tasks/child_delete.h \
@@ -91,13 +88,7 @@ sa/tasks/ike_rekey.c sa/tasks/ike_rekey.h \
 sa/tasks/ike_reauth.c sa/tasks/ike_reauth.h \
 sa/tasks/ike_auth_lifetime.c sa/tasks/ike_auth_lifetime.h \
 sa/tasks/ike_vendor.c sa/tasks/ike_vendor.h \
-sa/tasks/task.c sa/tasks/task.h \
-tnc/tncif.h tnc/tncifimc.h tnc/tncifimv.h tnc/tncifimv.c \
-tnc/imc/imc.h tnc/imc/imc_manager.h \
-tnc/imv/imv.h tnc/imv/imv_manager.h \
-tnc/imv/imv_recommendations.c tnc/imv/imv_recommendations.h \
-tnc/tnccs/tnccs.c tnc/tnccs/tnccs.h \
-tnc/tnccs/tnccs_manager.c tnc/tnccs/tnccs_manager.h
+sa/tasks/task.c sa/tasks/task.h
 
 # adding the plugin source files
 
@@ -141,6 +132,8 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libsimaka/
 LOCAL_SRC_FILES += $(addprefix ../libsimaka/, \
 		simaka_message.h simaka_message.c \
 		simaka_crypto.h simaka_crypto.c \
+		simaka_manager.h simaka_manager.c \
+		simaka_card.h simaka_provider.h simaka_hooks.h \
 	)
 endif
 
@@ -150,17 +143,29 @@ LOCAL_SRC_FILES += $(call add_plugin, socket-default)
 
 LOCAL_SRC_FILES += $(call add_plugin, socket-dynamic)
 
+LOCAL_SRC_FILES += $(call add_plugin, socket-raw)
+
+LOCAL_SRC_FILES += $(call add_plugin, stroke)
+ifneq ($(call plugin_enabled, stroke),)
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../stroke/
+endif
+
+
 # build libcharon --------------------------------------------------------------
 
 LOCAL_C_INCLUDES += \
 	$(libvstr_PATH) \
 	$(strongswan_PATH)/src/include \
 	$(strongswan_PATH)/src/libhydra \
-	$(strongswan_PATH)/src/libstrongswan
+	$(strongswan_PATH)/src/libstrongswan \
+	$(strongswan_PATH)/src/libtncif
 
-LOCAL_CFLAGS := $(strongswan_CFLAGS)
+LOCAL_CFLAGS := $(strongswan_CFLAGS) \
+	-DPLUGINS='"$(strongswan_CHARON_PLUGINS)"'
 
 LOCAL_MODULE := libcharon
+
+LOCAL_MODULE_TAGS := optional
 
 LOCAL_ARM_MODE := arm
 

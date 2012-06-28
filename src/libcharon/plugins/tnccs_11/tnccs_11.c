@@ -22,12 +22,17 @@
 #include "messages/tnccs_reason_strings_msg.h"
 #include "messages/tnccs_recommendation_msg.h"
 
-#include <daemon.h>
+#include <tncif_names.h>
+#include <tncif_pa_subtypes.h>
+
+#include <tnc/tnc.h>
+#include <tnc/imc/imc_manager.h>
+#include <tnc/imv/imv_manager.h>
+#include <tnc/tnccs/tnccs.h>
+#include <tnc/tnccs/tnccs_manager.h>
+
 #include <debug.h>
 #include <threading/mutex.h>
-#include <tnc/tncif.h>
-#include <tnc/tncifimv.h>
-#include <tnc/tnccs/tnccs.h>
 
 typedef struct private_tnccs_11_t private_tnccs_11_t;
 
@@ -90,15 +95,20 @@ struct private_tnccs_11_t {
 	 * Set of IMV recommendations  (TNC Server only)
 	 */
 	recommendations_t *recs;
+
 };
 
 METHOD(tnccs_t, send_msg, TNC_Result,
 	private_tnccs_11_t* this, TNC_IMCID imc_id, TNC_IMVID imv_id,
+						      TNC_UInt32 msg_flags,
 							  TNC_BufferReference msg,
 							  TNC_UInt32 msg_len,
-							  TNC_MessageType msg_type)
+						      TNC_VendorID msg_vid,
+						      TNC_MessageSubtype msg_subtype)
 {
 	tnccs_msg_t *tnccs_msg;
+	TNC_MessageType msg_type;
+	enum_name_t *pa_subtype_names;
 
 	if (!this->send_msg)
 	{
@@ -106,6 +116,24 @@ METHOD(tnccs_t, send_msg, TNC_Result,
 			this->is_server ? "IMV" : "IMC",
 			this->is_server ? imv_id : imc_id);
 		return TNC_RESULT_ILLEGAL_OPERATION;
+	}
+	if (msg_vid > TNC_VENDORID_ANY || msg_subtype > TNC_SUBTYPE_ANY)
+	{
+		return TNC_RESULT_NO_LONG_MESSAGE_TYPES;
+	}
+	msg_type = (msg_vid << 8) | msg_subtype;
+ 
+	pa_subtype_names = get_pa_subtype_names(msg_vid);
+	if (pa_subtype_names)
+	{
+		DBG2(DBG_TNC, "creating IMC-IMV message type '%N/%N' 0x%06x/0x%02x",
+					   pen_names, msg_vid, pa_subtype_names, msg_subtype,
+					   msg_vid, msg_subtype);
+	}
+	else
+	{
+		DBG2(DBG_TNC, "creating IMC-IMV message type '%N' 0x%06x/0x%02x",
+			 		   pen_names, msg_vid, msg_vid, msg_subtype);
 	}
 	tnccs_msg = imc_imv_msg_create(msg_type, chunk_create(msg, msg_len));
 
@@ -132,23 +160,40 @@ static void handle_message(private_tnccs_11_t *this, tnccs_msg_t *msg)
 			imc_imv_msg_t *imc_imv_msg;
 			TNC_MessageType msg_type;
 			chunk_t msg_body;
+			u_int32_t msg_vid, msg_subtype;
+			enum_name_t *pa_subtype_names;
 
 			imc_imv_msg = (imc_imv_msg_t*)msg;
 			msg_type = imc_imv_msg->get_msg_type(imc_imv_msg);
 			msg_body = imc_imv_msg->get_msg_body(imc_imv_msg);
+			msg_vid = (msg_type >> 8) & TNC_VENDORID_ANY;
+			msg_subtype = msg_type & TNC_SUBTYPE_ANY;
 
-			DBG2(DBG_TNC, "handling IMC_IMV message type 0x%08x", msg_type);
+			pa_subtype_names = get_pa_subtype_names(msg_vid);
+			if (pa_subtype_names)
+			{
+				DBG2(DBG_TNC, "handling IMC-IMV message type '%N/%N' 0x%06x/0x%02x",
+					 pen_names, msg_vid, pa_subtype_names, msg_subtype,
+					 msg_vid, msg_subtype);
+			}
+			else
+			{
+				DBG2(DBG_TNC, "handling IMC-IMV message type '%N' 0x%06x/0x%02x",
+					 pen_names, msg_vid, msg_vid, msg_subtype);
+			}
 
 			this->send_msg = TRUE;
 			if (this->is_server)
 			{
-				charon->imvs->receive_message(charon->imvs,
-				this->connection_id, msg_body.ptr, msg_body.len, msg_type);
+				tnc->imvs->receive_message(tnc->imvs, this->connection_id,
+										   FALSE, msg_body.ptr, msg_body.len,
+										   msg_vid, msg_subtype, 0, TNC_IMVID_ANY);
 			}
 			else
 			{
-				charon->imcs->receive_message(charon->imcs,
-				this->connection_id, msg_body.ptr, msg_body.len,msg_type);
+				tnc->imcs->receive_message(tnc->imcs, this->connection_id,
+										   FALSE, msg_body.ptr, msg_body.len,
+										   msg_vid, msg_subtype, 0, TNC_IMCID_ANY);
 			}
 			this->send_msg = FALSE;
 			break;
@@ -181,8 +226,8 @@ static void handle_message(private_tnccs_11_t *this, tnccs_msg_t *msg)
 				default:
 					state = TNC_CONNECTION_STATE_ACCESS_NONE;
 			}
-			charon->imcs->notify_connection_change(charon->imcs,
-												   this->connection_id, state);
+			tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+												state);
 			this->delete_state = TRUE;
 			break;
 		}
@@ -221,9 +266,9 @@ static void handle_message(private_tnccs_11_t *this, tnccs_msg_t *msg)
 
 			reason_msg = (tnccs_reason_strings_msg_t*)msg;
 			reason_string = reason_msg->get_reason(reason_msg, &reason_lang);
-			DBG2(DBG_TNC, "reason string is '%.*s",   reason_string.len,
+			DBG2(DBG_TNC, "reason string is '%.*s'",   reason_string.len,
 													  reason_string.ptr);
-			DBG2(DBG_TNC, "reason language is '%.*s", reason_lang.len,
+			DBG2(DBG_TNC, "reason language is '%.*s'", reason_lang.len,
 													  reason_lang.ptr);
 			break;
 		}
@@ -243,17 +288,17 @@ METHOD(tls_t, process, status_t,
 
 	if (this->is_server && !this->connection_id)
 	{
-		this->connection_id = charon->tnccs->create_connection(charon->tnccs,
-								(tnccs_t*)this,	_send_msg,
+		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
+								TNCCS_1_1, (tnccs_t*)this, _send_msg,
 								&this->request_handshake_retry, &this->recs);
 		if (!this->connection_id)
 		{
 			return FAILED;
 		}
-		charon->imvs->notify_connection_change(charon->imvs,
-							this->connection_id, TNC_CONNECTION_STATE_CREATE);
-		charon->imvs->notify_connection_change(charon->imvs,
-							this->connection_id, TNC_CONNECTION_STATE_HANDSHAKE);
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											TNC_CONNECTION_STATE_CREATE);
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											TNC_CONNECTION_STATE_HANDSHAKE);
 	}
 
 	data = chunk_create(buf, buflen);
@@ -304,11 +349,11 @@ METHOD(tls_t, process, status_t,
 		this->send_msg = TRUE;
 		if (this->is_server)
 		{
-			charon->imvs->batch_ending(charon->imvs, this->connection_id);
+			tnc->imvs->batch_ending(tnc->imvs, this->connection_id);
 		}
 		else
 		{
-			charon->imcs->batch_ending(charon->imcs, this->connection_id);
+			tnc->imcs->batch_ending(tnc->imcs, this->connection_id);
 		}
 		this->send_msg = FALSE;
 	}
@@ -331,7 +376,7 @@ static void check_and_build_recommendation(private_tnccs_11_t *this)
 
 	if (!this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
-		charon->imvs->solicit_recommendation(charon->imvs, this->connection_id);
+		tnc->imvs->solicit_recommendation(tnc->imvs, this->connection_id);
 	}
 	if (this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
@@ -351,6 +396,7 @@ static void check_and_build_recommendation(private_tnccs_11_t *this)
 			this->batch->add_msg(this->batch, msg);
 		}
 		enumerator->destroy(enumerator);
+		this->recs->clear_reasons(this->recs);
 
 		/* we have reache the final state */
 		this->delete_state = TRUE;
@@ -368,8 +414,8 @@ METHOD(tls_t, build, status_t,
 		tnccs_msg_t *msg;
 		char *pref_lang;
 
-		this->connection_id = charon->tnccs->create_connection(charon->tnccs,
-										(tnccs_t*)this, _send_msg,
+		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
+										TNCCS_1_1, (tnccs_t*)this, _send_msg,
 										&this->request_handshake_retry, NULL);
 		if (!this->connection_id)
 		{
@@ -377,19 +423,19 @@ METHOD(tls_t, build, status_t,
 		}
 
 		/* Create TNCCS-PreferredLanguage message */
-		pref_lang = charon->imcs->get_preferred_language(charon->imcs);
+		pref_lang = tnc->imcs->get_preferred_language(tnc->imcs);
 		msg = tnccs_preferred_language_msg_create(pref_lang);
 		this->mutex->lock(this->mutex);
 		this->batch = tnccs_batch_create(this->is_server, ++this->batch_id);
 		this->batch->add_msg(this->batch, msg);
 		this->mutex->unlock(this->mutex);
 
-		charon->imcs->notify_connection_change(charon->imcs,
-							this->connection_id, TNC_CONNECTION_STATE_CREATE);
-		charon->imcs->notify_connection_change(charon->imcs,
-							this->connection_id, TNC_CONNECTION_STATE_HANDSHAKE);
+		tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+											TNC_CONNECTION_STATE_CREATE);
+		tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
+											TNC_CONNECTION_STATE_HANDSHAKE);
 		this->send_msg = TRUE;
-		charon->imcs->begin_handshake(charon->imcs, this->connection_id);
+		tnc->imcs->begin_handshake(tnc->imcs, this->connection_id);
 		this->send_msg = FALSE;
 	}
 
@@ -456,7 +502,7 @@ METHOD(tls_t, is_complete, bool,
 
 	if (this->recs && this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
-		return charon->imvs->enforce_recommendation(charon->imvs, rec, eval);
+		return tnc->imvs->enforce_recommendation(tnc->imvs, rec, eval);
 	}
 	else
 	{
@@ -473,8 +519,8 @@ METHOD(tls_t, get_eap_msk, chunk_t,
 METHOD(tls_t, destroy, void,
 	private_tnccs_11_t *this)
 {
-	charon->tnccs->remove_connection(charon->tnccs, this->connection_id,
-													this->is_server);
+	tnc->tnccs->remove_connection(tnc->tnccs, this->connection_id,
+											  this->is_server);
 	this->mutex->destroy(this->mutex);
 	DESTROY_IF(this->batch);
 	free(this);

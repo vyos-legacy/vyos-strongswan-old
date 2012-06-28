@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Tobias Brunner
+ * Copyright (C) 2008-2011 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -121,8 +121,9 @@
 /**
  * Object allocation/initialization macro, using designated initializer.
  */
-#define INIT(this, ...) { (this) = malloc(sizeof(*this)); \
-						  *(this) = (typeof(*this)){ __VA_ARGS__ }; }
+#define INIT(this, ...) ({ (this) = malloc(sizeof(*(this))); \
+						   *(this) = (typeof(*(this))){ __VA_ARGS__ }; \
+						   (this); })
 
 /**
  * Method declaration/definition macro, providing private and public interface.
@@ -347,17 +348,20 @@ void memwipe_noinline(void *ptr, size_t n);
 static inline void memwipe_inline(void *ptr, size_t n)
 {
 	volatile char *c = (volatile char*)ptr;
-	int m, i;
+	size_t m, i;
 
 	/* byte wise until long aligned */
-	for (i = 0; (uintptr_t)&c % sizeof(long) && i < n; i++)
+	for (i = 0; (uintptr_t)&c[i] % sizeof(long) && i < n; i++)
 	{
 		c[i] = 0;
 	}
-	/* word wize */
-	for (m = n - sizeof(long); i <= m; i += sizeof(long))
+	/* word wise */
+	if (n >= sizeof(long))
 	{
-		*(volatile long*)&c[i] = 0;
+		for (m = n - sizeof(long); i <= m; i += sizeof(long))
+		{
+			*(volatile long*)&c[i] = 0;
+		}
 	}
 	/* byte wise of the rest */
 	for (; i < n; i++)
@@ -403,6 +407,15 @@ char *translate(char *str, const char *from, const char *to);
  * @return			TRUE on success
  */
 bool mkdir_p(const char *path, mode_t mode);
+
+#ifndef HAVE_CLOSEFROM
+/**
+ * Close open file descriptors greater than or equal to lowfd.
+ *
+ * @param lowfd		start closing file descriptoros from here
+ */
+void closefrom(int lowfd);
+#endif
 
 /**
  * Get a timestamp from a monotonic time source.
@@ -470,6 +483,27 @@ static inline void htoun32(void *network, u_int32_t host)
 }
 
 /**
+ * Write a 64-bit host order value in network order to an unaligned address.
+ *
+ * @param host		host order 64-bit value
+ * @param network	unaligned address to write network order value to
+ */
+static inline void htoun64(void *network, u_int64_t host)
+{
+	char *unaligned = (char*)network;
+	u_int32_t high_part, low_part;
+
+	high_part = host >> 32;
+	high_part = htonl(high_part);
+	low_part  = host & 0xFFFFFFFFLL;
+	low_part  = htonl(low_part);
+
+	memcpy(unaligned, &high_part, sizeof(high_part));
+	unaligned += sizeof(high_part);
+	memcpy(unaligned, &low_part, sizeof(low_part));
+}
+
+/**
  * Read a 16-bit value in network order from an unaligned address to host order.
  *
  * @param network	unaligned address to read network order value from
@@ -500,6 +534,27 @@ static inline u_int32_t untoh32(void *network)
 }
 
 /**
+ * Read a 64-bit value in network order from an unaligned address to host order.
+ *
+ * @param network	unaligned address to read network order value from
+ * @return			host order value
+ */
+static inline u_int64_t untoh64(void *network)
+{
+	char *unaligned = (char*)network;
+	u_int32_t high_part, low_part;
+
+	memcpy(&high_part, unaligned, sizeof(high_part));
+	unaligned += sizeof(high_part);
+	memcpy(&low_part, unaligned, sizeof(low_part));
+
+	high_part = ntohl(high_part);
+	low_part  = ntohl(low_part);
+
+	return (((u_int64_t)high_part) << 32) + low_part;
+}
+
+/**
  * Special type to count references
  */
 typedef volatile u_int refcount_t;
@@ -509,6 +564,11 @@ typedef volatile u_int refcount_t;
 
 #define ref_get(ref) {__sync_fetch_and_add(ref, 1); }
 #define ref_put(ref) (!__sync_sub_and_fetch(ref, 1))
+
+#define cas_bool(ptr, oldval, newval) \
+					(__sync_bool_compare_and_swap(ptr, oldval, newval))
+#define cas_ptr(ptr, oldval, newval) \
+					(__sync_bool_compare_and_swap(ptr, oldval, newval))
 
 #else /* !HAVE_GCC_ATOMIC_OPERATIONS */
 
@@ -531,6 +591,27 @@ void ref_get(refcount_t *ref);
  * @return		TRUE if no more references counted
  */
 bool ref_put(refcount_t *ref);
+
+/**
+ * Atomically replace value of ptr with newval if it currently equals oldval.
+ *
+ * @param ptr		pointer to variable
+ * @param oldval	old value of the variable
+ * @param newval	new value set if possible
+ * @return			TRUE if value equaled oldval and newval was written
+ */
+bool cas_bool(bool *ptr, bool oldval, bool newval);
+
+/**
+ * Atomically replace value of ptr with newval if it currently equals oldval.
+ *
+ * @param ptr		pointer to variable
+ * @param oldval	old value of the variable
+ * @param newval	new value set if possible
+ * @return			TRUE if value equaled oldval and newval was written
+ */
+bool cas_ptr(void **ptr, void *oldval, void *newval);
+
 
 #endif /* HAVE_GCC_ATOMIC_OPERATIONS */
 
@@ -556,7 +637,7 @@ int time_delta_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
  * printf hook for memory areas.
  *
  * Arguments are:
- *	u_char *ptr, int len
+ *	u_char *ptr, u_int len
  */
 int mem_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 					const void *const *args);

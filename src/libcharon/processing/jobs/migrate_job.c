@@ -79,12 +79,12 @@ METHOD(job_t, execute, void,
 	}
 	if (ike_sa)
 	{
-		iterator_t *children;
+		enumerator_t *children;
 		child_sa_t *child_sa;
 		host_t *host;
 
-		children = ike_sa->create_child_sa_iterator(ike_sa);
-		while (children->iterate(children, (void**)&child_sa))
+		children = ike_sa->create_child_sa_enumerator(ike_sa);
+		while (children->enumerate(children, (void**)&child_sa))
 		{
 			if (child_sa->get_reqid(child_sa) == this->reqid)
 			{
@@ -120,6 +120,12 @@ METHOD(job_t, execute, void,
 	destroy(this);
 }
 
+METHOD(job_t, get_priority, job_priority_t,
+	private_migrate_job_t *this)
+{
+	return JOB_PRIO_MEDIUM;
+}
+
 /*
  * Described in header
  */
@@ -135,6 +141,7 @@ migrate_job_t *migrate_job_create(u_int32_t reqid,
 		.public = {
 			.job_interface = {
 				.execute = _execute,
+				.get_priority = _get_priority,
 				.destroy = _destroy,
 			},
 		},

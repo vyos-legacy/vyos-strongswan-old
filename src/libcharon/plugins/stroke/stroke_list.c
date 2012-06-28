@@ -15,6 +15,7 @@
 
 #include "stroke_list.h"
 
+#include <inttypes.h>
 #include <time.h>
 
 #ifdef HAVE_MALLINFO
@@ -24,6 +25,7 @@
 #include <hydra.h>
 #include <daemon.h>
 #include <utils/linked_list.h>
+#include <plugins/plugin.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/certificates/ac.h>
 #include <credentials/certificates/crl.h>
@@ -116,7 +118,7 @@ static void log_ike_sa(FILE *out, ike_sa_t *ike_sa, bool all)
 
 		ike_proposal = ike_sa->get_proposal(ike_sa);
 
-		fprintf(out, "%12s[%d]: IKE SPIs: %.16llx_i%s %.16llx_r%s",
+		fprintf(out, "%12s[%d]: IKE SPIs: %.16"PRIx64"_i%s %.16"PRIx64"_r%s",
 				ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa),
 				id->get_initiator_spi(id), id->is_initiator(id) ? "*" : "",
 				id->get_responder_spi(id), id->is_initiator(id) ? "" : "*");
@@ -221,11 +223,14 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 			{
 				u_int16_t encr_alg = ENCR_UNDEFINED, int_alg = AUTH_UNDEFINED;
 				u_int16_t encr_size = 0, int_size = 0;
+				u_int16_t esn = NO_EXT_SEQ_NUMBERS;
 
 				proposal->get_algorithm(proposal, ENCRYPTION_ALGORITHM,
 										&encr_alg, &encr_size);
 				proposal->get_algorithm(proposal, INTEGRITY_ALGORITHM,
 										&int_alg, &int_size);
+				proposal->get_algorithm(proposal, EXTENDED_SEQUENCE_NUMBERS,
+										&esn, NULL);
 
 				if (encr_alg != ENCR_UNDEFINED)
 				{
@@ -243,21 +248,25 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 						fprintf(out, "_%u", int_size);
 					}
 				}
+				if (esn == EXT_SEQ_NUMBERS)
+				{
+					fprintf(out, "/ESN");
+				}
 			}
 
 			now = time_monotonic(NULL);
 			child_sa->get_usestats(child_sa, TRUE, &use_in, &bytes_in);
-			fprintf(out, ", %llu bytes_i", bytes_in);
+			fprintf(out, ", %" PRIu64 " bytes_i", bytes_in);
 			if (use_in)
 			{
-				fprintf(out, " (%ds ago)", now - use_in);
+				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_in));
 			}
 
 			child_sa->get_usestats(child_sa, FALSE, &use_out, &bytes_out);
-			fprintf(out, ", %llu bytes_o", bytes_out);
+			fprintf(out, ", %" PRIu64 " bytes_o", bytes_out);
 			if (use_out)
 			{
-				fprintf(out, " (%ds ago)", now - use_out);
+				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_out));
 			}
 			fprintf(out, ", rekeying ");
 
@@ -324,7 +333,7 @@ static void log_auth_cfgs(FILE *out, peer_cfg_t *peer_cfg, bool local)
 			{
 				if ((uintptr_t)auth->get(auth, AUTH_RULE_EAP_VENDOR))
 				{
-					fprintf(out, "EAP_%d-%d authentication",
+					fprintf(out, "EAP_%" PRIuPTR "-%" PRIuPTR " authentication",
 						(uintptr_t)auth->get(auth, AUTH_RULE_EAP_TYPE),
 						(uintptr_t)auth->get(auth, AUTH_RULE_EAP_VENDOR));
 				}
@@ -389,25 +398,27 @@ static void log_auth_cfgs(FILE *out, peer_cfg_t *peer_cfg, bool local)
 }
 
 METHOD(stroke_list_t, status, void,
-	private_stroke_list_t *this, stroke_msg_t *msg, FILE *out, bool all)
+	private_stroke_list_t *this, stroke_msg_t *msg, FILE *out,
+	bool all, bool wait)
 {
 	enumerator_t *enumerator, *children;
 	ike_cfg_t *ike_cfg;
 	child_cfg_t *child_cfg;
 	child_sa_t *child_sa;
 	ike_sa_t *ike_sa;
+	linked_list_t *my_ts, *other_ts;
 	bool first, found = FALSE;
 	char *name = msg->status.name;
+	u_int half_open;
 
 	if (all)
 	{
 		peer_cfg_t *peer_cfg;
-		plugin_t *plugin;
 		char *pool;
 		host_t *host;
 		u_int32_t dpd;
 		time_t since, now;
-		u_int size, online, offline;
+		u_int size, online, offline, i;
 		now = time_monotonic(NULL);
 		since = time(NULL) - (now - this->uptime);
 
@@ -421,21 +432,24 @@ METHOD(stroke_list_t, status, void,
 				    mi.arena, mi.hblkhd, mi.uordblks, mi.fordblks);
 		}
 #endif /* HAVE_MALLINFO */
-		fprintf(out, "  worker threads: %d idle of %d,",
+		fprintf(out, "  worker threads: %d of %d idle, ",
 				lib->processor->get_idle_threads(lib->processor),
 				lib->processor->get_total_threads(lib->processor));
-		fprintf(out, " job queue load: %d,",
-				lib->processor->get_job_load(lib->processor));
-		fprintf(out, " scheduled events: %d\n",
-				lib->scheduler->get_job_load(lib->scheduler));
-		fprintf(out, "  loaded plugins: ");
-		enumerator = lib->plugins->create_plugin_enumerator(lib->plugins);
-		while (enumerator->enumerate(enumerator, &plugin))
+		for (i = 0; i < JOB_PRIO_MAX; i++)
 		{
-			fprintf(out, "%s ", plugin->get_name(plugin));
+			fprintf(out, "%s%d", i == 0 ? "" : "/",
+					lib->processor->get_working_threads(lib->processor, i));
 		}
-		enumerator->destroy(enumerator);
-		fprintf(out, "\n");
+		fprintf(out, " working, job queue: ");
+		for (i = 0; i < JOB_PRIO_MAX; i++)
+		{
+			fprintf(out, "%s%d", i == 0 ? "" : "/",
+					lib->processor->get_job_load(lib->processor, i));
+		}
+		fprintf(out, ", scheduled: %d\n",
+				lib->scheduler->get_job_load(lib->scheduler));
+		fprintf(out, "  loaded plugins: %s\n",
+				lib->plugins->loaded_plugins(lib->plugins));
 
 		first = TRUE;
 		enumerator = this->attribute->create_pool_enumerator(this->attribute);
@@ -491,12 +505,11 @@ METHOD(stroke_list_t, status, void,
 			children = peer_cfg->create_child_cfg_enumerator(peer_cfg);
 			while (children->enumerate(children, &child_cfg))
 			{
-				linked_list_t *my_ts, *other_ts;
-
 				my_ts = child_cfg->get_traffic_selectors(child_cfg, TRUE, NULL, NULL);
 				other_ts = child_cfg->get_traffic_selectors(child_cfg, FALSE, NULL, NULL);
-				fprintf(out, "%12s:   child:  %#R=== %#R", child_cfg->get_name(child_cfg),
-						my_ts, other_ts);
+				fprintf(out, "%12s:   child:  %#R=== %#R%N",
+						child_cfg->get_name(child_cfg),	my_ts, other_ts,
+						ipsec_mode_names, child_cfg->get_mode(child_cfg));
 				my_ts->destroy_offset(my_ts, offsetof(traffic_selector_t, destroy));
 				other_ts->destroy_offset(other_ts, offsetof(traffic_selector_t, destroy));
 
@@ -512,10 +525,39 @@ METHOD(stroke_list_t, status, void,
 		enumerator->destroy(enumerator);
 	}
 
+	/* Enumerate shunt policies */
+	first = TRUE;
+	enumerator = charon->shunts->create_enumerator(charon->shunts);
+	while (enumerator->enumerate(enumerator, &child_cfg))
+	{
+		if (name && !streq(name, child_cfg->get_name(child_cfg)))
+		{
+			continue;
+		}
+		if (first)
+		{
+			fprintf(out, "Shunted Connections:\n");
+			first = FALSE;
+		}
+		my_ts = child_cfg->get_traffic_selectors(child_cfg, TRUE, NULL, NULL);
+		other_ts = child_cfg->get_traffic_selectors(child_cfg, FALSE, NULL, NULL);
+		fprintf(out, "%12s:  %#R=== %#R%N\n",
+				child_cfg->get_name(child_cfg),	my_ts, other_ts,
+				ipsec_mode_names, child_cfg->get_mode(child_cfg));
+		my_ts->destroy_offset(my_ts, offsetof(traffic_selector_t, destroy));
+		other_ts->destroy_offset(other_ts, offsetof(traffic_selector_t, destroy));
+	}
+	enumerator->destroy(enumerator);
+
+	/* Enumerate traps */
 	first = TRUE;
 	enumerator = charon->traps->create_enumerator(charon->traps);
 	while (enumerator->enumerate(enumerator, NULL, &child_sa))
 	{
+		if (name && !streq(name, child_sa->get_name(child_sa)))
+		{
+			continue;
+		}
 		if (first)
 		{
 			fprintf(out, "Routed Connections:\n");
@@ -525,12 +567,17 @@ METHOD(stroke_list_t, status, void,
 	}
 	enumerator->destroy(enumerator);
 
-	fprintf(out, "Security Associations:\n");
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	half_open = charon->ike_sa_manager->get_half_open_count(
+												charon->ike_sa_manager, NULL);
+	fprintf(out, "Security Associations (%u up, %u connecting):\n",
+		charon->ike_sa_manager->get_count(charon->ike_sa_manager) - half_open,
+		half_open);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, wait);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		bool ike_printed = FALSE;
-		iterator_t *children = ike_sa->create_child_sa_iterator(ike_sa);
+		enumerator_t *children = ike_sa->create_child_sa_enumerator(ike_sa);
 
 		if (name == NULL || streq(name, ike_sa->get_name(ike_sa)))
 		{
@@ -539,7 +586,7 @@ METHOD(stroke_list_t, status, void,
 			ike_printed = TRUE;
 		}
 
-		while (children->iterate(children, (void**)&child_sa))
+		while (children->enumerate(children, (void**)&child_sa))
 		{
 			if (name == NULL || streq(name, child_sa->get_name(child_sa)))
 			{
@@ -582,35 +629,30 @@ static linked_list_t* create_unique_cert_list(certificate_type_t type)
 
 	while (enumerator->enumerate(enumerator, (void**)&cert))
 	{
-		iterator_t *iterator = list->create_iterator(list, TRUE);
+		enumerator_t *added = list->create_enumerator(list);
 		identification_t *issuer = cert->get_issuer(cert);
-		bool previous_same, same = FALSE, last = TRUE;
+		bool previous_same, same = FALSE, found = FALSE;
 		certificate_t *list_cert;
 
-		while (iterator->iterate(iterator, (void**)&list_cert))
+		while (added->enumerate(added, (void**)&list_cert))
 		{
-			/* exit if we have a duplicate? */
 			if (list_cert->equals(list_cert, cert))
-			{
-				last = FALSE;
+			{	/* stop if we found a duplicate*/
+				found = TRUE;
 				break;
 			}
-			/* group certificates with same issuer */
 			previous_same = same;
 			same = list_cert->has_issuer(list_cert, issuer);
 			if (previous_same && !same)
-			{
-				iterator->insert_before(iterator, (void *)cert->get_ref(cert));
-				last = FALSE;
+			{	/* group certificates with same issuer */
 				break;
 			}
 		}
-		iterator->destroy(iterator);
-
-		if (last)
+		if (!found)
 		{
-			list->insert_last(list, (void *)cert->get_ref(cert));
+			list->insert_before(list, added, cert->get_ref(cert));
 		}
+		added->destroy(added);
 	}
 	enumerator->destroy(enumerator);
 	return list;
@@ -657,12 +699,14 @@ static void list_public_key(public_key_t *public, FILE *out)
 static void stroke_list_pubkeys(linked_list_t *list, bool utc, FILE *out)
 {
 	bool first = TRUE;
-
-	enumerator_t *enumerator = list->create_enumerator(list);
+	time_t now = time(NULL), notBefore, notAfter;
+	enumerator_t *enumerator;
 	certificate_t *cert;
 
+	enumerator = list->create_enumerator(list);
 	while (enumerator->enumerate(enumerator, (void**)&cert))
 	{
+		identification_t *subject = cert->get_subject(cert);
 		public_key_t *public = cert->get_public_key(cert);
 
 		if (public)
@@ -674,6 +718,41 @@ static void stroke_list_pubkeys(linked_list_t *list, bool utc, FILE *out)
 				first = FALSE;
 			}
 			fprintf(out, "\n");
+
+			/* list subject if available */
+			if (subject->get_type(subject) != ID_KEY_ID)
+			{
+				fprintf(out, "  subject:   %#Y\n", subject);
+			}
+
+			/* list validity if available*/
+			cert->get_validity(cert, &now, &notBefore, &notAfter);
+			if (notBefore != UNDEFINED_TIME && notAfter != UNDEFINED_TIME)
+			{
+				fprintf(out, "  validity:  not before %T, ", &notBefore, utc);
+				if (now < notBefore)
+				{
+					fprintf(out, "not valid yet (valid in %V)\n", &now, &notBefore);
+				}
+				else
+				{
+					fprintf(out, "ok\n");
+				}
+				fprintf(out, "             not after  %T, ", &notAfter, utc);
+				if (now > notAfter)
+				{
+					fprintf(out, "expired (%V ago)\n", &now, &notAfter);
+				}
+				else
+				{
+					fprintf(out, "ok");
+					if (now > notAfter - CERT_WARNING_INTERVAL * 60 * 60 * 24)
+					{
+						fprintf(out, " (expires in %V)", &now, &notAfter);
+					}
+					fprintf(out, " \n");
+				}
+			}
 
 			list_public_key(public, out);
 			public->destroy(public);
@@ -791,7 +870,7 @@ static void stroke_list_certs(linked_list_t *list, char *label,
 
 			fprintf(out, "  subject:  \"%Y\"\n", cert->get_subject(cert));
 			fprintf(out, "  issuer:   \"%Y\"\n", cert->get_issuer(cert));
-			serial = x509->get_serial(x509);
+			serial = chunk_skip_zero(x509->get_serial(x509));
 			fprintf(out, "  serial:    %#B\n", &serial);
 
 			/* list validity */
@@ -904,7 +983,7 @@ static void stroke_list_acerts(linked_list_t *list, bool utc, FILE *out)
 		{
 			fprintf(out, "  hissuer:  \"%Y\"\n", id);
 		}
-		chunk = ac->get_holderSerial(ac);
+		chunk = chunk_skip_zero(ac->get_holderSerial(ac));
 		if (chunk.ptr)
 		{
 			fprintf(out, "  hserial:   %#B\n", &chunk);
@@ -916,7 +995,7 @@ static void stroke_list_acerts(linked_list_t *list, bool utc, FILE *out)
 			groups->destroy(groups);
 		}
 		fprintf(out, "  issuer:   \"%Y\"\n", cert->get_issuer(cert));
-		chunk  = ac->get_serial(ac);
+		chunk  = chunk_skip_zero(ac->get_serial(ac));
 		fprintf(out, "  serial:    %#B\n", &chunk);
 
 		/* list validity */
@@ -973,13 +1052,14 @@ static void stroke_list_crls(linked_list_t *list, bool utc, FILE *out)
 		fprintf(out, "  issuer:   \"%Y\"\n", cert->get_issuer(cert));
 
 		/* list optional crlNumber */
-		chunk = crl->get_serial(crl);
+		chunk = chunk_skip_zero(crl->get_serial(crl));
 		if (chunk.ptr)
 		{
 			fprintf(out, "  serial:    %#B\n", &chunk);
 		}
 		if (crl->is_delta_crl(crl, &chunk))
 		{
+			chunk = chunk_skip_zero(chunk);		
 			fprintf(out, "  delta for: %#B\n", &chunk);
 		}
 
@@ -1157,6 +1237,58 @@ static void list_algs(FILE *out)
 	fprintf(out, "\n");
 }
 
+/**
+ * List loaded plugin information
+ */
+static void list_plugins(FILE *out)
+{
+	plugin_feature_t *features, *fp;
+	enumerator_t *enumerator;
+	linked_list_t *list;
+	plugin_t *plugin;
+	int count, i;
+	bool loaded;
+	char *str;
+
+	fprintf(out, "\n");
+	fprintf(out, "List of loaded Plugins:\n");
+	fprintf(out, "\n");
+
+	enumerator = lib->plugins->create_plugin_enumerator(lib->plugins);
+	while (enumerator->enumerate(enumerator, &plugin, &list))
+	{
+		fprintf(out, "%s:\n", plugin->get_name(plugin));
+		if (plugin->get_features)
+		{
+			count = plugin->get_features(plugin, &features);
+			for (i = 0; i < count; i++)
+			{
+				str = plugin_feature_get_string(&features[i]);
+				switch (features[i].kind)
+				{
+					case FEATURE_PROVIDE:
+						fp = &features[i];
+						loaded = list->find_first(list, NULL,
+												  (void**)&fp) == SUCCESS;
+						fprintf(out, "    %s%s\n",
+								str, loaded ? "" : " (not loaded)");
+						break;
+					case FEATURE_DEPENDS:
+						fprintf(out, "        %s\n", str);
+						break;
+					case FEATURE_SDEPEND:
+						fprintf(out, "        %s(soft)\n", str);
+						break;
+					default:
+						break;
+				}
+				free(str);
+			}
+		}
+	}
+	enumerator->destroy(enumerator);
+}
+
 METHOD(stroke_list_t, list, void,
 	private_stroke_list_t *this, stroke_msg_t *msg, FILE *out)
 {
@@ -1227,6 +1359,10 @@ METHOD(stroke_list_t, list, void,
 	if (msg->list.flags & LIST_ALGS)
 	{
 		list_algs(out);
+	}
+	if (msg->list.flags & LIST_PLUGINS)
+	{
+		list_plugins(out);
 	}
 }
 

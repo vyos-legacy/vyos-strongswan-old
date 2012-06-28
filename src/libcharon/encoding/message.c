@@ -63,13 +63,13 @@
 typedef struct {
 	/* Payload type */
 	 payload_type_t type;
-	/* Minimal occurence of this payload. */
+	/* Minimal occurrence of this payload. */
 	size_t min_occurence;
-	/* Max occurence of this payload. */
+	/* Max occurrence of this payload. */
 	size_t max_occurence;
 	/* TRUE if payload must be encrypted */
 	bool encrypted;
-	/* If payload occurs, the message rule is fullfilled */
+	/* If payload occurs, the message rule is fulfilled */
 	bool sufficient;
 } payload_rule_t;
 
@@ -861,9 +861,23 @@ static char* get_string(private_message_t *this, char *buf, int len)
 		len -= written;
 		if (payload->get_type(payload) == NOTIFY)
 		{
-			notify_payload_t *notify = (notify_payload_t*)payload;
-			written = snprintf(pos, len, "(%N)", notify_type_short_names,
-							   notify->get_notify_type(notify));
+			notify_payload_t *notify;
+			notify_type_t type;
+			chunk_t data;
+
+			notify = (notify_payload_t*)payload;
+			type = notify->get_notify_type(notify);
+			data = notify->get_notification_data(notify);
+			if (type == MS_NOTIFY_STATUS && data.len == 4)
+			{
+				written = snprintf(pos, len, "(%N(%d))", notify_type_short_names,
+								   type, untoh32(data.ptr));
+			}
+			else
+			{
+				written = snprintf(pos, len, "(%N)", notify_type_short_names,
+								   type);
+			}
 			if (written >= len || written < 0)
 			{
 				return buf;
@@ -1065,7 +1079,7 @@ METHOD(message_t, generate, status_t,
 	encryption_payload_t *encryption = NULL;
 	enumerator_t *enumerator;
 	chunk_t chunk;
-	char str[256];
+	char str[BUF_LEN];
 	u_int32_t *lenpos;
 	bool *reserved;
 	int i;
@@ -1312,7 +1326,7 @@ static status_t decrypt_payloads(private_message_t *this, aead_t *aead)
 
 			DBG2(DBG_ENC, "found an encryption payload");
 
-			if (enumerator->enumerate(enumerator, &payload))
+			if (this->payloads->has_more(this->payloads, enumerator))
 			{
 				DBG1(DBG_ENC, "encrypted payload is not last payload");
 				status = VERIFY_ERROR;
@@ -1405,7 +1419,7 @@ static status_t verify(private_message_t *this)
 				if (found > rule->max_occurence)
 				{
 					DBG1(DBG_ENC, "payload of type %N more than %d times (%d) "
-						 "occured in current message", payload_type_names,
+						 "occurred in current message", payload_type_names,
 						 type, rule->max_occurence, found);
 					enumerator->destroy(enumerator);
 					return VERIFY_ERROR;
@@ -1416,7 +1430,7 @@ static status_t verify(private_message_t *this)
 
 		if (!complete && found < rule->min_occurence)
 		{
-			DBG1(DBG_ENC, "payload of type %N not occured %d times (%d)",
+			DBG1(DBG_ENC, "payload of type %N not occurred %d times (%d)",
 				 payload_type_names, rule->type, rule->min_occurence, found);
 			return VERIFY_ERROR;
 		}
@@ -1434,7 +1448,7 @@ METHOD(message_t, parse_body, status_t,
 	status_t status = SUCCESS;
 	payload_t *payload;
 	payload_type_t type;
-	char str[256];
+	char str[BUF_LEN];
 
 	type = this->first_payload;
 

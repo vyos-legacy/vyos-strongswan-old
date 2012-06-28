@@ -82,12 +82,11 @@ static void signal_ipv4_config(NMVPNPlugin *plugin,
 {
 	GValue *val;
 	GHashTable *config;
-	host_t *me, *other;
+	host_t *me;
 	nm_handler_t *handler;
 
 	config = g_hash_table_new(g_str_hash, g_str_equal);
 	me = ike_sa->get_my_host(ike_sa);
-	other = ike_sa->get_other_host(ike_sa);
 	handler = NM_STRONGSWAN_PLUGIN_GET_PRIVATE(plugin)->handler;
 
 	/* NM requires a tundev, but netkey does not use one. Passing an invalid
@@ -632,7 +631,8 @@ static gboolean disconnect(NMVPNPlugin *plugin, GError **err)
 	u_int id;
 
 	/* our ike_sa pointer might be invalid, lookup sa */
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		if (priv->ike_sa == ike_sa)
@@ -640,7 +640,7 @@ static gboolean disconnect(NMVPNPlugin *plugin, GError **err)
 			id = ike_sa->get_unique_id(ike_sa);
 			enumerator->destroy(enumerator);
 			charon->controller->terminate_ike(charon->controller, id,
-											  controller_cb_empty, NULL);
+											  controller_cb_empty, NULL, 0);
 			return TRUE;
 		}
 	}

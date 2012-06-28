@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Tobias Brunner
+ * Copyright (C) 2009-2012 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,6 +17,19 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
+
+#ifdef HAVE_GETTID
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_GETTID
+#include <sys/syscall.h>
+static inline pid_t gettid()
+{
+	return syscall(SYS_gettid);
+}
+#endif
 
 #include <library.h>
 #include <debug.h>
@@ -113,6 +126,7 @@ static mutex_t *id_mutex;
  */
 static thread_value_t *current_thread;
 
+
 #ifndef HAVE_PTHREAD_CANCEL
 /* if pthread_cancel is not available, we emulate it using a signal */
 #define SIG_CANCEL (SIGRTMIN+7)
@@ -146,10 +160,8 @@ static void thread_destroy(private_thread_t *this)
 	free(this);
 }
 
-/**
- * Implementation of thread_t.cancel.
- */
-static void cancel(private_thread_t *this)
+METHOD(thread_t, cancel, void,
+	private_thread_t *this)
 {
 	this->mutex->lock(this->mutex);
 	if (pthread_equal(this->thread_id, pthread_self()))
@@ -166,10 +178,8 @@ static void cancel(private_thread_t *this)
 	this->mutex->unlock(this->mutex);
 }
 
-/**
- * Implementation of thread_t.kill.
- */
-static void _kill(private_thread_t *this, int sig)
+METHOD(thread_t, kill_, void,
+	private_thread_t *this, int sig)
 {
 	this->mutex->lock(this->mutex);
 	if (pthread_equal(this->thread_id, pthread_self()))
@@ -187,10 +197,8 @@ static void _kill(private_thread_t *this, int sig)
 	this->mutex->unlock(this->mutex);
 }
 
-/**
- * Implementation of thread_t.detach.
- */
-static void detach(private_thread_t *this)
+METHOD(thread_t, detach, void,
+	private_thread_t *this)
 {
 	this->mutex->lock(this->mutex);
 	pthread_detach(this->thread_id);
@@ -198,10 +206,8 @@ static void detach(private_thread_t *this)
 	thread_destroy(this);
 }
 
-/**
- * Implementation of thread_t.join.
- */
-static void *join(private_thread_t *this)
+METHOD(thread_t, join, void*,
+	private_thread_t *this)
 {
 	pthread_t thread_id;
 	void *val;
@@ -241,22 +247,19 @@ static void *join(private_thread_t *this)
  */
 static private_thread_t *thread_create_internal()
 {
-	private_thread_t *this = malloc_thing(private_thread_t);
+	private_thread_t *this;
 
-	this->public.cancel = (void(*)(thread_t*))cancel;
-	this->public.kill = (void(*)(thread_t*,int))_kill;
-	this->public.detach = (void(*)(thread_t*))detach;
-	this->public.join = (void*(*)(thread_t*))join;
-
-	this->id = 0;
-	this->thread_id = 0;
-	this->main = NULL;
-	this->arg = NULL;
-	this->cleanup_handlers = linked_list_create();
-	this->mutex = mutex_create(MUTEX_TYPE_DEFAULT);
+	INIT(this,
+		.public = {
+			.cancel = _cancel,
+			.kill = _kill_,
+			.detach = _detach,
+			.join = _join,
+		},
+		.cleanup_handlers = linked_list_create(),
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+	);
 	sem_init(&this->created, FALSE, 0);
-	this->detached_or_joined = FALSE;
-	this->terminated = FALSE;
 
 	return this;
 }
@@ -288,6 +291,17 @@ static void *thread_main(private_thread_t *this)
 	sem_wait(&this->created);
 	current_thread->set(current_thread, this);
 	pthread_cleanup_push((thread_cleanup_t)thread_cleanup, this);
+
+	/* TODO: this is not 100% portable as pthread_t is an opaque type (i.e.
+	 * could be of any size, or even a struct) */
+#ifdef HAVE_GETTID
+	DBG2(DBG_LIB, "created thread %.2d [%u]",
+		 this->id, gettid());
+#else
+	DBG2(DBG_LIB, "created thread %.2d [%lx]",
+		 this->id, (u_long)this->thread_id);
+#endif
+
 	res = this->main(this->arg);
 	pthread_cleanup_pop(TRUE);
 
@@ -344,10 +358,12 @@ void thread_cleanup_push(thread_cleanup_t cleanup, void *arg)
 	private_thread_t *this = (private_thread_t*)thread_current();
 	cleanup_handler_t *handler;
 
+	INIT(handler,
+		.cleanup = cleanup,
+		.arg = arg,
+	);
+
 	this->mutex->lock(this->mutex);
-	handler = malloc_thing(cleanup_handler_t);
-	handler->cleanup = cleanup;
-	handler->arg = arg;
 	this->cleanup_handlers->insert_last(this->cleanup_handlers, handler);
 	this->mutex->unlock(this->mutex);
 }
@@ -422,11 +438,19 @@ void thread_exit(void *val)
 }
 
 /**
+ * A dummy thread value that reserved pthread_key_t value "0". A buggy PKCS#11
+ * library mangles this key, without owning it, so we allocate it for them.
+ */
+static thread_value_t *dummy1;
+
+/**
  * Described in header.
  */
 void threads_init()
 {
 	private_thread_t *main_thread = thread_create_internal();
+
+	dummy1 = thread_value_create(NULL);
 
 	main_thread->id = 0;
 	main_thread->thread_id = pthread_self();
@@ -450,6 +474,8 @@ void threads_init()
 void threads_deinit()
 {
 	private_thread_t *main_thread = (private_thread_t*)thread_current();
+
+	dummy1->destroy(dummy1);
 
 	main_thread->mutex->lock(main_thread->mutex);
 	thread_destroy(main_thread);

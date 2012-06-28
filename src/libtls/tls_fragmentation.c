@@ -15,8 +15,7 @@
 
 #include "tls_fragmentation.h"
 
-#include "tls_reader.h"
-
+#include <bio/bio_reader.h>
 #include <debug.h>
 
 typedef struct private_tls_fragmentation_t private_tls_fragmentation_t;
@@ -108,7 +107,7 @@ struct private_tls_fragmentation_t {
  * Process a TLS alert
  */
 static status_t process_alert(private_tls_fragmentation_t *this,
-							  tls_reader_t *reader)
+							  bio_reader_t *reader)
 {
 	u_int8_t level, description;
 
@@ -125,11 +124,11 @@ static status_t process_alert(private_tls_fragmentation_t *this,
  * Process TLS handshake protocol data
  */
 static status_t process_handshake(private_tls_fragmentation_t *this,
-								  tls_reader_t *reader)
+								  bio_reader_t *reader)
 {
 	while (reader->remaining(reader))
 	{
-		tls_reader_t *msg;
+		bio_reader_t *msg;
 		u_int8_t type;
 		u_int32_t len;
 		status_t status;
@@ -178,7 +177,7 @@ static status_t process_handshake(private_tls_fragmentation_t *this,
 
 		if (this->input.len == this->inpos)
 		{	/* message completely defragmented, process */
-			msg = tls_reader_create(this->input);
+			msg = bio_reader_create(this->input);
 			DBG2(DBG_TLS, "received TLS %N handshake (%u bytes)",
 				 tls_handshake_type_names, this->type, this->input.len);
 			status = this->handshake->process(this->handshake, this->type, msg);
@@ -201,11 +200,12 @@ static status_t process_handshake(private_tls_fragmentation_t *this,
  * Process TLS application data
  */
 static status_t process_application(private_tls_fragmentation_t *this,
-									tls_reader_t *reader)
+									bio_reader_t *reader)
 {
 	while (reader->remaining(reader))
 	{
 		status_t status;
+		chunk_t data;
 
 		if (reader->remaining(reader) > MAX_TLS_FRAGMENT_LEN)
 		{
@@ -213,6 +213,8 @@ static status_t process_application(private_tls_fragmentation_t *this,
 			this->alert->add(this->alert, TLS_FATAL, TLS_DECODE_ERROR);
 			return NEED_MORE;
 		}
+		data = reader->peek(reader);
+		DBG3(DBG_TLS, "%B", &data);
 		status = this->application->process(this->application, reader);
 		switch (status)
 		{
@@ -233,24 +235,25 @@ static status_t process_application(private_tls_fragmentation_t *this,
 METHOD(tls_fragmentation_t, process, status_t,
 	private_tls_fragmentation_t *this, tls_content_type_t type, chunk_t data)
 {
-	tls_reader_t *reader;
+	bio_reader_t *reader;
 	status_t status;
 
 	switch (this->state)
 	{
 		case ALERT_SENDING:
 		case ALERT_SENT:
-			/* don't accept more input, fatal error ocurred */
+			/* don't accept more input, fatal error occurred */
 			return NEED_MORE;
 		case ALERT_NONE:
 			break;
 	}
-	reader = tls_reader_create(data);
+	reader = bio_reader_create(data);
 	switch (type)
 	{
 		case TLS_CHANGE_CIPHER_SPEC:
-			if (this->handshake->change_cipherspec(this->handshake))
+			if (this->handshake->cipherspec_changed(this->handshake, TRUE))
 			{
+				this->handshake->change_cipherspec(this->handshake, TRUE);
 				status = NEED_MORE;
 				break;
 			}
@@ -281,11 +284,11 @@ static bool check_alerts(private_tls_fragmentation_t *this, chunk_t *data)
 {
 	tls_alert_level_t level;
 	tls_alert_desc_t desc;
-	tls_writer_t *writer;
+	bio_writer_t *writer;
 
 	if (this->alert->get(this->alert, &level, &desc))
 	{
-		writer = tls_writer_create(2);
+		writer = bio_writer_create(2);
 
 		writer->write_uint8(writer, level);
 		writer->write_uint8(writer, desc);
@@ -302,14 +305,14 @@ static bool check_alerts(private_tls_fragmentation_t *this, chunk_t *data)
  */
 static status_t build_handshake(private_tls_fragmentation_t *this)
 {
-	tls_writer_t *hs, *msg;
+	bio_writer_t *hs, *msg;
 	tls_handshake_type_t type;
 	status_t status;
 
-	msg = tls_writer_create(64);
+	msg = bio_writer_create(64);
 	while (TRUE)
 	{
-		hs = tls_writer_create(64);
+		hs = bio_writer_create(64);
 		status = this->handshake->build(this->handshake, &type, hs);
 		switch (status)
 		{
@@ -322,8 +325,12 @@ static status_t build_handshake(private_tls_fragmentation_t *this)
 				msg->write_data24(msg, hs->get_buf(hs));
 				DBG2(DBG_TLS, "sending TLS %N handshake (%u bytes)",
 					 tls_handshake_type_names, type, hs->get_buf(hs).len);
-				hs->destroy(hs);
-				continue;
+				if (!this->handshake->cipherspec_changed(this->handshake, FALSE))
+				{
+					hs->destroy(hs);
+					continue;
+				}
+				/* FALL */
 			case INVALID_STATE:
 				this->output_type = TLS_HANDSHAKE;
 				this->output = chunk_clone(msg->get_buf(msg));
@@ -343,10 +350,10 @@ static status_t build_handshake(private_tls_fragmentation_t *this)
  */
 static status_t build_application(private_tls_fragmentation_t *this)
 {
-	tls_writer_t *msg;
+	bio_writer_t *msg;
 	status_t status;
 
-	msg = tls_writer_create(64);
+	msg = bio_writer_create(64);
 	while (TRUE)
 	{
 		status = this->application->build(this->application, msg);
@@ -395,8 +402,9 @@ METHOD(tls_fragmentation_t, build, status_t,
 	}
 	if (!this->output.len)
 	{
-		if (this->handshake->cipherspec_changed(this->handshake))
+		if (this->handshake->cipherspec_changed(this->handshake, FALSE))
 		{
+			this->handshake->change_cipherspec(this->handshake, FALSE);
 			*type = TLS_CHANGE_CIPHER_SPEC;
 			*data = chunk_clone(chunk_from_chars(0x01));
 			return NEED_MORE;

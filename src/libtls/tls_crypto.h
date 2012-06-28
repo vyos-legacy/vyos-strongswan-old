@@ -54,13 +54,13 @@ enum tls_cipher_suite_t {
 	TLS_RSA_EXPORT_WITH_DES40_CBC_SHA =			0x0008,
 	TLS_RSA_WITH_DES_CBC_SHA =					0x0009,
 	TLS_RSA_WITH_3DES_EDE_CBC_SHA =				0x000A,
-	TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA = 		0x000B,
+	TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA =		0x000B,
 	TLS_DH_DSS_WITH_DES_CBC_SHA =				0x000C,
 	TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA =			0x000D,
 	TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA =		0x000E,
-	TLS_DH_RSA_WITH_DES_CBC_SHA = 				0x000F,
+	TLS_DH_RSA_WITH_DES_CBC_SHA =				0x000F,
 	TLS_DH_RSA_WITH_3DES_EDE_CBC_SHA =			0x0010,
-	TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA = 	0x0011,
+	TLS_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA =		0x0011,
 	TLS_DHE_DSS_WITH_DES_CBC_SHA =				0x0012,
 	TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA =			0x0013,
 	TLS_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA =		0x0014,
@@ -110,7 +110,7 @@ enum tls_cipher_suite_t {
 	TLS_RSA_WITH_CAMELLIA_128_CBC_SHA =			0x0041,
 	TLS_DH_DSS_WITH_CAMELLIA_128_CBC_SHA =		0x0042,
 	TLS_DH_RSA_WITH_CAMELLIA_128_CBC_SHA =		0x0043,
-	TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA = 	0x0044,
+	TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA =		0x0044,
 	TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA =		0x0045,
 	TLS_DH_anon_WITH_CAMELLIA_128_CBC_SHA =		0x0046,
 
@@ -126,8 +126,8 @@ enum tls_cipher_suite_t {
 	TLS_DH_DSS_WITH_CAMELLIA_256_CBC_SHA =		0x0085,
 	TLS_DH_RSA_WITH_CAMELLIA_256_CBC_SHA =		0x0086,
 	TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA =		0x0087,
-	TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA = 	0x0088,
-	TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA = 	0x0089,
+	TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA =		0x0088,
+	TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA =		0x0089,
 	TLS_PSK_WITH_RC4_128_SHA =					0x008A,
 	TLS_PSK_WITH_3DES_EDE_CBC_SHA =				0x008B,
 	TLS_PSK_WITH_AES_128_CBC_SHA =				0x008C,
@@ -427,7 +427,7 @@ struct tls_crypto_t {
 	 *
 	 * @param writer		writer to write supported hash/sig algorithms
 	 */
-	void (*get_signature_algorithms)(tls_crypto_t *this, tls_writer_t *writer);
+	void (*get_signature_algorithms)(tls_crypto_t *this, bio_writer_t *writer);
 
 	/**
 	 * Create an enumerator over supported ECDH groups.
@@ -464,7 +464,7 @@ struct tls_crypto_t {
 	 * @return				TRUE if signature create successfully
 	 */
 	bool (*sign)(tls_crypto_t *this, private_key_t *key,
-				 tls_writer_t *writer, chunk_t data, chunk_t hashsig);
+				 bio_writer_t *writer, chunk_t data, chunk_t hashsig);
 
 	/**
 	 * Verify a blob of data, read signature from a reader.
@@ -475,7 +475,7 @@ struct tls_crypto_t {
 	 * @return				TRUE if signature valid
 	 */
 	bool (*verify)(tls_crypto_t *this, public_key_t *key,
-				   tls_reader_t *reader, chunk_t data);
+				   bio_reader_t *reader, chunk_t data);
 
 	/**
 	 * Create a signature of the handshake data using a given private key.
@@ -486,7 +486,7 @@ struct tls_crypto_t {
 	 * @return				TRUE if signature create successfully
 	 */
 	bool (*sign_handshake)(tls_crypto_t *this, private_key_t *key,
-						   tls_writer_t *writer, chunk_t hashsig);
+						   bio_writer_t *writer, chunk_t hashsig);
 
 	/**
 	 * Verify the signature over handshake data using a given public key.
@@ -496,7 +496,7 @@ struct tls_crypto_t {
 	 * @return				TRUE if signature valid
 	 */
 	bool (*verify_handshake)(tls_crypto_t *this, public_key_t *key,
-							 tls_reader_t *reader);
+							 bio_reader_t *reader);
 
 	/**
 	 * Calculate the data of a TLS finished message.
@@ -511,11 +511,36 @@ struct tls_crypto_t {
 	 * Derive the master secret, MAC and encryption keys.
 	 *
 	 * @param premaster		premaster secret
+	 * @param session		session identifier to cache master secret
+	 * @param id			identity the session is bound to
 	 * @param client_random	random data from client hello
 	 * @param server_random	random data from server hello
 	 */
 	void (*derive_secrets)(tls_crypto_t *this, chunk_t premaster,
+						   chunk_t session, identification_t *id,
 						   chunk_t client_random, chunk_t server_random);
+
+	/**
+	 * Try to resume a TLS session, derive key material.
+	 *
+	 * @param session		session identifier
+	 * @param id			identity the session is bound to
+	 * @param client_random	random data from client hello
+	 * @param server_random	random data from server hello
+	 * @return				selected suite
+	 */
+	tls_cipher_suite_t (*resume_session)(tls_crypto_t *this, chunk_t session,
+										 identification_t *id,
+										 chunk_t client_random,
+										 chunk_t server_random);
+
+	/**
+	 * Check if we have a session to resume as a client.
+	 *
+	 * @param id			server identity to get a session for
+	 * @return				allocated session identifier, or chunk_empty
+	 */
+	chunk_t (*get_session)(tls_crypto_t *this, identification_t *id);
 
 	/**
 	 * Change the cipher used at protection layer.
@@ -523,15 +548,6 @@ struct tls_crypto_t {
 	 * @param inbound		TRUE to change inbound cipher, FALSE for outbound
 	 */
 	void (*change_cipher)(tls_crypto_t *this, bool inbound);
-
-	/**
-	 * Derive the EAP-TLS MSK.
-	 *
-	 * @param client_random	random data from client hello
-	 * @param server_random	random data from server hello
-	 */
-	void (*derive_eap_msk)(tls_crypto_t *this,
-						   chunk_t client_random, chunk_t server_random);
 
 	/**
 	 * Get the MSK to use in EAP-TLS.
@@ -548,7 +564,11 @@ struct tls_crypto_t {
 
 /**
  * Create a tls_crypto instance.
+ *
+ * @param tls			TLS stack
+ * @param cache			TLS session cache
+ * @return				TLS crypto helper
  */
-tls_crypto_t *tls_crypto_create(tls_t *tls);
+tls_crypto_t *tls_crypto_create(tls_t *tls, tls_cache_t *cache);
 
 #endif /** TLS_CRYPTO_H_ @}*/

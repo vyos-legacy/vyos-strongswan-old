@@ -79,7 +79,7 @@ static void print_x509(x509_t *x509)
 	x509_cert_policy_t *policy;
 	x509_policy_mapping_t *mapping;
 
-	chunk = x509->get_serial(x509);
+	chunk = chunk_skip_zero(x509->get_serial(x509));
 	printf("serial:    %#B\n", &chunk);
 
 	first = TRUE;
@@ -329,10 +329,12 @@ static void print_crl(crl_t *crl)
 	struct tm tm;
 	x509_cdp_t *cdp;
 
-	chunk = crl->get_serial(crl);
+	chunk = chunk_skip_zero(crl->get_serial(crl));
 	printf("serial:    %#B\n", &chunk);
+
 	if (crl->is_delta_crl(crl, &chunk))
 	{
+		chunk = chunk_skip_zero(chunk);		
 		printf("delta CRL: for serial %#B\n", &chunk);
 	}
 	chunk = crl->get_authKeyIdentifier(crl);
@@ -371,6 +373,7 @@ static void print_crl(crl_t *crl)
 	enumerator = crl->create_enumerator(crl);
 	while (enumerator->enumerate(enumerator, &chunk, &ts, &reason))
 	{
+		chunk = chunk_skip_zero(chunk);
 		localtime_r(&ts, &tm);
 		strftime(buf, sizeof(buf), "%F %T", &tm);
 		printf("    %#B %N %s\n", &chunk, crl_reason_names, reason, buf);

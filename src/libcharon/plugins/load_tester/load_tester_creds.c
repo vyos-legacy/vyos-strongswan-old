@@ -49,9 +49,14 @@ struct private_load_tester_creds_t {
 	u_int32_t serial;
 
 	/**
-	 * Preshared key
+	 * Preshared key for IKE
 	 */
-	shared_key_t *shared;
+	shared_key_t *psk;
+
+	/**
+	 * Password for EAP
+	 */
+	shared_key_t *pwd;
 };
 
 /**
@@ -131,7 +136,7 @@ CwMLbJ7vQqwPHXRitDmNkEOK9H+vRnDf
 -----END CERTIFICATE-----
 
  */
-char cert[] = {
+static char cert[] = {
   0x30,0x82,0x01,0xf4,0x30,0x82,0x01,0x5d,0xa0,0x03,0x02,0x01,0x02,0x02,0x01,0x00,
   0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x05,0x05,0x00,0x30,
   0x37,0x31,0x0c,0x30,0x0a,0x06,0x03,0x55,0x04,0x03,0x13,0x03,0x73,0x72,0x76,0x31,
@@ -168,17 +173,17 @@ char cert[] = {
 
 
 /**
- * A preshared key
+ * Default IKE preshared key
  */
-static char psk[] = {
-  0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08
-};
+static char *default_psk = "default-psk";
 
 /**
- * Implements credential_set_t.create_private_enumerator
+ * Default EAP password for EAP
  */
-static enumerator_t* create_private_enumerator(private_load_tester_creds_t *this,
-							key_type_t type, identification_t *id)
+static char *default_pwd = "default-pwd";
+
+METHOD(credential_set_t, create_private_enumerator, enumerator_t*,
+	private_load_tester_creds_t *this, key_type_t type, identification_t *id)
 {
 	if (this->private == NULL)
 	{
@@ -198,12 +203,9 @@ static enumerator_t* create_private_enumerator(private_load_tester_creds_t *this
 	return enumerator_create_single(this->private, NULL);
 }
 
-/**
- * Implements credential_set_t.create_cert_enumerator
- */
-static enumerator_t* create_cert_enumerator(private_load_tester_creds_t *this,
-							certificate_type_t cert, key_type_t key,
-							identification_t *id, bool trusted)
+METHOD(credential_set_t, create_cert_enumerator, enumerator_t*,
+	private_load_tester_creds_t *this, certificate_type_t cert, key_type_t key,
+	identification_t *id, bool trusted)
 {
 	certificate_t *peer_cert;
 	public_key_t *peer_key, *ca_key;
@@ -265,49 +267,87 @@ static enumerator_t* create_cert_enumerator(private_load_tester_creds_t *this,
 }
 
 /**
- * Implements credential_set_t.create_shared_enumerator
+ * Filter function for shared keys, returning ID matches
  */
-static enumerator_t* create_shared_enumerator(private_load_tester_creds_t *this,
-							shared_key_type_t type,	identification_t *me,
-							identification_t *other)
+static bool shared_filter(void *null, shared_key_t **in, shared_key_t **out,
+				void **un1, id_match_t *me, void **un2, id_match_t *other)
 {
-	return enumerator_create_single(this->shared, NULL);
+	*out = *in;
+	if (me)
+	{
+		*me = ID_MATCH_ANY;
+	}
+	if (other)
+	{
+		*other = ID_MATCH_ANY;
+	}
+	return TRUE;
 }
 
-/**
- * Implementation of load_tester_creds_t.destroy
- */
-static void destroy(private_load_tester_creds_t *this)
+METHOD(credential_set_t, create_shared_enumerator, enumerator_t*,
+	private_load_tester_creds_t *this, shared_key_type_t type,
+	identification_t *me, identification_t *other)
+{
+	shared_key_t *shared;
+
+	switch (type)
+	{
+		case SHARED_IKE:
+			shared = this->psk;
+			break;
+		case SHARED_EAP:
+			shared = this->pwd;
+			break;
+		default:
+			return NULL;
+	}
+	return enumerator_create_filter(enumerator_create_single(shared, NULL),
+									(void*)shared_filter, NULL, NULL);
+}
+
+METHOD(load_tester_creds_t, destroy, void,
+	private_load_tester_creds_t *this)
 {
 	DESTROY_IF(this->private);
 	DESTROY_IF(this->ca);
-	this->shared->destroy(this->shared);
+	this->psk->destroy(this->psk);
+	this->pwd->destroy(this->pwd);
 	free(this);
 }
 
 load_tester_creds_t *load_tester_creds_create()
 {
-	private_load_tester_creds_t *this = malloc_thing(private_load_tester_creds_t);
+	private_load_tester_creds_t *this;
+	char *pwd, *psk;
 
-	this->public.credential_set.create_shared_enumerator = (enumerator_t*(*)(credential_set_t*, shared_key_type_t, identification_t*, identification_t*))create_shared_enumerator;
-	this->public.credential_set.create_private_enumerator = (enumerator_t*(*) (credential_set_t*, key_type_t, identification_t*))create_private_enumerator;
-	this->public.credential_set.create_cert_enumerator = (enumerator_t*(*) (credential_set_t*,	certificate_type_t, key_type_t,identification_t *, bool))create_cert_enumerator;
-	this->public.credential_set.create_cdp_enumerator  = (enumerator_t*(*) (credential_set_t *,certificate_type_t, identification_t *))return_null;
-	this->public.credential_set.cache_cert = (void (*)(credential_set_t *, certificate_t *))nop;
-	this->public.destroy = (void(*) (load_tester_creds_t*))destroy;
+	psk = lib->settings->get_str(lib->settings,
+					"charon.plugins.load-tester.preshared_key", default_psk);
+	pwd = lib->settings->get_str(lib->settings,
+					"charon.plugins.load-tester.eap_password", default_pwd);
 
-	this->private = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, KEY_RSA,
-				BUILD_BLOB_ASN1_DER, chunk_create(private, sizeof(private)),
-				BUILD_END);
-
-	this->ca = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
-				BUILD_BLOB_ASN1_DER, chunk_create(cert, sizeof(cert)),
-				BUILD_X509_FLAG, X509_CA,
-				BUILD_END);
-
-	this->shared = shared_key_create(SHARED_IKE,
-									 chunk_clone(chunk_create(psk, sizeof(psk))));
-	this->serial = 0;
+	INIT(this,
+		.public = {
+			.credential_set = {
+				.create_shared_enumerator = _create_shared_enumerator,
+				.create_private_enumerator = _create_private_enumerator,
+				.create_cert_enumerator = _create_cert_enumerator,
+				.create_cdp_enumerator = (void*)return_null,
+				.cache_cert = (void*)nop,
+			},
+			.destroy = _destroy,
+		},
+		.private = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, KEY_RSA,
+					BUILD_BLOB_ASN1_DER, chunk_create(private, sizeof(private)),
+					BUILD_END),
+		.ca = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
+					BUILD_BLOB_ASN1_DER, chunk_create(cert, sizeof(cert)),
+					BUILD_X509_FLAG, X509_CA,
+					BUILD_END),
+		.psk = shared_key_create(SHARED_IKE,
+								 chunk_clone(chunk_create(psk, strlen(psk)))),
+		.pwd = shared_key_create(SHARED_EAP,
+								 chunk_clone(chunk_create(pwd, strlen(pwd)))),
+	);
 	return &this->public;
 }
 

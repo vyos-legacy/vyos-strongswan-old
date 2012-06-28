@@ -86,13 +86,13 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(libdir)"
-LTLIBRARIES = $(lib_LTLIBRARIES)
+am__installdirs = "$(DESTDIR)$(ipseclibdir)"
+LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 libhydra_la_DEPENDENCIES = $(am__append_2) $(am__append_4) \
 	$(am__append_6) $(am__append_8) $(am__append_10) \
 	$(am__append_12) $(am__append_14)
 am_libhydra_la_OBJECTS = hydra.lo attributes.lo attribute_manager.lo \
-	mem_pool.lo kernel_interface.lo kernel_ipsec.lo
+	mem_pool.lo kernel_interface.lo kernel_ipsec.lo kernel_net.lo
 libhydra_la_OBJECTS = $(am_libhydra_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -243,6 +243,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -251,6 +254,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -267,11 +271,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -315,6 +321,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -325,7 +332,7 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-lib_LTLIBRARIES = libhydra.la
+ipseclib_LTLIBRARIES = libhydra.la
 libhydra_la_SOURCES = \
 hydra.c hydra.h \
 attributes/attributes.c attributes/attributes.h \
@@ -334,7 +341,7 @@ attributes/attribute_manager.c attributes/attribute_manager.h \
 attributes/mem_pool.c attributes/mem_pool.h \
 kernel/kernel_interface.c kernel/kernel_interface.h \
 kernel/kernel_ipsec.c kernel/kernel_ipsec.h \
-kernel/kernel_net.h \
+kernel/kernel_net.c kernel/kernel_net.h \
 kernel/kernel_listener.h
 
 libhydra_la_LIBADD = $(am__append_2) $(am__append_4) $(am__append_6) \
@@ -392,39 +399,39 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
-install-libLTLIBRARIES: $(lib_LTLIBRARIES)
+install-ipseclibLTLIBRARIES: $(ipseclib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
-	test -z "$(libdir)" || $(MKDIR_P) "$(DESTDIR)$(libdir)"
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
+	test -z "$(ipseclibdir)" || $(MKDIR_P) "$(DESTDIR)$(ipseclibdir)"
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
 	list2=; for p in $$list; do \
 	  if test -f $$p; then \
 	    list2="$$list2 $$p"; \
 	  else :; fi; \
 	done; \
 	test -z "$$list2" || { \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(libdir)'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(libdir)"; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 '$(DESTDIR)$(ipseclibdir)'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL) $(INSTALL_STRIP_FLAG) $$list2 "$(DESTDIR)$(ipseclibdir)"; \
 	}
 
-uninstall-libLTLIBRARIES:
+uninstall-ipseclibLTLIBRARIES:
 	@$(NORMAL_UNINSTALL)
-	@list='$(lib_LTLIBRARIES)'; test -n "$(libdir)" || list=; \
+	@list='$(ipseclib_LTLIBRARIES)'; test -n "$(ipseclibdir)" || list=; \
 	for p in $$list; do \
 	  $(am__strip_dir) \
-	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(libdir)/$$f'"; \
-	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(libdir)/$$f"; \
+	  echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(ipseclibdir)/$$f'"; \
+	  $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(ipseclibdir)/$$f"; \
 	done
 
-clean-libLTLIBRARIES:
-	-test -z "$(lib_LTLIBRARIES)" || rm -f $(lib_LTLIBRARIES)
-	@list='$(lib_LTLIBRARIES)'; for p in $$list; do \
+clean-ipseclibLTLIBRARIES:
+	-test -z "$(ipseclib_LTLIBRARIES)" || rm -f $(ipseclib_LTLIBRARIES)
+	@list='$(ipseclib_LTLIBRARIES)'; for p in $$list; do \
 	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
 	  test "$$dir" != "$$p" || dir=.; \
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
 libhydra.la: $(libhydra_la_OBJECTS) $(libhydra_la_DEPENDENCIES) 
-	$(LINK) -rpath $(libdir) $(libhydra_la_OBJECTS) $(libhydra_la_LIBADD) $(LIBS)
+	$(LINK) -rpath $(ipseclibdir) $(libhydra_la_OBJECTS) $(libhydra_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -437,6 +444,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hydra.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_interface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_ipsec.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_net.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_pool.Plo@am__quote@
 
 .c.o:
@@ -494,6 +502,13 @@ kernel_ipsec.lo: kernel/kernel_ipsec.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='kernel/kernel_ipsec.c' object='kernel_ipsec.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o kernel_ipsec.lo `test -f 'kernel/kernel_ipsec.c' || echo '$(srcdir)/'`kernel/kernel_ipsec.c
+
+kernel_net.lo: kernel/kernel_net.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT kernel_net.lo -MD -MP -MF $(DEPDIR)/kernel_net.Tpo -c -o kernel_net.lo `test -f 'kernel/kernel_net.c' || echo '$(srcdir)/'`kernel/kernel_net.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/kernel_net.Tpo $(DEPDIR)/kernel_net.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='kernel/kernel_net.c' object='kernel_net.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o kernel_net.lo `test -f 'kernel/kernel_net.c' || echo '$(srcdir)/'`kernel/kernel_net.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -699,7 +714,7 @@ check: check-recursive
 all-am: Makefile $(LTLIBRARIES)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(libdir)"; do \
+	for dir in "$(DESTDIR)$(ipseclibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -729,7 +744,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
+clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
@@ -750,13 +765,13 @@ info: info-recursive
 
 info-am:
 
-install-data-am:
+install-data-am: install-ipseclibLTLIBRARIES
 
 install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
-install-exec-am: install-libLTLIBRARIES
+install-exec-am:
 
 install-html: install-html-recursive
 
@@ -796,26 +811,26 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-libLTLIBRARIES
+uninstall-am: uninstall-ipseclibLTLIBRARIES
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) ctags-recursive \
 	install-am install-strip tags-recursive
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am check check-am clean clean-generic \
-	clean-libLTLIBRARIES clean-libtool ctags ctags-recursive \
+	clean-ipseclibLTLIBRARIES clean-libtool ctags ctags-recursive \
 	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-libLTLIBRARIES install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs installdirs-am \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
-	uninstall-libLTLIBRARIES
+	install-info-am install-ipseclibLTLIBRARIES install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
+	uninstall uninstall-am uninstall-ipseclibLTLIBRARIES
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

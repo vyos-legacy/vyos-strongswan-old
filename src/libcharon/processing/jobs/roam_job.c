@@ -55,7 +55,8 @@ METHOD(job_t, execute, void,
 	/* enumerator over all IKE_SAs gives us no way to checkin_and_destroy
 	 * after a DESTROY_ME, so we check out each available IKE_SA by hand. */
 	list = linked_list_create();
-	enumerator = charon->ike_sa_manager->create_enumerator(charon->ike_sa_manager);
+	enumerator = charon->ike_sa_manager->create_enumerator(
+												charon->ike_sa_manager, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		id = ike_sa->get_id(ike_sa);
@@ -85,6 +86,12 @@ METHOD(job_t, execute, void,
 	destroy(this);
 }
 
+METHOD(job_t, get_priority, job_priority_t,
+	private_roam_job_t *this)
+{
+	return JOB_PRIO_MEDIUM;
+}
+
 /*
  * Described in header
  */
@@ -96,6 +103,7 @@ roam_job_t *roam_job_create(bool address)
 		.public = {
 			.job_interface = {
 				.execute = _execute,
+				.get_priority = _get_priority,
 				.destroy = _destroy,
 			},
 		},

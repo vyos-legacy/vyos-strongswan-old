@@ -34,6 +34,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@MONOLITHIC_FALSE@am__append_1 = $(top_builddir)/src/libsimaka/libsimaka.la
 subdir = src/libcharon/plugins/eap_sim_pcsc
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -75,7 +76,8 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libstrongswan_eap_sim_pcsc_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+libstrongswan_eap_sim_pcsc_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__append_1)
 am_libstrongswan_eap_sim_pcsc_la_OBJECTS = eap_sim_pcsc_plugin.lo \
 	eap_sim_pcsc_card.lo
 libstrongswan_eap_sim_pcsc_la_OBJECTS =  \
@@ -196,6 +198,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -204,6 +209,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -220,11 +226,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -268,6 +276,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -279,17 +288,18 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libhydra \
-	-I$(top_srcdir)/src/libcharon
+	-I$(top_srcdir)/src/libcharon -I$(top_srcdir)/src/libsimaka
 
 AM_CFLAGS = -rdynamic ${pcsclite_CFLAGS}
+libstrongswan_eap_sim_pcsc_la_LDFLAGS = -module -avoid-version
+libstrongswan_eap_sim_pcsc_la_LIBADD = ${pcsclite_LIBS} \
+	$(am__append_1)
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-eap-sim-pcsc.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-eap-sim-pcsc.la
 libstrongswan_eap_sim_pcsc_la_SOURCES = \
 	eap_sim_pcsc_plugin.h eap_sim_pcsc_plugin.c \
 	eap_sim_pcsc_card.h eap_sim_pcsc_card.c
 
-libstrongswan_eap_sim_pcsc_la_LDFLAGS = -module -avoid-version
-libstrongswan_eap_sim_pcsc_la_LIBADD = ${pcsclite_LIBS}
 all: all-am
 
 .SUFFIXES:

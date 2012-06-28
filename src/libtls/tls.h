@@ -35,6 +35,7 @@ typedef struct tls_t tls_t;
 #include <library.h>
 
 #include "tls_application.h"
+#include "tls_cache.h"
 
 /**
  * TLS/SSL version numbers
@@ -228,6 +229,11 @@ struct tls_t {
 };
 
 /**
+ * Dummy libtls initialization function needed for integrity test
+ */
+void libtls_init(void);
+
+/**
  * Create a tls instance.
  *
  * @param is_server			TRUE to act as server, FALSE for client
@@ -235,10 +241,11 @@ struct tls_t {
  * @param peer				peer identity, NULL for no client authentication
  * @param purpose			purpose this TLS stack instance is used for
  * @param application		higher layer application or NULL if none
+ * @param cache				session cache to use, or NULL
  * @return					TLS stack
  */
 tls_t *tls_create(bool is_server, identification_t *server,
 				  identification_t *peer, tls_purpose_t purpose,
-				  tls_application_t *application);
+				  tls_application_t *application, tls_cache_t *cache);
 
 #endif /** TLS_H_ @}*/

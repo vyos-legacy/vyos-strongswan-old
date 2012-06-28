@@ -44,6 +44,8 @@ struct private_openssl_rsa_public_key_t {
 	refcount_t ref;
 };
 
+
+
 /**
  * Verification of an EMPSA PKCS1 signature described in PKCS#1
  */
@@ -386,4 +388,3 @@ openssl_rsa_public_key_t *openssl_rsa_public_key_load(key_type_t type,
 	destroy(this);
 	return NULL;
 }
-

@@ -80,10 +80,14 @@ typedef struct bus_t bus_t;
  * Kind of alerts to raise.
  */
 enum alert_t {
-	/* a RADIUS server did not respond, no additional arguments */
+	/** a RADIUS server did not respond, no additional arguments */
 	ALERT_RADIUS_NOT_RESPONDING,
-	/* a shutdown signal has been received, argument is a int with the signal */
+	/** a shutdown signal has been received, argument is the signal (int) */
 	ALERT_SHUTDOWN_SIGNAL,
+	/** peer authentication failed, no arguments */
+	ALERT_PEER_AUTH_FAILED,
+	/** failed to resolve peer address, no arguments */
+	ALERT_PEER_ADDR_FAILED,
 };
 
 /**
@@ -148,8 +152,10 @@ struct bus_t {
 	 *
 	 * @param listener	listener to register
 	 * @param job		job to execute asynchronously when registered, or NULL
+	 * @param timeout	max timeout in ms to listen for events, 0 to disable
+	 * @return			TRUE if timed out
 	 */
-	void (*listen)(bus_t *this, listener_t *listener, job_t *job);
+	bool (*listen)(bus_t *this, listener_t *listener, job_t *job, u_int timeout);
 
 	/**
 	 * Set the IKE_SA the calling thread is using.
@@ -177,7 +183,7 @@ struct bus_t {
 	/**
 	 * Send a log message to the bus.
 	 *
-	 * The signal specifies the type of the event occured. The format string
+	 * The signal specifies the type of the event occurred. The format string
 	 * specifies an additional informational or error message with a
 	 * printf() like variable argument list.
 	 * Use the DBG() macros.

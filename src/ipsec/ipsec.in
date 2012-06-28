@@ -1,4 +1,4 @@
-#! /bin/sh
+#! @IPSEC_SHELL@
 # prefix command to run stuff from our programs directory
 # Copyright (C) 1998-2002  Henry Spencer.
 # Copyright (C) 2006 Andreas Steffen
@@ -19,6 +19,7 @@ PATH="/sbin:/bin:/usr/sbin:/usr/bin:@IPSEC_SBINDIR@"
 export PATH
 
 # name and version of the ipsec implementation
+OS_NAME=`uname -s`
 IPSEC_NAME="@IPSEC_NAME@"
 IPSEC_VERSION="U@IPSEC_VERSION@/K`uname -r`"
 
@@ -60,7 +61,7 @@ case "$1" in
 	echo "	listalgs|listpubkeys|listcerts [--utc]"
 	echo "	listcacerts|listaacerts|listocspcerts [--utc]"
 	echo "	listacerts|listgroups|listcainfos [--utc]"
-	echo "	listcrls|listocsp|listcards|listall [--utc]"
+	echo "	listcrls|listocsp|listcards|listplugins|listall [--utc]"
 	echo "	leases [<poolname> [<address>]]"
 	echo "	rereadsecrets|rereadgroups"
 	echo "	rereadcacerts|rereadaacerts|rereadocspcerts"
@@ -169,7 +170,7 @@ leases)
 	fi
 	exit "$rc"
 	;;
-listalgs|\listpubkeys|\
+listalgs|listpubkeys|listplugins|\
 listcerts|listcacerts|listaacerts|\
 listacerts|listgroups|listocspcerts|\
 listcainfos|listcrls|listocsp|listall|\
@@ -326,7 +327,7 @@ stop)
 		if [ -n "$spid" ]
 		then
 			kill $spid 2>/dev/null
-			loop=5
+			loop=11
 			while [ $loop -gt 0 ] ; do
 				kill -0 $spid 2>/dev/null || break
 				sleep 1
@@ -378,7 +379,7 @@ update)
 	fi
 	;;
 version|--version)
-	printf "Linux $IPSEC_NAME $IPSEC_VERSION\n"
+	printf "$OS_NAME $IPSEC_NAME $IPSEC_VERSION\n"
 	printf "$IPSEC_DISTRO\n"
 	printf "See 'ipsec --copyright' for copyright information.\n"
 	exit 0

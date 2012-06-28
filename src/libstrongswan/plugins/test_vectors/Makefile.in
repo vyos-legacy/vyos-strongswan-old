@@ -76,11 +76,12 @@ am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_test_vectors_la_LIBADD =
 am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
-	3des_cbc.lo aes_cbc.lo aes_ctr.lo aes_xcbc.lo aes_ccm.lo \
-	aes_gcm.lo blowfish.lo camellia_cbc.lo camellia_ctr.lo \
-	camellia_xcbc.lo cast.lo des.lo idea.lo null.lo rc5.lo \
-	serpent_cbc.lo twofish_cbc.lo md2.lo md4.lo md5.lo md5_hmac.lo \
-	sha1.lo sha1_hmac.lo sha2.lo sha2_hmac.lo fips_prf.lo rng.lo
+	3des_cbc.lo aes_cbc.lo aes_ctr.lo aes_xcbc.lo aes_cmac.lo \
+	aes_ccm.lo aes_gcm.lo blowfish.lo camellia_cbc.lo \
+	camellia_ctr.lo camellia_xcbc.lo cast.lo des.lo idea.lo \
+	null.lo rc5.lo serpent_cbc.lo twofish_cbc.lo md2.lo md4.lo \
+	md5.lo md5_hmac.lo sha1.lo sha1_hmac.lo sha2.lo sha2_hmac.lo \
+	fips_prf.lo rng.lo
 libstrongswan_test_vectors_la_OBJECTS =  \
 	$(am_libstrongswan_test_vectors_la_OBJECTS)
 libstrongswan_test_vectors_la_LINK = $(LIBTOOL) --tag=CC \
@@ -199,6 +200,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -207,6 +211,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -223,11 +228,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -271,6 +278,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -291,6 +299,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/aes_cbc.c \
 	test_vectors/aes_ctr.c \
 	test_vectors/aes_xcbc.c \
+	test_vectors/aes_cmac.c \
 	test_vectors/aes_ccm.c \
 	test_vectors/aes_gcm.c \
 	test_vectors/blowfish.c \
@@ -402,6 +411,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3des_cbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_cbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_ccm.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_cmac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_ctr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_gcm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/aes_xcbc.Plo@am__quote@
@@ -476,6 +486,13 @@ aes_xcbc.lo: test_vectors/aes_xcbc.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_vectors/aes_xcbc.c' object='aes_xcbc.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o aes_xcbc.lo `test -f 'test_vectors/aes_xcbc.c' || echo '$(srcdir)/'`test_vectors/aes_xcbc.c
+
+aes_cmac.lo: test_vectors/aes_cmac.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT aes_cmac.lo -MD -MP -MF $(DEPDIR)/aes_cmac.Tpo -c -o aes_cmac.lo `test -f 'test_vectors/aes_cmac.c' || echo '$(srcdir)/'`test_vectors/aes_cmac.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/aes_cmac.Tpo $(DEPDIR)/aes_cmac.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='test_vectors/aes_cmac.c' object='aes_cmac.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o aes_cmac.lo `test -f 'test_vectors/aes_cmac.c' || echo '$(srcdir)/'`test_vectors/aes_cmac.c
 
 aes_ccm.lo: test_vectors/aes_ccm.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT aes_ccm.lo -MD -MP -MF $(DEPDIR)/aes_ccm.Tpo -c -o aes_ccm.lo `test -f 'test_vectors/aes_ccm.c' || echo '$(srcdir)/'`test_vectors/aes_ccm.c

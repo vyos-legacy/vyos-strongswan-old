@@ -50,6 +50,7 @@
 #include <credentials/certificates/certificate.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/certificates/pkcs10.h>
+#include <plugins/plugin.h>
 
 #include "../pluto/constants.h"
 #include "../pluto/defs.h"
@@ -275,25 +276,6 @@ usage(const char *message)
 }
 
 /**
- * Log loaded plugins
- */
-static void print_plugins()
-{
-	char buf[BUF_LEN];
-	plugin_t *plugin;
-	int len = 0;
-	enumerator_t *enumerator;
-
-	enumerator = lib->plugins->create_plugin_enumerator(lib->plugins);
-	while (len < BUF_LEN && enumerator->enumerate(enumerator, &plugin))
-	{
-		len += snprintf(&buf[len], BUF_LEN-len, "%s ", plugin->get_name(plugin));
-	}
-	enumerator->destroy(enumerator);
-	DBG1(DBG_LIB, "  loaded plugins: %s", buf);
-}
-
-/**
  * @brief main of scepclient
  *
  * @param argc number of arguments
@@ -333,7 +315,7 @@ int main(int argc, char **argv)
 	char *file_out_pkcs7     = DEFAULT_FILENAME_PKCS7;
 	char *file_out_cert_self = DEFAULT_FILENAME_CERT_SELF;
 	char *file_out_cert      = DEFAULT_FILENAME_CERT;
-	char *file_out_prefix_cacert = DEFAULT_FILENAME_PREFIX_CACERT;
+	char *file_out_ca_cert   = DEFAULT_FILENAME_CACERT_ENC;
 
 	/* by default user certificate is requested */
 	bool request_ca_certificate = FALSE;
@@ -541,7 +523,7 @@ int main(int argc, char **argv)
 				{
 					request_ca_certificate = TRUE;
 					if (filename)
-						file_out_prefix_cacert = filename;
+						file_out_ca_cert = filename;
 				}
 				else
 				{
@@ -703,10 +685,6 @@ int main(int argc, char **argv)
 
 		case 'x':       /* --maxpolltime */
 			max_poll_time = atoi(optarg);
-			if (max_poll_time < 0)
-			{
-				usage("invalid maxpolltime specified");
-			}
 			continue;
 
 		case 'a':       /*--algorithm */
@@ -762,7 +740,8 @@ int main(int argc, char **argv)
 	{
 		exit_scepclient("plugin loading failed");
 	}
-	print_plugins();
+	DBG1(DBG_LIB, "  loaded plugins: %s",
+		 lib->plugins->loaded_plugins(lib->plugins));
 
 	if ((filetype_out == 0) && (!request_ca_certificate))
 	{
@@ -783,6 +762,24 @@ int main(int argc, char **argv)
 	if (!filetype_in && (filetype_in > filetype_out))
 	{
 		usage("cannot generate --out of given --in!");
+	}
+
+	/* get CA cert */
+	if (request_ca_certificate)
+	{
+		char *path = concatenate_paths(CA_CERT_PATH, file_out_ca_cert);
+
+		if (!scep_http_request(scep_url, chunk_empty, SCEP_GET_CA_CERT,
+							   http_get_request, &scep_response))
+		{
+			exit_scepclient("did not receive a valid scep response");
+		}
+
+		if (!chunk_write(scep_response, path, "ca cert",  0022, force))
+		{
+			exit_scepclient("could not write ca cert file '%s'", path);
+		}
+		exit_scepclient(NULL); /* no further output required */
 	}
 
 	/*

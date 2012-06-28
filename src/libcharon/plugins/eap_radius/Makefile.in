@@ -74,10 +74,11 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
-libstrongswan_eap_radius_la_LIBADD =
+@MONOLITHIC_FALSE@libstrongswan_eap_radius_la_DEPENDENCIES =  \
+@MONOLITHIC_FALSE@	$(top_builddir)/src/libradius/libradius.la
 am_libstrongswan_eap_radius_la_OBJECTS = eap_radius_plugin.lo \
-	eap_radius.lo radius_server.lo radius_socket.lo \
-	radius_client.lo radius_message.lo
+	eap_radius.lo eap_radius_accounting.lo eap_radius_dae.lo \
+	eap_radius_forward.lo
 libstrongswan_eap_radius_la_OBJECTS =  \
 	$(am_libstrongswan_eap_radius_la_OBJECTS)
 libstrongswan_eap_radius_la_LINK = $(LIBTOOL) --tag=CC \
@@ -196,6 +197,9 @@ am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
+attest_plugins = @attest_plugins@
+axis2c_CFLAGS = @axis2c_CFLAGS@
+axis2c_LIBS = @axis2c_LIBS@
 bindir = @bindir@
 build = @build@
 build_alias = @build_alias@
@@ -204,6 +208,7 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -220,11 +225,13 @@ host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
 htmldir = @htmldir@
+imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
+ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
 libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
@@ -268,6 +275,7 @@ sharedstatedir = @sharedstatedir@
 soup_CFLAGS = @soup_CFLAGS@
 soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
+starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
@@ -279,18 +287,18 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libhydra \
-	-I$(top_srcdir)/src/libcharon
+	-I$(top_srcdir)/src/libcharon -I$(top_srcdir)/src/libradius
 
 AM_CFLAGS = -rdynamic
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-eap-radius.la
+@MONOLITHIC_FALSE@libstrongswan_eap_radius_la_LIBADD = $(top_builddir)/src/libradius/libradius.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-eap-radius.la
 libstrongswan_eap_radius_la_SOURCES = \
 	eap_radius_plugin.h eap_radius_plugin.c \
 	eap_radius.h eap_radius.c \
-	radius_server.h radius_server.c \
-	radius_socket.h radius_socket.c \
-	radius_client.h radius_client.c \
-	radius_message.h radius_message.c
+	eap_radius_accounting.h eap_radius_accounting.c \
+	eap_radius_dae.h eap_radius_dae.c \
+	eap_radius_forward.h eap_radius_forward.c
 
 libstrongswan_eap_radius_la_LDFLAGS = -module -avoid-version
 all: all-am
@@ -377,11 +385,10 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap_radius.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap_radius_accounting.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap_radius_dae.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap_radius_forward.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap_radius_plugin.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/radius_client.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/radius_message.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/radius_server.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/radius_socket.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

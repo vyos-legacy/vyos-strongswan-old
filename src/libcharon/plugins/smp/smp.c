@@ -208,12 +208,13 @@ static void request_query_ikesa(xmlTextReaderPtr reader, xmlTextWriterPtr writer
 	/* <ikesalist> */
 	xmlTextWriterStartElement(writer, "ikesalist");
 
-	enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+	enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 	while (enumerator->enumerate(enumerator, &ike_sa))
 	{
 		ike_sa_id_t *id;
 		host_t *local, *remote;
-		iterator_t *children;
+		enumerator_t *children;
 		child_sa_t *child_sa;
 
 		id = ike_sa->get_id(ike_sa);
@@ -263,8 +264,8 @@ static void request_query_ikesa(xmlTextReaderPtr reader, xmlTextWriterPtr writer
 
 		/* <childsalist> */
 		xmlTextWriterStartElement(writer, "childsalist");
-		children = ike_sa->create_child_sa_iterator(ike_sa);
-		while (children->iterate(children, (void**)&child_sa))
+		children = ike_sa->create_child_sa_enumerator(ike_sa);
+		while (children->enumerate(children, (void**)&child_sa))
 		{
 			write_child(writer, child_sa);
 		}
@@ -394,7 +395,8 @@ static void request_control_terminate(xmlTextReaderPtr reader,
 			enumerator_t *enumerator;
 			ike_sa_t *ike_sa;
 
-			enumerator = charon->controller->create_ike_sa_enumerator(charon->controller);
+			enumerator = charon->controller->create_ike_sa_enumerator(
+													charon->controller, TRUE);
 			while (enumerator->enumerate(enumerator, &ike_sa))
 			{
 				if (streq(str, ike_sa->get_name(ike_sa)))
@@ -419,14 +421,14 @@ static void request_control_terminate(xmlTextReaderPtr reader,
 		if (ike)
 		{
 			status = charon->controller->terminate_ike(
-					charon->controller,	id,
-					(controller_cb_t)xml_callback, writer);
+					charon->controller, id,
+					(controller_cb_t)xml_callback, writer, 0);
 		}
 		else
 		{
 			status = charon->controller->terminate_child(
-					charon->controller,	id,
-					(controller_cb_t)xml_callback, writer);
+					charon->controller, id,
+					(controller_cb_t)xml_callback, writer, 0);
 		}
 		/* </log> */
 		xmlTextWriterEndElement(writer);
@@ -459,17 +461,21 @@ static void request_control_initiate(xmlTextReaderPtr reader,
 
 		/* <log> */
 		xmlTextWriterStartElement(writer, "log");
-		peer = charon->backends->get_peer_cfg_by_name(charon->backends, (char*)str);
+		peer = charon->backends->get_peer_cfg_by_name(charon->backends,
+													  (char*)str);
 		if (peer)
 		{
 			enumerator = peer->create_child_cfg_enumerator(peer);
 			if (ike)
 			{
-				if (!enumerator->enumerate(enumerator, &child))
+				if (enumerator->enumerate(enumerator, &child))
+				{
+					child->get_ref(child);
+				}
+				else
 				{
 					child = NULL;
 				}
-				child->get_ref(child);
 			}
 			else
 			{
@@ -488,7 +494,7 @@ static void request_control_initiate(xmlTextReaderPtr reader,
 			{
 				status = charon->controller->initiate(charon->controller,
 							peer, child, (controller_cb_t)xml_callback,
-							writer);
+							writer, 0);
 			}
 			else
 			{
@@ -625,7 +631,7 @@ static job_requeue_t process(int *fdp)
 	int fd = *fdp;
 	bool oldstate;
 	char buffer[4096];
-	size_t len;
+	ssize_t len;
 	xmlTextReaderPtr reader;
 	char *id = NULL, *type = NULL;
 
@@ -640,7 +646,7 @@ static job_requeue_t process(int *fdp)
 		DBG2(DBG_CFG, "SMP XML connection closed");
 		return JOB_REQUEUE_NONE;
 	}
-	DBG3(DBG_CFG, "got XML request: %b", buffer, len);
+	DBG3(DBG_CFG, "got XML request: %b", buffer, (u_int)len);
 
 	reader = xmlReaderForMemory(buffer, len, NULL, NULL, 0);
 	if (reader == NULL)
@@ -772,7 +778,8 @@ plugin_t *smp_plugin_create()
 		return NULL;
 	}
 
-	this->job = callback_job_create((callback_job_cb_t)dispatch, this, NULL, NULL);
+	this->job = callback_job_create_with_prio((callback_job_cb_t)dispatch,
+										this, NULL, NULL, JOB_PRIO_CRITICAL);
 	lib->processor->queue_job(lib->processor, (job_t*)this->job);
 
 	return &this->public.plugin;

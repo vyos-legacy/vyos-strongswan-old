@@ -1,55 +1,88 @@
-/* strongSwan config file parser
- * Copyright (C) 2001-2002 Mathieu Lafon - Arkoon Network Security
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- */
 
-#ifndef _IPSEC_PARSER_H_
-#define _IPSEC_PARSER_H_
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
-#include "keywords.h"
+/* Skeleton interface for Bison's Yacc-like parsers in C
+   
+      Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
+   Free Software Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-typedef struct kw_entry kw_entry_t;
+/* As a special exception, you may create a larger work that contains
+   part or all of the Bison parser skeleton and distribute that work
+   under terms of your choice, so long as that work isn't itself a
+   parser generator using the skeleton or a modified version thereof
+   as a parser skeleton.  Alternatively, if you modify or redistribute
+   the parser skeleton itself, you may (at your option) remove this
+   special exception, which will cause the skeleton and the resulting
+   Bison output files to be licensed under the GNU General Public
+   License without this special exception.
+   
+   This special exception was added by the Free Software Foundation in
+   version 2.2 of Bison.  */
 
-struct kw_entry {
-	char *name;
-	kw_token_t token;
-};
 
-typedef struct kw_list kw_list_t;
+/* Tokens.  */
+#ifndef YYTOKENTYPE
+# define YYTOKENTYPE
+   /* Put the tokens into the symbol table, so that GDB and other debuggers
+      know about them.  */
+   enum yytokentype {
+     EQUAL = 258,
+     FIRST_SPACES = 259,
+     EOL = 260,
+     CONFIG = 261,
+     SETUP = 262,
+     CONN = 263,
+     CA = 264,
+     INCLUDE = 265,
+     FILE_VERSION = 266,
+     STRING = 267
+   };
+#endif
+/* Tokens.  */
+#define EQUAL 258
+#define FIRST_SPACES 259
+#define EOL 260
+#define CONFIG 261
+#define SETUP 262
+#define CONN 263
+#define CA 264
+#define INCLUDE 265
+#define FILE_VERSION 266
+#define STRING 267
 
-struct kw_list {
-		kw_entry_t *entry;
-		char *value;
-		kw_list_t *next;
-};
 
-typedef struct section_list section_list_t;
 
-struct section_list {
-		char *name;
-		kw_list_t *kw;
-		section_list_t *next;
-};
 
-typedef struct config_parsed config_parsed_t;
+#if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+typedef union YYSTYPE
+{
 
-struct config_parsed {
-		kw_list_t *config_setup;
-		section_list_t *conn_first, *conn_last;
-		section_list_t *ca_first, *ca_last;
-};
+/* Line 1676 of yacc.c  */
+#line 54 "parser.y"
+ char *s; 
 
-config_parsed_t *parser_load_conf (const char *file);
-void parser_free_conf (config_parsed_t *cfg);
 
-#endif /* _IPSEC_PARSER_H_ */
+/* Line 1676 of yacc.c  */
+#line 80 "parser.h"
+} YYSTYPE;
+# define YYSTYPE_IS_TRIVIAL 1
+# define yystype YYSTYPE /* obsolescent; will be withdrawn */
+# define YYSTYPE_IS_DECLARED 1
+#endif
+
+extern YYSTYPE yylval;
+
 

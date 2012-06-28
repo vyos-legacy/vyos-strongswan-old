@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2007-2009 Martin Willi
- * Copyright (C) 2008 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ typedef enum auth_class_t auth_class_t;
 /**
  * Class of authentication to use. This is different to auth_method_t in that
  * it does not specify a method, but a class of acceptable methods. The found
- * certificate finally dictates wich method is used.
+ * certificate finally dictates which method is used.
  */
 enum auth_class_t {
 	/** any class acceptable */
@@ -57,13 +57,12 @@ extern enum_name_t *auth_class_names;
  * - For configs specifying local authentication behavior, the rules define
  *   which authentication method in which way.
  * - For configs specifying remote peer authentication, the rules define
- *   constraints the peer has to fullfill.
+ *   constraints the peer has to fulfill.
  *
  * Additionally to the rules, there is a set of helper items. These are used
  * to transport credentials during the authentication process.
  */
 enum auth_rule_t {
-
 	/** identity to use for IKEv2 authentication exchange, identification_t* */
 	AUTH_RULE_IDENTITY,
 	/** authentication class, auth_class_t */
@@ -107,6 +106,9 @@ enum auth_rule_t {
 	AUTH_HELPER_SUBJECT_HASH_URL,
 	/** revocation certificate (CRL, OCSP), certificate_t* */
 	AUTH_HELPER_REVOCATION_CERT,
+
+	/** helper to determine the number of elements in this enum */
+	AUTH_RULE_MAX,
 };
 
 /**
@@ -119,8 +121,8 @@ extern enum_name_t *auth_rule_names;
  *
  * RFC4739 defines multiple authentication rounds. This class defines such
  * a round from a configuration perspective, either for the local or the remote
- * peer. Local config are called "rulesets", as they define how we authenticate.
- * Remote peer configs are called "constraits", they define what is needed to
+ * peer. Local configs are called "rulesets". They define how we authenticate.
+ * Remote peer configs are called "constraits". They define what is needed to
  * complete the authentication round successfully.
  *
  * @verbatim
@@ -144,13 +146,20 @@ extern enum_name_t *auth_rule_names;
 
    @endverbatim
  *
- * Values for each items are either pointers (casted to void*) or short
+ * Values for each item are either pointers (casted to void*) or short
  * integers (use uintptr_t cast).
  */
 struct auth_cfg_t {
 
 	/**
-	 * Add an rule to the set.
+	 * Add a rule to the set.
+	 *
+	 * Rules we expect only once (e.g. identities) implicitly replace previous
+	 * rules of the same type (but pointers to previous values will remain
+	 * valid until the auth_cfg_t object is destroyed).
+	 * Rules that may occur multiple times (e.g. CA certificates) are inserted
+	 * so that they can be enumerated in the order in which they were added.
+	 * For these get() will return the value added first.
 	 *
 	 * @param rule		rule type
 	 * @param ...		associated value to rule
@@ -158,7 +167,9 @@ struct auth_cfg_t {
 	void (*add)(auth_cfg_t *this, auth_rule_t rule, ...);
 
 	/**
-	 * Get an rule value.
+	 * Get a rule value.
+	 *
+	 * For rules we expect only once the latest value is returned.
 	 *
 	 * @param rule		rule type
 	 * @return			bool if item has been found
@@ -168,14 +179,17 @@ struct auth_cfg_t {
 	/**
 	 * Create an enumerator over added rules.
 	 *
+	 * Refer to add() regarding the order in which rules are enumerated.
+	 * For rules we expect only once the latest value is enumerated only.
+	 *
 	 * @return			enumerator over (auth_rule_t, union{void*,uintpr_t})
 	 */
 	enumerator_t* (*create_enumerator)(auth_cfg_t *this);
 
 	/**
-	 * Replace an rule at enumerator position.
+	 * Replace a rule at enumerator position.
 	 *
-	 * @param pos		enumerator position position
+	 * @param pos		enumerator position
 	 * @param rule		rule type
 	 * @param ...		associated value to rule
 	 */
@@ -186,7 +200,7 @@ struct auth_cfg_t {
 	 * Check if a used config fulfills a set of configured constraints.
 	 *
 	 * @param constraints	required authorization rules
-	 * @param log_error		wheter to log compliance errors
+	 * @param log_error		whether to log compliance errors
 	 * @return				TRUE if this complies with constraints
 	 */
 	bool (*complies)(auth_cfg_t *this, auth_cfg_t *constraints, bool log_error);
@@ -202,20 +216,22 @@ struct auth_cfg_t {
 	/**
 	 * Purge all rules in a config.
 	 *
-	 * @param keep_ca	wheter to keep AUTH_RULE_CA_CERT entries
+	 * @param keep_ca	whether to keep AUTH_RULE_CA_CERT entries
 	 */
 	void (*purge)(auth_cfg_t *this, bool keep_ca);
 
 	/**
 	 * Check two configs for equality.
 	 *
-	 * @param other		other config to compaire against this
+	 * For rules we expect only once the latest value is compared only.
+	 *
+	 * @param other		other config to compare against this
 	 * @return			TRUE if auth infos identical
 	 */
 	bool (*equals)(auth_cfg_t *this, auth_cfg_t *other);
 
 	/**
-	 * Clone a authentication config, including all rules.
+	 * Clone an authentication config, including all rules.
 	 *
 	 * @return			cloned configuration
 	 */

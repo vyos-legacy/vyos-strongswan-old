@@ -106,7 +106,6 @@ METHOD(payload_t, verify, status_t,
 	status_t status = SUCCESS;
 	enumerator_t *enumerator;
 	proposal_substructure_t *substruct;
-	bool first = TRUE;
 
 	/* check proposal numbering */
 	enumerator = this->proposals->create_enumerator(this->proposals);
@@ -114,16 +113,6 @@ METHOD(payload_t, verify, status_t,
 	{
 		current_number = substruct->get_proposal_number(substruct);
 		if (current_number < expected_number)
-		{
-			if (current_number != expected_number + 1)
-			{
-				DBG1(DBG_ENC, "proposal number is %d, expected %d or %d",
-					 current_number, expected_number, expected_number + 1);
-				status = FAILED;
-				break;
-			}
-		}
-		else if (current_number < expected_number)
 		{
 			DBG1(DBG_ENC, "proposal number smaller than previous");
 			status = FAILED;
@@ -136,7 +125,6 @@ METHOD(payload_t, verify, status_t,
 			DBG1(DBG_ENC, "PROPOSAL_SUBSTRUCTURE verification failed");
 			break;
 		}
-		first = FALSE;
 		expected_number = current_number;
 	}
 	enumerator->destroy(enumerator);

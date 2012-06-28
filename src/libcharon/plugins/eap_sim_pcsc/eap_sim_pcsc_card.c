@@ -87,7 +87,7 @@ static bool decode_imsi_ef(unsigned char *input, int input_len, char *output)
 	return TRUE;
 }
 
-METHOD(sim_card_t, get_triplet, bool,
+METHOD(simaka_card_t, get_triplet, bool,
 	private_eap_sim_pcsc_card_t *this, identification_t *id,
 	char rand[SIM_RAND_LEN], char sres[SIM_SRES_LEN], char kc[SIM_KC_LEN])
 {
@@ -207,7 +207,8 @@ METHOD(sim_card_t, get_triplet, bool,
 		if (dwRecvLength < APDU_STATUS_LEN ||
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_RESPONSE_DATA)
 		{
-			DBG1(DBG_IKE, "Select MF failed: %b", pbRecvBuffer, dwRecvLength);
+			DBG1(DBG_IKE, "Select MF failed: %b", pbRecvBuffer,
+				 (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -223,7 +224,8 @@ METHOD(sim_card_t, get_triplet, bool,
 		if (dwRecvLength < APDU_STATUS_LEN ||
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_RESPONSE_DATA)
 		{
-			DBG1(DBG_IKE, "Select DF GSM failed: %b", pbRecvBuffer, dwRecvLength);
+			DBG1(DBG_IKE, "Select DF GSM failed: %b", pbRecvBuffer,
+				 (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -239,7 +241,8 @@ METHOD(sim_card_t, get_triplet, bool,
 		if (dwRecvLength < APDU_STATUS_LEN ||
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_RESPONSE_DATA)
 		{
-			DBG1(DBG_IKE, "Select IMSI failed: %b", pbRecvBuffer, dwRecvLength);
+			DBG1(DBG_IKE, "Select IMSI failed: %b", pbRecvBuffer,
+				 (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -255,14 +258,15 @@ METHOD(sim_card_t, get_triplet, bool,
 		if (dwRecvLength < APDU_STATUS_LEN ||
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_SUCCESS)
 		{
-			DBG1(DBG_IKE, "Select IMSI failed: %b", pbRecvBuffer, dwRecvLength);
+			DBG1(DBG_IKE, "Select IMSI failed: %b", pbRecvBuffer,
+				 (u_int)dwRecvLength);
 			continue;
 		}
 
 		if (!decode_imsi_ef(pbRecvBuffer, dwRecvLength-APDU_STATUS_LEN, imsi))
 		{
 			DBG1(DBG_IKE, "Couldn't decode IMSI EF: %b",
-				 pbRecvBuffer, dwRecvLength);
+				 pbRecvBuffer, (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -288,7 +292,7 @@ METHOD(sim_card_t, get_triplet, bool,
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_RESPONSE_DATA)
 		{
 			DBG1(DBG_IKE, "Run GSM Algorithm failed: %b",
-				 pbRecvBuffer, dwRecvLength);
+				 pbRecvBuffer, (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -305,7 +309,8 @@ METHOD(sim_card_t, get_triplet, bool,
 		if (dwRecvLength < APDU_STATUS_LEN ||
 			pbRecvBuffer[dwRecvLength-APDU_STATUS_LEN] != APDU_SW1_SUCCESS)
 		{
-			DBG1(DBG_IKE, "Get Response failed: %b", pbRecvBuffer, dwRecvLength);
+			DBG1(DBG_IKE, "Get Response failed: %b", pbRecvBuffer,
+				 (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -320,7 +325,7 @@ METHOD(sim_card_t, get_triplet, bool,
 		else
 		{
 			DBG1(DBG_IKE, "Get Response incorrect length: %b",
-				 pbRecvBuffer, dwRecvLength);
+				 pbRecvBuffer, (u_int)dwRecvLength);
 			continue;
 		}
 
@@ -351,7 +356,7 @@ METHOD(sim_card_t, get_triplet, bool,
 	return found;
 }
 
-METHOD(sim_card_t, get_quintuplet, status_t,
+METHOD(simaka_card_t, get_quintuplet, status_t,
 	private_eap_sim_pcsc_card_t *this, identification_t *id,
 	char rand[AKA_RAND_LEN], char autn[AKA_AUTN_LEN], char ck[AKA_CK_LEN],
 	char ik[AKA_IK_LEN], char res[AKA_RES_MAX], int *res_len)

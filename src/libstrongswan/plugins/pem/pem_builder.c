@@ -73,7 +73,7 @@ static bool find_boundary(char* tag, chunk_t *line)
 	{
 		if (present("-----", line))
 		{
-			DBG2(DBG_LIB, "  -----%s %.*s-----", tag, (int)name.len, name.ptr);
+			DBG2(DBG_ASN, "  -----%s %.*s-----", tag, (int)name.len, name.ptr);
 			return TRUE;
 		}
 		line->ptr++;  line->len--;  name.len++;
@@ -99,7 +99,7 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 	hasher = lib->crypto->create_hasher(lib->crypto, HASH_MD5);
 	if (hasher == NULL)
 	{
-		DBG1(DBG_LIB, "  MD5 hash algorithm not available");
+		DBG1(DBG_ASN, "  MD5 hash algorithm not available");
 		return NOT_SUPPORTED;
 	}
 	hash.len = hasher->get_hash_size(hasher);
@@ -121,7 +121,7 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 	crypter = lib->crypto->create_crypter(lib->crypto, alg, key_size);
 	if (crypter == NULL)
 	{
-		DBG1(DBG_LIB, "  %N encryption algorithm not available",
+		DBG1(DBG_ASN, "  %N encryption algorithm not available",
 			 encryption_algorithm_names, alg);
 		return NOT_SUPPORTED;
 	}
@@ -131,7 +131,7 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 		blob->len % crypter->get_block_size(crypter))
 	{
 		crypter->destroy(crypter);
-		DBG1(DBG_LIB, "  data size is not multiple of block size");
+		DBG1(DBG_ASN, "  data size is not multiple of block size");
 		return PARSE_ERROR;
 	}
 	crypter->decrypt(crypter, *blob, iv, &decrypted);
@@ -155,7 +155,7 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 	{
 		if (*last_padding_pos != padding)
 		{
-			DBG1(DBG_LIB, "  invalid passphrase");
+			DBG1(DBG_ASN, "  invalid passphrase");
 			return INVALID_ARG;
 		}
 	}
@@ -234,7 +234,7 @@ static status_t pem_to_bin(chunk_t *blob, bool *pgp)
 				}
 
 				/* we are looking for a parameter: value pair */
-				DBG2(DBG_LIB, "  %.*s", (int)line.len, line.ptr);
+				DBG2(DBG_ASN, "  %.*s", (int)line.len, line.ptr);
 				ugh = extract_parameter_value(&name, &value, &line);
 				if (ugh != NULL)
 				{
@@ -274,7 +274,7 @@ static status_t pem_to_bin(chunk_t *blob, bool *pgp)
 					}
 					else
 					{
-						DBG1(DBG_LIB, "  encryption algorithm '%.*s'"
+						DBG1(DBG_ASN, "  encryption algorithm '%.*s'"
 							 " not supported", dek.len, dek.ptr);
 						return NOT_SUPPORTED;
 					}
@@ -298,7 +298,7 @@ static status_t pem_to_bin(chunk_t *blob, bool *pgp)
 					*pgp = TRUE;
 					data.ptr++;
 					data.len--;
-					DBG2(DBG_LIB, "  armor checksum: %.*s", (int)data.len,
+					DBG2(DBG_ASN, "  armor checksum: %.*s", (int)data.len,
 						 data.ptr);
 					continue;
 				}
@@ -355,7 +355,7 @@ static status_t pem_to_bin(chunk_t *blob, bool *pgp)
  * load the credential from a blob
  */
 static void *load_from_blob(chunk_t blob, credential_type_t type, int subtype,
-							x509_flag_t flags)
+							identification_t *subject, x509_flag_t flags)
 {
 	void *cred = NULL;
 	bool pgp = FALSE;
@@ -381,10 +381,19 @@ static void *load_from_blob(chunk_t blob, credential_type_t type, int subtype,
 	{
 		subtype = pgp ? CERT_GPG : CERT_X509;
 	}
-	cred = lib->creds->create(lib->creds, type, subtype,
+	if (type == CRED_CERTIFICATE && subtype == CERT_TRUSTED_PUBKEY && subject)
+	{
+		cred = lib->creds->create(lib->creds, type, subtype,
+							  BUILD_BLOB_ASN1_DER, blob, BUILD_SUBJECT, subject,
+							  BUILD_END);
+	}
+	else
+	{
+		cred = lib->creds->create(lib->creds, type, subtype,
 							  pgp ? BUILD_BLOB_PGP : BUILD_BLOB_ASN1_DER, blob,
 							  flags ? BUILD_X509_FLAG : BUILD_END,
 							  flags, BUILD_END);
+	}
 	chunk_clear(&blob);
 	return cred;
 }
@@ -393,7 +402,7 @@ static void *load_from_blob(chunk_t blob, credential_type_t type, int subtype,
  * load the credential from a file
  */
 static void *load_from_file(char *file, credential_type_t type, int subtype,
-							x509_flag_t flags)
+							identification_t *subject, x509_flag_t flags)
 {
 	void *cred = NULL;
 	struct stat sb;
@@ -423,7 +432,8 @@ static void *load_from_file(char *file, credential_type_t type, int subtype,
 		return NULL;
 	}
 
-	cred = load_from_blob(chunk_create(addr, sb.st_size), type, subtype, flags);
+	cred = load_from_blob(chunk_create(addr, sb.st_size), type, subtype,
+									   subject, flags);
 
 	munmap(addr, sb.st_size);
 	close(fd);
@@ -434,7 +444,7 @@ static void *load_from_file(char *file, credential_type_t type, int subtype,
  * load the credential from a file descriptor
  */
 static void *load_from_fd(int fd, credential_type_t type, int subtype,
-						  x509_flag_t flags)
+						  identification_t *subject, x509_flag_t flags)
 {
 	char buf[8096];
 	char *pos = buf;
@@ -460,7 +470,8 @@ static void *load_from_fd(int fd, credential_type_t type, int subtype,
 			return NULL;
 		}
 	}
-	return load_from_blob(chunk_create(buf, total), type, subtype, flags);
+	return load_from_blob(chunk_create(buf, total), type, subtype,
+						  subject, flags);
 }
 
 /**
@@ -471,6 +482,7 @@ static void *pem_load(credential_type_t type, int subtype, va_list args)
 	char *file = NULL;
 	int fd = -1;
 	chunk_t pem = chunk_empty;
+	identification_t *subject = NULL;
 	int flags = 0;
 
 	while (TRUE)
@@ -486,6 +498,9 @@ static void *pem_load(credential_type_t type, int subtype, va_list args)
 			case BUILD_BLOB_PEM:
 				pem = va_arg(args, chunk_t);
 				continue;
+			case BUILD_SUBJECT:
+				subject = va_arg(args, identification_t*);
+				continue;
 			case BUILD_X509_FLAG:
 				flags = va_arg(args, int);
 				continue;
@@ -499,15 +514,15 @@ static void *pem_load(credential_type_t type, int subtype, va_list args)
 
 	if (pem.len)
 	{
-		return load_from_blob(pem, type, subtype, flags);
+		return load_from_blob(pem, type, subtype, subject, flags);
 	}
 	if (file)
 	{
-		return load_from_file(file, type, subtype, flags);
+		return load_from_file(file, type, subtype, subject, flags);
 	}
 	if (fd != -1)
 	{
-		return load_from_fd(fd, type, subtype, flags);
+		return load_from_fd(fd, type, subtype, subject, flags);
 	}
 	return NULL;
 }

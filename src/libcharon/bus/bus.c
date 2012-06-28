@@ -151,11 +151,20 @@ static void listener_cleanup(cleanup_data_t *data)
 	entry_destroy(data->entry);
 }
 
-METHOD(bus_t, listen_, void,
-	private_bus_t *this, listener_t *listener, job_t *job)
+METHOD(bus_t, listen_, bool,
+	private_bus_t *this, listener_t *listener, job_t *job, u_int timeout)
 {
-	bool old;
+	bool old, timed_out = FALSE;
 	cleanup_data_t data;
+	timeval_t tv, add;
+
+	if (timeout)
+	{
+		add.tv_sec = timeout / 1000;
+		add.tv_usec = (timeout - (add.tv_sec * 1000)) * 1000;
+		time_monotonic(&tv);
+		timeradd(&tv, &add, &tv);
+	}
 
 	data.this = this;
 	data.entry = entry_create(listener, TRUE);
@@ -168,13 +177,27 @@ METHOD(bus_t, listen_, void,
 	old = thread_cancelability(TRUE);
 	while (data.entry->blocker)
 	{
-		data.entry->condvar->wait(data.entry->condvar, this->mutex);
+		if (timeout)
+		{
+			if (data.entry->condvar->timed_wait_abs(data.entry->condvar,
+												    this->mutex, tv))
+			{
+				this->listeners->remove(this->listeners, data.entry, NULL);
+				timed_out = TRUE;
+				break;
+			}
+		}
+		else
+		{
+			data.entry->condvar->wait(data.entry->condvar, this->mutex);
+		}
 	}
 	thread_cancelability(old);
 	thread_cleanup_pop(FALSE);
 	/* unlock mutex */
 	thread_cleanup_pop(TRUE);
 	entry_destroy(data.entry);
+	return timed_out;
 }
 
 METHOD(bus_t, set_sa, void,
@@ -564,15 +587,15 @@ METHOD(bus_t, ike_updown, void,
 	/* a down event for IKE_SA implicitly downs all CHILD_SAs */
 	if (!up)
 	{
-		iterator_t *iterator;
+		enumerator_t *enumerator;
 		child_sa_t *child_sa;
 
-		iterator = ike_sa->create_child_sa_iterator(ike_sa);
-		while (iterator->iterate(iterator, (void**)&child_sa))
+		enumerator = ike_sa->create_child_sa_enumerator(ike_sa);
+		while (enumerator->enumerate(enumerator, (void**)&child_sa))
 		{
 			child_updown(this, child_sa, FALSE);
 		}
-		iterator->destroy(iterator);
+		enumerator->destroy(enumerator);
 	}
 }
 

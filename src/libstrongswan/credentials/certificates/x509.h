@@ -41,13 +41,13 @@ enum x509_flag_t {
 	/** cert has no constraints */
 	X509_NONE =				0,
 	/** cert has CA constraint */
-	X509_CA = 				(1<<0),
+	X509_CA =				(1<<0),
 	/** cert has AA constraint */
-	X509_AA = 				(1<<1),
+	X509_AA =				(1<<1),
 	/** cert has OCSP signer constraint */
-	X509_OCSP_SIGNER = 		(1<<2),
+	X509_OCSP_SIGNER =		(1<<2),
 	/** cert has serverAuth key usage */
-	X509_SERVER_AUTH = 		(1<<3),
+	X509_SERVER_AUTH =		(1<<3),
 	/** cert has clientAuth key usage */
 	X509_CLIENT_AUTH =		(1<<4),
 	/** cert is self-signed */
@@ -76,12 +76,12 @@ enum x509_constraint_t {
  * X.509 certPolicy extension.
  */
 struct x509_cert_policy_t {
-	/** OID of certPolicy */
-	chunk_t oid;
 	/** Certification Practice Statement URI qualifier */
 	char *cps_uri;
 	/** UserNotice Text qualifier */
 	char *unotice_text;
+	/** OID of certPolicy */
+	chunk_t oid;
 };
 
 /**

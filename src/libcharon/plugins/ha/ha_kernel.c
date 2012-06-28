@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Martin Willi
+ * Copyright (C) 2009-2011 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,7 +18,7 @@
 typedef u_int32_t u32;
 typedef u_int8_t u8;
 
-#include <linux/jhash.h>
+#include <sys/utsname.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -27,6 +27,16 @@ typedef u_int8_t u8;
 #include <fcntl.h>
 
 #define CLUSTERIP_DIR "/proc/net/ipt_CLUSTERIP"
+
+/**
+ * Versions of jhash used in the Linux kernel
+ */
+typedef enum {
+	/* old variant, http://burtleburtle.net/bob/c/lookup2.c */
+	JHASH_LOOKUP2,
+	/* new variant, http://burtleburtle.net/bob/c/lookup3.c, since 2.6.37 */
+	JHASH_LOOKUP3,
+} jhash_version_t;
 
 typedef struct private_ha_kernel_t private_ha_kernel_t;
 
@@ -41,15 +51,96 @@ struct private_ha_kernel_t {
 	ha_kernel_t public;
 
 	/**
-	 * Init value for jhash
-	 */
-	u_int initval;
-
-	/**
 	 * Total number of ClusterIP segments
 	 */
 	u_int count;
+
+	/**
+	 * jhash version the kernel uses
+	 */
+	jhash_version_t version;
 };
+
+/**
+ * Get the jhash version based on the uname().release
+ */
+static jhash_version_t get_jhash_version()
+{
+	struct utsname utsname;
+	int a, b, c;
+
+	if (uname(&utsname) == 0)
+	{
+		switch (sscanf(utsname.release, "%d.%d.%d", &a, &b, &c))
+		{
+			case 3:
+				if (a == 2 && b == 6)
+				{
+					if (c < 37)
+					{
+						DBG1(DBG_CFG, "detected Linux %d.%d.%d, using old "
+							 "jhash", a, b, c);
+						return JHASH_LOOKUP2;
+					}
+					DBG1(DBG_CFG, "detected Linux %d.%d.%d, using new "
+						 "jhash", a, b, c);
+					return JHASH_LOOKUP3;
+				}
+				/* FALL */
+			case 2:
+				DBG1(DBG_CFG, "detected Linux %d.%d, using new jhash", a, b);
+				return JHASH_LOOKUP3;
+			default:
+				break;
+		}
+	}
+	DBG1(DBG_CFG, "detecting Linux version failed, using new jhash");
+	return JHASH_LOOKUP3;
+}
+
+/**
+ * Rotate 32 bit word x by k bits
+ */
+#define jhash_rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
+
+/**
+ * jhash algorithm of two words, as used in kernel (using 0 as initval)
+ */
+static u_int32_t jhash(jhash_version_t version, u_int32_t a, u_int32_t b)
+{
+	u_int32_t c = 0;
+
+	switch (version)
+	{
+		case JHASH_LOOKUP2:
+			a += 0x9e3779b9;
+			b += 0x9e3779b9;
+
+			a -= b; a -= c; a ^= (c >> 13);
+			b -= c; b -= a; b ^= (a <<  8);
+			c -= a; c -= b; c ^= (b >> 13);
+			a -= b; a -= c; a ^= (c >> 12);
+			b -= c; b -= a; b ^= (a << 16);
+			c -= a; c -= b; c ^= (b >>  5);
+			a -= b; a -= c; a ^= (c >>  3);
+			b -= c; b -= a; b ^= (a << 10);
+			c -= a; c -= b; c ^= (b >> 15);
+			break;
+		case JHASH_LOOKUP3:
+			a += 0xdeadbeef;
+			b += 0xdeadbeef;
+
+			c ^= b; c -= jhash_rot(b, 14);
+			a ^= c; a -= jhash_rot(c, 11);
+			b ^= a; b -= jhash_rot(a, 25);
+			c ^= b; c -= jhash_rot(b, 16);
+			a ^= c; a -= jhash_rot(c,  4);
+			b ^= a; b -= jhash_rot(a, 14);
+			c ^= b; c -= jhash_rot(b, 24);
+			break;
+	}
+	return c;
+}
 
 /**
  * Segmentate a calculated hash
@@ -78,7 +169,7 @@ METHOD(ha_kernel_t, get_segment, u_int,
 	u_int32_t addr;
 
 	addr = host2int(host);
-	hash = jhash_1word(ntohl(addr), this->initval);
+	hash = jhash(this->version, ntohl(addr), 0);
 
 	return hash2segment(this, hash);
 }
@@ -90,7 +181,7 @@ METHOD(ha_kernel_t, get_segment_spi, u_int,
 	u_int32_t addr;
 
 	addr = host2int(host);
-	hash = jhash_2words(ntohl(addr), ntohl(spi), this->initval);
+	hash = jhash(this->version, ntohl(addr), ntohl(spi));
 
 	return hash2segment(this, hash);
 }
@@ -100,7 +191,7 @@ METHOD(ha_kernel_t, get_segment_int, u_int,
 {
 	unsigned long hash;
 
-	hash = jhash_1word(ntohl(n), this->initval);
+	hash = jhash(this->version, ntohl(n), 0);
 
 	return hash2segment(this, hash);
 }
@@ -123,7 +214,7 @@ static void enable_disable(private_ha_kernel_t *this, u_int segment,
 			 file, strerror(errno));
 		return;
 	}
-	if (write(fd, cmd, strlen(cmd) == -1))
+	if (write(fd, cmd, strlen(cmd)) == -1)
 	{
 		DBG1(DBG_CFG, "writing to CLUSTERIP file '%s' failed: %s",
 			 file, strerror(errno));
@@ -149,6 +240,7 @@ static segment_mask_t get_active(private_ha_kernel_t *this, char *file)
 		return 0;
 	}
 	len = read(fd, buf, sizeof(buf)-1);
+	close(fd);
 	if (len == -1)
 	{
 		DBG1(DBG_CFG, "reading from CLUSTERIP file '%s' failed: %s",
@@ -182,11 +274,14 @@ METHOD(ha_kernel_t, activate, void,
 	char *file;
 
 	enumerator = enumerator_create_directory(CLUSTERIP_DIR);
-	while (enumerator->enumerate(enumerator, NULL, &file, NULL))
+	if (enumerator)
 	{
-		enable_disable(this, segment, file, TRUE);
+		while (enumerator->enumerate(enumerator, NULL, &file, NULL))
+		{
+			enable_disable(this, segment, file, TRUE);
+		}
+		enumerator->destroy(enumerator);
 	}
-	enumerator->destroy(enumerator);
 }
 
 METHOD(ha_kernel_t, deactivate, void,
@@ -196,11 +291,14 @@ METHOD(ha_kernel_t, deactivate, void,
 	char *file;
 
 	enumerator = enumerator_create_directory(CLUSTERIP_DIR);
-	while (enumerator->enumerate(enumerator, NULL, &file, NULL))
+	if (enumerator)
 	{
-		enable_disable(this, segment, file, FALSE);
+		while (enumerator->enumerate(enumerator, NULL, &file, NULL))
+		{
+			enable_disable(this, segment, file, FALSE);
+		}
+		enumerator->destroy(enumerator);
 	}
-	enumerator->destroy(enumerator);
 }
 
 /**
@@ -214,23 +312,26 @@ static void disable_all(private_ha_kernel_t *this)
 	int i;
 
 	enumerator = enumerator_create_directory(CLUSTERIP_DIR);
-	while (enumerator->enumerate(enumerator, NULL, &file, NULL))
+	if (enumerator)
 	{
-		if (chown(file, charon->uid, charon->gid) != 0)
+		while (enumerator->enumerate(enumerator, NULL, &file, NULL))
 		{
-			DBG1(DBG_CFG, "changing ClusterIP permissions failed: %s",
-				 strerror(errno));
-		}
-		active = get_active(this, file);
-		for (i = 1; i <= this->count; i++)
-		{
-			if (active & SEGMENTS_BIT(i))
+			if (chown(file, charon->uid, charon->gid) != 0)
 			{
-				enable_disable(this, i, file, FALSE);
+				DBG1(DBG_CFG, "changing ClusterIP permissions failed: %s",
+					 strerror(errno));
+			}
+			active = get_active(this, file);
+			for (i = 1; i <= this->count; i++)
+			{
+				if (active & SEGMENTS_BIT(i))
+				{
+					enable_disable(this, i, file, FALSE);
+				}
 			}
 		}
+		enumerator->destroy(enumerator);
 	}
-	enumerator->destroy(enumerator);
 }
 
 METHOD(ha_kernel_t, destroy, void,
@@ -255,7 +356,7 @@ ha_kernel_t *ha_kernel_create(u_int count)
 			.deactivate = _deactivate,
 			.destroy = _destroy,
 		},
-		.initval = 0,
+		.version = get_jhash_version(),
 		.count = count,
 	);
 

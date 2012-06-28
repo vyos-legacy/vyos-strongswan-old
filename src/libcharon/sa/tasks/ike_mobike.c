@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010-2012 Tobias Brunner
  * Copyright (C) 2007 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -79,24 +80,6 @@ struct private_ike_mobike_t {
 };
 
 /**
- * flush the IKE_SAs list of additional addresses
- */
-static void flush_additional_addresses(private_ike_mobike_t *this)
-{
-	iterator_t *iterator;
-	host_t *host;
-
-	iterator = this->ike_sa->create_additional_address_iterator(this->ike_sa);
-	while (iterator->iterate(iterator, (void**)&host))
-	{
-		iterator->remove(iterator);
-		host->destroy(host);
-	}
-	iterator->destroy(iterator);
-}
-
-
-/**
  * read notifys from message and evaluate them
  */
 static void process_payloads(private_ike_mobike_t *this, message_t *message)
@@ -152,13 +135,17 @@ static void process_payloads(private_ike_mobike_t *this, message_t *message)
 			{
 				if (first)
 				{	/* an ADDITIONAL_*_ADDRESS means replace, so flush once */
-					flush_additional_addresses(this);
+					this->ike_sa->clear_peer_addresses(this->ike_sa);
 					first = FALSE;
+					/* add the peer's current address to the list */
+					host = message->get_source(message);
+					this->ike_sa->add_peer_address(this->ike_sa,
+												   host->clone(host));
 				}
 				data = notify->get_notification_data(notify);
 				host = host_create_from_chunk(family, data, 0);
 				DBG2(DBG_IKE, "got additional MOBIKE peer address: %H", host);
-				this->ike_sa->add_additional_address(this->ike_sa, host);
+				this->ike_sa->add_peer_address(this->ike_sa, host);
 				this->addresses_updated = TRUE;
 				break;
 			}
@@ -169,7 +156,10 @@ static void process_payloads(private_ike_mobike_t *this, message_t *message)
 			}
 			case NO_ADDITIONAL_ADDRESSES:
 			{
-				flush_additional_addresses(this);
+				this->ike_sa->clear_peer_addresses(this->ike_sa);
+				/* add the peer's current address to the list */
+				host = message->get_source(message);
+				this->ike_sa->add_peer_address(this->ike_sa, host->clone(host));
 				this->addresses_updated = TRUE;
 				break;
 			}
@@ -256,11 +246,11 @@ static void build_cookie(private_ike_mobike_t *this, message_t *message)
  */
 static void update_children(private_ike_mobike_t *this)
 {
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	child_sa_t *child_sa;
 
-	iterator = this->ike_sa->create_child_sa_iterator(this->ike_sa);
-	while (iterator->iterate(iterator, (void**)&child_sa))
+	enumerator = this->ike_sa->create_child_sa_enumerator(this->ike_sa);
+	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
 		if (child_sa->update(child_sa,
 				this->ike_sa->get_my_host(this->ike_sa),
@@ -273,7 +263,7 @@ static void update_children(private_ike_mobike_t *this)
 					child_sa->get_spi(child_sa, TRUE));
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 /**
@@ -296,7 +286,7 @@ METHOD(ike_mobike_t, transmit, void,
 	   private_ike_mobike_t *this, packet_t *packet)
 {
 	host_t *me, *other, *me_old, *other_old;
-	iterator_t *iterator;
+	enumerator_t *enumerator;
 	ike_cfg_t *ike_cfg;
 	packet_t *copy;
 
@@ -309,19 +299,8 @@ METHOD(ike_mobike_t, transmit, void,
 	other_old = this->ike_sa->get_other_host(this->ike_sa);
 	ike_cfg = this->ike_sa->get_ike_cfg(this->ike_sa);
 
-	me = hydra->kernel_interface->get_source_addr(
-									hydra->kernel_interface, other_old, NULL);
-	if (me)
-	{
-		apply_port(me, me_old, ike_cfg->get_my_port(ike_cfg));
-		DBG1(DBG_IKE, "checking original path %#H - %#H", me, other_old);
-		copy = packet->clone(packet);
-		copy->set_source(copy, me);
-		charon->sender->send(charon->sender, copy);
-	}
-
-	iterator = this->ike_sa->create_additional_address_iterator(this->ike_sa);
-	while (iterator->iterate(iterator, (void**)&other))
+	enumerator = this->ike_sa->create_peer_address_enumerator(this->ike_sa);
+	while (enumerator->enumerate(enumerator, (void**)&other))
 	{
 		me = hydra->kernel_interface->get_source_addr(
 										hydra->kernel_interface, other, NULL);
@@ -343,7 +322,7 @@ METHOD(ike_mobike_t, transmit, void,
 			charon->sender->send(charon->sender, copy);
 		}
 	}
-	iterator->destroy(iterator);
+	enumerator->destroy(enumerator);
 }
 
 METHOD(task_t, build_i, status_t,

@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2007-2009 Martin Willi
- * Copyright (C) 2008 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,6 +29,63 @@ ENUM(auth_class_names, AUTH_CLASS_ANY, AUTH_CLASS_EAP,
 	"pre-shared key",
 	"EAP",
 );
+
+ENUM(auth_rule_names, AUTH_RULE_IDENTITY, AUTH_HELPER_REVOCATION_CERT,
+	"RULE_IDENTITY",
+	"RULE_AUTH_CLASS",
+	"RULE_AAA_IDENTITY",
+	"RULE_EAP_IDENTITY",
+	"RULE_EAP_TYPE",
+	"RULE_EAP_VENDOR",
+	"RULE_CA_CERT",
+	"RULE_IM_CERT",
+	"RULE_SUBJECT_CERT",
+	"RULE_CRL_VALIDATION",
+	"RULE_OCSP_VALIDATION",
+	"RULE_GROUP",
+	"RULE_RSA_STRENGTH",
+	"RULE_ECDSA_STRENGTH",
+	"RULE_CERT_POLICY",
+	"HELPER_IM_CERT",
+	"HELPER_SUBJECT_CERT",
+	"HELPER_IM_HASH_URL",
+	"HELPER_SUBJECT_HASH_URL",
+	"HELPER_REVOCATION_CERT",
+);
+
+/**
+ * Check if the given rule is a rule for which there may be multiple values.
+ */
+static inline bool is_multi_value_rule(auth_rule_t type)
+{
+	switch (type)
+	{
+		case AUTH_RULE_AUTH_CLASS:
+		case AUTH_RULE_EAP_TYPE:
+		case AUTH_RULE_EAP_VENDOR:
+		case AUTH_RULE_RSA_STRENGTH:
+		case AUTH_RULE_ECDSA_STRENGTH:
+		case AUTH_RULE_IDENTITY:
+		case AUTH_RULE_EAP_IDENTITY:
+		case AUTH_RULE_AAA_IDENTITY:
+		case AUTH_RULE_SUBJECT_CERT:
+		case AUTH_HELPER_SUBJECT_CERT:
+		case AUTH_HELPER_SUBJECT_HASH_URL:
+		case AUTH_RULE_MAX:
+			return FALSE;
+		case AUTH_RULE_OCSP_VALIDATION:
+		case AUTH_RULE_CRL_VALIDATION:
+		case AUTH_RULE_GROUP:
+		case AUTH_RULE_CA_CERT:
+		case AUTH_RULE_IM_CERT:
+		case AUTH_RULE_CERT_POLICY:
+		case AUTH_HELPER_IM_CERT:
+		case AUTH_HELPER_IM_HASH_URL:
+		case AUTH_HELPER_REVOCATION_CERT:
+			return TRUE;
+	}
+	return FALSE;
+}
 
 typedef struct private_auth_cfg_t private_auth_cfg_t;
 
@@ -67,6 +124,8 @@ typedef struct {
 	enumerator_t *inner;
 	/** current entry */
 	entry_t *current;
+	/** types we have already enumerated */
+	bool enumerated[AUTH_RULE_MAX];
 } entry_enumerator_t;
 
 /**
@@ -76,11 +135,22 @@ static bool enumerate(entry_enumerator_t *this, auth_rule_t *type, void **value)
 {
 	entry_t *entry;
 
-	if (this->inner->enumerate(this->inner, &entry))
+	while (this->inner->enumerate(this->inner, &entry))
 	{
+		if (!is_multi_value_rule(entry->type) && this->enumerated[entry->type])
+		{
+			continue;
+		}
+		this->enumerated[entry->type] = TRUE;
 		this->current = entry;
-		*type = entry->type;
-		*value = entry->value;
+		if (type)
+		{
+			*type = entry->type;
+		}
+		if (value)
+		{
+			*value = entry->value;
+		}
 		return TRUE;
 	}
 	return FALSE;
@@ -95,19 +165,121 @@ static void entry_enumerator_destroy(entry_enumerator_t *this)
 	free(this);
 }
 
-/**
- * Implementation of auth_cfg_t.create_enumerator.
- */
-static enumerator_t* create_enumerator(private_auth_cfg_t *this)
+METHOD(auth_cfg_t, create_enumerator, enumerator_t*,
+	private_auth_cfg_t *this)
 {
 	entry_enumerator_t *enumerator;
 
-	enumerator = malloc_thing(entry_enumerator_t);
-	enumerator->inner = this->entries->create_enumerator(this->entries);
-	enumerator->public.enumerate = (void*)enumerate;
-	enumerator->public.destroy = (void*)entry_enumerator_destroy;
-	enumerator->current = NULL;
+	INIT(enumerator,
+		.public = {
+			.enumerate = (void*)enumerate,
+			.destroy = (void*)entry_enumerator_destroy,
+		},
+		.inner = this->entries->create_enumerator(this->entries),
+	);
 	return &enumerator->public;
+}
+
+/**
+ * Create an entry from the given arguments.
+ */
+static entry_t *entry_create(auth_rule_t type, va_list args)
+{
+	entry_t *this = malloc_thing(entry_t);
+
+	this->type = type;
+	switch (type)
+	{
+		case AUTH_RULE_AUTH_CLASS:
+		case AUTH_RULE_EAP_TYPE:
+		case AUTH_RULE_EAP_VENDOR:
+		case AUTH_RULE_CRL_VALIDATION:
+		case AUTH_RULE_OCSP_VALIDATION:
+		case AUTH_RULE_RSA_STRENGTH:
+		case AUTH_RULE_ECDSA_STRENGTH:
+			/* integer type */
+			this->value = (void*)(uintptr_t)va_arg(args, u_int);
+			break;
+		case AUTH_RULE_IDENTITY:
+		case AUTH_RULE_EAP_IDENTITY:
+		case AUTH_RULE_AAA_IDENTITY:
+		case AUTH_RULE_GROUP:
+		case AUTH_RULE_CA_CERT:
+		case AUTH_RULE_IM_CERT:
+		case AUTH_RULE_SUBJECT_CERT:
+		case AUTH_RULE_CERT_POLICY:
+		case AUTH_HELPER_IM_CERT:
+		case AUTH_HELPER_SUBJECT_CERT:
+		case AUTH_HELPER_IM_HASH_URL:
+		case AUTH_HELPER_SUBJECT_HASH_URL:
+		case AUTH_HELPER_REVOCATION_CERT:
+			/* pointer type */
+			this->value = va_arg(args, void*);
+			break;
+		case AUTH_RULE_MAX:
+			this->value = NULL;
+			break;
+	}
+	return this;
+}
+
+/**
+ * Compare two entries for equality.
+ */
+static bool entry_equals(entry_t *e1, entry_t *e2)
+{
+	if (e1->type != e2->type)
+	{
+		return FALSE;
+	}
+	switch (e1->type)
+	{
+		case AUTH_RULE_AUTH_CLASS:
+		case AUTH_RULE_EAP_TYPE:
+		case AUTH_RULE_EAP_VENDOR:
+		case AUTH_RULE_CRL_VALIDATION:
+		case AUTH_RULE_OCSP_VALIDATION:
+		case AUTH_RULE_RSA_STRENGTH:
+		case AUTH_RULE_ECDSA_STRENGTH:
+		{
+			return e1->value == e2->value;
+		}
+		case AUTH_RULE_CA_CERT:
+		case AUTH_RULE_IM_CERT:
+		case AUTH_RULE_SUBJECT_CERT:
+		case AUTH_HELPER_IM_CERT:
+		case AUTH_HELPER_SUBJECT_CERT:
+		case AUTH_HELPER_REVOCATION_CERT:
+		{
+			certificate_t *c1, *c2;
+
+			c1 = (certificate_t*)e1->value;
+			c2 = (certificate_t*)e2->value;
+
+			return c1->equals(c1, c2);
+		}
+		case AUTH_RULE_IDENTITY:
+		case AUTH_RULE_EAP_IDENTITY:
+		case AUTH_RULE_AAA_IDENTITY:
+		case AUTH_RULE_GROUP:
+		{
+			identification_t *id1, *id2;
+
+			id1 = (identification_t*)e1->value;
+			id2 = (identification_t*)e2->value;
+
+			return id1->equals(id1, id2);
+		}
+		case AUTH_RULE_CERT_POLICY:
+		case AUTH_HELPER_IM_HASH_URL:
+		case AUTH_HELPER_SUBJECT_HASH_URL:
+		{
+			return streq(e1->value, e2->value);
+		}
+		case AUTH_RULE_MAX:
+			break;
+	}
+	return FALSE;
 }
 
 /**
@@ -151,6 +323,7 @@ static void destroy_entry_value(entry_t *entry)
 		case AUTH_RULE_OCSP_VALIDATION:
 		case AUTH_RULE_RSA_STRENGTH:
 		case AUTH_RULE_ECDSA_STRENGTH:
+		case AUTH_RULE_MAX:
 			break;
 	}
 }
@@ -158,17 +331,18 @@ static void destroy_entry_value(entry_t *entry)
 /**
  * Implementation of auth_cfg_t.replace.
  */
-static void replace(auth_cfg_t *this, entry_enumerator_t *enumerator,
+static void replace(private_auth_cfg_t *this, entry_enumerator_t *enumerator,
 					auth_rule_t type, ...)
 {
 	if (enumerator->current)
 	{
+		entry_t *entry;
 		va_list args;
 
 		va_start(args, type);
-
-		destroy_entry_value(enumerator->current);
-		enumerator->current->type = type;
+		entry = enumerator->current;
+		destroy_entry_value(entry);
+		entry->type = type;
 		switch (type)
 		{
 			case AUTH_RULE_AUTH_CLASS:
@@ -179,7 +353,7 @@ static void replace(auth_cfg_t *this, entry_enumerator_t *enumerator,
 			case AUTH_RULE_RSA_STRENGTH:
 			case AUTH_RULE_ECDSA_STRENGTH:
 				/* integer type */
-				enumerator->current->value = (void*)(uintptr_t)va_arg(args, u_int);
+				entry->value = (void*)(uintptr_t)va_arg(args, u_int);
 				break;
 			case AUTH_RULE_IDENTITY:
 			case AUTH_RULE_EAP_IDENTITY:
@@ -195,17 +369,18 @@ static void replace(auth_cfg_t *this, entry_enumerator_t *enumerator,
 			case AUTH_HELPER_SUBJECT_HASH_URL:
 			case AUTH_HELPER_REVOCATION_CERT:
 				/* pointer type */
-				enumerator->current->value = va_arg(args, void*);
+				entry->value = va_arg(args, void*);
+				break;
+			case AUTH_RULE_MAX:
+				entry->value = NULL;
 				break;
 		}
 		va_end(args);
 	}
 }
 
-/**
- * Implementation of auth_cfg_t.get.
- */
-static void* get(private_auth_cfg_t *this, auth_rule_t type)
+METHOD(auth_cfg_t, get, void*,
+	private_auth_cfg_t *this, auth_rule_t type)
 {
 	enumerator_t *enumerator;
 	void *current_value, *best_value = NULL;
@@ -264,9 +439,10 @@ static void* get(private_auth_cfg_t *this, auth_rule_t type)
 		case AUTH_HELPER_IM_HASH_URL:
 		case AUTH_HELPER_SUBJECT_HASH_URL:
 		case AUTH_HELPER_REVOCATION_CERT:
-		default:
-			return NULL;
+		case AUTH_RULE_MAX:
+			break;
 	}
+	return NULL;
 }
 
 /**
@@ -274,49 +450,26 @@ static void* get(private_auth_cfg_t *this, auth_rule_t type)
  */
 static void add(private_auth_cfg_t *this, auth_rule_t type, ...)
 {
-	entry_t *entry = malloc_thing(entry_t);
+	entry_t *entry;
 	va_list args;
 
 	va_start(args, type);
-	entry->type = type;
-	switch (type)
-	{
-		case AUTH_RULE_AUTH_CLASS:
-		case AUTH_RULE_EAP_TYPE:
-		case AUTH_RULE_EAP_VENDOR:
-		case AUTH_RULE_CRL_VALIDATION:
-		case AUTH_RULE_OCSP_VALIDATION:
-		case AUTH_RULE_RSA_STRENGTH:
-		case AUTH_RULE_ECDSA_STRENGTH:
-			/* integer type */
-			entry->value = (void*)(uintptr_t)va_arg(args, u_int);
-			break;
-		case AUTH_RULE_IDENTITY:
-		case AUTH_RULE_EAP_IDENTITY:
-		case AUTH_RULE_AAA_IDENTITY:
-		case AUTH_RULE_GROUP:
-		case AUTH_RULE_CA_CERT:
-		case AUTH_RULE_IM_CERT:
-		case AUTH_RULE_SUBJECT_CERT:
-		case AUTH_RULE_CERT_POLICY:
-		case AUTH_HELPER_IM_CERT:
-		case AUTH_HELPER_SUBJECT_CERT:
-		case AUTH_HELPER_IM_HASH_URL:
-		case AUTH_HELPER_SUBJECT_HASH_URL:
-		case AUTH_HELPER_REVOCATION_CERT:
-			/* pointer type */
-			entry->value = va_arg(args, void*);
-			break;
-	}
+	entry = entry_create(type, args);
 	va_end(args);
-	this->entries->insert_last(this->entries, entry);
+
+	if (is_multi_value_rule(type))
+	{	/* insert rules that may occur multiple times at the end */
+		this->entries->insert_last(this->entries, entry);
+	}
+	else
+	{	/* insert rules we expect only once at the front (get() will return
+		 * the latest value) */
+		this->entries->insert_first(this->entries, entry);
+	}
 }
 
-/**
- * Implementation of auth_cfg_t.complies.
- */
-static bool complies(private_auth_cfg_t *this, auth_cfg_t *constraints,
-					 bool log_error)
+METHOD(auth_cfg_t, complies, bool,
+	private_auth_cfg_t *this, auth_cfg_t *constraints, bool log_error)
 {
 	enumerator_t *e1, *e2;
 	bool success = TRUE, has_group = FALSE, group_match = FALSE;
@@ -566,6 +719,7 @@ static bool complies(private_auth_cfg_t *this, auth_cfg_t *constraints,
 			case AUTH_HELPER_IM_HASH_URL:
 			case AUTH_HELPER_SUBJECT_HASH_URL:
 			case AUTH_HELPER_REVOCATION_CERT:
+			case AUTH_RULE_MAX:
 				/* skip helpers */
 				continue;
 		}
@@ -602,6 +756,7 @@ static void merge(private_auth_cfg_t *this, private_auth_cfg_t *other, bool copy
 		auth_rule_t type;
 		void *value;
 
+		/* this enumerator skips duplicates for rules we expect only once */
 		enumerator = create_enumerator(other);
 		while (enumerator->enumerate(enumerator, &type, &value))
 		{
@@ -647,6 +802,8 @@ static void merge(private_auth_cfg_t *this, private_auth_cfg_t *other, bool copy
 					add(this, type, strdup((char*)value));
 					break;
 				}
+				case AUTH_RULE_MAX:
+					break;
 			}
 		}
 		enumerator->destroy(enumerator);
@@ -672,85 +829,23 @@ static bool equals(private_auth_cfg_t *this, private_auth_cfg_t *other)
 	entry_t *i1, *i2;
 	bool equal = TRUE, found;
 
-	if (this->entries->get_count(this->entries) !=
-		other->entries->get_count(other->entries))
-	{
-		return FALSE;
-	}
+	/* the rule count does not have to be equal for the two, as we only compare
+	 * the first value found for some rules */
 	e1 = this->entries->create_enumerator(this->entries);
 	while (e1->enumerate(e1, &i1))
 	{
 		found = FALSE;
+
 		e2 = other->entries->create_enumerator(other->entries);
 		while (e2->enumerate(e2, &i2))
 		{
-			if (i1->type == i2->type)
+			if (entry_equals(i1, i2))
 			{
-				switch (i1->type)
-				{
-					case AUTH_RULE_AUTH_CLASS:
-					case AUTH_RULE_EAP_TYPE:
-					case AUTH_RULE_EAP_VENDOR:
-					case AUTH_RULE_CRL_VALIDATION:
-					case AUTH_RULE_OCSP_VALIDATION:
-					case AUTH_RULE_RSA_STRENGTH:
-					case AUTH_RULE_ECDSA_STRENGTH:
-					{
-						if (i1->value == i2->value)
-						{
-							found = TRUE;
-							break;
-						}
-						continue;
-					}
-					case AUTH_RULE_CA_CERT:
-					case AUTH_RULE_IM_CERT:
-					case AUTH_RULE_SUBJECT_CERT:
-					case AUTH_HELPER_IM_CERT:
-					case AUTH_HELPER_SUBJECT_CERT:
-					case AUTH_HELPER_REVOCATION_CERT:
-					{
-						certificate_t *c1, *c2;
-
-						c1 = (certificate_t*)i1->value;
-						c2 = (certificate_t*)i2->value;
-
-						if (c1->equals(c1, c2))
-						{
-							found = TRUE;
-							break;
-						}
-						continue;
-					}
-					case AUTH_RULE_IDENTITY:
-					case AUTH_RULE_EAP_IDENTITY:
-					case AUTH_RULE_AAA_IDENTITY:
-					case AUTH_RULE_GROUP:
-					{
-						identification_t *id1, *id2;
-
-						id1 = (identification_t*)i1->value;
-						id2 = (identification_t*)i2->value;
-
-						if (id1->equals(id1, id2))
-						{
-							found = TRUE;
-							break;
-						}
-						continue;
-					}
-					case AUTH_RULE_CERT_POLICY:
-					case AUTH_HELPER_IM_HASH_URL:
-					case AUTH_HELPER_SUBJECT_HASH_URL:
-					{
-						if (streq(i1->value, i2->value))
-						{
-							found = TRUE;
-							break;
-						}
-						continue;
-					}
-				}
+				found = TRUE;
+				break;
+			}
+			else if (i1->type == i2->type && !is_multi_value_rule(i1->type))
+			{	/* we continue our search, only for multi valued rules */
 				break;
 			}
 		}
@@ -765,10 +860,8 @@ static bool equals(private_auth_cfg_t *this, private_auth_cfg_t *other)
 	return equal;
 }
 
-/**
- * Implementation of auth_cfg_t.purge
- */
-static void purge(private_auth_cfg_t *this, bool keep_ca)
+METHOD(auth_cfg_t, purge, void,
+	private_auth_cfg_t *this, bool keep_ca)
 {
 	entry_t *entry;
 	linked_list_t *cas;
@@ -793,16 +886,15 @@ static void purge(private_auth_cfg_t *this, bool keep_ca)
 	cas->destroy(cas);
 }
 
-/**
- * Implementation of auth_cfg_t.clone
- */
-static auth_cfg_t* clone_(private_auth_cfg_t *this)
+METHOD(auth_cfg_t, clone_, auth_cfg_t*,
+	private_auth_cfg_t *this)
 {
 	enumerator_t *enumerator;
 	auth_cfg_t *clone;
 	entry_t *entry;
 
 	clone = auth_cfg_create();
+	/* this enumerator skips duplicates for rules we expect only once */
 	enumerator = this->entries->create_enumerator(this->entries);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
@@ -844,16 +936,16 @@ static auth_cfg_t* clone_(private_auth_cfg_t *this)
 			case AUTH_RULE_ECDSA_STRENGTH:
 				clone->add(clone, entry->type, (uintptr_t)entry->value);
 				break;
+			case AUTH_RULE_MAX:
+				break;
 		}
 	}
 	enumerator->destroy(enumerator);
 	return clone;
 }
 
-/**
- * Implementation of auth_cfg_t.destroy
- */
-static void destroy(private_auth_cfg_t *this)
+METHOD(auth_cfg_t, destroy, void,
+	private_auth_cfg_t *this)
 {
 	purge(this, FALSE);
 	this->entries->destroy(this->entries);
@@ -865,20 +957,23 @@ static void destroy(private_auth_cfg_t *this)
  */
 auth_cfg_t *auth_cfg_create()
 {
-	private_auth_cfg_t *this = malloc_thing(private_auth_cfg_t);
+	private_auth_cfg_t *this;
 
-	this->public.add = (void(*)(auth_cfg_t*, auth_rule_t type, ...))add;
-	this->public.get = (void*(*)(auth_cfg_t*, auth_rule_t type))get;
-	this->public.create_enumerator = (enumerator_t*(*)(auth_cfg_t*))create_enumerator;
-	this->public.replace = (void(*)(auth_cfg_t*,enumerator_t*,auth_rule_t,...))replace;
-	this->public.complies = (bool(*)(auth_cfg_t*, auth_cfg_t *,bool))complies;
-	this->public.merge = (void(*)(auth_cfg_t*, auth_cfg_t *other,bool))merge;
-	this->public.purge = (void(*)(auth_cfg_t*,bool))purge;
-	this->public.equals = (bool(*)(auth_cfg_t*, auth_cfg_t *other))equals;
-	this->public.clone = (auth_cfg_t*(*)(auth_cfg_t*))clone_;
-	this->public.destroy = (void(*)(auth_cfg_t*))destroy;
-
-	this->entries = linked_list_create();
+	INIT(this,
+		.public = {
+			.add = (void(*)(auth_cfg_t*, auth_rule_t type, ...))add,
+			.get = _get,
+			.create_enumerator = _create_enumerator,
+			.replace = (void(*)(auth_cfg_t*,enumerator_t*,auth_rule_t,...))replace,
+			.complies = _complies,
+			.merge = (void(*)(auth_cfg_t*,auth_cfg_t*,bool))merge,
+			.purge = _purge,
+			.equals = (bool(*)(auth_cfg_t*,auth_cfg_t*))equals,
+			.clone = _clone_,
+			.destroy = _destroy,
+		},
+		.entries = linked_list_create(),
+	);
 
 	return &this->public;
 }
