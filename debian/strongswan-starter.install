@@ -9,7 +9,7 @@ usr/share/man/man5/ipsec.conf.5
 usr/share/man/man5/ipsec.secrets.5
 usr/share/man/man5/strongswan.conf.5
 #updown
-usr/lib/*/ipsec/plugins/libstrongswan-updown.so*
+usr/lib/*/ipsec/plugins/libstrongswan-updown.so
 usr/lib/*/ipsec/_updown
 usr/lib/*/ipsec/_updown_espmark
 usr/share/man/man8/_updown.8
@@ -23,4 +23,4 @@ usr/share/man/man8/scepclient.8
 usr/share/man/man8/openac.8
 #stroke
 usr/lib/*/ipsec/stroke
-usr/lib/*/ipsec/plugins/libstrongswan-stroke.so*
+usr/lib/*/ipsec/plugins/libstrongswan-stroke.so
