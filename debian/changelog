@@ -1,3 +1,12 @@
+strongswan (4.6.4-0.1) UNRELEASED; urgency=low
+
+  * Non-maintainer upload.
+  * New upstream release.
+  * debian/patches:
+    - drop all patches, they're all included upstream now.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
+
 strongswan (4.5.2-1.5) unstable; urgency=low
 
   * Non-maintainer upload.
