@@ -24,7 +24,8 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--enable-sql --enable-integrity-test \
 		--enable-ha --enable-dhcp --enable-farp \
 		--enable-led \
-		--enable-test-vectors --enable-nat-transport
+		--enable-test-vectors --enable-nat-transport \
+		--enable-nm
 	#	--with-user=strongswan --with-group=nogroup \
 	#	--enable-kernel-pfkey --enable-kernel-klips \
 	# And for --enable-eap-sim we would need the library, which we don't
@@ -46,14 +47,6 @@ endif
 # but it actually doesn't do much, so maybe we don't need it
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock
-endif
-
-# And only enable network-manager building if the libraries are present
-# (they will be when the build-deps are fulfilled, but this makes it easier
-# to do backports where the network-manager libs can not be installed, and 
-# thus to just ignore build-deps).
-ifeq ($(shell test -d /usr/include/libnm-glib/ && echo yes),yes)
-  CONFIGUREARGS += --enable-nm
 endif
 
 build: build-stamp
@@ -99,8 +92,6 @@ install: build-stamp
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	  install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-padlock.so* $(CURDIR)/debian/libstrongswan/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
 endif
-	# and special handling for network-manager files - only install when built
-	install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-nm.so* $(CURDIR)/debian/strongswan-nm/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
 
 	# and additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
