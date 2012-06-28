@@ -4,6 +4,8 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
   * New upstream release.
   * debian/patches:
     - drop all patches, they're all included upstream now.
+  * debian/*.install:
+    - drop destination path.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
 
