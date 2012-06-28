@@ -11,11 +11,10 @@ export DH_OPTIONS
 export DEB_BUILD_MAINT_OPTIONS=hardening=+pie,+bindnow
 
 CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-		--libexecdir=/usr/lib \
 		--enable-ldap --enable-curl \
 		--with-capabilities=libcap \
 		--enable-smartcard --enable-pkcs11 \
-		--with-default-pkcs11=/usr/lib/opensc-pkcs11.so \
+		--with-default-pkcs11=/usr/lib/$(DEB_HOST_MULTIARCH)/opensc-pkcs11.so \
 		--enable-mediation --enable-medsrv --enable-medcli \
 		--enable-openssl --enable-agent \
 		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
@@ -98,10 +97,10 @@ install: build-stamp
 
 	# special handling for padlock, as it is only built on i386
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-	  install $(CURDIR)/debian/tmp/usr/lib/ipsec/plugins/libstrongswan-padlock.so* $(CURDIR)/debian/libstrongswan/usr/lib/ipsec/plugins/
+	  install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-padlock.so* $(CURDIR)/debian/libstrongswan/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
 endif
 	# and special handling for network-manager files - only install when built
-	install $(CURDIR)/debian/tmp/usr/lib/ipsec/plugins/libstrongswan-nm.so* $(CURDIR)/debian/strongswan-nm/usr/lib/ipsec/plugins/
+	install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-nm.so* $(CURDIR)/debian/strongswan-nm/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
 
 	# and additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets

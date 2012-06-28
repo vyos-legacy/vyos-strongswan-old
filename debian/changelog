@@ -9,6 +9,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - libs are in ipsec folder now
     - add libradius, libtls, libtnccs and libsimaka to libstrongswan.
     - add tnc-tnccs, pkcs8 and cmac plugins to libstrongswan.
+    - use multiarch paths
   * debian/control:
     - update standards version to 3.9.3.
     - add depend on adduser to strongswan-starter for use in maintainer
@@ -18,6 +19,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
   * debian/compat bumped to 9.
   * debian/rules:
     - enable hardening flags with PIE and bindnow.
+    - use multiarch paths.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
 
