@@ -1,3 +1,12 @@
+strongswan (4.5.2-1.5) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix "package must not include /var/lock/subsys":
+    don't ship /var/lock/subsys but create it in the init script.
+    (Closes: #667764)
+
+ -- gregor herrmann <gregoa@debian.org>  Fri, 15 Jun 2012 16:21:27 +0200
+
 strongswan (4.5.2-1.4) unstable; urgency=high
 
   * Non-maintainer upload by the Security Team.

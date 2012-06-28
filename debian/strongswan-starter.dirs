@@ -6,5 +6,4 @@
 /etc/ipsec.d/private
 /etc/ipsec.d/policies
 /etc/init.d
-/var/lock/subsys
 /var/lib/strongswan
