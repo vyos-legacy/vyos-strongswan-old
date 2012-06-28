@@ -6,12 +6,11 @@ Standards-Version: 3.9.3
 Vcs-Browser: http://anonscm.debian.org/git/pkg-swn/strongswan.git
 Vcs-Git: git://anonscm.debian.org/pkg-swan/strongswan.git
 Build-Depends: debhelper (>= 9), dpkg-dev (>= 1.16.2), libtool, libgmp3-dev, 
-               libssl-dev (>= 0.9.8), libcurl4-openssl-dev | libcurl3-dev | libcurl2-dev,
-               libldap2-dev, libpam0g-dev, libkrb5-dev, bison, flex, bzip2, po-debconf,
-               hardening-wrapper, network-manager-dev, libfcgi-dev, clearsilver-dev,
-               libxml2-dev, libsqlite3-dev, network-manager-dev (>= 0.7),
-               libnm-glib-vpn-dev (>= 0.7), libnm-util-dev (>= 0.7),
-	       gperf, libcap-dev
+  libssl-dev (>= 0.9.8), libcurl4-openssl-dev | libcurl3-dev | libcurl2-dev,
+  libldap2-dev, libpam0g-dev, libkrb5-dev, bison, flex, bzip2, po-debconf,
+  hardening-wrapper, network-manager-dev, libfcgi-dev, clearsilver-dev,
+  libxml2-dev, libsqlite3-dev, network-manager-dev (>= 0.7), 
+  libnm-glib-vpn-dev (>= 0.7), libnm-util-dev (>= 0.7), gperf, libcap-dev
 Homepage: http://www.strongswan.org
 
 Package: strongswan
@@ -57,7 +56,9 @@ Description: strongSwan library and binaries - debugging symbols
 
 Package: strongswan-starter
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version}), strongswan-ikev1 | strongswan-ikev2, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, 
+  libstrongswan (= ${binary:Version}), strongswan-ikev1 | strongswan-ikev2, 
+  adduser
 Conflicts: strongswan (<< 4.2.12-1)
 Description: strongSwan daemon starter and configuration file parser
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
@@ -72,7 +73,9 @@ Description: strongSwan daemon starter and configuration file parser
 Package: strongswan-ikev1
 Architecture: any
 Pre-Depends: debconf | debconf-2.0
-Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version}), strongswan-starter, bsdmainutils, debianutils (>=1.7), ipsec-tools, host, iproute
+Depends: ${shlibs:Depends}, ${misc:Depends}, 
+  libstrongswan (= ${binary:Version}), strongswan-starter, bsdmainutils,
+  debianutils (>=1.7), ipsec-tools, host, iproute
 Suggests: curl
 Provides: ike-server
 Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
@@ -90,7 +93,9 @@ Description: strongSwan Internet Key Exchange (v1) daemon
 Package: strongswan-ikev2
 Architecture: any
 Pre-Depends: debconf | debconf-2.0
-Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version}), strongswan-starter | strongswan-nm, bsdmainutils, debianutils (>=1.7), ipsec-tools, host, iproute
+Depends: ${shlibs:Depends}, ${misc:Depends}, 
+  libstrongswan (= ${binary:Version}), strongswan-starter | strongswan-nm,
+  bsdmainutils, debianutils (>=1.7), ipsec-tools, host, iproute
 Suggests: curl
 Provides: ike-server
 Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
