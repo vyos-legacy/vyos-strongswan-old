@@ -16,6 +16,8 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - update debhelper build-dep to 9 and add dpkg-dev 1.16.2 build-dep for
       hardening support.
   * debian/compat bumped to 9.
+  * debian/rules:
+    - enable hardening flags with PIE and bindnow.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
 

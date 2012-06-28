@@ -7,8 +7,8 @@
 
 export DH_OPTIONS
 
-# this is a security-critical package, set all the options we can
-export DEB_BUILD_HARDENING=1
+#export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
+export DEB_BUILD_MAINT_OPTIONS=hardening=+pie,+bindnow
 
 CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--libexecdir=/usr/lib \
