@@ -13,6 +13,9 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - update standards version to 3.9.3.
     - add depend on adduser to strongswan-starter for use in maintainer
       scripts.
+    - update debhelper build-dep to 9 and add dpkg-dev 1.16.2 build-dep for
+      hardening support.
+  * debian/compat bumped to 9.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
 
