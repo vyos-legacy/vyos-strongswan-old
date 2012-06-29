@@ -70,7 +70,7 @@ ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	  install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-padlock.so* $(CURDIR)/debian/libstrongswan/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
 endif
 
-	# and additional files not covered by upstream makefile...
+	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
 	# also "patch" ipsec.conf to include the debconf-managed file
 	echo >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
@@ -78,14 +78,11 @@ endif
 	# and to enable both IKEv1 and IKEv2 by default
 	sed -r 's/^[ \t]+# *plutostart=(yes|no) */\tplutostart=yes/;s/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
 	mv $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
+
 	# set permissions on ipsec.secrets
 	chmod 600 $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
-	#chmod 644 $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 	chmod 700 -R $(CURDIR)/debian/strongswan-starter/etc/ipsec.d/private/
 	chmod 700 -R $(CURDIR)/debian/strongswan-starter/var/lib/strongswan/
-	# don't know why they come with +x set by default...
-	#chmod 644 $(CURDIR)/debian/strongswan-starter/etc/ipsec.d/policies/*
-	#chmod 644 $(CURDIR)/debian/strongswan-starter/etc/ipsec.d/examples/*
 
 	# this is handled by update-rc.d
 	rm -rf $(CURDIR)/debian/strongswan-starter/etc/rc?.d
