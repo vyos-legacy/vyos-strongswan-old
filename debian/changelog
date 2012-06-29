@@ -1,4 +1,4 @@
-strongswan (4.6.4-1) UNRELEASED; urgency=low
+strongswan (4.6.4-1) experimental; urgency=low
 
   * New upstream release.                                       closes: #664190
     - stop including individual glib headers.                   closes: #665612
@@ -42,7 +42,7 @@ strongswan (4.6.4-1) UNRELEASED; urgency=low
       in tarball.
   * debian/copyright completely rewritten.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 29 Jun 2012 21:24:37 +0200
 
 strongswan (4.5.2-1.5) unstable; urgency=low
 
