@@ -121,7 +121,7 @@ override_dh_installdocs:
 	  done )
 
 override_dh_installinit:
-	dh_installinit --name=ipsec
+	dh_installinit -n --name=ipsec
 
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS
