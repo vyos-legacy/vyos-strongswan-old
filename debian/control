@@ -2,6 +2,7 @@ Source: strongswan
 Section: net
 Priority: optional
 Maintainer: Rene Mayrhofer <rmayr@debian.org>
+Uploaders: Yves-Alexis Perez <corsac@debian.org>
 Standards-Version: 3.9.3
 Vcs-Browser: http://anonscm.debian.org/git/pkg-swn/strongswan.git
 Vcs-Git: git://anonscm.debian.org/pkg-swan/strongswan.git

@@ -1,6 +1,5 @@
-strongswan (4.6.4-0.1) UNRELEASED; urgency=low
+strongswan (4.6.4-1) UNRELEASED; urgency=low
 
-  * Non-maintainer upload.
   * New upstream release.                                       closes: #664190
     - stop including individual glib headers.                   closes: #665612
   * debian/patches:
@@ -14,6 +13,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - move ldap, curl, kernel-netlink and attr* plugins to libstrongswan,
       since they are used by pluto too.                         closes: #611846
   * debian/control:
+    - add myself to uploaders, in hope that some others will join.
     - update standards version to 3.9.3.
     - add depend on adduser to strongswan-starter for use in maintainer
       scripts.
