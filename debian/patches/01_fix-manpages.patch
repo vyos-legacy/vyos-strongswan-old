@@ -1,0 +1,49 @@
+Index: strongswan/src/_updown/_updown.8
+===================================================================
+--- strongswan.orig/src/_updown/_updown.8	2012-06-28 20:48:14.337158901 +0200
++++ strongswan/src/_updown/_updown.8	2012-06-29 11:25:55.897696373 +0200
+@@ -1,6 +1,6 @@
+ .TH _UPDOWN 8 "27 Apr 2006"
+ .SH NAME
+-ipsec _updown \- route and firewall manipulation script
++ipsec_updown \- route and firewall manipulation script
+ .SH SYNOPSIS
+ .I _updown
+ is invoked by pluto when it has brought up a new connection. This script
+Index: strongswan/src/_updown_espmark/_updown_espmark.8
+===================================================================
+--- strongswan.orig/src/_updown_espmark/_updown_espmark.8	2012-06-28 20:48:14.337158901 +0200
++++ strongswan/src/_updown_espmark/_updown_espmark.8	2012-06-29 11:26:18.517907016 +0200
+@@ -1,6 +1,6 @@
+ .TH _UPDOWN_ESPMARK 8 "7 Apr 2005"
+ .SH NAME
+-ipsec _updown_espmark \- manages routes and firewall rules
++ipsec_updown_espmark \- manages routes and firewall rules
+ .SH SYNOPSIS
+ .I _updown_espmark
+ is invoked by pluto when it has brought up a new connection. This script
+Index: strongswan/src/openac/openac.8
+===================================================================
+--- strongswan.orig/src/openac/openac.8	2012-06-28 20:48:14.473160290 +0200
++++ strongswan/src/openac/openac.8	2012-06-29 11:26:38.854096394 +0200
+@@ -1,6 +1,6 @@
+ .TH IPSEC_OPENAC 8 "22 September 2007"
+ .SH NAME
+-ipsec openac \- Generation of X.509 attribute certificates
++ipsec_openac \- Generation of X.509 attribute certificates
+ .SH SYNOPSIS
+ .B ipsec
+ .B openac
+Index: strongswan/src/scepclient/scepclient.8
+===================================================================
+--- strongswan.orig/src/scepclient/scepclient.8	2012-06-28 20:48:14.497160535 +0200
++++ strongswan/src/scepclient/scepclient.8	2012-06-29 11:27:01.934311341 +0200
+@@ -1,7 +1,7 @@
+ .\" 
+ .TH "IPSEC_SCEPCLIENT" "8" "29 September 2005" "Jan Hutter, Martin Willi" ""
+ .SH "NAME"
+-ipsec scepclient \- Client for the SCEP protocol
++ipsec_scepclient \- Client for the SCEP protocol
+ .SH "SYNOPSIS"
+ .B ipsec scepclient [argument ...]
+ .sp
