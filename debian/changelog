@@ -21,6 +21,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - enable hardening flags with PIE and bindnow.
     - use multiarch paths.
     - inconditionnally enable network-manager. 
+    - switch to dh.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
 

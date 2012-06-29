@@ -1,12 +1,4 @@
 #!/usr/bin/make -f
-# Sample debian/rules that uses debhelper.
-# GNU copyright 1997 to 1999 by Joey Hess.
-
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
-export DH_OPTIONS
-
 #export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
 export DEB_BUILD_MAINT_OPTIONS=hardening=+pie,+bindnow
 
@@ -49,20 +41,11 @@ ifeq ($(DEB_BUILD_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock
 endif
 
-build: build-stamp
-build-stamp: 
-	dh_testdir
-	./configure $(CONFIGUREARGS)
-	$(MAKE) CC="$(CC)" CFLAGS="$(CFLAGS)"
-	touch build-stamp
+override_dh_auto_configure:
+	dh_auto_configure -- $(CONFIGUREARGS)
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp
-
-	[ ! -f Makefile ] || $(MAKE) distclean
-	#-$(MAKE) -C programs/fswcert/ clean
+override_dh_auto_clean:
+	dh_auto_clean
 	# after a make clean, no binaries _should_ be left, but ....
 	-find $(CURDIR) -name "*.o" | xargs --no-run-if-empty rm
 
@@ -77,14 +60,8 @@ clean:
 	# and make sure that template are up-to-date
 	debconf-updatepo
 
-	dh_clean
 
-install: build-stamp
-	dh_testdir
-	dh_testroot
-	dh_installdirs
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-
+override_dh_install:
 	# install files from debian/tmp into proper package dirs
 	dh_install --fail-missing -X\.la -X\.a -Xmedsrv -Xman3 -Xlibstrongswan-padlock.so -Xlibstrongswan-nm.so
 
@@ -117,6 +94,18 @@ endif
 	rm -rf $(CURDIR)/debian/openswan/var/lock
 	rm -rf $(CURDIR)/debian/openswan/var/run
 
+	# the logcheck ignore files
+	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.paranoid $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.paranoid/strongswan
+	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.server/strongswan
+	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.workstation/strongswan
+	install -D --mode=0600 $(CURDIR)/debian/logcheck.violations.ignore $(CURDIR)/debian/libstrongswan/etc/logcheck/violations.ignore.d/strongswan
+
+	# more lintian cleanups
+	find $(CURDIR)/debian/*strongswan*/ -name ".cvsignore" | xargs --no-run-if-empty rm -f
+	find $(CURDIR)/debian/*strongswan*/ -name "/.svn/" | xargs --no-run-if-empty rm -rf
+
+
+override_dh_installdocs:
 	dh_installdocs -pstrongswan -n
 	# change the paths in the installed doc files (but only in regular 
 	# files, not in links to the outside of the build tree !)
@@ -131,43 +120,20 @@ endif
 		fi; \
 	  done )
 
-	# the logcheck ignore files
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.paranoid $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.paranoid/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.server/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.workstation/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.violations.ignore $(CURDIR)/debian/libstrongswan/etc/logcheck/violations.ignore.d/strongswan
-
-	# more lintian cleanups
-	find $(CURDIR)/debian/*strongswan*/ -name ".cvsignore" | xargs --no-run-if-empty rm -f
-	find $(CURDIR)/debian/*strongswan*/ -name "/.svn/" | xargs --no-run-if-empty rm -rf
-
-binary-common:
-	dh_testdir
-	dh_testroot
+override_dh_installinit:
 	dh_installinit --name=ipsec
-	dh_installdebconf
+
+override_dh_installchangelogs:
 	dh_installchangelogs NEWS
+
+override_dh_installdocs:
 	dh_installdocs README
-	dh_link
+
+override_dh_strip:
 	dh_strip --dbg-package=strongswan-dbg
-	dh_compress
+
+override_dh_fixperms:
 	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan
-	dh_lintian
-	dh_makeshlibs
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
 
-binary-indep: 
-	$(MAKE) -f debian/rules binary-common DH_OPTIONS=-i
-
-binary-arch: install
-	$(MAKE) -f debian/rules binary-common DH_OPTIONS=-a
-
-binary-%: build-stamp install
-	make -f debian/rules binary-common DH_OPTIONS=-p$*
-
-binary: binary-indep binary-arch
-.PHONY: clean binary-indep binary-arch
+%:
+	dh $@
