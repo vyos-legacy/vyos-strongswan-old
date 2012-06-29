@@ -28,6 +28,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - ignore plugins in dh_makeshlibs.
     - don't generate maintainer scripts snippets for init scripts, it's
       already handled (atlhough we might want to change that later)
+    - stop bypassing dh_installdocs.
   * debian/libstrongswan.lintian-overrides,
     debian/libstrongswan-ikev2.lintian-overrides:
     - override warning for hardening flags, we do use them.

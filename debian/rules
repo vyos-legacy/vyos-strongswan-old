@@ -104,30 +104,11 @@ endif
 	find $(CURDIR)/debian/*strongswan*/ -name ".cvsignore" | xargs --no-run-if-empty rm -f
 	find $(CURDIR)/debian/*strongswan*/ -name "/.svn/" | xargs --no-run-if-empty rm -rf
 
-
-override_dh_installdocs:
-	dh_installdocs -pstrongswan -n
-	# change the paths in the installed doc files (but only in regular 
-	# files, not in links to the outside of the build tree !)
-	# TODO: check if we still need this
-	( cd $(CURDIR)/debian/strongswan/; \
-	  for f in `grep "/usr/local/" --recursive --files-with-match *`; \
-	  do \
-		if [ -f $$f -a ! -L $$f ]; then \
-		    cp $$f $$f.old; \
- 		    sed 's/\/usr\/local\//\/usr\//' $$f.old > $$f; \
-		    rm $$f.old; \
-		fi; \
-	  done )
-
 override_dh_installinit:
 	dh_installinit -n --name=ipsec
 
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS
-
-override_dh_installdocs:
-	dh_installdocs README
 
 override_dh_strip:
 	dh_strip --dbg-package=strongswan-dbg
