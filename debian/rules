@@ -56,7 +56,7 @@ override_dh_auto_clean:
 
 override_dh_install:
 	# install files from debian/tmp into proper package dirs
-	dh_install --fail-missing -X\.la -X\.a -Xmedsrv -Xman3 -Xlibstrongswan-padlock.so -Xlibstrongswan-nm.so
+	dh_install --fail-missing -X\.la -X\.a -Xmedsrv -Xman3 -Xlibstrongswan-padlock.so
 
 	# special handling for padlock, as it is only built on i386
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
