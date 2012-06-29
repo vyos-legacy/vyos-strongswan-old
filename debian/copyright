@@ -1658,6 +1658,7 @@ Copyright: 1995-1997, Eric Young (eay@cryptsoft.com)
   remains Eric Young's, and as such any notices in
   terms
 License: BSD
+  FIXME
 
 Files: src/include/linux/udp.h
  src/pluto/alg_info.h
@@ -1880,7 +1881,7 @@ License: GPL-3+
 Files: src/libfreeswan/pfkeyv2.h
  src/libhydra/plugins/kernel_klips/pfkeyv2.h
 Copyright: *No copyright*
-License: Public domain
+License: public-domain
 
 Files: src/libstrongswan/asn1/oid.c
  src/libstrongswan/asn1/oid.h
@@ -1898,7 +1899,7 @@ License: BSD
 
 Files: src/include/sys/queue.h
 Copyright: 1991, 1993
-License: BSD (3 clause)
+License: BSD-3-clause
 
 Files: src/libstrongswan/plugins/test_vectors/test_vectors/blowfish.c
 Copyright: 2009, Andreas Steffen
@@ -2186,3 +2187,23 @@ Files: src/libstrongswan/plugins/pkcs11/pkcs11.h
 Copyright: 2006, Andreas Jellinghaus
   2006-2007, g10 Code GmbH
 License: MIT
+
+License: GPL-2
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in
+ `/usr/share/common-licenses/GPL-2'.
+
+License: GPL-3
+ On Debian systems, the complete text of the GNU General
+ Public License version 3 can be found in
+ `/usr/share/common-licenses/GPL-3'.
+
+License: LGPL-2
+ On Debian systems, the complete text of the Lesser GNU 
+ General Public License version 2 can be found in 
+ `/usr/share/common-licenses/LGPL-2'.
+
+License: BSD
+ On Debian systems, the complete text of the BSD
+ License can be found in
+ `/usr/share/common-licenses/BSD'.
