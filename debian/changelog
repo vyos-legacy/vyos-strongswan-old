@@ -22,6 +22,7 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - use multiarch paths.
     - inconditionnally enable network-manager. 
     - switch to dh.
+    - ignore plugins in dh_makeshlibs.
   * debian/libstrongswan.lintian-overrides,
     debian/libstrongswan-ikev2.lintian-overrides:
     - override warning for hardening flags, we do use them.
