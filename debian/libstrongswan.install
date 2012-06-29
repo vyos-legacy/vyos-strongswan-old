@@ -41,4 +41,8 @@ usr/lib/*/ipsec/plugins/libstrongswan-test-vectors.so
 usr/lib/*/ipsec/plugins/libstrongswan-tnc-tnccs.so
 usr/lib/*/ipsec/plugins/libstrongswan-pkcs8.so
 usr/lib/*/ipsec/plugins/libstrongswan-cmac.so
+usr/lib/*/ipsec/plugins/libstrongswan-ldap.so
+usr/lib/*/ipsec/plugins/libstrongswan-attr*.so
+usr/lib/*/ipsec/plugins/libstrongswan-curl.so
+usr/lib/*/ipsec/plugins/libstrongswan-kernel-netlink.so
 etc/strongswan.conf

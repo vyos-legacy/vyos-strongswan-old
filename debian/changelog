@@ -11,6 +11,8 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - add libradius, libtls, libtnccs and libsimaka to libstrongswan.
     - add tnc-tnccs, pkcs8 and cmac plugins to libstrongswan.
     - use multiarch paths
+    - move ldap, curl, kernel-netlink and attr* plugins to libstrongswan,
+      since they are used by pluto too.                         closes: #611846
   * debian/control:
     - update standards version to 3.9.3.
     - add depend on adduser to strongswan-starter for use in maintainer
