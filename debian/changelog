@@ -34,6 +34,8 @@ strongswan (4.6.4-0.1) UNRELEASED; urgency=low
     - override warning for hardening flags, we do use them.
   * debian/patches:
     - 01_fix-manpages added, fix space in NAME section.
+    - 02_add-LICENSE added, add the license file from upstream not yet present
+      in tarball.
   * debian/copyright completely rewritten.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 28 Jun 2012 21:17:38 +0200
