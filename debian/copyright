@@ -348,8 +348,6 @@ Files: src/checksum/checksum_builder.c
  src/libstrongswan/plugins/mysql/mysql_database.h
  src/libstrongswan/plugins/mysql/mysql_plugin.c
  src/libstrongswan/plugins/mysql/mysql_plugin.h
- src/libstrongswan/plugins/openssl/openssl_sha1_prf.c
- src/libstrongswan/plugins/openssl/openssl_sha1_prf.h
  src/libstrongswan/plugins/padlock/padlock_plugin.c
  src/libstrongswan/plugins/padlock/padlock_plugin.h
  src/libstrongswan/plugins/padlock/padlock_rng.c
@@ -462,6 +460,11 @@ Copyright: 2005-2009, Martin Willi
   2009-2011, Martin Willi
   2010, Martin Willi
 License: GPL-2+
+
+Files: src/libstrongswan/plugins/openssl/openssl_sha1_prf.c
+ src/libstrongswan/plugins/openssl/openssl_sha1_prf.h
+Copyright: 2010, Martin Willi
+License: GPL-2+ with OpenSSL exception
 
 Files: scripts/fetch.c
  scripts/tls_test.c
@@ -625,8 +628,6 @@ Files: scripts/fetch.c
  src/libstrongswan/plugins/gcm/gcm_aead.h
  src/libstrongswan/plugins/gcm/gcm_plugin.c
  src/libstrongswan/plugins/gcm/gcm_plugin.h
- src/libstrongswan/plugins/openssl/openssl_crl.h
- src/libstrongswan/plugins/openssl/openssl_x509.h
  src/libstrongswan/plugins/pkcs11/pkcs11_creds.c
  src/libstrongswan/plugins/pkcs11/pkcs11_creds.h
  src/libstrongswan/plugins/pkcs11/pkcs11_hasher.c
@@ -683,6 +684,12 @@ Copyright: 2007-2011, Martin Willi
   2012, Martin Willi
   2012, revosec AG
 License: GPL-2+
+
+Files: src/libstrongswan/plugins/openssl/openssl_crl.h
+ src/libstrongswan/plugins/openssl/openssl_x509.h
+Copyright: 2010, Martin Willi
+  2010 revosec AG
+License: GPL-2+ with OpenSSL exception
 
 Files: scripts/thread_analysis.c
  src/libcharon/plugins/eap_tnc/eap_tnc.c
@@ -912,19 +919,6 @@ Files: src/dumm/ext/lib/dumm.rb
  src/libstrongswan/plugins/cmac/cmac_prf.h
  src/libstrongswan/plugins/cmac/cmac_signer.c
  src/libstrongswan/plugins/cmac/cmac_signer.h
- src/libstrongswan/plugins/openssl/openssl_crypter.c
- src/libstrongswan/plugins/openssl/openssl_crypter.h
- src/libstrongswan/plugins/openssl/openssl_diffie_hellman.h
- src/libstrongswan/plugins/openssl/openssl_ec_diffie_hellman.c
- src/libstrongswan/plugins/openssl/openssl_ec_diffie_hellman.h
- src/libstrongswan/plugins/openssl/openssl_ec_private_key.h
- src/libstrongswan/plugins/openssl/openssl_ec_public_key.h
- src/libstrongswan/plugins/openssl/openssl_hasher.c
- src/libstrongswan/plugins/openssl/openssl_hasher.h
- src/libstrongswan/plugins/openssl/openssl_plugin.h
- src/libstrongswan/plugins/openssl/openssl_rsa_private_key.h
- src/libstrongswan/plugins/openssl/openssl_rsa_public_key.h
- src/libstrongswan/plugins/openssl/openssl_util.h
  src/libstrongswan/plugins/pkcs11/pkcs11_dh.c
  src/libstrongswan/plugins/pkcs11/pkcs11_dh.h
  src/libstrongswan/plugins/pkcs11/pkcs11_rng.c
@@ -955,6 +949,22 @@ Copyright: 2007, Tobias Brunner
   2011, Tobias Brunner
   2012, Tobias Brunner
 License: GPL-2+
+
+Files: src/libstrongswan/plugins/openssl/openssl_crypter.c
+ src/libstrongswan/plugins/openssl/openssl_crypter.h
+ src/libstrongswan/plugins/openssl/openssl_diffie_hellman.h
+ src/libstrongswan/plugins/openssl/openssl_ec_diffie_hellman.c
+ src/libstrongswan/plugins/openssl/openssl_ec_diffie_hellman.h
+ src/libstrongswan/plugins/openssl/openssl_ec_private_key.h
+ src/libstrongswan/plugins/openssl/openssl_ec_public_key.h
+ src/libstrongswan/plugins/openssl/openssl_hasher.c
+ src/libstrongswan/plugins/openssl/openssl_hasher.h
+ src/libstrongswan/plugins/openssl/openssl_plugin.h
+ src/libstrongswan/plugins/openssl/openssl_rsa_private_key.h
+ src/libstrongswan/plugins/openssl/openssl_rsa_public_key.h
+ src/libstrongswan/plugins/openssl/openssl_util.h
+Copyright: 2008 Tobias Brunner, Hochschule fuer Technik Rapperswil
+License: GPL-2+ with GPL exception
 
 Files: src/libcharon/plugins/tnccs_20/messages/pb_access_recommendation_msg.c
  src/libcharon/plugins/tnccs_20/messages/pb_access_recommendation_msg.h
@@ -1160,13 +1170,6 @@ Files: src/dumm/cowfs.h
  src/libstrongswan/enum.h
  src/libstrongswan/library.c
  src/libstrongswan/plugins/gcrypt/gcrypt_dh.c
- src/libstrongswan/plugins/openssl/openssl_diffie_hellman.c
- src/libstrongswan/plugins/openssl/openssl_ec_private_key.c
- src/libstrongswan/plugins/openssl/openssl_ec_public_key.c
- src/libstrongswan/plugins/openssl/openssl_plugin.c
- src/libstrongswan/plugins/openssl/openssl_rsa_private_key.c
- src/libstrongswan/plugins/openssl/openssl_rsa_public_key.c
- src/libstrongswan/plugins/openssl/openssl_util.c
  src/libstrongswan/plugins/plugin_loader.c
  src/libstrongswan/plugins/plugin_loader.h
  src/libstrongswan/printf_hook.c
@@ -1213,6 +1216,29 @@ Copyright: 2005-2008, Martin Willi
   2012, Tobias Brunner
 License: GPL-2+
 
+Files: src/libstrongswan/plugins/openssl/openssl_diffie_hellman.c
+Copyright: 2008-2010, Tobias Brunner,
+  2008, Martin Willi
+License: GPL-2+ with OpenSSL exception
+
+Files: src/libstrongswan/plugins/openssl/openssl_ec_private_key.c
+ src/libstrongswan/plugins/openssl/openssl_rsa_private_key.c
+ src/libstrongswan/plugins/openssl/openssl_rsa_public_key.c
+ src/libstrongswan/plugins/openssl/openssl_util.c
+Copyright: 2008-2012, Tobias Brunner,
+  2009, Martin Willi
+License: GPL-2+ with OpenSSL exception
+
+Files: src/libstrongswan/plugins/openssl/openssl_ec_public_key.c
+Copyright: 2008, Tobias Brunner,
+  2009, Martin Willi
+License: GPL-2+ with OpenSSL exception
+
+Files: src/libstrongswan/plugins/openssl/openssl_plugin.c
+Copyright: 2008, Tobias Brunner,
+  2008, Martin Willi
+License: GPL-2+ with OpenSSL exception
+
 Files: scripts/bin2array.c
  scripts/bin2sql.c
  scripts/crypt_burn.c
@@ -1253,8 +1279,7 @@ Files: scripts/bin2array.c
  src/pluto/rsaref/unix.h
  src/starter/lexer.c
 Copyright: *No copyright*
-License: UNKNOWN
- FIXME
+License: GPL-2+
 
 Files: src/libcharon/plugins/tnc_imv/tnc_imv_recommendations.c
  src/libcharon/plugins/tnccs_11/messages/tnccs_tncs_contact_info_msg.c
@@ -1661,14 +1686,16 @@ License: BSD
   FIXME
 
 Files: src/include/linux/udp.h
- src/pluto/alg_info.h
+Copyright: Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
+License: GPL-2+
+
+Files: src/pluto/alg_info.h
  src/pluto/db_ops.c
  src/pluto/db_ops.h
  src/pluto/ike_alg.h
  src/pluto/kernel_alg.h
-Copyright: *No copyright*
+Copyright: JuanJo Ciarlante <jjo-ipsec@mendoza.gov.ar>
 License: GPL-2+
- FIXME
 
 Files: src/libstrongswan/plugins/test_vectors/test_vectors/aes_ccm.c
  src/libstrongswan/plugins/test_vectors/test_vectors/aes_ctr.c
@@ -1882,22 +1909,21 @@ Files: src/libfreeswan/pfkeyv2.h
  src/libhydra/plugins/kernel_klips/pfkeyv2.h
 Copyright: *No copyright*
 License: public-domain
-This file defines structures and symbols for the PF_KEY Version 2
-key management interface. It was written at the U.S. Naval Research
-Laboratory. This file is in the public domain. The authors ask that
-you leave this credit intact on any copies of this file.
+ This file defines structures and symbols for the PF_KEY Version 2
+ key management interface. It was written at the U.S. Naval Research
+ Laboratory. This file is in the public domain. The authors ask that
+ you leave this credit intact on any copies of this file.
 
 Files: src/libstrongswan/asn1/oid.c
  src/libstrongswan/asn1/oid.h
 Copyright: 2003-2008, Andreas Steffen, Hochschule fuer Technik Rapperswil
-License: UNKNOWN
- FIXME
+License: GPL-2+
+Comment: generated from oid.pl
 
 Files: src/libstrongswan/plugins/des/des_crypter.c
 Copyright: 1995-1997, Eric Young (eay@cryptsoft.com)
   2006, Martin Willi
   2009, Tobias Brunner
-  remains Eric Young's, and as such any notices in
 License: BSD
  FIXME
 
@@ -2167,25 +2193,21 @@ Copyright: 2010, Martin Willi
   2010, revosec AG
   2010, secunet Security Networks AG
   2011, Tobias Brunner
-License: MIT/X11 (BSD like) GPL-2+
- FIXME
+License: MIT and GPL-2+ with OpenSSL exception
 
 Files: src/libhydra/plugins/kernel_netlink/kernel_netlink_net.c
 Copyright: 2005-2008, Martin Willi
   2008, Tobias Brunner
   2010, Thomas Egerer
   2010, secunet Security Networks AG
-License: MIT/X11 (BSD like) GPL-2+
- FIXME
+License: MIT and GPL-2+
 
 Files: src/libstrongswan/plugins/openssl/openssl_crl.c
 Copyright: 2010, Martin Willi
   2010, Thomas Egerer
   2010, revosec AG
   2010, secunet Security Networks AG
-  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-License: MIT/X11 (BSD like) GPL-2+
- FIXME
+License: MIT and GPL-2+ with OpenSSL exception
 
 Files: src/libstrongswan/plugins/pkcs11/pkcs11.h
 Copyright: 2006, Andreas Jellinghaus
@@ -2239,3 +2261,37 @@ License: BSD-3-clause
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
+
+License: GPL-2+ with OpenSSL exception
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+ .
+ In addition, as a special exception, the author of this
+ program gives permission to link the code of its
+ release with the OpenSSL project's "OpenSSL" library (or
+ with modified versions of it that use the same license as
+ the "OpenSSL" library), and distribute the linked
+ executables. You must obey the GNU General Public
+ License in all respects for all of the code used other
+ than "OpenSSL".  If you modify this file, you may extend
+ this exception to your version of the file, but you are
+ not obligated to do so.  If you do not wish to do so,
+ delete this exception statement from your version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
