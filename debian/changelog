@@ -1,7 +1,8 @@
 strongswan (4.6.4-0.1) UNRELEASED; urgency=low
 
   * Non-maintainer upload.
-  * New upstream release.
+  * New upstream release.                                       closes: #664190
+    - stop including individual glib headers.                   closes: #665612
   * debian/patches:
     - drop all patches, they're all included upstream now.
   * debian/*.install:
