@@ -27,17 +27,9 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 	# (most notably the Phion one) have problems connecting when pluto 
 	# sends these Cisco options.
 
-DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
-
-ifeq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O2
-endif
-ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
-	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
-	MAKEFLAGS += -j$(NUMJOBS)
-endif
 # the padlock plugin only makes sense on i386 
 # but it actually doesn't do much, so maybe we don't need it
+DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock
 endif
@@ -118,4 +110,4 @@ override_dh_makeshlibs:
 	dh_makeshlibs -n -X usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins
 
 %:
-	dh $@
+	dh $@ --parallel
