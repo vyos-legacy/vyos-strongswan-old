@@ -136,7 +136,7 @@ override_dh_fixperms:
 	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan
 
 override_dh_makeshlibs:
-	dh_makeshlibs -X usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins
+	dh_makeshlibs -n -X usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins
 
 %:
 	dh $@
