@@ -18,7 +18,6 @@ usr/lib/*/ipsec/plugins/libstrongswan-hmac.so
 usr/lib/*/ipsec/plugins/libstrongswan-xcbc.so
 usr/lib/*/ipsec/plugins/libstrongswan-random.so
 usr/lib/*/ipsec/plugins/libstrongswan-aes.so
-usr/lib/*/ipsec/plugins/libstrongswan-des.so
 usr/lib/*/ipsec/plugins/libstrongswan-xcbc.so
 usr/lib/*/ipsec/plugins/libstrongswan-ctr.so
 usr/lib/*/ipsec/plugins/libstrongswan-ccm.so

@@ -17,7 +17,8 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--enable-ha --enable-dhcp --enable-farp \
 		--enable-led \
 		--enable-test-vectors --enable-nat-transport \
-		--enable-nm
+		--enable-nm \
+		--disable-blowfish --disable-des # BSD-Young license
 	#	--with-user=strongswan --with-group=nogroup \
 	#	--enable-kernel-pfkey --enable-kernel-klips \
 	# And for --enable-eap-sim we would need the library, which we don't
