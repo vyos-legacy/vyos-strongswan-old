@@ -964,7 +964,7 @@ Files: src/libstrongswan/plugins/openssl/openssl_crypter.c
  src/libstrongswan/plugins/openssl/openssl_rsa_public_key.h
  src/libstrongswan/plugins/openssl/openssl_util.h
 Copyright: 2008 Tobias Brunner, Hochschule fuer Technik Rapperswil
-License: GPL-2+ with GPL exception
+License: GPL-2+ with OpenSSL exception
 
 Files: src/libcharon/plugins/tnccs_20/messages/pb_access_recommendation_msg.c
  src/libcharon/plugins/tnccs_20/messages/pb_access_recommendation_msg.h
