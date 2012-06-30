@@ -1,3 +1,10 @@
+strongswan (4.6.4-4) UNRELEASED; urgency=low
+
+  * debian/control:
+    - libnm-glib-vpn-dev also is linux-any, fix build-deps.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 30 Jun 2012 18:52:37 +0200
+
 strongswan (4.6.4-3) unstable; urgency=low
 
   * debian/strongswan-starter.postrm
