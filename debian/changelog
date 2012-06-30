@@ -1,3 +1,10 @@
+strongswan (4.6.4-2) UNRELEASED; urgency=low
+
+  * debian/rules:
+    - use the strongswan user.                                  closes: #529854
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 29 Jun 2012 23:13:16 +0200
+
 strongswan (4.6.4-1) experimental; urgency=low
 
   * New upstream release.                                       closes: #664190

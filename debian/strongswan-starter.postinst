@@ -292,8 +292,7 @@ EOF
         #fi
 
 	# create user for strongswan to change its uid into
-        # disabled until this can be kept in sync with build-time uid
-	#setup_strongswan_user
+	setup_strongswan_user
 
 	if [ -z "$2" ]; then
 	    # no old configured version - start strongswan now
