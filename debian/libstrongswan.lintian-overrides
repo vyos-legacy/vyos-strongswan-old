@@ -14,3 +14,4 @@ libstrongswan: hardening-no-fortify-functions usr/lib/*/ipsec/plugins/libstrongs
 libstrongswan: hardening-no-fortify-functions usr/lib/*/ipsec/plugins/libstrongswan-random.so
 libstrongswan: hardening-no-fortify-functions usr/lib/*/ipsec/plugins/libstrongswan-tnc-tnccs.so
 libstrongswan: hardening-no-fortify-functions usr/lib/*/ipsec/plugins/libstrongswan-xcbc.so
+libstrongswan: hardening-no-fortify-functions usr/lib/*/ipsec/plugins/libstrongswan-gcrypt.so
