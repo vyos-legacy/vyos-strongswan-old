@@ -2,6 +2,8 @@ strongswan (4.6.4-2) UNRELEASED; urgency=low
 
   * debian/rules:
     - use the strongswan user.                                  closes: #529854
+  * debian/control:
+    - fix libnm-glib-vpn-dev build-dep, it's linux-any.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Fri, 29 Jun 2012 23:13:16 +0200
 
