@@ -45,4 +45,5 @@ usr/lib/*/ipsec/plugins/libstrongswan-ldap.so
 usr/lib/*/ipsec/plugins/libstrongswan-attr*.so
 usr/lib/*/ipsec/plugins/libstrongswan-curl.so
 usr/lib/*/ipsec/plugins/libstrongswan-kernel-netlink.so
+usr/lib/*/ipsec/plugins/libstrongswan-gcrypt.so
 etc/strongswan.conf

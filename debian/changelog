@@ -1,3 +1,14 @@
+strongswan (4.6.4-3) UNRELEASED; urgency=low
+
+  * debian/strongswan-starter.postrm
+    - remove strongswan user on purge.
+  * debian/rules:
+    - enable gcrypt plugin.                                     closes: #600326
+  * debian/libstrongswan.install:
+    - ship gcrypt plugin.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 30 Jun 2012 17:01:38 +0200
+
 strongswan (4.6.4-2) unstable; urgency=low
 
   * Upload to unstable.

@@ -15,7 +15,7 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
 		--enable-sql --enable-integrity-test \
 		--enable-ha --enable-dhcp --enable-farp \
-		--enable-led \
+		--enable-led --enable-gcrypt \
 		--enable-test-vectors --enable-nat-transport \
 		--enable-nm \
 		--with-user=strongswan --with-group=nogroup \
