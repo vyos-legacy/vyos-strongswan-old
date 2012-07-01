@@ -1,3 +1,10 @@
+strongswan (4.6.4-5) UNRELEASED; urgency=low
+
+  * debian/control:
+    - and finally libcap-dev linux-any too...
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 30 Jun 2012 21:53:28 +0200
+
 strongswan (4.6.4-4) unstable; urgency=low
 
   * debian/control:
