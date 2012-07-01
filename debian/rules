@@ -84,12 +84,6 @@ endif
 	rm -rf $(CURDIR)/debian/openswan/var/lock
 	rm -rf $(CURDIR)/debian/openswan/var/run
 
-	# the logcheck ignore files
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.paranoid $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.paranoid/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.server/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.ignore.server $(CURDIR)/debian/libstrongswan/etc/logcheck/ignore.d.workstation/strongswan
-	install -D --mode=0600 $(CURDIR)/debian/logcheck.violations.ignore $(CURDIR)/debian/libstrongswan/etc/logcheck/violations.ignore.d/strongswan
-
 	# more lintian cleanups
 	find $(CURDIR)/debian/*strongswan*/ -name ".cvsignore" | xargs --no-run-if-empty rm -f
 	find $(CURDIR)/debian/*strongswan*/ -name "/.svn/" | xargs --no-run-if-empty rm -rf
