@@ -6,6 +6,8 @@ strongswan (4.6.4-5) UNRELEASED; urgency=low
     - stop installing logcheck rules manually.
   * Handle logcheck files from dh_installlogcheck and thus name them correctly
     so they are not installed in the wrong package.             closes: #679745
+  * debian/po
+    - add turkish translation, thanks Atila KOÇ.                closes: #659879
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sun, 01 Jul 2012 13:17:17 +0200
 
