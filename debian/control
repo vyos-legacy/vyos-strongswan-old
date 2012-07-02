@@ -73,7 +73,7 @@ Description: strongSwan daemon starter and configuration file parser
  IKEv1 daemon is limited to configurations from ipsec.conf.
 
 Package: strongswan-ikev1
-Architecture: any
+Architecture: linux-any
 Pre-Depends: debconf | debconf-2.0
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
   libstrongswan (= ${binary:Version}), strongswan-starter, bsdmainutils,

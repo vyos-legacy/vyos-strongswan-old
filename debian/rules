@@ -4,7 +4,6 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+pie,+bindnow
 
 CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--enable-ldap --enable-curl \
-		--with-capabilities=libcap \
 		--enable-smartcard --enable-pkcs11 \
 		--with-default-pkcs11=/usr/lib/$(DEB_HOST_MULTIARCH)/opensc-pkcs11.so \
 		--enable-mediation --enable-medsrv --enable-medcli \
@@ -14,10 +13,9 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 		--enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 \
 		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
 		--enable-sql --enable-integrity-test \
-		--enable-ha --enable-dhcp --enable-farp \
+		--enable-ha \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors --enable-nat-transport \
-		--enable-nm \
 		--with-user=strongswan --with-group=nogroup \
 		--disable-blowfish --disable-des # BSD-Young license
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -31,7 +29,25 @@ CONFIGUREARGS := --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
 # but it actually doesn't do much, so maybe we don't need it
 DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-  CONFIGUREARGS += --enable-padlock
+	CONFIGUREARGS += --enable-padlock
+endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),linux)
+	# only enable network-manager and capabilities dropping on linux hosts
+	# some plugins are linux-only too
+	CONFIGUREARGS += --enable-nm \
+		--with-capabilities=libcap \
+		--enable-farp \
+		--enable-dhcp
+endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+	# recommended configure line for FreeBSD
+	# http://wiki.strongswan.org/projects/strongswan/wiki/FreeBSD
+	CONFIGUREARGS += --disable-kernel-netlink \
+		--enable-kernel-pfkey --enable-kernel-pfroute \
+		--disable-pluto --with-group=wheel
+		#--disable-tools --disable-scripts --disable-pluto --with-group=wheel
 endif
 
 override_dh_auto_configure:
@@ -55,13 +71,36 @@ override_dh_auto_clean:
 
 
 override_dh_install:
-	# install files from debian/tmp into proper package dirs
-	dh_install --fail-missing -X\.la -X\.a -Xmedsrv -Xman3 -Xlibstrongswan-padlock.so
 
-	# special handling for padlock, as it is only built on i386
-ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-	  install $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-padlock.so* $(CURDIR)/debian/libstrongswan/usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/
+	# first special cases
+ifeq ($(DEB_BUILD_ARCH_OS),linux)
+	# handle Linux-only plugins
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-dhcp.so
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-farp.so
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-xauth.so
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-kernel-netlink.so
 endif
+
+ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+	# handle FreeBSD-only plugins
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-kernel-pfkey.so
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-kernel-pfroute.so
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU),i386)
+	# special handling for padlock, as it is only built on i386
+	dh_install -p libstrongswan usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins/libstrongswan-padlock.so
+endif
+
+	# then install the rest, ignoring the above
+	dh_install --fail-missing \
+		-X\.la -X\.a \
+		-Xmedsrv -Xman3 \
+		-Xlibstrongswan-kernel \
+		-Xlibstrongswan-dhcp.so \
+		-Xlibstrongswan-farp.so \
+		-Xlibstrongswan-xauth.so \
+	 	-Xlibstrongswan-padlock.so
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
@@ -102,6 +141,9 @@ override_dh_fixperms:
 
 override_dh_makeshlibs:
 	dh_makeshlibs -n -X usr/lib/$(DEB_HOST_MULTIARCH)/ipsec/plugins
+
+override_dh_installlogcheck:
+	dh_installlogcheck --name strongswan
 
 %:
 	dh $@ --parallel

@@ -27,14 +27,11 @@ usr/lib/*/ipsec/plugins/libstrongswan-addrblock.so
 usr/lib/*/ipsec/plugins/libstrongswan-md5.so
 usr/lib/*/ipsec/plugins/libstrongswan-sha1.so
 usr/lib/*/ipsec/plugins/libstrongswan-sha2.so
-usr/lib/*/ipsec/plugins/libstrongswan-dhcp.so
 usr/lib/*/ipsec/plugins/libstrongswan-dnskey.so
-usr/lib/*/ipsec/plugins/libstrongswan-farp.so
 usr/lib/*/ipsec/plugins/libstrongswan-fips-prf.so
 usr/lib/*/ipsec/plugins/libstrongswan-resolve.so
 usr/lib/*/ipsec/plugins/libstrongswan-sql.so
 usr/lib/*/ipsec/plugins/libstrongswan-ha.so
-usr/lib/*/ipsec/plugins/libstrongswan-xauth.so
 usr/lib/*/ipsec/plugins/libstrongswan-revocation.so
 usr/lib/*/ipsec/plugins/libstrongswan-constraints.so
 usr/lib/*/ipsec/plugins/libstrongswan-test-vectors.so
@@ -44,6 +41,5 @@ usr/lib/*/ipsec/plugins/libstrongswan-cmac.so
 usr/lib/*/ipsec/plugins/libstrongswan-ldap.so
 usr/lib/*/ipsec/plugins/libstrongswan-attr*.so
 usr/lib/*/ipsec/plugins/libstrongswan-curl.so
-usr/lib/*/ipsec/plugins/libstrongswan-kernel-netlink.so
 usr/lib/*/ipsec/plugins/libstrongswan-gcrypt.so
 etc/strongswan.conf

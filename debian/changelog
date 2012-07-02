@@ -1,9 +1,14 @@
 strongswan (4.6.4-5) UNRELEASED; urgency=low
 
   * debian/control:
-    - and finally libcap-dev linux-any too...          (really) closes: #640928
+    - and finally libcap-dev linux-any too...
+    - make -ikev1 linux-any since pluto can't be build on FreeBSD.
   * debian/rules:
     - stop installing logcheck rules manually.
+    - handle non kFreeBSD more carefully                        closes: #640928
+      + don't enable NM and Linux capabilities drop;
+      + disable pluto (and xauth plugin);
+      + don't enable farp and dhcp, enable kernel-pf{key,route} plugins
   * Handle logcheck files from dh_installlogcheck and thus name them correctly
     so they are not installed in the wrong package.             closes: #679745
   * debian/po
