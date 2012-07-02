@@ -18,6 +18,9 @@ strongswan (4.6.4-5) UNRELEASED; urgency=low
   [ Laurent Bigonville ]
   * Do not use multi-arch paths, this makes no sense as only one instance of
     the daemon can be run and all libraries are private.
+  * d/p/03_Pass-lo-as-faked-tundev-to-NM-as-it-now-needs-a-vali.patch: NM now
+    requires a tundev, pass the loopback interface to make it happy
+    (thanks to Martin Willi)
 
  -- Laurent Bigonville <bigon@debian.org>  Mon, 02 Jul 2012 16:17:38 +0200
 
