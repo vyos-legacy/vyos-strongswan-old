@@ -29,7 +29,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 # but it actually doesn't do much, so maybe we don't need it
 DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-	CONFIGUREARGS += --enable-padlock
+  CONFIGUREARGS += --enable-padlock
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
@@ -47,7 +47,6 @@ ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
 	CONFIGUREARGS += --disable-kernel-netlink \
 		--enable-kernel-pfkey --enable-kernel-pfroute \
 		--disable-pluto --with-group=wheel
-		#--disable-tools --disable-scripts --disable-pluto --with-group=wheel
 endif
 
 override_dh_auto_configure:

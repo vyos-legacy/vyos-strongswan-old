@@ -1,8 +1,8 @@
-strongswan (4.6.4-5) UNRELEASED; urgency=low
+strongswan (4.6.4-5) unstable; urgency=low
 
   [ Yves-Alexis Perez ]
   * debian/control:
-    - and finally libcap-dev linux-any too...
+    - and finally make libcap-dev linux-any too...
     - make -ikev1 linux-any since pluto can't be build on FreeBSD.
   * debian/rules:
     - stop installing logcheck rules manually.                  closes: #679745
@@ -26,7 +26,7 @@ strongswan (4.6.4-5) UNRELEASED; urgency=low
     (thanks to Martin Willi)
   * debian/control: Fix Vcs-Browser URL
 
- -- Laurent Bigonville <bigon@debian.org>  Mon, 02 Jul 2012 16:17:38 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 07 Jul 2012 14:21:03 +0200
 
 strongswan (4.6.4-4) unstable; urgency=low
 
