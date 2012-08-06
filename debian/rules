@@ -16,8 +16,8 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ha \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors --enable-nat-transport \
-		--with-user=strongswan --with-group=nogroup \
 		--disable-blowfish --disable-des # BSD-Young license
+	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
 	# And for --enable-eap-sim we would need the library, which we don't
 	# have right now.
