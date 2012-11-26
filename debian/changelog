@@ -3,6 +3,9 @@ strongswan (4.6.4-6) UNRELEASED; urgency=low
   * debian/rules:
     - revert dropping privileges, it breaks too many setups for now and it's
       not possible to disable it.           reopens #529854 and closes: #680722
+  * debian/control:
+    - add Breaks/Replaces strongswan-ikev2 on libstrongswan because of moved
+      plugins.                                                  closes: #681312
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 12 Jul 2012 11:42:58 +0200
 

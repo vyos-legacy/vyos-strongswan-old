@@ -35,6 +35,8 @@ Package: libstrongswan
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, openssl
 Conflicts: strongswan (<< 4.2.12-1)
+Breaks: strongswan-ikev2 (<< 4.6.4)
+Replaces: strongswan-ikev2 (<< 4.6.4)
 Description: strongSwan utility and crypto library
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
  native IPsec stack and runs on any recent 2.6 kernel (no patching required).
