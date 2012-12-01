@@ -1,4 +1,4 @@
-strongswan (4.6.4-6) UNRELEASED; urgency=low
+strongswan (4.6.4-6) unstable; urgency=low
 
   * debian/rules:
     - revert dropping privileges, it breaks too many setups for now and it's
@@ -7,7 +7,7 @@ strongswan (4.6.4-6) UNRELEASED; urgency=low
     - add Breaks/Replaces strongswan-ikev2 on libstrongswan because of moved
       plugins.                                                  closes: #681312
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 12 Jul 2012 11:42:58 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 01 Dec 2012 14:24:49 +0100
 
 strongswan (4.6.4-5) unstable; urgency=low
 
