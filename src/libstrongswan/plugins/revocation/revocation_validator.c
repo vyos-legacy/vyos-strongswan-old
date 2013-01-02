@@ -103,7 +103,7 @@ static bool verify_ocsp(ocsp_response_t *response, auth_cfg_t *auth)
 	bool verified = FALSE;
 
 	wrapper = ocsp_response_wrapper_create((ocsp_response_t*)response);
-	lib->credmgr->add_local_set(lib->credmgr, &wrapper->set);
+	lib->credmgr->add_local_set(lib->credmgr, &wrapper->set, FALSE);
 
 	subject = &response->certificate;
 	responder = subject->get_issuer(subject);
@@ -111,7 +111,7 @@ static bool verify_ocsp(ocsp_response_t *response, auth_cfg_t *auth)
 													KEY_ANY, responder, FALSE);
 	while (enumerator->enumerate(enumerator, &issuer, &current))
 	{
-		if (lib->credmgr->issued_by(lib->credmgr, subject, issuer))
+		if (lib->credmgr->issued_by(lib->credmgr, subject, issuer, NULL))
 		{
 			DBG1(DBG_CFG, "  ocsp response correctly signed by \"%Y\"",
 							 issuer->get_subject(issuer));
@@ -341,7 +341,7 @@ static bool verify_crl(certificate_t *crl, auth_cfg_t *auth)
 										KEY_ANY, crl->get_issuer(crl), FALSE);
 	while (enumerator->enumerate(enumerator, &issuer, &current))
 	{
-		if (lib->credmgr->issued_by(lib->credmgr, crl, issuer))
+		if (lib->credmgr->issued_by(lib->credmgr, crl, issuer, NULL))
 		{
 			DBG1(DBG_CFG, "  crl correctly signed by \"%Y\"",
 						   issuer->get_subject(issuer));

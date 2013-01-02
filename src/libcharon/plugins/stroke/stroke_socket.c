@@ -37,6 +37,7 @@
 #include "stroke_cred.h"
 #include "stroke_ca.h"
 #include "stroke_attribute.h"
+#include "stroke_handler.h"
 #include "stroke_list.h"
 
 /**
@@ -62,16 +63,6 @@ struct private_stroke_socket_t {
 	 * Unix socket to listen for strokes
 	 */
 	int socket;
-
-	/**
-	 * job accepting stroke messages
-	 */
-	callback_job_t *receiver;
-
-	/**
-	 * job handling stroke messages
-	 */
-	callback_job_t *handler;
 
 	/**
 	 * queued stroke commands
@@ -107,6 +98,11 @@ struct private_stroke_socket_t {
 	 * attribute provider
 	 */
 	stroke_attribute_t *attribute;
+
+	/**
+	 * attribute handler (requests only)
+	 */
+	stroke_handler_t *handler;
 
 	/**
 	 * controller to control daemon
@@ -181,6 +177,7 @@ static void pop_end(stroke_msg_t *msg, const char* label, stroke_end_t *end)
 	pop_string(msg, &end->address);
 	pop_string(msg, &end->subnets);
 	pop_string(msg, &end->sourceip);
+	pop_string(msg, &end->dns);
 	pop_string(msg, &end->auth);
 	pop_string(msg, &end->auth2);
 	pop_string(msg, &end->id);
@@ -191,12 +188,14 @@ static void pop_end(stroke_msg_t *msg, const char* label, stroke_end_t *end)
 	pop_string(msg, &end->ca);
 	pop_string(msg, &end->ca2);
 	pop_string(msg, &end->groups);
+	pop_string(msg, &end->groups2);
 	pop_string(msg, &end->cert_policy);
 	pop_string(msg, &end->updown);
 
 	DBG2(DBG_CFG, "  %s=%s", label, end->address);
 	DBG2(DBG_CFG, "  %ssubnet=%s", label, end->subnets);
 	DBG2(DBG_CFG, "  %ssourceip=%s", label, end->sourceip);
+	DBG2(DBG_CFG, "  %sdns=%s", label, end->dns);
 	DBG2(DBG_CFG, "  %sauth=%s", label, end->auth);
 	DBG2(DBG_CFG, "  %sauth2=%s", label, end->auth2);
 	DBG2(DBG_CFG, "  %sid=%s", label, end->id);
@@ -207,6 +206,7 @@ static void pop_end(stroke_msg_t *msg, const char* label, stroke_end_t *end)
 	DBG2(DBG_CFG, "  %sca=%s", label, end->ca);
 	DBG2(DBG_CFG, "  %sca2=%s", label, end->ca2);
 	DBG2(DBG_CFG, "  %sgroups=%s", label, end->groups);
+	DBG2(DBG_CFG, "  %sgroups2=%s", label, end->groups2);
 	DBG2(DBG_CFG, "  %supdown=%s", label, end->updown);
 }
 
@@ -223,23 +223,28 @@ static void stroke_add_conn(private_stroke_socket_t *this, stroke_msg_t *msg)
 	pop_end(msg, "right", &msg->add_conn.other);
 	pop_string(msg, &msg->add_conn.eap_identity);
 	pop_string(msg, &msg->add_conn.aaa_identity);
+	pop_string(msg, &msg->add_conn.xauth_identity);
 	pop_string(msg, &msg->add_conn.algorithms.ike);
 	pop_string(msg, &msg->add_conn.algorithms.esp);
 	pop_string(msg, &msg->add_conn.ikeme.mediated_by);
 	pop_string(msg, &msg->add_conn.ikeme.peerid);
 	DBG2(DBG_CFG, "  eap_identity=%s", msg->add_conn.eap_identity);
 	DBG2(DBG_CFG, "  aaa_identity=%s", msg->add_conn.aaa_identity);
+	DBG2(DBG_CFG, "  xauth_identity=%s", msg->add_conn.xauth_identity);
 	DBG2(DBG_CFG, "  ike=%s", msg->add_conn.algorithms.ike);
 	DBG2(DBG_CFG, "  esp=%s", msg->add_conn.algorithms.esp);
 	DBG2(DBG_CFG, "  dpddelay=%d", msg->add_conn.dpd.delay);
+	DBG2(DBG_CFG, "  dpdtimeout=%d", msg->add_conn.dpd.timeout);
 	DBG2(DBG_CFG, "  dpdaction=%d", msg->add_conn.dpd.action);
 	DBG2(DBG_CFG, "  closeaction=%d", msg->add_conn.close_action);
 	DBG2(DBG_CFG, "  mediation=%s", msg->add_conn.ikeme.mediation ? "yes" : "no");
 	DBG2(DBG_CFG, "  mediated_by=%s", msg->add_conn.ikeme.mediated_by);
 	DBG2(DBG_CFG, "  me_peerid=%s", msg->add_conn.ikeme.peerid);
+	DBG2(DBG_CFG, "  keyexchange=ikev%u", msg->add_conn.version);
 
 	this->config->add(this->config, msg);
-	this->attribute->add_pool(this->attribute, msg);
+	this->attribute->add_dns(this->attribute, msg);
+	this->handler->add_attributes(this->handler, msg);
 }
 
 /**
@@ -251,7 +256,8 @@ static void stroke_del_conn(private_stroke_socket_t *this, stroke_msg_t *msg)
 	DBG1(DBG_CFG, "received stroke: delete connection '%s'", msg->del_conn.name);
 
 	this->config->del(this->config, msg);
-	this->attribute->del_pool(this->attribute, msg);
+	this->attribute->del_dns(this->attribute, msg);
+	this->handler->del_attributes(this->handler, msg);
 }
 
 /**
@@ -514,12 +520,14 @@ static void stroke_loglevel(private_stroke_socket_t *this,
 	while (enumerator->enumerate(enumerator, &sys_logger))
 	{
 		sys_logger->set_level(sys_logger, group, msg->loglevel.level);
+		charon->bus->add_logger(charon->bus, &sys_logger->logger);
 	}
 	enumerator->destroy(enumerator);
 	enumerator = charon->file_loggers->create_enumerator(charon->file_loggers);
 	while (enumerator->enumerate(enumerator, &file_logger))
 	{
 		file_logger->set_level(file_logger, group, msg->loglevel.level);
+		charon->bus->add_logger(charon->bus, &file_logger->logger);
 	}
 	enumerator->destroy(enumerator);
 }
@@ -696,7 +704,7 @@ static job_requeue_t handle(private_stroke_socket_t *this)
 	this->handling++;
 	thread_cleanup_pop(TRUE);
 	job = callback_job_create_with_prio((callback_job_cb_t)process, ctx,
-			(void*)stroke_job_context_destroy, this->handler, JOB_PRIO_HIGH);
+			(void*)stroke_job_context_destroy, NULL, JOB_PRIO_HIGH);
 	lib->processor->queue_job(lib->processor, (job_t*)job);
 	return JOB_REQUEUE_DIRECT;
 }
@@ -762,7 +770,8 @@ static bool open_socket(private_stroke_socket_t *this)
 		return FALSE;
 	}
 	umask(old);
-	if (chown(socket_addr.sun_path, charon->uid, charon->gid) != 0)
+	if (chown(socket_addr.sun_path, charon->caps->get_uid(charon->caps),
+			  charon->caps->get_gid(charon->caps)) != 0)
 	{
 		DBG1(DBG_CFG, "changing stroke socket permissions failed: %s",
 			 strerror(errno));
@@ -781,8 +790,6 @@ static bool open_socket(private_stroke_socket_t *this)
 METHOD(stroke_socket_t, destroy, void,
 	private_stroke_socket_t *this)
 {
-	this->handler->cancel(this->handler);
-	this->receiver->cancel(this->receiver);
 	this->commands->destroy_function(this->commands, (void*)stroke_job_context_destroy);
 	this->condvar->destroy(this->condvar);
 	this->mutex->destroy(this->mutex);
@@ -790,10 +797,12 @@ METHOD(stroke_socket_t, destroy, void,
 	lib->credmgr->remove_set(lib->credmgr, &this->cred->set);
 	charon->backends->remove_backend(charon->backends, &this->config->backend);
 	hydra->attributes->remove_provider(hydra->attributes, &this->attribute->provider);
+	hydra->attributes->remove_handler(hydra->attributes, &this->handler->handler);
 	this->cred->destroy(this->cred);
 	this->ca->destroy(this->ca);
 	this->config->destroy(this->config);
 	this->attribute->destroy(this->attribute);
+	this->handler->destroy(this->handler);
 	this->control->destroy(this->control);
 	this->list->destroy(this->list);
 	free(this);
@@ -820,8 +829,9 @@ stroke_socket_t *stroke_socket_create()
 
 	this->cred = stroke_cred_create();
 	this->attribute = stroke_attribute_create();
+	this->handler = stroke_handler_create();
 	this->ca = stroke_ca_create(this->cred);
-	this->config = stroke_config_create(this->ca, this->cred);
+	this->config = stroke_config_create(this->ca, this->cred, this->attribute);
 	this->control = stroke_control_create();
 	this->list = stroke_list_create(this->attribute);
 
@@ -829,20 +839,22 @@ stroke_socket_t *stroke_socket_create()
 	this->condvar = condvar_create(CONDVAR_TYPE_DEFAULT);
 	this->commands = linked_list_create();
 	this->max_concurrent = lib->settings->get_int(lib->settings,
-				"charon.plugins.stroke.max_concurrent", MAX_CONCURRENT_DEFAULT);
+					"%s.plugins.stroke.max_concurrent", MAX_CONCURRENT_DEFAULT,
+					charon->name);
 
 	lib->credmgr->add_set(lib->credmgr, &this->ca->set);
 	lib->credmgr->add_set(lib->credmgr, &this->cred->set);
 	charon->backends->add_backend(charon->backends, &this->config->backend);
 	hydra->attributes->add_provider(hydra->attributes, &this->attribute->provider);
+	hydra->attributes->add_handler(hydra->attributes, &this->handler->handler);
 
-	this->receiver = callback_job_create_with_prio((callback_job_cb_t)receive,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->receiver);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive, this,
+				NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
-	this->handler = callback_job_create_with_prio((callback_job_cb_t)handle,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->handler);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)handle, this,
+				NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

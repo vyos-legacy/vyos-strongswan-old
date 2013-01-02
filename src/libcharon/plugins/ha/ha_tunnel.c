@@ -203,12 +203,13 @@ static void setup_tunnel(private_ha_tunnel_t *this,
 	lib->credmgr->add_set(lib->credmgr, &this->creds.public);
 
 	/* create config and backend */
-	ike_cfg = ike_cfg_create(FALSE, FALSE, local, IKEV2_UDP_PORT,
-							 remote, IKEV2_UDP_PORT);
+	ike_cfg = ike_cfg_create(FALSE, FALSE, local, FALSE,
+							 charon->socket->get_port(charon->socket, FALSE),
+							 remote, FALSE, IKEV2_UDP_PORT);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
-	peer_cfg = peer_cfg_create("ha", 2, ike_cfg, CERT_NEVER_SEND,
-						UNIQUE_KEEP, 0, 86400, 0, 7200, 3600, FALSE, 30,
-						NULL, NULL, FALSE, NULL, NULL);
+	peer_cfg = peer_cfg_create("ha", IKEV2, ike_cfg, CERT_NEVER_SEND,
+						UNIQUE_KEEP, 0, 86400, 0, 7200, 3600, FALSE, FALSE, 30,
+						0, FALSE, NULL, NULL);
 
 	auth_cfg = auth_cfg_create();
 	auth_cfg->add(auth_cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PSK);

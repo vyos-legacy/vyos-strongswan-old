@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,8 +20,8 @@
 #include <ietf/ietf_attr.h>
 #include <ietf/ietf_attr_pa_tnc_error.h>
 #include <ietf/ietf_attr_port_filter.h>
+#include <ietf/ietf_attr_assess_result.h>
 
-#include <tncif_names.h>
 #include <tncif_pa_subtypes.h>
 
 #include <pen/pen.h>
@@ -37,7 +38,7 @@ static const char imc_name[] = "Scanner";
 #define IMC_SUBTYPE		PA_SUBTYPE_ITA_SCANNER
 
 static imc_agent_t *imc_scanner;
- 
+
 /**
  * see section 3.8.1 of TCG TNC IF-IMC Specification 1.3
  */
@@ -84,6 +85,15 @@ TNC_Result TNC_IMC_NotifyConnectionChange(TNC_IMCID imc_id,
 		case TNC_CONNECTION_STATE_CREATE:
 			state = imc_scanner_state_create(connection_id);
 			return imc_scanner->create_state(imc_scanner, state);
+		case TNC_CONNECTION_STATE_HANDSHAKE:
+			if (imc_scanner->change_state(imc_scanner, connection_id, new_state,
+				&state) != TNC_RESULT_SUCCESS)
+			{
+				return TNC_RESULT_FATAL;
+			}
+			state->set_result(state, imc_id,
+							  TNC_IMV_EVALUATION_RESULT_DONT_KNOW);
+			return TNC_RESULT_SUCCESS;
 		case TNC_CONNECTION_STATE_DELETE:
 			return imc_scanner->delete_state(imc_scanner, connection_id);
 		default:
@@ -123,7 +133,7 @@ static bool do_netstat(ietf_attr_port_filter_t *attr)
 		enumerator_t *enumerator;
 		bool allowed, found = FALSE;
 
-		DBG2(DBG_IMC, "%.*s", strlen(buf)-1, buf);
+		DBG2(DBG_IMC, "%.*s", (int)(strlen(buf)-1), buf);
 
 		if (n++ < 2)
 		{
@@ -199,7 +209,7 @@ static bool do_netstat(ietf_attr_port_filter_t *attr)
 			}
 		}
 		enumerator->destroy(enumerator);
-		
+
 		/* Skip the duplicate port entry */
 		if (found)
 		{
@@ -221,7 +231,7 @@ end:
 
 static TNC_Result send_message(TNC_ConnectionID connection_id)
 {
-	pa_tnc_msg_t *msg;
+	linked_list_t *attr_list;
 	pa_tnc_attr_t *attr;
 	ietf_attr_port_filter_t *attr_port_filter;
 	TNC_Result result;
@@ -234,12 +244,11 @@ static TNC_Result send_message(TNC_ConnectionID connection_id)
 		attr->destroy(attr);
 		return TNC_RESULT_FATAL;
 	}
-	msg = pa_tnc_msg_create();
-	msg->add_attribute(msg, attr);
-	msg->build(msg);
+	attr_list = linked_list_create();
+	attr_list->insert_last(attr_list, attr);
 	result = imc_scanner->send_message(imc_scanner, connection_id, FALSE, 0,
-									   TNC_IMVID_ANY, msg->get_encoding(msg));	
-	msg->destroy(msg);
+									   TNC_IMVID_ANY, attr_list);
+	attr_list->destroy(attr_list);
 
 	return result;
 }
@@ -268,8 +277,12 @@ static TNC_Result receive_message(TNC_IMCID imc_id,
 								  TNC_UInt32 dst_imc_id)
 {
 	pa_tnc_msg_t *pa_tnc_msg;
+	pa_tnc_attr_t *attr;
+	pen_type_t attr_type;
 	imc_state_t *state;
+	enumerator_t *enumerator;
 	TNC_Result result;
+	TNC_UInt32 target_imc_id;
 	bool fatal_error;
 
 	if (!imc_scanner)
@@ -284,7 +297,7 @@ static TNC_Result receive_message(TNC_IMCID imc_id,
 		return TNC_RESULT_FATAL;
 	}
 
-	/* parse received PA-TNC message and automatically handle any errors */ 
+	/* parse received PA-TNC message and automatically handle any errors */
 	result = imc_scanner->receive_message(imc_scanner, state, msg, msg_vid,
 							msg_subtype, src_imv_id, dst_imc_id, &pa_tnc_msg);
 
@@ -293,17 +306,43 @@ static TNC_Result receive_message(TNC_IMCID imc_id,
 	{
 		return result;
 	}
+	target_imc_id = (dst_imc_id == TNC_IMCID_ANY) ? imc_id : dst_imc_id;
 
 	/* preprocess any IETF standard error attributes */
 	fatal_error = pa_tnc_msg->process_ietf_std_errors(pa_tnc_msg);
+
+	/* analyze PA-TNC attributes */
+	enumerator = pa_tnc_msg->create_attribute_enumerator(pa_tnc_msg);
+	while (enumerator->enumerate(enumerator, &attr))
+	{
+		attr_type = attr->get_type(attr);
+
+		if (attr_type.vendor_id == PEN_IETF &&
+			attr_type.type == IETF_ATTR_ASSESSMENT_RESULT)
+		{
+			ietf_attr_assess_result_t *ietf_attr;
+
+			ietf_attr = (ietf_attr_assess_result_t*)attr;
+			state->set_result(state, target_imc_id,
+							  ietf_attr->get_result(ietf_attr));
+		}
+	}
+	enumerator->destroy(enumerator);
 	pa_tnc_msg->destroy(pa_tnc_msg);
 
-	/* if no error occurred then always return the same response */
-	return fatal_error ? TNC_RESULT_FATAL : send_message(connection_id);
+	if (fatal_error)
+	{
+		return TNC_RESULT_FATAL;
+	}
+
+	/* if no assessment result is known then repeat the measurement */
+	return state->get_result(state, target_imc_id, NULL) ?
+		   TNC_RESULT_SUCCESS : send_message(connection_id);
 }
 
 /**
  * see section 3.8.4 of TCG TNC IF-IMC Specification 1.3
+
  */
 TNC_Result TNC_IMC_ReceiveMessage(TNC_IMCID imc_id,
 								  TNC_ConnectionID connection_id,

@@ -35,7 +35,7 @@ struct private_openssl_sha1_prf_t {
 	SHA_CTX ctx;
 };
 
-METHOD(prf_t, get_bytes, void,
+METHOD(prf_t, get_bytes, bool,
 	private_openssl_sha1_prf_t *this, chunk_t seed, u_int8_t *bytes)
 {
 	SHA1_Update(&this->ctx, seed.ptr, seed.len);
@@ -50,6 +50,8 @@ METHOD(prf_t, get_bytes, void,
 		hash[3] = htonl(this->ctx.h3);
 		hash[4] = htonl(this->ctx.h4);
 	}
+
+	return TRUE;
 }
 
 METHOD(prf_t, get_block_size, size_t,
@@ -58,18 +60,15 @@ METHOD(prf_t, get_block_size, size_t,
 	return HASH_SIZE_SHA1;
 }
 
-METHOD(prf_t, allocate_bytes, void,
+METHOD(prf_t, allocate_bytes, bool,
 	private_openssl_sha1_prf_t *this, chunk_t seed, chunk_t *chunk)
 {
 	if (chunk)
 	{
 		*chunk = chunk_alloc(HASH_SIZE_SHA1);
-		get_bytes(this, seed, chunk->ptr);
+		return get_bytes(this, seed, chunk->ptr);
 	}
-	else
-	{
-		get_bytes(this, seed, NULL);
-	}
+	return get_bytes(this, seed, NULL);
 }
 
 METHOD(prf_t, get_key_size, size_t,
@@ -78,11 +77,15 @@ METHOD(prf_t, get_key_size, size_t,
 	return HASH_SIZE_SHA1;
 }
 
-METHOD(prf_t, set_key, void,
+METHOD(prf_t, set_key, bool,
 	private_openssl_sha1_prf_t *this, chunk_t key)
 {
 	SHA1_Init(&this->ctx);
 
+	if (key.len % 4)
+	{
+		return FALSE;
+	}
 	if (key.len >= 4)
 	{
 		this->ctx.h0 ^= untoh32(key.ptr);
@@ -103,6 +106,7 @@ METHOD(prf_t, set_key, void,
 	{
 		this->ctx.h4 ^= untoh32(key.ptr + 16);
 	}
+	return TRUE;
 }
 
 METHOD(prf_t, destroy, void,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Tobias Brunner
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2006-2010 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -21,18 +21,18 @@
 #include <daemon.h>
 #include <utils/linked_list.h>
 #include <utils/identification.h>
-#include <utils/lexparser.h>
+
 #include <crypto/transform.h>
 #include <crypto/prfs/prf.h>
 #include <crypto/crypters/crypter.h>
 #include <crypto/signers/signer.h>
-#include <crypto/proposal/proposal_keywords.h>
 
-ENUM(protocol_id_names, PROTO_NONE, PROTO_ESP,
+ENUM(protocol_id_names, PROTO_NONE, PROTO_IPCOMP,
 	"PROTO_NONE",
 	"IKE",
 	"AH",
 	"ESP",
+	"IPCOMP",
 );
 
 typedef struct private_proposal_t private_proposal_t;
@@ -559,14 +559,15 @@ static void check_proposal(private_proposal_t *this)
 /**
  * add a algorithm identified by a string to the proposal.
  */
-static status_t add_string_algo(private_proposal_t *this, chunk_t alg)
+static bool add_string_algo(private_proposal_t *this, const char *alg)
 {
-	const proposal_token_t *token = proposal_get_token(alg.ptr, alg.len);
+	const proposal_token_t *token;
 
+	token = lib->proposal->get_token(lib->proposal, alg);
 	if (token == NULL)
 	{
-		DBG1(DBG_CFG, "algorithm '%.*s' not recognized", alg.len, alg.ptr);
-		return FAILED;
+		DBG1(DBG_CFG, "algorithm '%s' not recognized", alg);
+		return FALSE;
 	}
 
 	add_algorithm(this, token->type, token->algorithm, token->keysize);
@@ -609,13 +610,13 @@ static status_t add_string_algo(private_proposal_t *this, chunk_t alg)
 			add_algorithm(this, PSEUDO_RANDOM_FUNCTION, prf, 0);
 		}
 	}
-	return SUCCESS;
+	return TRUE;
 }
 
 /**
  * print all algorithms of a kind to buffer
  */
-static int print_alg(private_proposal_t *this, char **dst, size_t *len,
+static int print_alg(private_proposal_t *this, printf_hook_data_t *data,
 					 u_int kind, void *names, bool *first)
 {
 	enumerator_t *enumerator;
@@ -627,16 +628,16 @@ static int print_alg(private_proposal_t *this, char **dst, size_t *len,
 	{
 		if (*first)
 		{
-			written += print_in_hook(*dst, *len, "%N", names, alg);
+			written += print_in_hook(data, "%N", names, alg);
 			*first = FALSE;
 		}
 		else
 		{
-			written += print_in_hook(*dst, *len, "/%N", names, alg);
+			written += print_in_hook(data, "/%N", names, alg);
 		}
 		if (size)
 		{
-			written += print_in_hook(*dst, *len, "_%u", size);
+			written += print_in_hook(data, "_%u", size);
 		}
 	}
 	enumerator->destroy(enumerator);
@@ -646,7 +647,7 @@ static int print_alg(private_proposal_t *this, char **dst, size_t *len,
 /**
  * Described in header.
  */
-int proposal_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
+int proposal_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 						 const void *const *args)
 {
 	private_proposal_t *this = *((private_proposal_t**)(args[0]));
@@ -657,7 +658,7 @@ int proposal_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 
 	if (this == NULL)
 	{
-		return print_in_hook(dst, len, "(null)");
+		return print_in_hook(data, "(null)");
 	}
 
 	if (spec->hash)
@@ -667,28 +668,28 @@ int proposal_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 		{	/* call recursivly */
 			if (first)
 			{
-				written += print_in_hook(dst, len, "%P", this);
+				written += print_in_hook(data, "%P", this);
 				first = FALSE;
 			}
 			else
 			{
-				written += print_in_hook(dst, len, ", %P", this);
+				written += print_in_hook(data, ", %P", this);
 			}
 		}
 		enumerator->destroy(enumerator);
 		return written;
 	}
 
-	written = print_in_hook(dst, len, "%N:", protocol_id_names, this->protocol);
-	written += print_alg(this, &dst, &len, ENCRYPTION_ALGORITHM,
+	written = print_in_hook(data, "%N:", protocol_id_names, this->protocol);
+	written += print_alg(this, data, ENCRYPTION_ALGORITHM,
 						 encryption_algorithm_names, &first);
-	written += print_alg(this, &dst, &len, INTEGRITY_ALGORITHM,
+	written += print_alg(this, data, INTEGRITY_ALGORITHM,
 						 integrity_algorithm_names, &first);
-	written += print_alg(this, &dst, &len, PSEUDO_RANDOM_FUNCTION,
+	written += print_alg(this, data, PSEUDO_RANDOM_FUNCTION,
 						 pseudo_random_function_names, &first);
-	written += print_alg(this, &dst, &len, DIFFIE_HELLMAN_GROUP,
+	written += print_alg(this, data, DIFFIE_HELLMAN_GROUP,
 						 diffie_hellman_group_names, &first);
-	written += print_alg(this, &dst, &len, EXTENDED_SEQUENCE_NUMBERS,
+	written += print_alg(this, data, EXTENDED_SEQUENCE_NUMBERS,
 						 extended_sequence_numbers_names, &first);
 	return written;
 }
@@ -840,6 +841,7 @@ static void proposal_add_supported_ike(private_proposal_t *this)
 			case MODP_1024_BIT:
 			case MODP_1536_BIT:
 			case MODP_2048_BIT:
+			case MODP_3072_BIT:
 			case MODP_4096_BIT:
 			case MODP_8192_BIT:
 			case ECP_256_BIT:
@@ -899,28 +901,27 @@ proposal_t *proposal_create_default(protocol_id_t protocol)
  */
 proposal_t *proposal_create_from_string(protocol_id_t protocol, const char *algs)
 {
-	private_proposal_t *this = (private_proposal_t*)proposal_create(protocol, 0);
-	chunk_t string = {(void*)algs, strlen(algs)};
-	chunk_t alg;
-	status_t status = SUCCESS;
+	private_proposal_t *this;
+	enumerator_t *enumerator;
+	bool failed = TRUE;
+	char *alg;
 
-	eat_whitespace(&string);
-	if (string.len < 1)
-	{
-		destroy(this);
-		return NULL;
-	}
+	this = (private_proposal_t*)proposal_create(protocol, 0);
 
 	/* get all tokens, separated by '-' */
-	while (extract_token(&alg, '-', &string))
+	enumerator = enumerator_create_token(algs, "-", " ");
+	while (enumerator->enumerate(enumerator, &alg))
 	{
-		status |= add_string_algo(this, alg);
+		if (!add_string_algo(this, alg))
+		{
+			failed = TRUE;
+			break;
+		}
+		failed = FALSE;
 	}
-	if (string.len)
-	{
-		status |= add_string_algo(this, string);
-	}
-	if (status != SUCCESS)
+	enumerator->destroy(enumerator);
+
+	if (failed)
 	{
 		destroy(this);
 		return NULL;

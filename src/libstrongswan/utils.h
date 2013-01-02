@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 Tobias Brunner
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -52,9 +52,33 @@
 #define BUF_LEN 512
 
 /**
- * Macro compares two strings for equality
+ * General purpose boolean type.
  */
-#define streq(x,y) (strcmp(x, y) == 0)
+#ifdef HAVE_STDBOOL_H
+# include <stdbool.h>
+#else
+# ifndef HAVE__BOOL
+#  define _Bool signed char
+# endif /* HAVE__BOOL */
+# define bool _Bool
+# define false 0
+# define true 1
+# define __bool_true_false_are_defined 1
+#endif /* HAVE_STDBOOL_H */
+#ifndef FALSE
+# define FALSE false
+#endif /* FALSE */
+#ifndef TRUE
+# define TRUE  true
+#endif /* TRUE */
+
+/**
+ * Helper function that compares two strings for equality
+ */
+static inline bool streq(const char *x, const char *y)
+{
+	return strcmp(x, y) == 0;
+}
 
 /**
  * Macro compares two strings for equality, length limited
@@ -62,9 +86,12 @@
 #define strneq(x,y,len) (strncmp(x, y, len) == 0)
 
 /**
- * Macro compares two strings for equality ignoring case
+ * Helper function that compares two strings for equality ignoring case
  */
-#define strcaseeq(x,y) (strcasecmp(x, y) == 0)
+static inline bool strcaseeq(const char *x, const char *y)
+{
+	return strcasecmp(x, y) == 0;
+}
 
 /**
  * Macro compares two strings for equality ignoring case, length limited
@@ -74,7 +101,10 @@
 /**
  * NULL-safe strdup variant
  */
-#define strdupnull(x) ({ char *_x = x; _x ? strdup(_x) : NULL; })
+static inline char *strdupnull(const char *s)
+{
+	return s ? strdup(s) : NULL;
+}
 
 /**
  * Macro compares two binary blobs for equality
@@ -121,9 +151,8 @@
 /**
  * Object allocation/initialization macro, using designated initializer.
  */
-#define INIT(this, ...) ({ (this) = malloc(sizeof(*(this))); \
-						   *(this) = (typeof(*(this))){ __VA_ARGS__ }; \
-						   (this); })
+#define INIT(this, ...) { (this) = malloc(sizeof(*(this))); \
+						   *(this) = (typeof(*(this))){ __VA_ARGS__ }; }
 
 /**
  * Method declaration/definition macro, providing private and public interface.
@@ -136,7 +165,7 @@
 #define METHOD(iface, name, ret, this, ...) \
 	static ret name(union {iface *_public; this;} \
 	__attribute__((transparent_union)), ##__VA_ARGS__); \
-	static const typeof(name) *_##name = (const typeof(name)*)name; \
+	static typeof(name) *_##name = (typeof(name)*)name; \
 	static ret name(this, ##__VA_ARGS__)
 
 /**
@@ -145,7 +174,7 @@
 #define METHOD2(iface1, iface2, name, ret, this, ...) \
 	static ret name(union {iface1 *_public1; iface2 *_public2; this;} \
 	__attribute__((transparent_union)), ##__VA_ARGS__); \
-	static const typeof(name) *_##name = (const typeof(name)*)name; \
+	static typeof(name) *_##name = (typeof(name)*)name; \
 	static ret name(this, ##__VA_ARGS__)
 
 /**
@@ -199,27 +228,6 @@
  * Maximum time since epoch causing wrap-around on Jan 19 03:14:07 UTC 2038
  */
 #define TIME_32_BIT_SIGNED_MAX	0x7fffffff
-
-/**
- * General purpose boolean type.
- */
-#ifdef HAVE_STDBOOL_H
-# include <stdbool.h>
-#else
-# ifndef HAVE__BOOL
-#  define _Bool signed char
-# endif /* HAVE__BOOL */
-# define bool _Bool
-# define false 0
-# define true 1
-# define __bool_true_false_are_defined 1
-#endif /* HAVE_STDBOOL_H */
-#ifndef FALSE
-# define FALSE false
-#endif /* FALSE */
-#ifndef TRUE
-# define TRUE  true
-#endif /* TRUE */
 
 /**
  * define some missing fixed width int types on OpenSolaris.
@@ -408,6 +416,23 @@ char *translate(char *str, const char *from, const char *to);
  */
 bool mkdir_p(const char *path, mode_t mode);
 
+/**
+ * Thread-safe wrapper around strerror and strerror_r.
+ *
+ * This is required because the first is not thread-safe (on some platforms)
+ * and the second uses two different signatures (POSIX/GNU) and is impractical
+ * to use anyway.
+ *
+ * @param errnum	error code (i.e. errno)
+ * @return			error message
+ */
+const char *safe_strerror(int errnum);
+
+/**
+ * Replace usages of strerror(3) with thread-safe variant.
+ */
+#define strerror(errnum) safe_strerror(errnum)
+
 #ifndef HAVE_CLOSEFROM
 /**
  * Close open file descriptors greater than or equal to lowfd.
@@ -491,6 +516,11 @@ static inline void htoun32(void *network, u_int32_t host)
 static inline void htoun64(void *network, u_int64_t host)
 {
 	char *unaligned = (char*)network;
+
+#ifdef be64toh
+	host = htobe64(host);
+	memcpy((char*)unaligned, &host, sizeof(host));
+#else
 	u_int32_t high_part, low_part;
 
 	high_part = host >> 32;
@@ -501,6 +531,7 @@ static inline void htoun64(void *network, u_int64_t host)
 	memcpy(unaligned, &high_part, sizeof(high_part));
 	unaligned += sizeof(high_part);
 	memcpy(unaligned, &low_part, sizeof(low_part));
+#endif
 }
 
 /**
@@ -542,6 +573,13 @@ static inline u_int32_t untoh32(void *network)
 static inline u_int64_t untoh64(void *network)
 {
 	char *unaligned = (char*)network;
+
+#ifdef be64toh
+	u_int64_t tmp;
+
+	memcpy(&tmp, unaligned, sizeof(tmp));
+	return be64toh(tmp);
+#else
 	u_int32_t high_part, low_part;
 
 	memcpy(&high_part, unaligned, sizeof(high_part));
@@ -552,6 +590,7 @@ static inline u_int64_t untoh64(void *network)
 	low_part  = ntohl(low_part);
 
 	return (((u_int64_t)high_part) << 32) + low_part;
+#endif
 }
 
 /**
@@ -612,7 +651,6 @@ bool cas_bool(bool *ptr, bool oldval, bool newval);
  */
 bool cas_ptr(void **ptr, void *oldval, void *newval);
 
-
 #endif /* HAVE_GCC_ATOMIC_OPERATIONS */
 
 /**
@@ -621,7 +659,7 @@ bool cas_ptr(void **ptr, void *oldval, void *newval);
  * Arguments are:
  *	time_t* time, bool utc
  */
-int time_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
+int time_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 					 const void *const *args);
 
 /**
@@ -630,7 +668,7 @@ int time_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
  * Arguments are:
  *	time_t* begin, time_t* end
  */
-int time_delta_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
+int time_delta_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 						   const void *const *args);
 
 /**
@@ -639,7 +677,7 @@ int time_delta_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
  * Arguments are:
  *	u_char *ptr, u_int len
  */
-int mem_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
+int mem_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 					const void *const *args);
 
 #endif /** UTILS_H_ @}*/

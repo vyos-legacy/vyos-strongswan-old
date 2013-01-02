@@ -188,6 +188,7 @@ static void uninstall_hooks()
 char *whitelist[] = {
 	/* backtraces, including own */
 	"backtrace_create",
+	"safe_strerror",
 	/* pthread stuff */
 	"pthread_create",
 	"pthread_setspecific",
@@ -224,6 +225,7 @@ char *whitelist[] = {
 	"getpwent_r",
 	"setpwent",
 	"endpwent",
+	"getspnam_r",
 	/* ignore dlopen, as we do not dlclose to get proper leak reports */
 	"dlopen",
 	"dlerror",
@@ -396,6 +398,35 @@ METHOD(leak_detective_t, report, void,
 	}
 }
 
+METHOD(leak_detective_t, set_state, bool,
+	private_leak_detective_t *this, bool enable)
+{
+	static struct sched_param oldparams;
+	static int oldpolicy;
+	struct sched_param params;
+	pthread_t thread_id;
+
+	if (enable == installed)
+	{
+		return installed;
+	}
+	thread_id = pthread_self();
+	if (enable)
+	{
+		install_hooks();
+		pthread_setschedparam(thread_id, oldpolicy, &oldparams);
+	}
+	else
+	{
+		pthread_getschedparam(thread_id, &oldpolicy, &oldparams);
+		params.__sched_priority = sched_get_priority_max(SCHED_FIFO);
+		pthread_setschedparam(thread_id, SCHED_FIFO, &params);
+		uninstall_hooks();
+	}
+	installed = enable;
+	return !installed;
+}
+
 METHOD(leak_detective_t, usage, void,
 	private_leak_detective_t *this, FILE *out)
 {
@@ -444,7 +475,7 @@ void *malloc_hook(size_t bytes, const void *caller)
 
 	hdr->magic = MEMORY_HEADER_MAGIC;
 	hdr->bytes = bytes;
-	hdr->backtrace = backtrace_create(3);
+	hdr->backtrace = backtrace_create(2);
 	tail->magic = MEMORY_TAIL_MAGIC;
 	install_hooks();
 
@@ -513,7 +544,7 @@ void free_hook(void *ptr, const void *caller)
 			/* memory was not allocated by our hooks */
 			fprintf(stderr, "freeing invalid memory (%p)", ptr);
 		}
-		backtrace = backtrace_create(3);
+		backtrace = backtrace_create(2);
 		backtrace->log(backtrace, stderr, TRUE);
 		backtrace->destroy(backtrace);
 	}
@@ -569,15 +600,17 @@ void *realloc_hook(void *old, size_t bytes, const void *caller)
 	if (hdr->magic != MEMORY_HEADER_MAGIC ||
 		tail->magic != MEMORY_TAIL_MAGIC)
 	{
-		fprintf(stderr, "reallocating invalid memory (%p): "
-				"header magic 0x%x, tail magic 0x%x:\n",
-				old, hdr->magic, tail->magic);
-		backtrace = backtrace_create(3);
+		fprintf(stderr, "reallocating invalid memory (%p):\n"
+				"header magic 0x%x:\n", old, hdr->magic);
+		backtrace = backtrace_create(2);
 		backtrace->log(backtrace, stderr, TRUE);
 		backtrace->destroy(backtrace);
 	}
-	/* clear tail magic, allocate, set tail magic */
-	memset(&tail->magic, MEMORY_ALLOC_PATTERN, sizeof(tail->magic));
+	else
+	{
+		/* clear tail magic, allocate, set tail magic */
+		memset(&tail->magic, MEMORY_ALLOC_PATTERN, sizeof(tail->magic));
+	}
 	hdr = realloc(hdr, sizeof(memory_header_t) + bytes + sizeof(memory_tail_t));
 	tail = ((void*)hdr) + bytes + sizeof(memory_header_t);
 	tail->magic = MEMORY_TAIL_MAGIC;
@@ -585,7 +618,7 @@ void *realloc_hook(void *old, size_t bytes, const void *caller)
 	/* update statistics */
 	hdr->bytes = bytes;
 	hdr->backtrace->destroy(hdr->backtrace);
-	hdr->backtrace = backtrace_create(3);
+	hdr->backtrace = backtrace_create(2);
 
 	/* update header of linked list neighbours */
 	if (hdr->next)
@@ -619,6 +652,7 @@ leak_detective_t *leak_detective_create()
 		.public = {
 			.report = _report,
 			.usage = _usage,
+			.set_state = _set_state,
 			.destroy = _destroy,
 		},
 	);

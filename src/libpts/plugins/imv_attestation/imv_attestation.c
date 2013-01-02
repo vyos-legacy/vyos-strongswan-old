@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -168,13 +168,10 @@ TNC_Result TNC_IMV_NotifyConnectionChange(TNC_IMVID imv_id,
 
 static TNC_Result send_message(TNC_ConnectionID connection_id)
 {
-	pa_tnc_msg_t *msg;
-	pa_tnc_attr_t *attr;
+	linked_list_t *attr_list;
 	imv_state_t *state;
 	imv_attestation_state_t *attestation_state;
 	TNC_Result result;
-	linked_list_t *attr_list;
-	enumerator_t *enumerator;
 
 	if (!imv_attestation->get_state(imv_attestation, connection_id, &state))
 	{
@@ -188,21 +185,8 @@ static TNC_Result send_message(TNC_ConnectionID connection_id)
 	{
 		if (attr_list->get_count(attr_list))
 		{
-			msg = pa_tnc_msg_create();
-
-			/* move PA-TNC attributes to PA-TNC message */
-			enumerator = attr_list->create_enumerator(attr_list);
-			while (enumerator->enumerate(enumerator, &attr))
-			{
-				msg->add_attribute(msg, attr);
-			}
-			enumerator->destroy(enumerator);
-
-			msg->build(msg);
 			result = imv_attestation->send_message(imv_attestation,
-							connection_id, FALSE, 0, TNC_IMCID_ANY,
-							msg->get_encoding(msg));
-			msg->destroy(msg);
+							connection_id, FALSE, 0, TNC_IMCID_ANY,	attr_list);
 		}
 		else
 		{
@@ -230,6 +214,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 {
 	pa_tnc_msg_t *pa_tnc_msg;
 	pa_tnc_attr_t *attr;
+	pen_type_t type;
 	linked_list_t *attr_list;
 	imv_state_t *state;
 	imv_attestation_state_t *attestation_state;
@@ -271,31 +256,31 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 	enumerator = pa_tnc_msg->create_attribute_enumerator(pa_tnc_msg);
 	while (enumerator->enumerate(enumerator, &attr))
 	{
-		if (attr->get_vendor_id(attr) == PEN_IETF)
+		type = attr->get_type(attr);
+
+		if (type.vendor_id == PEN_IETF)
 		{
-			if (attr->get_type(attr) == IETF_ATTR_PA_TNC_ERROR)
+			if (type.type == IETF_ATTR_PA_TNC_ERROR)
 			{
 				ietf_attr_pa_tnc_error_t *error_attr;
-				pen_t error_vendor_id;
-				pa_tnc_error_code_t error_code;
+				pen_type_t error_code;
 				chunk_t msg_info;
 
 				error_attr = (ietf_attr_pa_tnc_error_t*)attr;
-				error_vendor_id = error_attr->get_vendor_id(error_attr);
+				error_code = error_attr->get_error_code(error_attr);
 
-				if (error_vendor_id == PEN_TCG)
+				if (error_code.vendor_id == PEN_TCG)
 				{
-					error_code = error_attr->get_error_code(error_attr);
 					msg_info = error_attr->get_msg_info(error_attr);
 
 					DBG1(DBG_IMV, "received TCG-PTS error '%N'",
-						 pts_error_code_names, error_code);
+						 pts_error_code_names, error_code.type);
 					DBG1(DBG_IMV, "error information: %B", &msg_info);
 
 					result = TNC_RESULT_FATAL;
 				}
 			}
-			else if (attr->get_type(attr) == IETF_ATTR_PRODUCT_INFORMATION)
+			else if (type.type == IETF_ATTR_PRODUCT_INFORMATION)
 			{
 				ietf_attr_product_info_t *attr_cast;
 				char *platform_info;
@@ -305,7 +290,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 				pts->set_platform_info(pts, platform_info);
 			}
 		}
-		else if (attr->get_vendor_id(attr) == PEN_TCG)
+		else if (type.vendor_id == PEN_TCG)
 		{
 			if (!imv_attestation_process(attr, attr_list, attestation_state,
 				supported_algorithms,supported_dh_groups, pts_db, pts_credmgr))
@@ -325,29 +310,14 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 								TNC_IMV_ACTION_RECOMMENDATION_ISOLATE,
 								TNC_IMV_EVALUATION_RESULT_ERROR);
 		return imv_attestation->provide_recommendation(imv_attestation,
-													   connection_id);
+													   connection_id, src_imc_id);
 	}
 
 	if (attr_list->get_count(attr_list))
 	{
-		pa_tnc_msg = pa_tnc_msg_create();
-
-		/* move PA-TNC attributes to PA-TNC message */
-		enumerator = attr_list->create_enumerator(attr_list);
-		while (enumerator->enumerate(enumerator, &attr))
-		{
-			pa_tnc_msg->add_attribute(pa_tnc_msg, attr);
-		}
-		enumerator->destroy(enumerator);
-
-		pa_tnc_msg->build(pa_tnc_msg);
 		result = imv_attestation->send_message(imv_attestation, connection_id,
-										FALSE, 0, TNC_IMCID_ANY,
-										pa_tnc_msg->get_encoding(pa_tnc_msg));
-		
-		pa_tnc_msg->destroy(pa_tnc_msg);
+										FALSE, 0, TNC_IMCID_ANY, attr_list);
 		attr_list->destroy(attr_list);
-		
 		return result;
 	}
 	attr_list->destroy(attr_list);
@@ -360,7 +330,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 								TNC_IMV_EVALUATION_RESULT_ERROR);
 		return imv_attestation->provide_recommendation(imv_attestation,
-													   connection_id);
+													   connection_id, src_imc_id);
 	}
 
 	if (attestation_state->get_handshake_state(attestation_state) ==
@@ -370,12 +340,6 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 		{
 			DBG1(DBG_IMV, "failure due to %d pending file measurements",
 				attestation_state->get_file_meas_request_count(attestation_state));
-			attestation_state->set_measurement_error(attestation_state);
-		}
-		if (attestation_state->get_component_count(attestation_state))
-		{
-			DBG1(DBG_IMV, "failure due to %d components waiting for evidence",
-				 attestation_state->get_component_count(attestation_state));
 			attestation_state->set_measurement_error(attestation_state);
 		}
 		if (attestation_state->get_measurement_error(attestation_state))
@@ -391,7 +355,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 								TNC_IMV_EVALUATION_RESULT_COMPLIANT);
 		}
 		return imv_attestation->provide_recommendation(imv_attestation,
-													   connection_id);
+													   connection_id, src_imc_id);
 	}
 
 	return result;
@@ -446,7 +410,7 @@ TNC_Result TNC_IMV_SolicitRecommendation(TNC_IMVID imv_id,
 		return TNC_RESULT_NOT_INITIALIZED;
 	}
 	return imv_attestation->provide_recommendation(imv_attestation,
-												   connection_id);
+												   connection_id, TNC_IMCID_ANY);
 }
 
 /**

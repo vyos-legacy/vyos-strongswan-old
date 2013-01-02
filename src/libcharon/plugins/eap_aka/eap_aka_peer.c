@@ -81,12 +81,30 @@ struct private_eap_aka_peer_t {
 };
 
 /**
+ * Generate a payload from a message, destroy message
+ */
+static bool generate_payload(simaka_message_t *message, chunk_t data,
+							 eap_payload_t **out)
+{
+	chunk_t chunk;
+	bool ok;
+
+	ok = message->generate(message, data, &chunk);
+	if (ok)
+	{
+		*out = eap_payload_create_data_own(chunk);
+	}
+	message->destroy(message);
+	return ok;
+}
+
+/**
  * Create a AKA_CLIENT_ERROR: "Unable to process"
  */
-static eap_payload_t* create_client_error(private_eap_aka_peer_t *this)
+static bool create_client_error(private_eap_aka_peer_t *this,
+								eap_payload_t **out)
 {
 	simaka_message_t *message;
-	eap_payload_t *out;
 	u_int16_t encoded;
 
 	DBG1(DBG_IKE, "sending client error '%N'",
@@ -97,9 +115,8 @@ static eap_payload_t* create_client_error(private_eap_aka_peer_t *this)
 	encoded = htons(AKA_UNABLE_TO_PROCESS);
 	message->add_attribute(message, AT_CLIENT_ERROR_CODE,
 						   chunk_create((char*)&encoded, sizeof(encoded)));
-	out = eap_payload_create_data_own(message->generate(message, chunk_empty));
-	message->destroy(message);
-	return out;
+
+	return generate_payload(message, chunk_empty, out);
 }
 
 /**
@@ -134,8 +151,11 @@ static status_t process_identity(private_eap_aka_peer_t *this,
 			default:
 				if (!simaka_attribute_skippable(type))
 				{
-					*out = create_client_error(this);
 					enumerator->destroy(enumerator);
+					if (!create_client_error(this, out))
+					{
+						return FAILED;
+					}
 					return NEED_MORE;
 				}
 				break;
@@ -175,9 +195,10 @@ static status_t process_identity(private_eap_aka_peer_t *this,
 	{
 		message->add_attribute(message, AT_IDENTITY, id);
 	}
-	*out = eap_payload_create_data_own(message->generate(message, chunk_empty));
-	message->destroy(message);
-
+	if (!generate_payload(message, chunk_empty, out))
+	{
+		return FAILED;
+	}
 	return NEED_MORE;
 }
 
@@ -210,8 +231,11 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 			default:
 				if (!simaka_attribute_skippable(type))
 				{
-					*out = create_client_error(this);
 					enumerator->destroy(enumerator);
+					if (!create_client_error(this, out))
+					{
+						return FAILED;
+					}
 					return NEED_MORE;
 				}
 				break;
@@ -222,7 +246,10 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 	if (!rand.len || !autn.len)
 	{
 		DBG1(DBG_IKE, "received invalid EAP-AKA challenge message");
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
@@ -237,9 +264,10 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 									AKA_SYNCHRONIZATION_FAILURE, this->crypto);
 		message->add_attribute(message, AT_AUTS,
 							   chunk_create(auts, AKA_AUTS_LEN));
-		*out = eap_payload_create_data_own(message->generate(message,
-										   chunk_empty));
-		message->destroy(message);
+		if (!generate_payload(message, chunk_empty, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 	if (status != SUCCESS)
@@ -248,9 +276,10 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 			 this->permanent, simaka_subtype_names, AKA_AUTHENTICATION_REJECT);
 		message = simaka_message_create(FALSE, in->get_identifier(in), EAP_AKA,
 										AKA_AUTHENTICATION_REJECT, this->crypto);
-		*out = eap_payload_create_data_own(message->generate(message,
-										   chunk_empty));
-		message->destroy(message);
+		if (!generate_payload(message, chunk_empty, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
@@ -261,16 +290,22 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 	}
 	data = chunk_cata("cc", chunk_create(ik, AKA_IK_LEN),
 					  chunk_create(ck, AKA_CK_LEN));
-	free(this->msk.ptr);
-	this->msk = this->crypto->derive_keys_full(this->crypto, id, data, &mk);
+	chunk_clear(&this->msk);
+	if (!this->crypto->derive_keys_full(this->crypto, id, data, &mk, &this->msk))
+	{
+		return FAILED;
+	}
 	memcpy(this->mk, mk.ptr, mk.len);
-	free(mk.ptr);
+	chunk_clear(&mk);
 
 	/* Verify AT_MAC attribute and parse() again after key derivation,
 	 * reading encrypted attributes */
 	if (!in->verify(in, chunk_empty) || !in->parse(in))
 	{
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
@@ -300,8 +335,10 @@ static status_t process_challenge(private_eap_aka_peer_t *this,
 	message = simaka_message_create(FALSE, this->identifier, EAP_AKA,
 									AKA_CHALLENGE, this->crypto);
 	message->add_attribute(message, AT_RES, chunk_create(res, res_len));
-	*out = eap_payload_create_data_own(message->generate(message, chunk_empty));
-	message->destroy(message);
+	if (!generate_payload(message, chunk_empty, out))
+	{
+		return FAILED;
+	}
 	return NEED_MORE;
 }
 
@@ -332,17 +369,26 @@ static status_t process_reauthentication(private_eap_aka_peer_t *this,
 	{
 		DBG1(DBG_IKE, "received %N, but not expected",
 			 simaka_subtype_names, AKA_REAUTHENTICATION);
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
-	this->crypto->derive_keys_reauth(this->crypto,
-									 chunk_create(this->mk, HASH_SIZE_SHA1));
+	if (!this->crypto->derive_keys_reauth(this->crypto,
+								chunk_create(this->mk, HASH_SIZE_SHA1)))
+	{
+		return FAILED;
+	}
 
 	/* verify MAC and parse again with decryption key */
 	if (!in->verify(in, chunk_empty) || !in->parse(in))
 	{
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
@@ -363,8 +409,11 @@ static status_t process_reauthentication(private_eap_aka_peer_t *this,
 			default:
 				if (!simaka_attribute_skippable(type))
 				{
-					*out = create_client_error(this);
 					enumerator->destroy(enumerator);
+					if (!create_client_error(this, out))
+					{
+						return FAILED;
+					}
 					return NEED_MORE;
 				}
 				break;
@@ -375,7 +424,10 @@ static status_t process_reauthentication(private_eap_aka_peer_t *this,
 	if (!nonce.len || !counter.len)
 	{
 		DBG1(DBG_IKE, "EAP-AKA/Request/Reauthentication message incomplete");
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 
@@ -388,10 +440,14 @@ static status_t process_reauthentication(private_eap_aka_peer_t *this,
 	}
 	else
 	{
-		free(this->msk.ptr);
-		this->msk = this->crypto->derive_keys_reauth_msk(this->crypto,
-										this->reauth, counter, nonce,
-										chunk_create(this->mk, HASH_SIZE_SHA1));
+		chunk_clear(&this->msk);
+		if (!this->crypto->derive_keys_reauth_msk(this->crypto,
+						this->reauth, counter, nonce,
+						chunk_create(this->mk, HASH_SIZE_SHA1), &this->msk))
+		{
+			message->destroy(message);
+			return FAILED;
+		}
 		if (id.len)
 		{
 			identification_t *reauth;
@@ -403,8 +459,10 @@ static status_t process_reauthentication(private_eap_aka_peer_t *this,
 		}
 	}
 	message->add_attribute(message, AT_COUNTER, counter);
-	*out = eap_payload_create_data_own(message->generate(message, nonce));
-	message->destroy(message);
+	if (!generate_payload(message, nonce, out))
+	{
+		return FAILED;
+	}
 	return NEED_MORE;
 }
 
@@ -454,13 +512,17 @@ static status_t process_notification(private_eap_aka_peer_t *this,
 	{	/* empty notification reply */
 		message = simaka_message_create(FALSE, this->identifier, EAP_AKA,
 										AKA_NOTIFICATION, this->crypto);
-		*out = eap_payload_create_data_own(message->generate(message,
-															 chunk_empty));
-		message->destroy(message);
+		if (!generate_payload(message, chunk_empty, out))
+		{
+			return FAILED;
+		}
 	}
 	else
 	{
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 	}
 	return NEED_MORE;
 }
@@ -478,13 +540,19 @@ METHOD(eap_method_t, process, status_t,
 	message = simaka_message_create_from_payload(in->get_data(in), this->crypto);
 	if (!message)
 	{
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 	if (!message->parse(message))
 	{
 		message->destroy(message);
-		*out = create_client_error(this);
+		if (!create_client_error(this, out))
+		{
+			return FAILED;
+		}
 		return NEED_MORE;
 	}
 	switch (message->get_subtype(message))
@@ -504,8 +572,14 @@ METHOD(eap_method_t, process, status_t,
 		default:
 			DBG1(DBG_IKE, "unable to process EAP-AKA subtype %N",
 				 simaka_subtype_names, message->get_subtype(message));
-			*out = create_client_error(this);
-			status = NEED_MORE;
+			if (!create_client_error(this, out))
+			{
+				status = FAILED;
+			}
+			else
+			{
+				status = NEED_MORE;
+			}
 			break;
 	}
 	message->destroy(message);

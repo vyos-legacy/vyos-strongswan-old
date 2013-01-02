@@ -53,11 +53,6 @@ struct private_eap_radius_dae_t {
 	int fd;
 
 	/**
-	 * Listen job
-	 */
-	callback_job_t *job;
-
-	/**
 	 * RADIUS shared secret for DAE exchanges
 	 */
 	chunk_t secret;
@@ -189,11 +184,16 @@ static void send_response(private_eap_radius_dae_t *this,
 
 	response = radius_message_create(code);
 	response->set_identifier(response, request->get_identifier(request));
-	response->sign(response, request->get_authenticator(request),
-				   this->secret, this->hasher, this->signer, NULL, FALSE);
-
-	send_message(this, response, client);
-	save_retransmit(this, response, client);
+	if (response->sign(response, request->get_authenticator(request),
+					   this->secret, this->hasher, this->signer, NULL, FALSE))
+	{
+		send_message(this, response, client);
+		save_retransmit(this, response, client);
+	}
+	else
+	{
+		response->destroy(response);
+	}
 }
 
 /**
@@ -456,9 +456,11 @@ static bool open_socket(private_eap_radius_dae_t *this)
 
 	host = host_create_from_string(
 				lib->settings->get_str(lib->settings,
-					"charon.plugins.eap-radius.dae.listen", "0.0.0.0"),
+						"%s.plugins.eap-radius.dae.listen", "0.0.0.0",
+						charon->name),
 				lib->settings->get_int(lib->settings,
-					"charon.plugins.eap-radius.dae.port", RADIUS_DAE_PORT));
+						"%s.plugins.eap-radius.dae.port", RADIUS_DAE_PORT,
+						charon->name));
 	if (!host)
 	{
 		DBG1(DBG_CFG, "invalid RADIUS DAE listen address");
@@ -479,10 +481,6 @@ static bool open_socket(private_eap_radius_dae_t *this)
 METHOD(eap_radius_dae_t, destroy, void,
 	private_eap_radius_dae_t *this)
 {
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	if (this->fd != -1)
 	{
 		close(this->fd);
@@ -508,7 +506,8 @@ eap_radius_dae_t *eap_radius_dae_create(eap_radius_accounting_t *accounting)
 		.fd = -1,
 		.secret = {
 			.ptr = lib->settings->get_str(lib->settings,
-							"charon.plugins.eap-radius.dae.secret", NULL),
+									"%s.plugins.eap-radius.dae.secret", NULL,
+									charon->name),
 		},
 		.hasher = lib->crypto->create_hasher(lib->crypto, HASH_MD5),
 		.signer = lib->crypto->create_signer(lib->crypto, AUTH_HMAC_MD5_128),
@@ -527,17 +526,16 @@ eap_radius_dae_t *eap_radius_dae_create(eap_radius_accounting_t *accounting)
 		return NULL;
 	}
 	this->secret.len = strlen(this->secret.ptr);
-	this->signer->set_key(this->signer, this->secret);
-
-	if (!open_socket(this))
+	if (!this->signer->set_key(this->signer, this->secret) ||
+		!open_socket(this))
 	{
 		destroy(this);
 		return NULL;
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

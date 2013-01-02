@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010 Tobias Brunner
+ * Copyright (C) 2006-2012 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005 Jan Hutter
@@ -17,21 +17,17 @@
  */
 
 #include <stdio.h>
-#ifdef HAVE_PRCTL
-#include <sys/prctl.h>
-#endif
 #define _POSIX_PTHREAD_SEMANTICS /* for two param sigwait on OpenSolaris */
 #include <signal.h>
 #undef _POSIX_PTHREAD_SEMANTICS
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <syslog.h>
 #include <errno.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <pwd.h>
-#include <grp.h>
 
 #include <hydra.h>
 #include <daemon.h>
@@ -143,67 +139,24 @@ static void run()
 }
 
 /**
- * drop daemon capabilities
- */
-static bool drop_capabilities()
-{
-#ifdef HAVE_PRCTL
-	prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
-#endif
-
-	if (setgid(charon->gid) != 0)
-	{
-		DBG1(DBG_DMN, "change to unprivileged group failed");
-		return FALSE;
-	}
-	if (setuid(charon->uid) != 0)
-	{
-		DBG1(DBG_DMN, "change to unprivileged user failed");
-		return FALSE;
-	}
-	if (!charon->drop_capabilities(charon))
-	{
-		DBG1(DBG_DMN, "unable to drop daemon capabilities");
-		return FALSE;
-	}
-	return TRUE;
-}
-
-/**
  * lookup UID and GID
  */
 static bool lookup_uid_gid()
 {
 #ifdef IPSEC_USER
+	if (!charon->caps->resolve_uid(charon->caps, IPSEC_USER))
 	{
-		char buf[1024];
-		struct passwd passwd, *pwp;
-
-		if (getpwnam_r(IPSEC_USER, &passwd, buf, sizeof(buf), &pwp) != 0 ||
-			pwp == NULL)
-		{
-			DBG1(DBG_DMN, "resolving user '"IPSEC_USER"' failed");
-			return FALSE;
-		}
-		charon->uid = pwp->pw_uid;
+		return FALSE;
 	}
 #endif
 #ifdef IPSEC_GROUP
+	if (!charon->caps->resolve_gid(charon->caps, IPSEC_GROUP))
 	{
-		char buf[1024];
-		struct group group, *grp;
-
-		if (getgrnam_r(IPSEC_GROUP, &group, buf, sizeof(buf), &grp) != 0 ||
-			grp == NULL)
-		{
-			DBG1(DBG_DMN, "resolving group '"IPSEC_GROUP"' failed");
-			return FALSE;
-		}
-		charon->gid = grp->gr_gid;
+		return FALSE;
 	}
 #endif
 #ifdef ANDROID
-	charon->uid = AID_VPN;
+	charon->caps->set_uid(charon->caps, AID_VPN);
 #endif
 	return TRUE;
 }
@@ -259,7 +212,9 @@ static bool check_pidfile()
 	pidfile = fopen(PID_FILE, "w");
 	if (pidfile)
 	{
-		ignore_result(fchown(fileno(pidfile), charon->uid, charon->gid));
+		ignore_result(fchown(fileno(pidfile),
+							 charon->caps->get_uid(charon->caps),
+							 charon->caps->get_gid(charon->caps)));
 		fprintf(pidfile, "%d\n", getpid());
 		fflush(pidfile);
 	}
@@ -335,7 +290,7 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 									   facility, debug_lower_names, group));
 		}
 		charon->sys_loggers->insert_last(charon->sys_loggers, sys_logger);
-		charon->bus->add_listener(charon->bus, &sys_logger->listener);
+		charon->bus->add_logger(charon->bus, &sys_logger->logger);
 	}
 	enumerator->destroy(enumerator);
 
@@ -385,7 +340,7 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 									   filename, debug_lower_names, group));
 		}
 		charon->file_loggers->insert_last(charon->file_loggers, file_logger);
-		charon->bus->add_listener(charon->bus, &file_logger->listener);
+		charon->bus->add_logger(charon->bus, &file_logger->logger);
 
 	}
 	enumerator->destroy(enumerator);
@@ -395,11 +350,9 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 	{
 		/* set up default stdout file_logger */
 		file_logger = file_logger_create(stdout, NULL, FALSE);
-		charon->bus->add_listener(charon->bus, &file_logger->listener);
 		charon->file_loggers->insert_last(charon->file_loggers, file_logger);
 		/* set up default daemon sys_logger */
 		sys_logger = sys_logger_create(LOG_DAEMON, FALSE);
-		charon->bus->add_listener(charon->bus, &sys_logger->listener);
 		charon->sys_loggers->insert_last(charon->sys_loggers, sys_logger);
 		for (group = 0; group < DBG_MAX; group++)
 		{
@@ -409,12 +362,14 @@ static void initialize_loggers(bool use_stderr, level_t levels[])
 				file_logger->set_level(file_logger, group, levels[group]);
 			}
 		}
+		charon->bus->add_logger(charon->bus, &file_logger->logger);
+		charon->bus->add_logger(charon->bus, &sys_logger->logger);
 
 		/* set up default auth sys_logger */
 		sys_logger = sys_logger_create(LOG_AUTHPRIV, FALSE);
-		charon->bus->add_listener(charon->bus, &sys_logger->listener);
-		charon->sys_loggers->insert_last(charon->sys_loggers, sys_logger);
 		sys_logger->set_level(sys_logger, DBG_ANY, LEVEL_AUDIT);
+		charon->sys_loggers->insert_last(charon->sys_loggers, sys_logger);
+		charon->bus->add_logger(charon->bus, &sys_logger->logger);
 	}
 }
 
@@ -432,7 +387,7 @@ static void usage(const char *msg)
 					"         [--version]\n"
 					"         [--use-syslog]\n"
 					"         [--debug-<type> <level>]\n"
-					"           <type>:  log context type (dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|lib)\n"
+					"           <type>:  log context type (dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|esp|lib)\n"
 					"           <level>: log verbosity (-1 = silent, 0 = audit, 1 = control,\n"
 					"                                    2 = controlmore, 3 = raw, 4 = private)\n"
 					"\n"
@@ -448,6 +403,7 @@ int main(int argc, char *argv[])
 	bool use_syslog = FALSE;
 	level_t levels[DBG_MAX];
 	int group, status = SS_RC_INITIALIZATION_FAILED;
+	struct utsname utsname;
 
 	/* logging for library during initialization, as we have no bus yet */
 	dbg = dbg_stderr;
@@ -475,7 +431,7 @@ int main(int argc, char *argv[])
 		exit(SS_RC_INITIALIZATION_FAILED);
 	}
 
-	if (!libcharon_init())
+	if (!libcharon_init("charon"))
 	{
 		dbg_stderr(DBG_DMN, 1, "initialization failed - aborting charon");
 		goto deinit;
@@ -510,6 +466,7 @@ int main(int argc, char *argv[])
 			{ "debug-imv", required_argument, &group, DBG_IMV },
 			{ "debug-pts", required_argument, &group, DBG_PTS },
 			{ "debug-tls", required_argument, &group, DBG_TLS },
+			{ "debug-esp", required_argument, &group, DBG_ESP },
 			{ "debug-lib", required_argument, &group, DBG_LIB },
 			{ 0,0,0,0 }
 		};
@@ -550,8 +507,24 @@ int main(int argc, char *argv[])
 
 	initialize_loggers(!use_syslog, levels);
 
+	if (uname(&utsname) != 0)
+	{
+		memset(&utsname, 0, sizeof(utsname));
+	}
+	DBG1(DBG_DMN, "Starting IKE charon daemon (strongSwan "VERSION", %s %s, %s)",
+		  utsname.sysname, utsname.release, utsname.machine);
+	if (lib->integrity)
+	{
+		DBG1(DBG_DMN, "integrity tests enabled:");
+		DBG1(DBG_DMN, "lib    'libstrongswan': passed file and segment integrity tests");
+		DBG1(DBG_DMN, "lib    'libhydra': passed file and segment integrity tests");
+		DBG1(DBG_DMN, "lib    'libcharon': passed file and segment integrity tests");
+		DBG1(DBG_DMN, "daemon 'charon': passed file integrity test");
+	}
+
 	/* initialize daemon */
-	if (!charon->initialize(charon))
+	if (!charon->initialize(charon,
+				lib->settings->get_str(lib->settings, "charon.load", PLUGINS)))
 	{
 		DBG1(DBG_DMN, "initialization failed - aborting charon");
 		goto deinit;
@@ -564,7 +537,7 @@ int main(int argc, char *argv[])
 		goto deinit;
 	}
 
-	if (!drop_capabilities())
+	if (!charon->caps->drop(charon->caps))
 	{
 		DBG1(DBG_DMN, "capability dropping failed - aborting charon");
 		goto deinit;

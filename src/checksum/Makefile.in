@@ -40,24 +40,24 @@ noinst_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_LIBHYDRA_TRUE@am__append_2 = $(top_builddir)/src/libhydra/libhydra.la
 @USE_LIBHYDRA_TRUE@am__append_3 = $(DESTDIR)$(ipseclibdir)/libhydra.so
 @MONOLITHIC_FALSE@@USE_LIBHYDRA_TRUE@am__append_4 = -DH_PLUGINS=\""${h_plugins}\""
-@USE_TLS_TRUE@am__append_5 = $(top_builddir)/src/libtls/libtls.la
-@USE_TLS_TRUE@am__append_6 = $(DESTDIR)$(ipseclibdir)/libtls.so
-@USE_RADIUS_TRUE@am__append_7 = $(top_builddir)/src/libradius/libradius.la
-@USE_RADIUS_TRUE@am__append_8 = $(DESTDIR)$(ipseclibdir)/libradius.so
-@USE_LIBTNCCS_TRUE@am__append_9 = $(top_builddir)/src/libtnccs/libtnccs.la
-@USE_LIBTNCCS_TRUE@am__append_10 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
-@USE_SIMAKA_TRUE@am__append_11 = $(top_builddir)/src/libsimaka/libsimaka.la
-@USE_SIMAKA_TRUE@am__append_12 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
-@USE_IMCV_TRUE@am__append_13 = $(top_builddir)/src/libimcv/libimcv.la
-@USE_IMCV_TRUE@am__append_14 = $(DESTDIR)$(ipseclibdir)/libimcv.so
-@USE_PTS_TRUE@am__append_15 = $(top_builddir)/src/libpts/libpts.la
-@USE_PTS_TRUE@am__append_16 = $(DESTDIR)$(ipseclibdir)/libpts.so
-@USE_CHARON_TRUE@am__append_17 = $(top_builddir)/src/libcharon/libcharon.la
-@USE_CHARON_TRUE@am__append_18 = $(DESTDIR)$(ipseclibdir)/libcharon.so
-@USE_CHARON_TRUE@am__append_19 = $(top_builddir)/src/charon/.libs/charon
-@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_20 = -DC_PLUGINS=\""${c_plugins}\""
-@USE_PLUTO_TRUE@am__append_21 = $(top_builddir)/src/pluto/.libs/pluto
-@USE_PLUTO_TRUE@am__append_22 = -DP_PLUGINS=\""${p_plugins}\""
+@USE_LIBIPSEC_TRUE@am__append_5 = $(top_builddir)/src/libipsec/libipsec.la
+@USE_LIBIPSEC_TRUE@am__append_6 = $(DESTDIR)$(ipseclibdir)/libipsec.so
+@USE_TLS_TRUE@am__append_7 = $(top_builddir)/src/libtls/libtls.la
+@USE_TLS_TRUE@am__append_8 = $(DESTDIR)$(ipseclibdir)/libtls.so
+@USE_RADIUS_TRUE@am__append_9 = $(top_builddir)/src/libradius/libradius.la
+@USE_RADIUS_TRUE@am__append_10 = $(DESTDIR)$(ipseclibdir)/libradius.so
+@USE_LIBTNCCS_TRUE@am__append_11 = $(top_builddir)/src/libtnccs/libtnccs.la
+@USE_LIBTNCCS_TRUE@am__append_12 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
+@USE_SIMAKA_TRUE@am__append_13 = $(top_builddir)/src/libsimaka/libsimaka.la
+@USE_SIMAKA_TRUE@am__append_14 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
+@USE_IMCV_TRUE@am__append_15 = $(top_builddir)/src/libimcv/libimcv.la
+@USE_IMCV_TRUE@am__append_16 = $(DESTDIR)$(ipseclibdir)/libimcv.so
+@USE_PTS_TRUE@am__append_17 = $(top_builddir)/src/libpts/libpts.la
+@USE_PTS_TRUE@am__append_18 = $(DESTDIR)$(ipseclibdir)/libpts.so
+@USE_CHARON_TRUE@am__append_19 = $(top_builddir)/src/libcharon/libcharon.la
+@USE_CHARON_TRUE@am__append_20 = $(DESTDIR)$(ipseclibdir)/libcharon.so
+@USE_CHARON_TRUE@am__append_21 = $(top_builddir)/src/charon/.libs/charon
+@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_22 = -DC_PLUGINS=\""${c_plugins}\""
 @USE_TOOLS_TRUE@am__append_23 =  \
 @USE_TOOLS_TRUE@	$(top_builddir)/src/openac/.libs/openac \
 @USE_TOOLS_TRUE@	$(top_builddir)/src/pki/.libs/pki \
@@ -79,6 +79,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -119,7 +120,7 @@ checksum_builder_DEPENDENCIES =  \
 	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(am__DEPENDENCIES_1)
-DEFAULT_INCLUDES = -I.@am__isrc@
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -145,6 +146,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -239,11 +241,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -260,11 +265,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -280,6 +286,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -289,7 +296,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -337,7 +343,7 @@ INCLUDES = \
 	-I$(top_srcdir)/src/libcharon
 
 AM_CFLAGS = -DPLUGINDIR=\"${plugindir}\" -rdynamic $(am__append_1) \
-	$(am__append_4) $(am__append_20) $(am__append_22)
+	$(am__append_4) $(am__append_22)
 
 # we keep track of build dependencies in deps and use libs to store the paths
 # to the installed libraries. for executables we use the built files directly
@@ -345,13 +351,13 @@ AM_CFLAGS = -DPLUGINDIR=\"${plugindir}\" -rdynamic $(am__append_1) \
 deps = $(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(am__append_2) $(am__append_5) $(am__append_7) \
 	$(am__append_9) $(am__append_11) $(am__append_13) \
-	$(am__append_15) $(am__append_17)
+	$(am__append_15) $(am__append_17) $(am__append_19)
 libs = $(DESTDIR)$(ipseclibdir)/libstrongswan.so $(am__append_3) \
 	$(am__append_6) $(am__append_8) $(am__append_10) \
 	$(am__append_12) $(am__append_14) $(am__append_16) \
-	$(am__append_18)
-exes = $(am__append_19) $(am__append_21) $(am__append_23) \
-	$(am__append_24) $(am__append_25)
+	$(am__append_18) $(am__append_20)
+exes = $(am__append_21) $(am__append_23) $(am__append_24) \
+	$(am__append_25)
 all: all-am
 
 .SUFFIXES:

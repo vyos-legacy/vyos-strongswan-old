@@ -83,13 +83,14 @@ static void append_data(private_padlock_sha1_hasher_t *this, chunk_t data)
 	this->data.len += data.len;
 }
 
-METHOD(hasher_t, reset, void,
+METHOD(hasher_t, reset, bool,
 	private_padlock_sha1_hasher_t *this)
 {
 	chunk_free(&this->data);
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash, void,
+METHOD(hasher_t, get_hash, bool,
 	private_padlock_sha1_hasher_t *this, chunk_t chunk, u_int8_t *hash)
 {
 	if (hash)
@@ -109,20 +110,18 @@ METHOD(hasher_t, get_hash, void,
 	{
 		append_data(this, chunk);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash, void,
+METHOD(hasher_t, allocate_hash, bool,
 	private_padlock_sha1_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	if (hash)
 	{
 		*hash = chunk_alloc(HASH_SIZE_SHA1);
-		get_hash(this, chunk, hash->ptr);
+		return get_hash(this, chunk, hash->ptr);
 	}
-	else
-	{
-		get_hash(this, chunk, NULL);
-	}
+	return get_hash(this, chunk, NULL);
 }
 
 METHOD(hasher_t, get_hash_size, size_t,

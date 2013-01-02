@@ -42,11 +42,6 @@ struct private_uci_control_t {
 	 * Public part
 	 */
 	uci_control_t public;
-
-	/**
-	 * Job
-	 */
-	callback_job_t *job;
 };
 
 /**
@@ -84,7 +79,7 @@ static void status(private_uci_control_t *this, char *name)
 	FILE *out = NULL;
 
 	configs = charon->backends->create_peer_cfg_enumerator(charon->backends,
-														NULL, NULL, NULL, NULL);
+											NULL, NULL, NULL, NULL, IKE_ANY);
 	while (configs->enumerate(configs, &peer_cfg))
 	{
 		if (name && !streq(name, peer_cfg->get_name(peer_cfg)))
@@ -269,7 +264,6 @@ static job_requeue_t receive(private_uci_control_t *this)
 METHOD(uci_control_t, destroy, void,
 	private_uci_control_t *this)
 {
-	this->job->cancel(this->job);
 	unlink(FIFO_FILE);
 	free(this);
 }
@@ -295,9 +289,10 @@ uci_control_t *uci_control_create()
 	}
 	else
 	{
-		this->job = callback_job_create_with_prio((callback_job_cb_t)receive,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-		lib->processor->queue_job(lib->processor, (job_t*)this->job);
+		lib->processor->queue_job(lib->processor,
+			(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive,
+							this, NULL, (callback_job_cancel_t)return_false,
+							JOB_PRIO_CRITICAL));
 	}
 	return &this->public;
 }

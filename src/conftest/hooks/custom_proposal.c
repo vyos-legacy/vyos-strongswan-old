@@ -19,7 +19,6 @@
 
 #include <encoding/payloads/sa_payload.h>
 #include <config/proposal.h>
-#include <crypto/proposal/proposal_keywords.h>
 
 typedef struct private_custom_proposal_t private_custom_proposal_t;
 
@@ -91,7 +90,7 @@ static linked_list_t* load_proposals(private_custom_proposal_t *this,
 			alg = strtoul(value, &end, 10);
 			if (end == value || errno)
 			{
-				token = proposal_get_token(value, strlen(value));
+				token = lib->proposal->get_token(lib->proposal, value);
 				if (!token)
 				{
 					DBG1(DBG_CFG, "unknown algorithm: '%s', skipped", value);
@@ -111,9 +110,9 @@ static linked_list_t* load_proposals(private_custom_proposal_t *this,
 
 METHOD(listener_t, message, bool,
 	private_custom_proposal_t *this, ike_sa_t *ike_sa, message_t *message,
-	bool incoming)
+	bool incoming, bool plain)
 {
-	if (!incoming &&
+	if (!incoming && plain &&
 		message->get_request(message) == this->req &&
 		message->get_message_id(message) == this->id)
 	{
@@ -145,7 +144,7 @@ METHOD(listener_t, message, bool,
 										   proposal->get_protocol(proposal),
 										   proposal->get_spi(proposal));
 				DBG1(DBG_CFG, "injecting custom proposal: %#P", new_props);
-				new = sa_payload_create_from_proposal_list(new_props);
+				new = sa_payload_create_from_proposals_v2(new_props);
 				message->add_payload(message, (payload_t*)new);
 				new_props->destroy_offset(new_props, offsetof(proposal_t, destroy));
 			}

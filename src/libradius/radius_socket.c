@@ -148,8 +148,11 @@ METHOD(radius_socket_t, request, radius_message_t*,
 	/* set Message Identifier */
 	request->set_identifier(request, this->identifier++);
 	/* sign the request */
-	request->sign(request, NULL, this->secret, this->hasher, this->signer,
-						   rng, rng != NULL);
+	if (!request->sign(request, NULL, this->secret, this->hasher, this->signer,
+					   rng, rng != NULL))
+	{
+		return NULL;
+	}
 
 	if (!check_connection(this, fd, port))
 	{
@@ -257,8 +260,11 @@ static chunk_t decrypt_mppe_key(private_radius_socket_t *this, u_int16_t salt,
 	while (c < C.ptr + C.len)
 	{
 		/* b(i) = MD5(S + c(i-1)) */
-		this->hasher->get_hash(this->hasher, this->secret, NULL);
-		this->hasher->get_hash(this->hasher, seed, p);
+		if (!this->hasher->get_hash(this->hasher, this->secret, NULL) ||
+			!this->hasher->get_hash(this->hasher, seed, p))
+		{
+			return chunk_empty;
+		}
 
 		/* p(i) = b(i) xor c(1) */
 		memxor(p, c, HASH_SIZE_MD5);
@@ -358,14 +364,14 @@ radius_socket_t *radius_socket_create(char *address, u_int16_t auth_port,
 		.rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK),
 	);
 
-	if (!this->hasher || !this->signer || !this->rng)
+	if (!this->hasher || !this->signer || !this->rng ||
+		!this->signer->set_key(this->signer, secret))
 	{
 		DBG1(DBG_CFG, "RADIUS initialization failed, HMAC/MD5/RNG required");
 		destroy(this);
 		return NULL;
 	}
 	this->secret = secret;
-	this->signer->set_key(this->signer, secret);
 	/* we use a random identifier, helps if we restart often */
 	this->identifier = random();
 

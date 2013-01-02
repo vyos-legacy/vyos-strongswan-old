@@ -124,6 +124,11 @@ struct private_child_sa_t {
 	child_sa_state_t state;
 
 	/**
+	 * TRUE if this CHILD_SA is used to install trap policies
+	 */
+	bool trap;
+
+	/**
 	 * Specifies if UDP encapsulation is enabled (NAT traversal)
 	 */
 	bool encap;
@@ -526,6 +531,16 @@ METHOD(child_sa_t, get_usestats, void,
 	}
 }
 
+METHOD(child_sa_t, get_mark, mark_t,
+	private_child_sa_t *this, bool inbound)
+{
+	if (inbound)
+	{
+		return this->mark_in;
+	}
+	return this->mark_out;
+}
+
 METHOD(child_sa_t, get_lifetime, time_t,
 	   private_child_sa_t *this, bool hard)
 {
@@ -617,7 +632,14 @@ METHOD(child_sa_t, install, status_t,
 	now = time_monotonic(NULL);
 	if (lifetime->time.rekey)
 	{
-		this->rekey_time = now + lifetime->time.rekey;
+		if (this->rekey_time)
+		{
+			this->rekey_time = min(this->rekey_time, now + lifetime->time.rekey);
+		}
+		else
+		{
+			this->rekey_time = now + lifetime->time.rekey;
+		}
 	}
 	if (lifetime->time.life)
 	{
@@ -757,8 +779,11 @@ METHOD(child_sa_t, add_policies, status_t,
 			other_sa.ah.spi = this->other_spi;
 		}
 
-		priority = this->state == CHILD_CREATED ? POLICY_PRIORITY_ROUTED
-												: POLICY_PRIORITY_DEFAULT;
+		/* if we're not in state CHILD_INSTALLING (i.e. if there is no SAD
+		 * entry) we install a trap policy */
+		this->trap = this->state == CHILD_CREATED;
+		priority = this->trap ? POLICY_PRIORITY_ROUTED
+							  : POLICY_PRIORITY_DEFAULT;
 
 		/* enumerate pairs of traffic selectors */
 		enumerator = create_policy_enumerator(this);
@@ -787,16 +812,25 @@ METHOD(child_sa_t, add_policies, status_t,
 		enumerator->destroy(enumerator);
 	}
 
-	if (status == SUCCESS && this->state == CHILD_CREATED)
-	{	/* switch to routed state if no SAD entry set up */
+	if (status == SUCCESS && this->trap)
+	{
 		set_state(this, CHILD_ROUTED);
 	}
 	return status;
 }
 
+/**
+ * Callback to reinstall a virtual IP
+ */
+static void reinstall_vip(host_t *vip, host_t *me)
+{
+	hydra->kernel_interface->del_ip(hydra->kernel_interface, vip);
+	hydra->kernel_interface->add_ip(hydra->kernel_interface, vip, me);
+}
+
 METHOD(child_sa_t, update, status_t,
-	   private_child_sa_t *this,  host_t *me, host_t *other, host_t *vip,
-	   bool encap)
+	private_child_sa_t *this,  host_t *me, host_t *other, linked_list_t *vips,
+	bool encap)
 {
 	child_sa_state_t old;
 	bool transport_proxy_mode;
@@ -902,13 +936,7 @@ METHOD(child_sa_t, update, status_t,
 
 				/* we reinstall the virtual IP to handle interface roaming
 				 * correctly */
-				if (vip)
-				{
-					hydra->kernel_interface->del_ip(hydra->kernel_interface,
-													vip);
-					hydra->kernel_interface->add_ip(hydra->kernel_interface,
-													vip, me);
-				}
+				vips->invoke_function(vips, (void*)reinstall_vip, me);
 
 				/* reinstall updated policies */
 				install_policies_internal(this, me, other, my_ts, other_ts,
@@ -960,8 +988,7 @@ METHOD(child_sa_t, destroy, void,
 	traffic_selector_t *my_ts, *other_ts;
 	policy_priority_t priority;
 
-	priority = this->state == CHILD_ROUTED ? POLICY_PRIORITY_ROUTED
-										   : POLICY_PRIORITY_DEFAULT;
+	priority = this->trap ? POLICY_PRIORITY_ROUTED : POLICY_PRIORITY_DEFAULT;
 
 	set_state(this, CHILD_DESTROYING);
 
@@ -1038,6 +1065,7 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 			.set_proposal = _set_proposal,
 			.get_lifetime = _get_lifetime,
 			.get_usestats = _get_usestats,
+			.get_mark = _get_mark,
 			.has_encap = _has_encap,
 			.get_ipcomp = _get_ipcomp,
 			.set_ipcomp = _set_ipcomp,
@@ -1079,6 +1107,15 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 		this->reqid = rekey ? rekey : ++reqid;
 	}
 
+	if (this->mark_in.value == MARK_REQID)
+	{
+		this->mark_in.value = this->reqid;
+	}
+	if (this->mark_out.value == MARK_REQID)
+	{
+		this->mark_out.value = this->reqid;
+	}
+
 	/* MIPv6 proxy transport mode sets SA endpoints to TS hosts */
 	if (config->get_mode(config) == MODE_TRANSPORT &&
 		config->use_proxy_mode(config))
@@ -1088,12 +1125,14 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 		chunk_t addr;
 		host_t *host;
 		enumerator_t *enumerator;
-		linked_list_t *my_ts_list, *other_ts_list;
+		linked_list_t *my_ts_list, *other_ts_list, *list;
 		traffic_selector_t *my_ts, *other_ts;
 
 		this->mode = MODE_TRANSPORT;
 
-		my_ts_list = config->get_traffic_selectors(config, TRUE, NULL, me);
+		list = linked_list_create_with_items(me, NULL);
+		my_ts_list = config->get_traffic_selectors(config, TRUE, NULL, list);
+		list->destroy(list);
 		enumerator = my_ts_list->create_enumerator(my_ts_list);
 		if (enumerator->enumerate(enumerator, &my_ts))
 		{
@@ -1114,7 +1153,9 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 		enumerator->destroy(enumerator);
 		my_ts_list->destroy_offset(my_ts_list, offsetof(traffic_selector_t, destroy));
 
-		other_ts_list = config->get_traffic_selectors(config, FALSE, NULL, other);
+		list = linked_list_create_with_items(other, NULL);
+		other_ts_list = config->get_traffic_selectors(config, FALSE, NULL, list);
+		list->destroy(list);
 		enumerator = other_ts_list->create_enumerator(other_ts_list);
 		if (enumerator->enumerate(enumerator, &other_ts))
 		{

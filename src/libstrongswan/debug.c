@@ -33,6 +33,8 @@ ENUM(debug_names, DBG_DMN, DBG_LIB,
 	"IMV",
 	"PTS",
 	"TLS",
+	"APP",
+	"ESP",
 	"LIB",
 );
 
@@ -52,6 +54,8 @@ ENUM(debug_lower_names, DBG_DMN, DBG_LIB,
 	"imv",
 	"pts",
 	"tls",
+	"app",
+	"esp",
 	"lib",
 );
 

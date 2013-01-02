@@ -289,7 +289,8 @@ static bool load_hooks()
 		pos = strchr(name, '-');
 		if (pos)
 		{
-			snprintf(buf, sizeof(buf), "%.*s_hook_create", pos - name, name);
+			snprintf(buf, sizeof(buf), "%.*s_hook_create", (int)(pos - name),
+					 name);
 		}
 		else
 		{
@@ -392,7 +393,7 @@ static void load_loggers(file_logger_t *logger)
 			}
 			logger = file_logger_create(file, NULL, FALSE);
 			load_log_levels(logger, section);
-			charon->bus->add_listener(charon->bus, &logger->listener);
+			charon->bus->add_logger(charon->bus, &logger->logger);
 			charon->file_loggers->insert_last(charon->file_loggers, logger);
 		}
 	}
@@ -422,7 +423,7 @@ int main(int argc, char *argv[])
 		library_deinit();
 		return SS_RC_INITIALIZATION_FAILED;
 	}
-	if (!libcharon_init())
+	if (!libcharon_init("conftest"))
 	{
 		libcharon_deinit();
 		libhydra_deinit();
@@ -436,7 +437,7 @@ int main(int argc, char *argv[])
 
 	logger = file_logger_create(stdout, NULL, FALSE);
 	logger->set_level(logger, DBG_ANY, LEVEL_CTRL);
-	charon->bus->add_listener(charon->bus, &logger->listener);
+	charon->bus->add_logger(charon->bus, &logger->logger);
 	charon->file_loggers->insert_last(charon->file_loggers, logger);
 
 	lib->credmgr->add_set(lib->credmgr, &conftest->creds->set);
@@ -488,7 +489,7 @@ int main(int argc, char *argv[])
 	{
 		return 1;
 	}
-	if (!charon->initialize(charon))
+	if (!charon->initialize(charon, PLUGINS))
 	{
 		return 1;
 	}

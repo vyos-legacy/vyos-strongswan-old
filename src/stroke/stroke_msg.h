@@ -152,16 +152,18 @@ struct stroke_end_t {
 	char *ca;
 	char *ca2;
 	char *groups;
+	char *groups2;
 	char *cert_policy;
 	char *updown;
 	char *address;
 	u_int16_t ikeport;
 	char *sourceip;
-	int sourceip_mask;
+	char *dns;
 	char *subnets;
 	int sendcert;
 	int hostaccess;
 	int tohost;
+	int allow_any;
 	u_int8_t protocol;
 	u_int16_t port;
 };
@@ -242,15 +244,13 @@ struct stroke_msg_t {
 		/* data for STR_ADD_CONN */
 		struct {
 			char *name;
-			int ikev2;
-			/* next three are deprecated, use stroke_end_t.auth instead */
-			int auth_method;
-			u_int32_t eap_type;
-			u_int32_t eap_vendor;
+			int version;
 			char *eap_identity;
 			char *aaa_identity;
+			char *xauth_identity;
 			int mode;
 			int mobike;
+			int aggressive;
 			int force_encap;
 			int ipcomp;
 			time_t inactivity;
@@ -280,6 +280,7 @@ struct stroke_msg_t {
 			} rekey;
 			struct {
 				time_t delay;
+				time_t timeout;
 				int action;
 			} dpd;
 			struct {

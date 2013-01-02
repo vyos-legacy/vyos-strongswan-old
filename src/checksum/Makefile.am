@@ -40,6 +40,11 @@ if !MONOLITHIC
 endif
 endif
 
+if USE_LIBIPSEC
+  deps += $(top_builddir)/src/libipsec/libipsec.la
+  libs += $(DESTDIR)$(ipseclibdir)/libipsec.so
+endif
+
 if USE_TLS
   deps += $(top_builddir)/src/libtls/libtls.la
   libs += $(DESTDIR)$(ipseclibdir)/libtls.so
@@ -77,11 +82,6 @@ if USE_CHARON
 if !MONOLITHIC
   AM_CFLAGS += -DC_PLUGINS=\""${c_plugins}\""
 endif
-endif
-
-if USE_PLUTO
-  exes += $(top_builddir)/src/pluto/.libs/pluto
-  AM_CFLAGS += -DP_PLUGINS=\""${p_plugins}\""
 endif
 
 if USE_TOOLS

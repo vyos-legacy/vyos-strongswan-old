@@ -286,14 +286,17 @@ METHOD(radius_message_t, add, void,
 	this->msg->length = htons(ntohs(this->msg->length) + attribute->length);
 }
 
-METHOD(radius_message_t, sign, void,
+METHOD(radius_message_t, sign, bool,
 	private_radius_message_t *this, u_int8_t *req_auth, chunk_t secret,
 	hasher_t *hasher, signer_t *signer, rng_t *rng, bool msg_auth)
 {
 	if (rng)
 	{
 		/* build Request-Authenticator */
-		rng->get_bytes(rng, HASH_SIZE_MD5, this->msg->authenticator);
+		if (!rng->get_bytes(rng, HASH_SIZE_MD5, this->msg->authenticator))
+		{
+			return FALSE;
+		}
 	}
 	else
 	{
@@ -315,9 +318,12 @@ METHOD(radius_message_t, sign, void,
 		/* build Message-Authenticator attribute, using 16 null bytes */
 		memset(buf, 0, sizeof(buf));
 		add(this, RAT_MESSAGE_AUTHENTICATOR, chunk_create(buf, sizeof(buf)));
-		signer->get_signature(signer,
+		if (!signer->get_signature(signer,
 				chunk_create((u_char*)this->msg, ntohs(this->msg->length)),
-				((u_char*)this->msg) + ntohs(this->msg->length) - HASH_SIZE_MD5);
+				((u_char*)this->msg) + ntohs(this->msg->length) - HASH_SIZE_MD5))
+		{
+			return FALSE;
+		}
 	}
 
 	if (!rng)
@@ -326,9 +332,13 @@ METHOD(radius_message_t, sign, void,
 
 		/* build Response-Authenticator */
 		msg = chunk_create((u_char*)this->msg, ntohs(this->msg->length));
-		hasher->get_hash(hasher, msg, NULL);
-		hasher->get_hash(hasher, secret, this->msg->authenticator);
+		if (!hasher->get_hash(hasher, msg, NULL) ||
+			!hasher->get_hash(hasher, secret, this->msg->authenticator))
+		{
+			return FALSE;
+		}
 	}
+	return TRUE;
 }
 
 METHOD(radius_message_t, verify, bool,
@@ -357,9 +367,9 @@ METHOD(radius_message_t, verify, bool,
 		}
 
 		/* verify Response-Authenticator */
-		hasher->get_hash(hasher, msg, NULL);
-		hasher->get_hash(hasher, secret, buf);
-		if (!memeq(buf, res_auth, HASH_SIZE_MD5))
+		if (!hasher->get_hash(hasher, msg, NULL) ||
+			!hasher->get_hash(hasher, secret, buf) ||
+			!memeq(buf, res_auth, HASH_SIZE_MD5))
 		{
 			DBG1(DBG_CFG, "RADIUS Response-Authenticator verification failed");
 			return FALSE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Tobias Brunner
+ * Copyright (C) 2009-2012 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -310,7 +310,7 @@ static void dntoa(chunk_t dn, char *buf, size_t len)
 		len -= written;
 
 		chunk_printable(data, &printable, '?');
-		written = snprintf(buf, len, "%.*s", printable.len, printable.ptr);
+		written = snprintf(buf, len, "%.*s", (int)printable.len, printable.ptr);
 		chunk_free(&printable);
 		if (written < 0 || written >= len)
 		{
@@ -414,14 +414,22 @@ static status_t atodn(char *src, chunk_t *dn)
 				}
 				break;
 			case SEARCH_NAME:
-				if (*src != ' ' && *src != '=')
+				if (*src == ' ' || *src == '=')
+				{
+					break;
+				}
+				else if (*src != ',' && *src != '/')
 				{
 					name.ptr = src;
 					name.len = 1;
 					whitespace = 0;
 					state = READ_NAME;
+					break;
 				}
-				break;
+				name = chunk_empty;
+				whitespace = 0;
+				state = READ_NAME;
+				/* fall-through */
 			case READ_NAME:
 				if (*src != ',' && *src != '/' && *src != '\0')
 				{
@@ -748,8 +756,8 @@ METHOD(identification_t, matches_dn, id_match_t,
 /**
  * Described in header.
  */
-int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
-							   const void *const *args)
+int identification_printf_hook(printf_hook_data_t *data,
+							printf_hook_spec_t *spec, const void *const *args)
 {
 	private_identification_t *this = *((private_identification_t**)(args[0]));
 	chunk_t proper;
@@ -757,7 +765,7 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 
 	if (this == NULL)
 	{
-		return print_in_hook(dst, len, "%*s", spec->width, "(null)");
+		return print_in_hook(data, "%*s", spec->width, "(null)");
 	}
 
 	switch (this->type)
@@ -783,7 +791,7 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 		case ID_RFC822_ADDR:
 		case ID_DER_ASN1_GN_URI:
 			chunk_printable(this->encoded, &proper, '?');
-			snprintf(buf, sizeof(buf), "%.*s", proper.len, proper.ptr);
+			snprintf(buf, sizeof(buf), "%.*s", (int)proper.len, proper.ptr);
 			chunk_free(&proper);
 			break;
 		case ID_DER_ASN1_DN:
@@ -796,8 +804,8 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 			if (chunk_printable(this->encoded, NULL, '?') &&
 				this->encoded.len != HASH_SIZE_SHA1)
 			{	/* fully printable, use ascii version */
-				snprintf(buf, sizeof(buf), "%.*s",
-						 this->encoded.len, this->encoded.ptr);
+				snprintf(buf, sizeof(buf), "%.*s", (int)this->encoded.len,
+						 this->encoded.ptr);
 			}
 			else
 			{	/* not printable, hex dump */
@@ -813,9 +821,9 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 	}
 	if (spec->minus)
 	{
-		return print_in_hook(dst, len, "%-*s", spec->width, buf);
+		return print_in_hook(data, "%-*s", spec->width, buf);
 	}
-	return print_in_hook(dst, len, "%*s", spec->width, buf);
+	return print_in_hook(data, "%*s", spec->width, buf);
 }
 
 METHOD(identification_t, clone_, identification_t*,
@@ -1016,7 +1024,7 @@ identification_t * identification_create_from_data(chunk_t data)
 	char buf[data.len + 1];
 
 	/* use string constructor */
-	snprintf(buf, sizeof(buf), "%.*s", data.len, data.ptr);
+	snprintf(buf, sizeof(buf), "%.*s", (int)data.len, data.ptr);
 	return identification_create_from_string(buf);
 }
 

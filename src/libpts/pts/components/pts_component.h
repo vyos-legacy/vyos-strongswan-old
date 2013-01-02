@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ typedef struct pts_component_t pts_component_t;
 
 #include "pts/pts.h"
 #include "pts/pts_database.h"
+#include "pts/pts_file_meas.h"
 #include "pts/components/pts_comp_func_name.h"
 #include "pts/components/pts_comp_evidence.h"
 
@@ -59,30 +60,41 @@ struct pts_component_t {
 	/**
 	 * Do evidence measurements on the PTS Functional Component
 	 *
+	 * @param qualifier		PTS Component Functional Name Qualifier
 	 * @param pts			PTS interface
 	 * @param evidence		returns component evidence measureemt
+	 * @param measurements	additional file measurements (NULL if not present)
 	 * @return				status return code
 	 */
-	status_t (*measure)(pts_component_t *this, pts_t *pts,
+	status_t (*measure)(pts_component_t *this, u_int8_t qualifier, pts_t *pts,
 						pts_comp_evidence_t** evidence);
 
 	/**
 	 * Verify the evidence measurements of the PTS Functional Component
 	 *
+	 * @param qualifier		PTS Component Functional Name Qualifier
 	 * @param pts			PTS interface
 	 * @param evidence		component evidence measurement to be verified
 	 * @return				status return code
 	 */
-	status_t (*verify)(pts_component_t *this, pts_t *pts,
+	status_t (*verify)(pts_component_t *this, u_int8_t qualifier, pts_t *pts,
 					   pts_comp_evidence_t *evidence);
-
 
 	/**
 	 * Tell the PTS Functional Component to finalize pending registrations
+	 * and check for missing measurements
 	 *
-	 * @return				TRUE if there are pending registrations
+	 * @param qualifier		PTS Component Functional Name Qualifier
+	 * @return				TRUE if finalization successful
 	 */
-	bool (*check_off_registrations)(pts_component_t *this);
+	bool (*finalize)(pts_component_t *this, u_int8_t qualifier);
+
+	/**
+	 * Get a new reference to the PTS Functional Component
+	 *
+	 * @return			this, with an increased refcount
+	 */
+	pts_component_t* (*get_ref)(pts_component_t *this);
 
 	/**
 	 * Destroys a pts_component_t object.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ typedef struct pb_tnc_batch_t pb_tnc_batch_t;
   * PB-TNC Batch Types as defined in section 4.1 of RFC 5793
  */
 enum pb_tnc_batch_type_t {
+	PB_BATCH_NONE =		0,	/* for internal use only */
 	PB_BATCH_CDATA =	1,
 	PB_BATCH_SDATA =	2,
 	PB_BATCH_RESULT =	3,
@@ -70,8 +71,9 @@ struct pb_tnc_batch_t {
 	 * Add a PB-TNC Message
 	 *
 	 * @param msg			PB-TNC message to be addedd
+	 * @return				TRUE if message fit into batch and was added
 	 */
-	void (*add_msg)(pb_tnc_batch_t *this, pb_tnc_msg_t* msg);
+	bool (*add_msg)(pb_tnc_batch_t *this, pb_tnc_msg_t* msg);
 
 	/**
 	 * Build the PB-TNC Batch
@@ -112,8 +114,10 @@ struct pb_tnc_batch_t {
  *
  * @param is_server			TRUE if server, FALSE if client
  * @param type				PB-TNC batch type
+ * @param max_batch_len		maximum size the PB-TNC batch
  */
-pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type);
+pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type,
+									size_t max_batch_len);
 
 /**
  * Create an unprocessed PB-TNC Batch from data

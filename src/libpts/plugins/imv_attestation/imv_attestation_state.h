@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 
 #include <imv/imv_state.h>
 #include <pts/pts.h>
+#include <pts/pts_database.h>
 #include <pts/components/pts_component.h>
 #include <library.h>
 
@@ -105,32 +106,37 @@ struct imv_attestation_state_t {
 										u_int16_t id, int *file_id, bool *is_dir);
 
 	/**
-	 * Add an entry to the list of Functional Components waiting for evidence
+	 * Create and add an entry to the list of Functional Components
 	 *
-	 * @param entry				Functional Component
+	 * @param name				Component Functional Name
+	 * @param depth				Sub-component Depth
+	 * @param pts_db			PTS measurement database
+	 * @return					created functional component instance or NULL
 	 */
-	void (*add_component)(imv_attestation_state_t *this, pts_component_t *entry);
+	pts_component_t* (*create_component)(imv_attestation_state_t *this,
+										 pts_comp_func_name_t *name,
+										 u_int32_t depth,
+										 pts_database_t *pts_db);
 
 	/**
-	 * Returns the number of Functional Component waiting for evidence
-	 *
-	 * @return					Number of waiting Functional Components
-	 */
-	int (*get_component_count)(imv_attestation_state_t *this);
-
-	/**
-	 * Check for presence of Functional Component and remove and return it
+	 * Get a Functional Component with a given name
 	 *
 	 * @param name			 	Name of the requested Functional Component
 	 * @return					Functional Component if found, NULL otherwise
 	 */
-	pts_component_t* (*check_off_component)(imv_attestation_state_t *this,
-											pts_comp_func_name_t *name);
+	pts_component_t* (*get_component)(imv_attestation_state_t *this,
+									  pts_comp_func_name_t *name);
 
 	/**
 	 * Tell the Functional Components to finalize any measurement registrations
+	 * and to check if all expected measurements were received
 	 */
-	void (*check_off_registrations)(imv_attestation_state_t *this);
+	void (*finalize_components)(imv_attestation_state_t *this);
+
+	/**
+	 * Have the Functional Component measurements been finalized?
+	 */
+	bool (*components_finalized)(imv_attestation_state_t *this);
 
 	/**
 	 * Indicates if a file measurement error occurred

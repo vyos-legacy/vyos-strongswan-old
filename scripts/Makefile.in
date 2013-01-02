@@ -37,8 +37,8 @@ host_triplet = @host@
 noinst_PROGRAMS = bin2array$(EXEEXT) bin2sql$(EXEEXT) id2sql$(EXEEXT) \
 	key2keyid$(EXEEXT) keyid2sql$(EXEEXT) oid2der$(EXEEXT) \
 	thread_analysis$(EXEEXT) dh_speed$(EXEEXT) \
-	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) fetch$(EXEEXT) \
-	$(am__EXEEXT_1)
+	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) hash_burn$(EXEEXT) \
+	fetch$(EXEEXT) $(am__EXEEXT_1)
 @USE_TLS_TRUE@am__append_1 = tls_test
 subdir = scripts
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -55,6 +55,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 @USE_TLS_TRUE@am__EXEEXT_1 = tls_test$(EXEEXT)
@@ -76,6 +77,10 @@ dh_speed_DEPENDENCIES =  \
 am_fetch_OBJECTS = fetch.$(OBJEXT)
 fetch_OBJECTS = $(am_fetch_OBJECTS)
 fetch_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la
+am_hash_burn_OBJECTS = hash_burn.$(OBJEXT)
+hash_burn_OBJECTS = $(am_hash_burn_OBJECTS)
+hash_burn_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am_id2sql_OBJECTS = id2sql.$(OBJEXT)
 id2sql_OBJECTS = $(am_id2sql_OBJECTS)
@@ -105,7 +110,7 @@ am__tls_test_SOURCES_DIST = tls_test.c
 tls_test_OBJECTS = $(am_tls_test_OBJECTS)
 @USE_TLS_TRUE@tls_test_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la \
 @USE_TLS_TRUE@	$(top_builddir)/src/libtls/libtls.la
-DEFAULT_INCLUDES = -I.@am__isrc@
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -120,14 +125,16 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(fetch_SOURCES) \
-	$(id2sql_SOURCES) $(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
-	$(oid2der_SOURCES) $(pubkey_speed_SOURCES) \
-	$(thread_analysis_SOURCES) $(tls_test_SOURCES)
+	$(hash_burn_SOURCES) $(id2sql_SOURCES) $(key2keyid_SOURCES) \
+	$(keyid2sql_SOURCES) $(oid2der_SOURCES) \
+	$(pubkey_speed_SOURCES) $(thread_analysis_SOURCES) \
+	$(tls_test_SOURCES)
 DIST_SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(fetch_SOURCES) \
-	$(id2sql_SOURCES) $(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
-	$(oid2der_SOURCES) $(pubkey_speed_SOURCES) \
-	$(thread_analysis_SOURCES) $(am__tls_test_SOURCES_DIST)
+	$(hash_burn_SOURCES) $(id2sql_SOURCES) $(key2keyid_SOURCES) \
+	$(keyid2sql_SOURCES) $(oid2der_SOURCES) \
+	$(pubkey_speed_SOURCES) $(thread_analysis_SOURCES) \
+	$(am__tls_test_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -139,6 +146,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -233,11 +241,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -254,11 +265,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -274,6 +286,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -283,7 +296,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -329,6 +341,7 @@ thread_analysis_SOURCES = thread_analysis.c
 dh_speed_SOURCES = dh_speed.c
 pubkey_speed_SOURCES = pubkey_speed.c
 crypt_burn_SOURCES = crypt_burn.c
+hash_burn_SOURCES = hash_burn.c
 fetch_SOURCES = fetch.c
 id2sql_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 key2keyid_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -337,6 +350,7 @@ oid2der_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 dh_speed_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la -lrt
 pubkey_speed_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la -lrt
 crypt_burn_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
+hash_burn_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 fetch_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 all: all-am
 
@@ -396,6 +410,9 @@ dh_speed$(EXEEXT): $(dh_speed_OBJECTS) $(dh_speed_DEPENDENCIES)
 fetch$(EXEEXT): $(fetch_OBJECTS) $(fetch_DEPENDENCIES) 
 	@rm -f fetch$(EXEEXT)
 	$(LINK) $(fetch_OBJECTS) $(fetch_LDADD) $(LIBS)
+hash_burn$(EXEEXT): $(hash_burn_OBJECTS) $(hash_burn_DEPENDENCIES) 
+	@rm -f hash_burn$(EXEEXT)
+	$(LINK) $(hash_burn_OBJECTS) $(hash_burn_LDADD) $(LIBS)
 id2sql$(EXEEXT): $(id2sql_OBJECTS) $(id2sql_DEPENDENCIES) 
 	@rm -f id2sql$(EXEEXT)
 	$(LINK) $(id2sql_OBJECTS) $(id2sql_LDADD) $(LIBS)
@@ -429,6 +446,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crypt_burn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dh_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fetch.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash_burn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/id2sql.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/key2keyid.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keyid2sql.Po@am__quote@

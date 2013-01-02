@@ -43,6 +43,9 @@
  * @defgroup fetcher fetcher
  * @ingroup libstrongswan
  *
+ * @defgroup ipsec ipsec
+ * @ingroup libstrongswan
+ *
  * @defgroup plugins plugins
  * @ingroup libstrongswan
  *
@@ -67,6 +70,10 @@
 #ifndef LIBRARY_H_
 #define LIBRARY_H_
 
+#ifndef CONFIG_H_INCLUDED
+# error config.h not included, pass "-include [...]/config.h" to gcc
+#endif
+
 #include "printf_hook.h"
 #include "utils.h"
 #include "chunk.h"
@@ -75,6 +82,7 @@
 #include "processing/processor.h"
 #include "processing/scheduler.h"
 #include "crypto/crypto_factory.h"
+#include "crypto/proposal/proposal_keywords.h"
 #include "fetcher/fetcher_manager.h"
 #include "database/database_factory.h"
 #include "credentials/credential_factory.h"
@@ -111,6 +119,11 @@ struct library_t {
 	 * Printf hook registering facility
 	 */
 	printf_hook_t *printf_hook;
+
+	/**
+	 * Proposal keywords registry
+	 */
+	proposal_keywords_t *proposal;
 
 	/**
 	 * crypto algorithm registry and factory

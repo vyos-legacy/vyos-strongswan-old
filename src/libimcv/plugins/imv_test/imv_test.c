@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +21,7 @@
 #include <ietf/ietf_attr_pa_tnc_error.h>
 #include <ita/ita_attr.h>
 #include <ita/ita_attr_command.h>
+#include <ita/ita_attr_dummy.h>
 
 #include <tncif_names.h>
 #include <tncif_pa_subtypes.h>
@@ -101,12 +103,14 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 {
 	pa_tnc_msg_t *pa_tnc_msg;
 	pa_tnc_attr_t *attr;
+	pen_type_t attr_type;
+	linked_list_t *attr_list;
 	imv_state_t *state;
 	imv_test_state_t *test_state;
 	enumerator_t *enumerator;
 	TNC_Result result;
 	int rounds;
-	bool fatal_error, retry = FALSE;
+	bool fatal_error, received_command = FALSE, retry = FALSE;
 
 	if (!imv_test)
 	{
@@ -143,12 +147,18 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 	enumerator = pa_tnc_msg->create_attribute_enumerator(pa_tnc_msg);
 	while (enumerator->enumerate(enumerator, &attr))
 	{
-		if (attr->get_vendor_id(attr) == PEN_ITA &&
-			attr->get_type(attr) == ITA_ATTR_COMMAND)
+		attr_type = attr->get_type(attr);
+
+		if (attr_type.vendor_id != PEN_ITA)
+		{
+			continue;
+		}
+		if (attr_type.type == ITA_ATTR_COMMAND)
 		{
 			ita_attr_command_t *ita_attr;
 			char *command;
 	
+			received_command = TRUE;
 			ita_attr = (ita_attr_command_t*)attr;
 			command = ita_attr->get_command(ita_attr);
 
@@ -181,7 +191,15 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 								TNC_IMV_EVALUATION_RESULT_ERROR);			  
 			}
-		}		
+		}
+		else if (attr_type.type == ITA_ATTR_DUMMY)
+		{
+			ita_attr_dummy_t *ita_attr;
+
+			ita_attr = (ita_attr_dummy_t*)attr;
+			DBG1(DBG_IMV, "received dummy attribute value (%d bytes)",
+						   ita_attr->get_size(ita_attr));
+		}
 	}
 	enumerator->destroy(enumerator);
 	pa_tnc_msg->destroy(pa_tnc_msg);
@@ -191,7 +209,8 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 		state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 								TNC_IMV_EVALUATION_RESULT_ERROR);			  
-		return imv_test->provide_recommendation(imv_test, connection_id);
+		return imv_test->provide_recommendation(imv_test, connection_id,
+												src_imc_id);
 	}
 
 	/* request a handshake retry ? */
@@ -205,18 +224,18 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 	/* repeat the measurement ? */
 	if (test_state->another_round(test_state, src_imc_id))
 	{
+		attr_list = linked_list_create();
 		attr = ita_attr_command_create("repeat");
-		pa_tnc_msg = pa_tnc_msg_create();
-		pa_tnc_msg->add_attribute(pa_tnc_msg, attr);
-		pa_tnc_msg->build(pa_tnc_msg);
+		attr_list->insert_last(attr_list, attr);
 		result = imv_test->send_message(imv_test, connection_id, TRUE, imv_id,
-							src_imc_id, pa_tnc_msg->get_encoding(pa_tnc_msg));	
-		pa_tnc_msg->destroy(pa_tnc_msg);
+							src_imc_id, attr_list);	
+		attr_list->destroy(attr_list);
 
 		return result;
 	}
 
-	return imv_test->provide_recommendation(imv_test, connection_id);
+	return received_command ? imv_test->provide_recommendation(imv_test,
+			 connection_id, src_imc_id) : TNC_RESULT_SUCCESS;
 }
 
 /**
@@ -267,7 +286,8 @@ TNC_Result TNC_IMV_SolicitRecommendation(TNC_IMVID imv_id,
 		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
 		return TNC_RESULT_NOT_INITIALIZED;
 	}
-	return imv_test->provide_recommendation(imv_test, connection_id);
+	return imv_test->provide_recommendation(imv_test, connection_id,
+											TNC_IMCID_ANY);
 }
 
 /**

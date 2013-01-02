@@ -88,11 +88,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <freeswan.h>
+#include <library.h>
+#include <debug.h>
 
-#include "../pluto/constants.h"
-#include "../pluto/defs.h"
-#include "../pluto/log.h"
 #include "ipsec-parser.h"
 
 #define YYERROR_VERBOSE
@@ -123,7 +121,7 @@ extern kw_entry_t *in_word_set (char *str, unsigned int len);
 
 
 /* Line 189 of yacc.c  */
-#line 127 "parser.c"
+#line 125 "parser.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -182,12 +180,12 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 54 "parser.y"
+#line 52 "parser.y"
  char *s; 
 
 
 /* Line 214 of yacc.c  */
-#line 191 "parser.c"
+#line 189 "parser.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -199,7 +197,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 203 "parser.c"
+#line 201 "parser.c"
 
 #ifdef short
 # undef short
@@ -487,8 +485,8 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    65,    65,    66,    70,    75,    74,    80,    79,    96,
-      95,   111,   110,   116,   120,   121,   125,   150,   154
+       0,    63,    63,    64,    68,    73,    72,    78,    77,    94,
+      93,   109,   108,   114,   118,   119,   123,   148,   152
 };
 #endif
 
@@ -1402,7 +1400,7 @@ yyreduce:
         case 4:
 
 /* Line 1455 of yacc.c  */
-#line 71 "parser.y"
+#line 69 "parser.y"
     {
 		free((yyvsp[(2) - (3)].s));
 	}
@@ -1411,7 +1409,7 @@ yyreduce:
   case 5:
 
 /* Line 1455 of yacc.c  */
-#line 75 "parser.y"
+#line 73 "parser.y"
     {
 		_parser_kw = &(_parser_cfg->config_setup);
 		_parser_kw_last = NULL;
@@ -1421,11 +1419,11 @@ yyreduce:
   case 7:
 
 /* Line 1455 of yacc.c  */
-#line 80 "parser.y"
+#line 78 "parser.y"
     {
 		section_list_t *section = malloc_thing(section_list_t);
-		
-		section->name = clone_str((yyvsp[(2) - (3)].s));
+
+		section->name = strdupnull((yyvsp[(2) - (3)].s));
 		section->kw = NULL;
 		section->next = NULL;
 		_parser_kw = &(section->kw);
@@ -1442,10 +1440,10 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 96 "parser.y"
+#line 94 "parser.y"
     {
 		section_list_t *section = malloc_thing(section_list_t);
-		section->name = clone_str((yyvsp[(2) - (3)].s));
+		section->name = strdupnull((yyvsp[(2) - (3)].s));
 		section->kw = NULL;
 		section->next = NULL;
 		_parser_kw = &(section->kw);
@@ -1462,7 +1460,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 111 "parser.y"
+#line 109 "parser.y"
     {
 		extern void _parser_y_include (const char *f);
 		_parser_y_include((yyvsp[(2) - (2)].s));
@@ -1473,7 +1471,7 @@ yyreduce:
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 126 "parser.y"
+#line 124 "parser.y"
     {
 		kw_list_t  *new;
 		kw_entry_t *entry = in_word_set((yyvsp[(1) - (3)].s), strlen((yyvsp[(1) - (3)].s)));
@@ -1487,7 +1485,7 @@ yyreduce:
 		{
 			new = (kw_list_t *)malloc_thing(kw_list_t);
 			new->entry = entry;
-			new->value = clone_str((yyvsp[(3) - (3)].s));
+			new->value = strdupnull((yyvsp[(3) - (3)].s));
 			new->next = NULL;
 			if (_parser_kw_last)
 				_parser_kw_last->next = new;
@@ -1503,7 +1501,7 @@ yyreduce:
   case 17:
 
 /* Line 1455 of yacc.c  */
-#line 151 "parser.y"
+#line 149 "parser.y"
     {
 		free((yyvsp[(1) - (2)].s));
 	  }
@@ -1512,7 +1510,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 1516 "parser.c"
+#line 1514 "parser.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1724,7 +1722,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 157 "parser.y"
+#line 155 "parser.y"
 
 
 void yyerror(const char *s)
@@ -1794,7 +1792,7 @@ config_parsed_t *parser_load_conf(const char *file)
 
 	if (err)
 	{
-		plog("%s", parser_errstring);
+		DBG1(DBG_APP, "%s", parser_errstring);
 
 		if (cfg)
 			parser_free_conf(cfg);

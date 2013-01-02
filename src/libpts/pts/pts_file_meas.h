@@ -21,6 +21,8 @@
 #ifndef PTS_FILE_MEAS_H_
 #define PTS_FILE_MEAS_H_
 
+#include "pts/pts_database.h"
+
 #include <library.h>
 
 typedef struct pts_file_meas_t pts_file_meas_t;
@@ -60,6 +62,17 @@ struct pts_file_meas_t {
 	enumerator_t* (*create_enumerator)(pts_file_meas_t *this);
 
 	/**
+	 * Check PTS File Measurements against reference value in the database
+	 *
+	 * @param db			PTS Measurement database
+	 * @param product		Software product (os, vpn client, etc.)
+	 * @param algo			PTS Measurement algorithm used
+	 * @return				TRUE if all measurements agreed
+	 */
+	bool (*check)(pts_file_meas_t *this, pts_database_t *db, char* product,
+				  pts_meas_algorithms_t algo);
+
+	/**
 	 * Verify stored hashes against PTS File Measurements
 	 *
 	 * @param e_hash		Hash enumerator
@@ -81,5 +94,18 @@ struct pts_file_meas_t {
  * @param request_id		ID of PTS File Measurement Request
  */
 pts_file_meas_t* pts_file_meas_create(u_int16_t request_id);
+
+/**
+ * Creates a pts_file_meas_t object measuring a file/directory
+ *
+ * @param request_id		ID of PTS File Measurement Request
+ * @param pathname			Absolute file or directory pathname
+ * @param is_dir			TRUE if directory path
+ * @param use_rel_name		TRUE if relative filenames are to be used
+ * @param alg				PTS hash measurement algorithm to be used
+ */
+pts_file_meas_t* pts_file_meas_create_from_path(u_int16_t request_id,
+							char* pathname, bool is_dir, bool use_rel_name,
+							pts_meas_algorithms_t alg);
 
 #endif /** PTS_FILE_MEAS_H_ @}*/

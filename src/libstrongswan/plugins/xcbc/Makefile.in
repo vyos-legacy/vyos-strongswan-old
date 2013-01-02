@@ -49,6 +49,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -75,15 +76,14 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_xcbc_la_LIBADD =
-am_libstrongswan_xcbc_la_OBJECTS = xcbc_plugin.lo xcbc.lo xcbc_prf.lo \
-	xcbc_signer.lo
+am_libstrongswan_xcbc_la_OBJECTS = xcbc_plugin.lo xcbc.lo
 libstrongswan_xcbc_la_OBJECTS = $(am_libstrongswan_xcbc_la_OBJECTS)
 libstrongswan_xcbc_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libstrongswan_xcbc_la_LDFLAGS) $(LDFLAGS) -o $@
 @MONOLITHIC_FALSE@am_libstrongswan_xcbc_la_rpath = -rpath $(plugindir)
 @MONOLITHIC_TRUE@am_libstrongswan_xcbc_la_rpath =
-DEFAULT_INCLUDES = -I.@am__isrc@
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -109,6 +109,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -203,11 +204,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -224,11 +228,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -244,6 +249,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -253,7 +259,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -286,8 +291,7 @@ AM_CFLAGS = -rdynamic
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-xcbc.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-xcbc.la
 libstrongswan_xcbc_la_SOURCES = \
-	xcbc_plugin.h xcbc_plugin.c xcbc.h xcbc.c \
-	xcbc_prf.h xcbc_prf.c xcbc_signer.h xcbc_signer.c
+	xcbc_plugin.h xcbc_plugin.c xcbc.h xcbc.c
 
 libstrongswan_xcbc_la_LDFLAGS = -module -avoid-version
 all: all-am
@@ -375,8 +379,6 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xcbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xcbc_plugin.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xcbc_prf.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xcbc_signer.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

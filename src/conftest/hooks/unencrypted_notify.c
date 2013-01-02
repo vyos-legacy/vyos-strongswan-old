@@ -80,11 +80,11 @@ METHOD(listener_t, ike_updown, bool,
 			data = chunk_skip(chunk_create(this->data, strlen(this->data)), 2);
 			data = chunk_from_hex(data, NULL);
 		}
-		else if (this->data && strlen(this->data))
+		else if (strlen(this->data))
 		{
 			data = chunk_clone(chunk_create(this->data, strlen(this->data)));
 		}
-		notify = notify_payload_create_from_protocol_and_type(
+		notify = notify_payload_create_from_protocol_and_type(NOTIFY,
 									this->esp ? PROTO_ESP : PROTO_IKE, type);
 		notify->set_spi(notify, this->spi);
 		if (data.len)
@@ -95,7 +95,7 @@ METHOD(listener_t, ike_updown, bool,
 
 		DBG1(DBG_CFG, "injecting unencrypted INFORMATIONAL message");
 
-		message = message_create();
+		message = message_create(IKEV2_MAJOR_VERSION, IKEV2_MINOR_VERSION);
 		message->set_message_id(message, this->id);
 		message->set_ike_sa_id(message, ike_sa->get_id(ike_sa));
 		message->set_exchange_type(message, INFORMATIONAL);

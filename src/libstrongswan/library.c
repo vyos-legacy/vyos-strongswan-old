@@ -23,6 +23,7 @@
 #include <utils/identification.h>
 #include <utils/host.h>
 #include <utils/hashtable.h>
+#include <utils/backtrace.h>
 #include <selectors/traffic_selector.h>
 
 #define CHECKSUM_LIBRARY IPSEC_LIB_DIR"/libchecksum.so"
@@ -72,6 +73,7 @@ void library_deinit()
 	this->public.creds->destroy(this->public.creds);
 	this->public.encoding->destroy(this->public.encoding);
 	this->public.crypto->destroy(this->public.crypto);
+	this->public.proposal->destroy(this->public.proposal);
 	this->public.fetcher->destroy(this->public.fetcher);
 	this->public.db->destroy(this->public.db);
 	this->public.printf_hook->destroy(this->public.printf_hook);
@@ -88,6 +90,7 @@ void library_deinit()
 	}
 
 	threads_deinit();
+	backtrace_deinit();
 
 	free(this);
 	lib = NULL;
@@ -146,6 +149,7 @@ bool library_init(char *settings)
 	);
 	lib = &this->public;
 
+	backtrace_init();
 	threads_init();
 
 #ifdef LEAK_DETECTIVE
@@ -179,6 +183,7 @@ bool library_init(char *settings)
 	this->objects = hashtable_create((hashtable_hash_t)hash,
 									 (hashtable_equals_t)equals, 4);
 	this->public.settings = settings_create(settings);
+	this->public.proposal = proposal_keywords_create();
 	this->public.crypto = crypto_factory_create();
 	this->public.creds = credential_factory_create();
 	this->public.credmgr = credential_manager_create();
@@ -204,6 +209,7 @@ bool library_init(char *settings)
 		return FALSE;
 #endif /* INTEGRITY_TEST */
 	}
+
 	return TRUE;
 }
 

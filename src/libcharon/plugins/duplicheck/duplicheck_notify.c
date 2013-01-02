@@ -43,11 +43,6 @@ struct private_duplicheck_notify_t {
 	duplicheck_notify_t public;
 
 	/**
-	 * Callback job dispatching connections
-	 */
-	callback_job_t *job;
-
-	/**
 	 * Mutex to lock list
 	 */
 	mutex_t *mutex;
@@ -89,7 +84,8 @@ static bool open_socket(private_duplicheck_notify_t *this)
 		return FALSE;
 	}
 	umask(old);
-	if (chown(addr.sun_path, charon->uid, charon->gid) != 0)
+	if (chown(addr.sun_path, charon->caps->get_uid(charon->caps),
+			  charon->caps->get_gid(charon->caps)) != 0)
 	{
 		DBG1(DBG_CFG, "changing duplicheck socket permissions failed: %s",
 			 strerror(errno));
@@ -167,10 +163,6 @@ METHOD(duplicheck_notify_t, destroy, void,
 	enumerator_t *enumerator;
 	uintptr_t fd;
 
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	enumerator = this->connected->create_enumerator(this->connected);
 	while (enumerator->enumerate(enumerator, &fd))
 	{
@@ -203,9 +195,9 @@ duplicheck_notify_t *duplicheck_notify_create()
 		destroy(this);
 		return NULL;
 	}
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive,
-									this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive, this,
+				NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

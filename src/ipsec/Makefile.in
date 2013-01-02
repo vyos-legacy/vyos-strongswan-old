@@ -50,6 +50,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -89,6 +90,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -183,11 +185,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -204,11 +209,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -224,6 +230,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -233,7 +240,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -261,10 +267,10 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-sbin_SCRIPTS = ipsec
-CLEANFILES = ipsec ipsec.8
-dist_man8_MANS = ipsec.8
-EXTRA_DIST = ipsec.in ipsec.8.in Android.mk
+sbin_SCRIPTS = _ipsec
+CLEANFILES = _ipsec _ipsec.8
+dist_man8_MANS = _ipsec.8
+EXTRA_DIST = _ipsec.in _ipsec.8.in Android.mk
 all: all-am
 
 .SUFFIXES:
@@ -476,13 +482,15 @@ info: info-am
 info-am:
 
 install-data-am: install-man
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
 install-exec-am: install-sbinSCRIPTS
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-exec-hook
 install-html: install-html-am
 
 install-html-am:
@@ -520,42 +528,58 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-man uninstall-sbinSCRIPTS
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
 uninstall-man: uninstall-man8
 
-.MAKE: install-am install-strip
+.MAKE: install-am install-data-am install-exec-am install-strip \
+	uninstall-am
 
 .PHONY: all all-am check check-am clean clean-generic clean-libtool \
 	distclean distclean-generic distclean-libtool distdir dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-man8 \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-sbinSCRIPTS install-strip installcheck installcheck-am \
-	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
-	ps ps-am uninstall uninstall-am uninstall-man uninstall-man8 \
+	install-data install-data-am install-data-hook install-dvi \
+	install-dvi-am install-exec install-exec-am install-exec-hook \
+	install-html install-html-am install-info install-info-am \
+	install-man install-man8 install-pdf install-pdf-am install-ps \
+	install-ps-am install-sbinSCRIPTS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am \
+	uninstall-hook uninstall-man uninstall-man8 \
 	uninstall-sbinSCRIPTS
 
 
-ipsec.8 : ipsec.8.in
+_ipsec.8 : _ipsec.8.in
 	sed \
 	-e "s:@IPSEC_VERSION@:$(PACKAGE_VERSION):" \
+	-e "s:@IPSEC_SCRIPT@:$(ipsec_script):g" \
+	-e "s:@IPSEC_SCRIPT_UPPER@:$(ipsec_script_upper):g" \
 	$(srcdir)/$@.in > $@
 
-ipsec : ipsec.in
+_ipsec : _ipsec.in
 	sed \
 	-e "s:@IPSEC_SHELL@:/bin/sh:" \
 	-e "s:@IPSEC_VERSION@:$(PACKAGE_VERSION):" \
 	-e "s:@IPSEC_NAME@:$(PACKAGE_NAME):" \
 	-e "s:@IPSEC_DISTRO@::" \
 	-e "s:@IPSEC_DIR@:$(ipsecdir):" \
+	-e "s:@IPSEC_SCRIPT@:$(ipsec_script):" \
 	-e "s:@IPSEC_SBINDIR@:$(sbindir):" \
 	-e "s:@IPSEC_CONFDIR@:$(sysconfdir):" \
 	-e "s:@IPSEC_PIDDIR@:$(piddir):" \
 	$(srcdir)/$@.in > $@
 	chmod +x $@
+
+install-exec-hook:
+	mv $(DESTDIR)$(sbindir)/_ipsec $(DESTDIR)$(sbindir)/$(ipsec_script)
+
+install-data-hook:
+	mv $(DESTDIR)$(man8dir)/_ipsec.8 $(DESTDIR)$(man8dir)/$(ipsec_script).8
+
+uninstall-hook:
+	rm -f $(DESTDIR)$(sbindir)/$(ipsec_script)
+	rm -f $(DESTDIR)$(man8dir)/$(ipsec_script).8
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

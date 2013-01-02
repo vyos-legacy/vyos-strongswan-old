@@ -33,7 +33,7 @@ struct private_tnc_pdp_connections_t {
 
 	/**
 	 * List of TNC PEP RADIUS Connections
-	 */ 
+	 */
 	linked_list_t *list;
 };
 
@@ -94,13 +94,14 @@ static void dbg_nas_user(chunk_t nas_id, chunk_t user_name, bool not, char *op)
 	if (nas_id.len)
 	{
 		DBG1(DBG_CFG, "%s RADIUS connection for user '%.*s' NAS '%.*s'",
-			 		   not ? "could not find" : op, user_name.len, user_name.ptr,
-					   nas_id.len, nas_id.ptr);
+					   not ? "could not find" : op, (int)user_name.len,
+					   user_name.ptr, (int)nas_id.len, nas_id.ptr);
 	}
 	else
 	{
-		DBG1(DBG_CFG, "%s RADIUS connection for user '%.*s'", 
-					   not ? "could not find" : op, user_name.len, user_name.ptr);
+		DBG1(DBG_CFG, "%s RADIUS connection for user '%.*s'",
+					   not ? "could not find" : op, (int)user_name.len,
+					   user_name.ptr);
 	}
 }
 
@@ -114,8 +115,8 @@ METHOD(tnc_pdp_connections_t, add, void,
 	ike_sa_t *ike_sa;
 	bool found = FALSE;
 
-	ike_sa_id = ike_sa_id_create(0, 0, FALSE);
-	ike_sa = ike_sa_create(ike_sa_id);
+	ike_sa_id = ike_sa_id_create(IKEV2_MAJOR_VERSION, 0, 0, FALSE);
+	ike_sa = ike_sa_create(ike_sa_id, FALSE, IKEV2);
 	ike_sa_id->destroy(ike_sa_id);
 	ike_sa->set_other_id(ike_sa, peer);
 
@@ -134,7 +135,7 @@ METHOD(tnc_pdp_connections_t, add, void,
 		}
 	}
 	enumerator->destroy(enumerator);
-	
+
 	if (!found)
 	{
 		entry = malloc_thing(entry_t);

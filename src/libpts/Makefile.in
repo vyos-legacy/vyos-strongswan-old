@@ -51,6 +51,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -77,8 +78,8 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(ipseclibdir)"
 LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 libpts_la_DEPENDENCIES = $(top_builddir)/src/libimcv/libimcv.la
-am_libpts_la_OBJECTS = libpts.lo pts.lo pts_error.lo pts_creds.lo \
-	pts_database.lo pts_dh_group.lo pts_file_meas.lo \
+am_libpts_la_OBJECTS = libpts.lo pts.lo pts_error.lo pts_pcr.lo \
+	pts_creds.lo pts_database.lo pts_dh_group.lo pts_file_meas.lo \
 	pts_file_meta.lo pts_file_type.lo pts_meas_algo.lo \
 	pts_component_manager.lo pts_comp_evidence.lo \
 	pts_comp_func_name.lo ita_comp_func_name.lo ita_comp_ima.lo \
@@ -96,7 +97,7 @@ am_libpts_la_OBJECTS = libpts.lo pts.lo pts_error.lo pts_creds.lo \
 	tcg_pts_attr_req_file_meas.lo tcg_pts_attr_file_meas.lo \
 	tcg_pts_attr_req_file_meta.lo tcg_pts_attr_unix_file_meta.lo
 libpts_la_OBJECTS = $(am_libpts_la_OBJECTS)
-DEFAULT_INCLUDES = -I.@am__isrc@
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -160,6 +161,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -254,11 +256,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -275,11 +280,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -295,6 +301,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -304,7 +311,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -339,6 +345,7 @@ libpts_la_SOURCES = \
 	libpts.h libpts.c \
 	pts/pts.h pts/pts.c \
 	pts/pts_error.h pts/pts_error.c \
+	pts/pts_pcr.h pts/pts_pcr.c \
 	pts/pts_proto_caps.h \
 	pts/pts_req_func_comp_evid.h \
 	pts/pts_simple_evid_final.h \
@@ -469,6 +476,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pts_file_meta.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pts_file_type.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pts_meas_algo.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pts_pcr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcg_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcg_comp_func_name.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcg_pts_attr_aik.Plo@am__quote@
@@ -523,6 +531,13 @@ pts_error.lo: pts/pts_error.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pts/pts_error.c' object='pts_error.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pts_error.lo `test -f 'pts/pts_error.c' || echo '$(srcdir)/'`pts/pts_error.c
+
+pts_pcr.lo: pts/pts_pcr.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pts_pcr.lo -MD -MP -MF $(DEPDIR)/pts_pcr.Tpo -c -o pts_pcr.lo `test -f 'pts/pts_pcr.c' || echo '$(srcdir)/'`pts/pts_pcr.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/pts_pcr.Tpo $(DEPDIR)/pts_pcr.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pts/pts_pcr.c' object='pts_pcr.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pts_pcr.lo `test -f 'pts/pts_pcr.c' || echo '$(srcdir)/'`pts/pts_pcr.c
 
 pts_creds.lo: pts/pts_creds.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pts_creds.lo -MD -MP -MF $(DEPDIR)/pts_creds.Tpo -c -o pts_creds.lo `test -f 'pts/pts_creds.c' || echo '$(srcdir)/'`pts/pts_creds.c

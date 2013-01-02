@@ -107,9 +107,9 @@ struct private_dhcp_socket_t {
 	host_t *dst;
 
 	/**
-	 * Callback job receiving DHCP responses
+	 * Force configured destination address
 	 */
-	callback_job_t *job;
+	bool force_dst;
 };
 
 /**
@@ -271,7 +271,7 @@ static bool send_dhcp(private_dhcp_socket_t *this,
 	ssize_t len;
 
 	dst = transaction->get_server(transaction);
-	if (!dst)
+	if (!dst || this->force_dst)
 	{
 		dst = this->dst;
 	}
@@ -371,7 +371,11 @@ METHOD(dhcp_socket_t, enroll, dhcp_transaction_t*,
 	u_int32_t id;
 	int try;
 
-	this->rng->get_bytes(this->rng, sizeof(id), (u_int8_t*)&id);
+	if (!this->rng->get_bytes(this->rng, sizeof(id), (u_int8_t*)&id))
+	{
+		DBG1(DBG_CFG, "DHCP DISCOVER failed, no transaction ID");
+		return NULL;
+	}
 	transaction = dhcp_transaction_create(id, identity);
 
 	this->mutex->lock(this->mutex);
@@ -613,10 +617,6 @@ static job_requeue_t receive_dhcp(private_dhcp_socket_t *this)
 METHOD(dhcp_socket_t, destroy, void,
 	private_dhcp_socket_t *this)
 {
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	while (this->waiting)
 	{
 		this->condvar->signal(this->condvar);
@@ -648,7 +648,13 @@ METHOD(dhcp_socket_t, destroy, void,
 dhcp_socket_t *dhcp_socket_create()
 {
 	private_dhcp_socket_t *this;
-	struct sockaddr_in src;
+	struct sockaddr_in src = {
+		.sin_family = AF_INET,
+		.sin_port = htons(DHCP_CLIENT_PORT),
+		.sin_addr = {
+			.s_addr = INADDR_ANY,
+		},
+	};
 	int on = 1;
 	struct sock_filter dhcp_filter_code[] = {
 		BPF_STMT(BPF_LD+BPF_B+BPF_ABS,
@@ -704,10 +710,14 @@ dhcp_socket_t *dhcp_socket_create()
 		return NULL;
 	}
 	this->identity_lease = lib->settings->get_bool(lib->settings,
-							"charon.plugins.dhcp.identity_lease", FALSE);
+								"%s.plugins.dhcp.identity_lease", FALSE,
+								charon->name);
+	this->force_dst = lib->settings->get_str(lib->settings,
+								"%s.plugins.dhcp.force_server_address", FALSE,
+								charon->name);
 	this->dst = host_create_from_string(lib->settings->get_str(lib->settings,
-							"charon.plugins.dhcp.server", "255.255.255.255"),
-							DHCP_SERVER_PORT);
+								"%s.plugins.dhcp.server", "255.255.255.255",
+								charon->name), DHCP_SERVER_PORT);
 	if (!this->dst)
 	{
 		DBG1(DBG_CFG, "configured DHCP server address invalid");
@@ -734,9 +744,6 @@ dhcp_socket_t *dhcp_socket_create()
 		destroy(this);
 		return NULL;
 	}
-	src.sin_family = AF_INET;
-	src.sin_port = htons(DHCP_CLIENT_PORT);
-	src.sin_addr.s_addr = INADDR_ANY;
 	if (bind(this->send, (struct sockaddr*)&src, sizeof(src)) == -1)
 	{
 		DBG1(DBG_CFG, "unable to bind DHCP send socket: %s", strerror(errno));
@@ -760,9 +767,9 @@ dhcp_socket_t *dhcp_socket_create()
 		return NULL;
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_dhcp,
-									this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive_dhcp,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

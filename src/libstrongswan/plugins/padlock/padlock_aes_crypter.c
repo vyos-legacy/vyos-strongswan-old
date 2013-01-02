@@ -109,16 +109,18 @@ static void crypt(private_padlock_aes_crypter_t *this, char *iv,
 	memwipe(key_aligned, sizeof(key_aligned));
 }
 
-METHOD(crypter_t, decrypt, void,
+METHOD(crypter_t, decrypt, bool,
 	private_padlock_aes_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *dst)
 {
 	crypt(this, iv.ptr, data, dst, TRUE);
+	return TRUE;
 }
 
-METHOD(crypter_t, encrypt, void,
+METHOD(crypter_t, encrypt, bool,
 	private_padlock_aes_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *dst)
 {
 	crypt(this, iv.ptr, data, dst, FALSE);
+	return TRUE;
 }
 
 METHOD(crypter_t, get_block_size, size_t,
@@ -139,10 +141,11 @@ METHOD(crypter_t, get_key_size, size_t,
 	return this->key.len;
 }
 
-METHOD(crypter_t, set_key, void,
+METHOD(crypter_t, set_key, bool,
 	private_padlock_aes_crypter_t *this, chunk_t key)
 {
 	memcpy(this->key.ptr, key.ptr, min(key.len, this->key.len));
+	return TRUE;
 }
 
 METHOD(crypter_t, destroy, void,

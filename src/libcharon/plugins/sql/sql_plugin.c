@@ -64,7 +64,7 @@ METHOD(plugin_t, destroy, void,
 {
 	charon->backends->remove_backend(charon->backends, &this->config->backend);
 	lib->credmgr->remove_set(lib->credmgr, &this->cred->set);
-	charon->bus->remove_listener(charon->bus, &this->logger->listener);
+	charon->bus->remove_logger(charon->bus, &this->logger->logger);
 	this->config->destroy(this->config);
 	this->cred->destroy(this->cred);
 	this->logger->destroy(this->logger);
@@ -80,7 +80,8 @@ plugin_t *sql_plugin_create()
 	char *uri;
 	private_sql_plugin_t *this;
 
-	uri = lib->settings->get_str(lib->settings, "charon.plugins.sql.database", NULL);
+	uri = lib->settings->get_str(lib->settings, "%s.plugins.sql.database",
+								 NULL, charon->name);
 	if (!uri)
 	{
 		DBG1(DBG_CFG, "sql plugin: database URI not set");
@@ -110,7 +111,7 @@ plugin_t *sql_plugin_create()
 
 	charon->backends->add_backend(charon->backends, &this->config->backend);
 	lib->credmgr->add_set(lib->credmgr, &this->cred->set);
-	charon->bus->add_listener(charon->bus, &this->logger->listener);
+	charon->bus->add_logger(charon->bus, &this->logger->logger);
 
 	return &this->public.plugin;
 }

@@ -91,8 +91,10 @@ struct signer_t {
 	 *
 	 * @param data		a chunk containing the data to sign
 	 * @param buffer	pointer where the signature will be written
+	 * @return			TRUE if signature created successfully
 	 */
-	void (*get_signature) (signer_t *this, chunk_t data, u_int8_t *buffer);
+	bool (*get_signature)(signer_t *this, chunk_t data,
+						  u_int8_t *buffer) __attribute__((warn_unused_result));
 
 	/**
 	 * Generate a signature and allocate space for it.
@@ -102,8 +104,10 @@ struct signer_t {
 	 *
 	 * @param data		a chunk containing the data to sign
 	 * @param chunk		chunk which will hold the allocated signature
+	 * @return			TRUE if signature allocated successfully
 	 */
-	void (*allocate_signature) (signer_t *this, chunk_t data, chunk_t *chunk);
+	bool (*allocate_signature)(signer_t *this, chunk_t data,
+						  chunk_t *chunk) __attribute__((warn_unused_result));
 
 	/**
 	 * Verify a signature.
@@ -116,33 +120,35 @@ struct signer_t {
 	 * @param signature	a chunk containing the signature
 	 * @return			TRUE, if signature is valid, FALSE otherwise
 	 */
-	bool (*verify_signature) (signer_t *this, chunk_t data, chunk_t signature);
+	bool (*verify_signature)(signer_t *this, chunk_t data, chunk_t signature);
 
 	/**
 	 * Get the block size of this signature algorithm.
 	 *
 	 * @return			block size in bytes
 	 */
-	size_t (*get_block_size) (signer_t *this);
+	size_t (*get_block_size)(signer_t *this);
 
 	/**
 	 * Get the key size of the signature algorithm.
 	 *
 	 * @return			key size in bytes
 	 */
-	size_t (*get_key_size) (signer_t *this);
+	size_t (*get_key_size)(signer_t *this);
 
 	/**
 	 * Set the key for this object.
 	 *
 	 * @param key		key to set
+	 * @return			TRUE if key set
 	 */
-	void (*set_key) (signer_t *this, chunk_t key);
+	bool (*set_key)(signer_t *this,
+					chunk_t key) __attribute__((warn_unused_result));
 
 	/**
 	 * Destroys a signer_t object.
 	 */
-	void (*destroy) (signer_t *this);
+	void (*destroy)(signer_t *this);
 };
 
 #endif /** SIGNER_H_ @}*/

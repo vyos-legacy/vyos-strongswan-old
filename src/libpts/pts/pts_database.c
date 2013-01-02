@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -121,6 +121,42 @@ METHOD(pts_database_t, check_aik_keyid, status_t,
 	return SUCCESS;
 }
 
+METHOD(pts_database_t, check_file_measurement, status_t,
+	private_pts_database_t *this, char *product, pts_meas_algorithms_t algo,
+	chunk_t measurement, char *filename)
+{
+	enumerator_t *e;
+	chunk_t hash;
+	status_t status = NOT_FOUND;
+
+	e = this->db->query(this->db,
+		"SELECT fh.hash FROM file_hashes AS fh "
+		"JOIN files AS f ON f.id = fh.file "
+		"JOIN products AS p ON p.id = fh.product "
+		"WHERE p.name = ? AND f.path = ? AND fh.algo = ?",
+		DB_TEXT, product, DB_TEXT, filename, DB_INT, algo, DB_BLOB);
+	if (!e)
+	{
+		return FAILED;
+	}
+	while (e->enumerate(e, &hash))
+	{
+		/* with relative filenames there might be multiple entries */
+		if (chunk_equals(measurement, hash))
+		{
+			status = SUCCESS;
+			break;
+		}
+		else
+		{
+			status = VERIFY_ERROR;
+		}
+	}	
+	e->destroy(e);
+
+	return status;
+}
+
 METHOD(pts_database_t, create_comp_evid_enumerator, enumerator_t*,
 	private_pts_database_t *this, int kid)
 {
@@ -169,7 +205,7 @@ METHOD(pts_database_t, check_comp_measurement, status_t,
 						  "found in database", pcr, seq_no);
 			DBG1(DBG_PTS, "  expected: %#B", &hash);
 			DBG1(DBG_PTS, "  received: %#B", &measurement);
-			status = FAILED;
+			status = VERIFY_ERROR;
 			break;
 		}
 	}
@@ -290,6 +326,7 @@ pts_database_t *pts_database_create(char *uri)
 			.create_comp_evid_enumerator = _create_comp_evid_enumerator,
 			.create_file_hash_enumerator = _create_file_hash_enumerator,
 			.check_aik_keyid = _check_aik_keyid,
+			.check_file_measurement = _check_file_measurement,
 			.check_comp_measurement = _check_comp_measurement,
 			.insert_comp_measurement = _insert_comp_measurement,
 			.delete_comp_measurements = _delete_comp_measurements,

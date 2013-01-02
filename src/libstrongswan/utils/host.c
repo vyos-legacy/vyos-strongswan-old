@@ -74,20 +74,16 @@ METHOD(host_t, get_sockaddr_len, socklen_t*,
 METHOD(host_t, is_anyaddr, bool,
 	private_host_t *this)
 {
+	static const u_int8_t zeroes[IPV6_LEN];
+
 	switch (this->address.sa_family)
 	{
 		case AF_INET:
 		{
-			u_int8_t zeroes[IPV4_LEN];
-
-			memset(zeroes, 0, IPV4_LEN);
 			return memeq(zeroes, &(this->address4.sin_addr.s_addr), IPV4_LEN);
 		}
 		case AF_INET6:
 		{
-			u_int8_t zeroes[IPV6_LEN];
-
-			memset(zeroes, 0, IPV6_LEN);
 			return memeq(zeroes, &(this->address6.sin6_addr.s6_addr), IPV6_LEN);
 		}
 		default:
@@ -100,7 +96,7 @@ METHOD(host_t, is_anyaddr, bool,
 /**
  * Described in header.
  */
-int host_printf_hook(char *dst, size_t dstlen, printf_hook_spec_t *spec,
+int host_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 					 const void *const *args)
 {
 	private_host_t *this = *((private_host_t**)(args[0]));
@@ -110,7 +106,7 @@ int host_printf_hook(char *dst, size_t dstlen, printf_hook_spec_t *spec,
 	{
 		snprintf(buffer, sizeof(buffer), "(null)");
 	}
-	else if (is_anyaddr(this))
+	else if (is_anyaddr(this) && !spec->plus)
 	{
 		snprintf(buffer, sizeof(buffer), "%%any%s",
 				 this->address.sa_family == AF_INET6 ? "6" : "");
@@ -152,9 +148,9 @@ int host_printf_hook(char *dst, size_t dstlen, printf_hook_spec_t *spec,
 	}
 	if (spec->minus)
 	{
-		return print_in_hook(dst, dstlen, "%-*s", spec->width, buffer);
+		return print_in_hook(data, "%-*s", spec->width, buffer);
 	}
-	return print_in_hook(dst, dstlen, "%*s", spec->width, buffer);
+	return print_in_hook(data, "%*s", spec->width, buffer);
 }
 
 METHOD(host_t, get_address, chunk_t,
@@ -430,13 +426,15 @@ host_t *host_create_from_sockaddr(sockaddr_t *sockaddr)
 	{
 		case AF_INET:
 		{
-			memcpy(&this->address4, sockaddr, sizeof(struct sockaddr_in));
+			memcpy(&this->address4, (struct sockaddr_in*)sockaddr,
+				   sizeof(struct sockaddr_in));
 			this->socklen = sizeof(struct sockaddr_in);
 			return &this->public;
 		}
 		case AF_INET6:
 		{
-			memcpy(&this->address6, sockaddr, sizeof(struct sockaddr_in6));
+			memcpy(&this->address6, (struct sockaddr_in6*)sockaddr,
+				   sizeof(struct sockaddr_in6));
 			this->socklen = sizeof(struct sockaddr_in6);
 			return &this->public;
 		}

@@ -39,35 +39,38 @@ struct attribute_manager_t {
 	/**
 	 * Acquire a virtual IP address to assign to a peer.
 	 *
-	 * @param pool			pool name to acquire address from
+	 * @param pools			list of pool names (char*) to acquire from
 	 * @param id			peer identity to get address forua
 	 * @param requested		IP in configuration request
 	 * @return				allocated address, NULL to serve none
 	 */
 	host_t* (*acquire_address)(attribute_manager_t *this,
-							   char *pool, identification_t *id,
+							   linked_list_t *pool, identification_t *id,
 							   host_t *requested);
 
 	/**
 	 * Release a previously acquired address.
 	 *
-	 * @param pool			pool name from which the address was acquired
+	 * @param pools			list of pool names (char*) to release to
 	 * @param address		address to release
 	 * @param id			peer identity to get address for
+	 * @return				TRUE if address released to pool
 	 */
-	void (*release_address)(attribute_manager_t *this,
-							char *pool, host_t *address, identification_t *id);
+	bool (*release_address)(attribute_manager_t *this,
+							linked_list_t *pools, host_t *address,
+							identification_t *id);
 
 	/**
 	 * Create an enumerator over attributes to hand out to a peer.
 	 *
-	 * @param pool			pool name to get attributes from
+	 * @param pool			list of pools names (char*) to query attributes from
 	 * @param id			peer identity to hand out attributes to
-	 * @param vip			virtual IP to assign to peer, if any
+	 * @param vip			list of virtual IPs (host_t*) to assign to peer
 	 * @return				enumerator (configuration_attribute_type_t, chunk_t)
 	 */
 	enumerator_t* (*create_responder_enumerator)(attribute_manager_t *this,
-								char *pool, identification_t *id, host_t *vip);
+									linked_list_t *pool, identification_t *id,
+									linked_list_t *vips);
 
 	/**
 	 * Register an attribute provider to the manager.
@@ -114,11 +117,11 @@ struct attribute_manager_t {
 	 * Create an enumerator over attributes to request from server.
 	 *
 	 * @param id			server identity to hand out attributes to
-	 * @param vip			virtual IP going to request, if any
+	 * @param vip			list of virtual IPs (host_t*) going to request
 	 * @return				enumerator (attribute_handler_t, ca_type_t, chunk_t)
 	 */
 	enumerator_t* (*create_initiator_enumerator)(attribute_manager_t *this,
-											identification_t *id, host_t *vip);
+									identification_t *id, linked_list_t *vips);
 
 	/**
 	 * Register an attribute handler to the manager.

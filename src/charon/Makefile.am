@@ -3,6 +3,8 @@ ipsec_PROGRAMS = charon
 charon_SOURCES = \
 charon.c
 
+charon.o :	$(top_builddir)/config.status
+
 INCLUDES = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
@@ -10,7 +12,8 @@ INCLUDES = \
 
 AM_CFLAGS = \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
-	-DIPSEC_PIDDIR=\"${piddir}\"
+	-DIPSEC_PIDDIR=\"${piddir}\" \
+	-DPLUGINS=\""${charon_plugins}\""
 
 charon_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \

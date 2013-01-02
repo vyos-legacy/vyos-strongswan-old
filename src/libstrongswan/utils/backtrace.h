@@ -77,4 +77,23 @@ struct backtrace_t {
  */
 backtrace_t *backtrace_create(int skip);
 
+/**
+ * Create a backtrace, dump it and clean it up.
+ *
+ * @param label		description to print for this backtrace, or NULL
+ * @param file		FILE to log backtrace to
+ * @param detailed	TRUE to resolve line/file using addr2line (slow)
+ */
+void backtrace_dump(char *label, FILE *file, bool detailed);
+
+/**
+ * Initialize backtracing framework.
+ */
+void backtrace_init();
+
+/**
+ * Deinitialize backtracing framework.
+ */
+void backtrace_deinit();
+
 #endif /** BACKTRACE_H_ @}*/

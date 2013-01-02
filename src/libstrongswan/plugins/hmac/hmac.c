@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -14,23 +15,25 @@
  * for more details.
  */
 
-#include <string.h>
-
 #include "hmac.h"
 
+#include <crypto/mac.h>
+#include <crypto/prfs/mac_prf.h>
+#include <crypto/signers/mac_signer.h>
 
-typedef struct private_hmac_t private_hmac_t;
+typedef struct private_mac_t private_mac_t;
 
 /**
- * Private data of a hmac_t object.
+ * Private data of a mac_t object.
  *
  * The variable names are the same as in the RFC.
  */
-struct private_hmac_t {
+struct private_mac_t {
+
 	/**
-	 * Public hmac_t interface.
+	 * Implements mac_t interface
 	 */
-	hmac_t public;
+	mac_t public;
 
 	/**
 	 * Block size, as in RFC.
@@ -53,8 +56,8 @@ struct private_hmac_t {
 	chunk_t ipaded_key;
 };
 
-METHOD(hmac_t, get_mac, void,
-	private_hmac_t *this, chunk_t data, u_int8_t *out)
+METHOD(mac_t, get_mac, bool,
+	private_mac_t *this, chunk_t data, u_int8_t *out)
 {
 	/* H(K XOR opad, H(K XOR ipad, text))
 	 *
@@ -69,51 +72,28 @@ METHOD(hmac_t, get_mac, void,
 	if (out == NULL)
 	{
 		/* append data to inner */
-		this->h->get_hash(this->h, data, NULL);
+		return this->h->get_hash(this->h, data, NULL);
 	}
-	else
-	{
-		/* append and do outer hash */
-		inner.ptr = buffer;
-		inner.len = this->h->get_hash_size(this->h);
 
-		/* complete inner */
-		this->h->get_hash(this->h, data, buffer);
+	/* append and do outer hash */
+	inner.ptr = buffer;
+	inner.len = this->h->get_hash_size(this->h);
 
-		/* do outer */
-		this->h->get_hash(this->h, this->opaded_key, NULL);
-		this->h->get_hash(this->h, inner, out);
-
-		/* reinit for next call */
-		this->h->get_hash(this->h, this->ipaded_key, NULL);
-	}
+	/* complete inner, do outer and reinit for next call */
+	return this->h->get_hash(this->h, data, buffer) &&
+		   this->h->get_hash(this->h, this->opaded_key, NULL) &&
+		   this->h->get_hash(this->h, inner, out) &&
+		   this->h->get_hash(this->h, this->ipaded_key, NULL);
 }
 
-METHOD(hmac_t, allocate_mac, void,
-	private_hmac_t *this, chunk_t data, chunk_t *out)
-{
-	/* allocate space and use get_mac */
-	if (out == NULL)
-	{
-		/* append mode */
-		get_mac(this, data, NULL);
-	}
-	else
-	{
-		out->len = this->h->get_hash_size(this->h);
-		out->ptr = malloc(out->len);
-		get_mac(this, data, out->ptr);
-	}
-}
-
-METHOD(hmac_t, get_block_size, size_t,
-	private_hmac_t *this)
+METHOD(mac_t, get_mac_size, size_t,
+	private_mac_t *this)
 {
 	return this->h->get_hash_size(this->h);
 }
 
-METHOD(hmac_t, set_key, void,
-	private_hmac_t *this, chunk_t key)
+METHOD(mac_t, set_key, bool,
+	private_mac_t *this, chunk_t key)
 {
 	int i;
 	u_int8_t buffer[this->b];
@@ -123,7 +103,10 @@ METHOD(hmac_t, set_key, void,
 	if (key.len > this->b)
 	{
 		/* if key is too long, it will be hashed */
-		this->h->get_hash(this->h, key, buffer);
+		if (!this->h->get_hash(this->h, key, buffer))
+		{
+			return FALSE;
+		}
 	}
 	else
 	{
@@ -139,12 +122,12 @@ METHOD(hmac_t, set_key, void,
 	}
 
 	/* begin hashing of inner pad */
-	this->h->reset(this->h);
-	this->h->get_hash(this->h, this->ipaded_key, NULL);
+	return this->h->reset(this->h) &&
+		   this->h->get_hash(this->h, this->ipaded_key, NULL);
 }
 
-METHOD(hmac_t, destroy, void,
-	private_hmac_t *this)
+METHOD(mac_t, destroy, void,
+	private_mac_t *this)
 {
 	this->h->destroy(this->h);
 	chunk_clear(&this->opaded_key);
@@ -153,17 +136,16 @@ METHOD(hmac_t, destroy, void,
 }
 
 /*
- * Described in header
+ * Creates an mac_t object
  */
-hmac_t *hmac_create(hash_algorithm_t hash_algorithm)
+static mac_t *hmac_create(hash_algorithm_t hash_algorithm)
 {
-	private_hmac_t *this;
+	private_mac_t *this;
 
 	INIT(this,
 		.public = {
 			.get_mac = _get_mac,
-			.allocate_mac = _allocate_mac,
-			.get_block_size = _get_block_size,
+			.get_mac_size = _get_mac_size,
 			.set_key = _set_key,
 			.destroy = _destroy,
 		},
@@ -201,4 +183,35 @@ hmac_t *hmac_create(hash_algorithm_t hash_algorithm)
 	this->ipaded_key.len = this->b;
 
 	return &this->public;
+}
+
+/*
+ * Described in header
+ */
+prf_t *hmac_prf_create(pseudo_random_function_t algo)
+{
+	mac_t *hmac;
+
+	hmac = hmac_create(hasher_algorithm_from_prf(algo));
+	if (hmac)
+	{
+		return mac_prf_create(hmac);
+	}
+	return NULL;
+}
+
+/*
+ * Described in header
+ */
+signer_t *hmac_signer_create(integrity_algorithm_t algo)
+{
+	mac_t *hmac;
+	size_t trunc;
+
+	hmac = hmac_create(hasher_algorithm_from_integrity(algo, &trunc));
+	if (hmac)
+	{
+		return mac_signer_create(hmac, trunc);
+	}
+	return NULL;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@
 /**
  * global debug output variables
  */
-static int debug_level = 2;
+static int debug_level = 1;
 static bool stderr_quiet = TRUE;
 
 /**
@@ -131,9 +131,14 @@ static void do_args(int argc, char *argv[])
 			{ "directory", required_argument, NULL, 'D' },
 			{ "dir", required_argument, NULL, 'D' },
 			{ "file", required_argument, NULL, 'F' },
+			{ "sha1-ima", no_argument, NULL, 'I' },
 			{ "key", required_argument, NULL, 'K' },
 			{ "owner", required_argument, NULL, 'O' },
 			{ "product", required_argument, NULL, 'P' },
+			{ "relative", no_argument, NULL, 'R' },
+			{ "rel", no_argument, NULL, 'R' },
+			{ "sequence", required_argument, NULL, 'S' },
+			{ "seq", required_argument, NULL, 'S' },
 			{ "sha1", no_argument, NULL, '1' },
 			{ "sha256", no_argument, NULL, '2' },
 			{ "sha384", no_argument, NULL, '3' },
@@ -232,6 +237,9 @@ static void do_args(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				continue;
+			case 'I':
+				attest->set_algo(attest, PTS_MEAS_ALGO_SHA1_IMA);
+				continue;
 			case 'K':
 			{
 				chunk_t aik;
@@ -251,6 +259,12 @@ static void do_args(int argc, char *argv[])
 				{
 					exit(EXIT_FAILURE);
 				}
+				continue;
+			case 'R':
+				attest->set_relative(attest);
+				continue;
+			case 'S':
+				attest->set_sequence(attest, atoi(optarg));
 				continue;
 			case '1':
 				attest->set_algo(attest, PTS_MEAS_ALGO_SHA1);

@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2011 Martin Willi
  * Copyright (C) 2011 revosec AG
  *
@@ -48,17 +51,19 @@ typedef bool (*plugin_feature_callback_t)(plugin_t *plugin,
  * features provided by the plugin, hard (DEPENDS) or soft (SDEPEND) dependency
  * specified is related to the previously defined PROVIDE feature.
  * If a plugin feature requires to hook in functionality into the library
- * or a daemon, it can use REGISTER or CALLBACK entries. Each PROVIDED feature
+ * or a daemon, it can use REGISTER or CALLBACK entries. Each PROVIDE feature
  * uses the REGISTER/CALLBACK entry defined previously. The REGISTER entry
  * defines a common feature registration function directly passed to the
  * associated manager or factory (crypto/credential factory etc.). A callback
  * function is more generic allows the loader to invoke a callback to do
- * the registration.
+ * the registration. PROVIDE features that do not use a registration or callback
+ * function must be listed before any REGISTER/CALLBACK entry, or use the NOOP
+ * helper macro.
  *
- * To conviently create feature lists, use the four macros PLUGIN_REGISTER,
- * PLUGIN_CALLBACK, PLUGIN_PROVIDE, PLUGIN_DEPENDS and PLUGIN_SDEPEND. Use
- * identation to show how the registration functions and dependencies are
- * related to a provided feature, such as:
+ * To conveniently create feature lists, use the macros PLUGIN_REGISTER,
+ * PLUGIN_CALLBACK, PLUGIN_NOOP, PLUGIN_PROVIDE, PLUGIN_DEPENDS and
+ * PLUGIN_SDEPEND. Use indentation to show how the registration functions
+ * and dependencies are related to a provided feature, such as:
  *
  * @verbatim
 	// two features, one with two dependencies, both use a callback to register
@@ -72,7 +77,8 @@ typedef bool (*plugin_feature_callback_t)(plugin_t *plugin,
 		PLUGIN_PROVIDE(...),
 			PLUGIN_DEPENDS(...),
 	// feature that does not use a registration function
-	PLUGIN_PROVIDE(...),
+	PLUGIN_NOOP,
+		PLUGIN_PROVIDE(...),
 	@endverbatim
  */
 struct plugin_feature_t {
@@ -107,6 +113,8 @@ struct plugin_feature_t {
 		FEATURE_DH,
 		/** rng_t */
 		FEATURE_RNG,
+		/** nonce_gen_t */
+		FEATURE_NONCE_GEN,
 		/** generic private key support */
 		FEATURE_PRIVKEY,
 		/** generating new private keys */
@@ -129,6 +137,10 @@ struct plugin_feature_t {
 		FEATURE_EAP_SERVER,
 		/** EAP peer implementation */
 		FEATURE_EAP_PEER,
+		/** XAuth server implementation */
+		FEATURE_XAUTH_SERVER,
+		/** XAuth peer implementation */
+		FEATURE_XAUTH_PEER,
 		/** database_t */
 		FEATURE_DATABASE,
 		/** fetcher_t */
@@ -182,6 +194,8 @@ struct plugin_feature_t {
 		char *fetcher;
 		/** FEATURE_CUSTOM */
 		char *custom;
+		/** FEATURE_XAUTH_SERVER/CLIENT */
+		char *xauth;
 
 		/** FEATURE_REGISTER */
 		struct {
@@ -221,6 +235,11 @@ struct plugin_feature_t {
 #define PLUGIN_CALLBACK(cb, data) _PLUGIN_FEATURE_CALLBACK(cb, data)
 
 /**
+ * The upcoming features use neither a callback nor a register function.
+ */
+#define PLUGIN_NOOP _PLUGIN_FEATURE_CALLBACK(NULL, NULL)
+
+/**
  * Define a feature the plugin provides.
  *
  * @param type		feature type to provide
@@ -252,6 +271,7 @@ struct plugin_feature_t {
 #define _PLUGIN_FEATURE_PRF(kind, alg)						__PLUGIN_FEATURE(kind, PRF, .prf = alg)
 #define _PLUGIN_FEATURE_DH(kind, group)						__PLUGIN_FEATURE(kind, DH, .dh_group = group)
 #define _PLUGIN_FEATURE_RNG(kind, quality)					__PLUGIN_FEATURE(kind, RNG, .rng_quality = quality)
+#define _PLUGIN_FEATURE_NONCE_GEN(kind, ...)				__PLUGIN_FEATURE(kind, NONCE_GEN, .custom = NULL)
 #define _PLUGIN_FEATURE_PRIVKEY(kind, type)					__PLUGIN_FEATURE(kind, PRIVKEY, .privkey = type)
 #define _PLUGIN_FEATURE_PRIVKEY_GEN(kind, type)				__PLUGIN_FEATURE(kind, PRIVKEY_GEN, .privkey_gen = type)
 #define _PLUGIN_FEATURE_PRIVKEY_SIGN(kind, scheme)			__PLUGIN_FEATURE(kind, PRIVKEY_SIGN, .privkey_sign = scheme)
@@ -266,6 +286,8 @@ struct plugin_feature_t {
 #define _PLUGIN_FEATURE_DATABASE(kind, type)				__PLUGIN_FEATURE(kind, DATABASE, .database = type)
 #define _PLUGIN_FEATURE_FETCHER(kind, type)					__PLUGIN_FEATURE(kind, FETCHER, .fetcher = type)
 #define _PLUGIN_FEATURE_CUSTOM(kind, name)					__PLUGIN_FEATURE(kind, CUSTOM, .custom = name)
+#define _PLUGIN_FEATURE_XAUTH_SERVER(kind, name)			__PLUGIN_FEATURE(kind, XAUTH_SERVER, .xauth = name)
+#define _PLUGIN_FEATURE_XAUTH_PEER(kind, name)				__PLUGIN_FEATURE(kind, XAUTH_PEER, .xauth = name)
 
 #define __PLUGIN_FEATURE_REGISTER(type, _f)					(plugin_feature_t){ FEATURE_REGISTER, FEATURE_##type, .arg.reg.f = _f }
 #define __PLUGIN_FEATURE_REGISTER_BUILDER(type, _f, _final)	(plugin_feature_t){ FEATURE_REGISTER, FEATURE_##type, .arg.reg = {.f = _f, .final = _final, }}
@@ -276,6 +298,7 @@ struct plugin_feature_t {
 #define _PLUGIN_FEATURE_REGISTER_PRF(type, f)				__PLUGIN_FEATURE_REGISTER(type, f)
 #define _PLUGIN_FEATURE_REGISTER_DH(type, f)				__PLUGIN_FEATURE_REGISTER(type, f)
 #define _PLUGIN_FEATURE_REGISTER_RNG(type, f)				__PLUGIN_FEATURE_REGISTER(type, f)
+#define _PLUGIN_FEATURE_REGISTER_NONCE_GEN(type, f)			__PLUGIN_FEATURE_REGISTER(type, f)
 #define _PLUGIN_FEATURE_REGISTER_PRIVKEY(type, f, final)	__PLUGIN_FEATURE_REGISTER_BUILDER(type, f, final)
 #define _PLUGIN_FEATURE_REGISTER_PRIVKEY_GEN(type, f, final)__PLUGIN_FEATURE_REGISTER_BUILDER(type, f, final)
 #define _PLUGIN_FEATURE_REGISTER_PUBKEY(type, f, final)		__PLUGIN_FEATURE_REGISTER_BUILDER(type, f, final)
@@ -290,6 +313,18 @@ struct plugin_feature_t {
  * Names for plugin_feature_t types.
  */
 extern enum_name_t *plugin_feature_names;
+
+/**
+ * Calculates a hash value for the given feature.
+ *
+ * Since this is intended to be used with the plugin_features_matches function
+ * the hash is not really unique for all types of features (e.g. RNGs are all
+ * mapped to the same value because they are loosely matched by said function).
+ *
+ * @param feature	feature to hash
+ * @return			hash value of the feature
+ */
+u_int32_t plugin_feature_hash(plugin_feature_t *feature);
 
 /**
  * Check if feature a matches to feature b.
