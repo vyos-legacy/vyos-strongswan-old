@@ -18,6 +18,7 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - rename strongswan-ikev2 package to strongswan-ike for now.
     - rephrase long description to remove references to pluto.
   * debian/strongswan-ikev1.install removed.
+  * debian/strongswan-ikev2.* renamed to strongswan-ike.
   * debian/strongswan-nm.install:
     - NetworkManager plugin is now a separate executable.
   * debian/libstrongswan.install:
