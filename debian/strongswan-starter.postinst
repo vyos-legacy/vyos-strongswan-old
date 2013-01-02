@@ -79,7 +79,7 @@ enable_daemon_start() {
     daemon=$1
     protocol=$2
 
-    echo -n "Enabling ${protocol} support by pluto ... "
+    echo -n "Enabling ${protocol} support by ${daemon}... "
     if [ -e $CONF_FILE ] && egrep -q "^\w+${daemon}start=yes\w*$" $CONF_FILE; then
         echo "already enabled"
     elif [ -e $CONF_FILE ] && egrep -q "^\w+${daemon}start=no\w*$" $CONF_FILE; then
@@ -103,7 +103,7 @@ disable_daemon_start() {
     daemon=$1
     protocol=$2
 
-    echo -n "Disabling ${protocol} support by pluto ... "
+    echo -n "Disabling ${protocol} support by ${daemon}... "
     if [ -e $CONF_FILE ] && ( egrep -q "^\w+${daemon}start=no\w*$" $CONF_FILE ||
        egrep -q "^\w+#\w*${daemon}start=(yes|no)\w*$" $CONF_FILE ); then
         echo "already disabled"

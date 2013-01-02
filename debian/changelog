@@ -24,6 +24,8 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
   * debian/libstrongswan.install:
     - install new xauth-eap, xauth-generic, xauth-pam and nonce plugins.
   * debian/strongswan.docs: CREDITS file is gone.
+  * debian/ipsec.secrets.proto: remove reference to pluto.
+  * debian/strongswan-starter.* remove references to pluto.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 

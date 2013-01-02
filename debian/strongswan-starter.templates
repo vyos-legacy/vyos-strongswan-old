@@ -28,18 +28,11 @@ _Description: Restart strongSwan now?
  existing connections and then bring them back up, so if you are using such
  a strongSwan tunnel to connect for this update, restarting is not recommended.
 
-Template: strongswan/ikev1
+Template: strongswan/charon
 Type: boolean
 Default: true
-_Description: Start strongSwan's IKEv1 daemon?
- The pluto daemon must be running to support version 1 of the Internet Key
- Exchange protocol.
-
-Template: strongswan/ikev2
-Type: boolean
-Default: true
-_Description: Start strongSwan's IKEv2 daemon?
- The charon daemon must be running to support version 2 of the Internet Key
+_Description: Start strongSwan's charon daemon?
+ The charon daemon must be running to support the Internet Key
  Exchange protocol.
 
 Template: strongswan/install_x509_certificate
@@ -190,5 +183,4 @@ _Description: Enable opportunistic encryption?
  cause a significant delay for every new outgoing connection.
  .
  You should only enable opportunistic encryption if you are sure you want it.
- It may break the Internet connection (default route) as the pluto daemon
- starts.
+ It may break the Internet connection (default route) as the daemon starts.
