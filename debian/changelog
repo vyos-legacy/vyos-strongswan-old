@@ -17,6 +17,8 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - drop strongswan-ikev1 package
     - rename strongswan-ikev2 package to strongswan-ike for now.
   * debian/strongswan-ikev1.install removed.
+  * debian/strongswan-nm.install:
+    - NetworkManager plugin is now a separate executable.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 
