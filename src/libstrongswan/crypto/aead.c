@@ -40,26 +40,41 @@ struct private_aead_t {
 	signer_t *signer;
 };
 
-METHOD(aead_t, encrypt, void,
+METHOD(aead_t, encrypt, bool,
 	private_aead_t *this, chunk_t plain, chunk_t assoc, chunk_t iv,
 	chunk_t *encrypted)
 {
 	chunk_t encr, sig;
 
-	this->signer->get_signature(this->signer, assoc, NULL);
-	this->signer->get_signature(this->signer, iv, NULL);
+	if (!this->signer->get_signature(this->signer, assoc, NULL) ||
+		!this->signer->get_signature(this->signer, iv, NULL))
+	{
+		return FALSE;
+	}
 
 	if (encrypted)
 	{
-		this->crypter->encrypt(this->crypter, plain, iv, &encr);
-		this->signer->allocate_signature(this->signer, encr, &sig);
+		if (!this->crypter->encrypt(this->crypter, plain, iv, &encr))
+		{
+			return FALSE;
+		}
+		if (!this->signer->allocate_signature(this->signer, encr, &sig))
+		{
+			free(encr.ptr);
+			return FALSE;
+		}
 		*encrypted = chunk_cat("cmm", iv, encr, sig);
 	}
 	else
 	{
-		this->crypter->encrypt(this->crypter, plain, iv, NULL);
-		this->signer->get_signature(this->signer, plain, plain.ptr + plain.len);
+		if (!this->crypter->encrypt(this->crypter, plain, iv, NULL) ||
+			!this->signer->get_signature(this->signer,
+										 plain, plain.ptr + plain.len))
+		{
+			return FALSE;
+		}
 	}
+	return TRUE;
 }
 
 METHOD(aead_t, decrypt, bool,
@@ -80,15 +95,17 @@ METHOD(aead_t, decrypt, bool,
 	chunk_split(encrypted, "mm", encrypted.len - sig.len,
 				&encrypted, sig.len, &sig);
 
-	this->signer->get_signature(this->signer, assoc, NULL);
-	this->signer->get_signature(this->signer, iv, NULL);
+	if (!this->signer->get_signature(this->signer, assoc, NULL) ||
+		!this->signer->get_signature(this->signer, iv, NULL))
+	{
+		return FALSE;
+	}
 	if (!this->signer->verify_signature(this->signer, encrypted, sig))
 	{
 		DBG1(DBG_LIB, "MAC verification failed");
 		return FALSE;
 	}
-	this->crypter->decrypt(this->crypter, encrypted, iv, plain);
-	return TRUE;
+	return this->crypter->decrypt(this->crypter, encrypted, iv, plain);
 }
 
 METHOD(aead_t, get_block_size, size_t,
@@ -116,7 +133,7 @@ METHOD(aead_t, get_key_size, size_t,
 			this->signer->get_key_size(this->signer);
 }
 
-METHOD(aead_t, set_key, void,
+METHOD(aead_t, set_key, bool,
 	private_aead_t *this, chunk_t key)
 {
 	chunk_t sig, enc;
@@ -124,8 +141,8 @@ METHOD(aead_t, set_key, void,
 	chunk_split(key, "mm", this->signer->get_key_size(this->signer), &sig,
 				this->crypter->get_key_size(this->crypter), &enc);
 
-	this->signer->set_key(this->signer, sig);
-	this->crypter->set_key(this->crypter, enc);
+	return this->signer->set_key(this->signer, sig) &&
+		   this->crypter->set_key(this->crypter, enc);
 }
 
 METHOD(aead_t, destroy, void,

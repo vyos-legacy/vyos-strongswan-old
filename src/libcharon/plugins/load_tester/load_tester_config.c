@@ -45,6 +45,11 @@ struct private_load_tester_config_t {
 	char *remote;
 
 	/**
+	 * Local address
+	 */
+	char *local;
+
+	/**
 	 * IP address pool
 	 */
 	char *pool;
@@ -88,6 +93,11 @@ struct private_load_tester_config_t {
 	 * DPD check delay
 	 */
 	u_int dpd_delay;
+
+	/**
+	 * DPD timeout (IKEv1 only)
+	 */
+	u_int dpd_timeout;
 
 	/**
 	 * incremental numbering of generated configs
@@ -241,21 +251,32 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 	if (this->port && num)
 	{
 		ike_cfg = ike_cfg_create(FALSE, FALSE,
-				"0.0.0.0", this->port + num - 1, this->remote, IKEV2_NATT_PORT);
+								 this->local, FALSE, this->port + num - 1,
+								 this->remote, FALSE, IKEV2_NATT_PORT);
 	}
 	else
 	{
 		ike_cfg = ike_cfg_create(FALSE, FALSE,
-				"0.0.0.0", IKEV2_UDP_PORT, this->remote, IKEV2_UDP_PORT);
+								 this->local, FALSE, charon->socket->get_port(charon->socket, FALSE),
+								 this->remote, FALSE, IKEV2_UDP_PORT);
 	}
 	ike_cfg->add_proposal(ike_cfg, this->proposal->clone(this->proposal));
-	peer_cfg = peer_cfg_create("load-test", 2, ike_cfg,
+	peer_cfg = peer_cfg_create("load-test", IKEV2, ike_cfg,
 							   CERT_SEND_IF_ASKED, UNIQUE_NO, 1, /* keytries */
 							   this->ike_rekey, 0, /* rekey, reauth */
 							   0, this->ike_rekey, /* jitter, overtime */
-							   FALSE, this->dpd_delay, /* mobike, dpddelay */
-							   this->vip ? this->vip->clone(this->vip) : NULL,
-							   this->pool, FALSE, NULL, NULL);
+							   FALSE, FALSE, /* mobike, aggressive mode */
+							   this->dpd_delay,   /* dpd_delay */
+							   this->dpd_timeout, /* dpd_timeout */
+							   FALSE, NULL, NULL);
+	if (this->vip)
+	{
+		peer_cfg->add_virtual_ip(peer_cfg, this->vip->clone(this->vip));
+	}
+	if (this->pool)
+	{
+		peer_cfg->add_pool(peer_cfg, this->pool);
+	}
 	if (num)
 	{	/* initiator */
 		generate_auth_cfg(this, this->initiator_auth, peer_cfg, TRUE, num);
@@ -335,41 +356,46 @@ load_tester_config_t *load_tester_config_create()
 	);
 
 	if (lib->settings->get_bool(lib->settings,
-				"charon.plugins.load-tester.request_virtual_ip", FALSE))
+			"%s.plugins.load-tester.request_virtual_ip", FALSE, charon->name))
 	{
 		this->vip = host_create_from_string("0.0.0.0", 0);
 	}
 	this->pool = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.pool", NULL);
+			"%s.plugins.load-tester.pool", NULL, charon->name);
 	this->remote = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.remote", "127.0.0.1");
+			"%s.plugins.load-tester.remote", "127.0.0.1", charon->name);
+	this->local = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.local", "0.0.0.0", charon->name);
 
 	this->proposal = proposal_create_from_string(PROTO_IKE,
-			lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.proposal", "aes128-sha1-modp768"));
+				lib->settings->get_str(lib->settings,
+					"%s.plugins.load-tester.proposal", "aes128-sha1-modp768",
+					charon->name));
 	if (!this->proposal)
 	{	/* fallback */
 		this->proposal = proposal_create_from_string(PROTO_IKE,
 													 "aes128-sha1-modp768");
 	}
 	this->ike_rekey = lib->settings->get_int(lib->settings,
-				"charon.plugins.load-tester.ike_rekey", 0);
+			"%s.plugins.load-tester.ike_rekey", 0, charon->name);
 	this->child_rekey = lib->settings->get_int(lib->settings,
-				"charon.plugins.load-tester.child_rekey", 600);
+			"%s.plugins.load-tester.child_rekey", 600, charon->name);
 	this->dpd_delay = lib->settings->get_int(lib->settings,
-				"charon.plugins.load-tester.dpd_delay", 0);
+			"%s.plugins.load-tester.dpd_delay", 0, charon->name);
+	this->dpd_timeout = lib->settings->get_int(lib->settings,
+			"%s.plugins.load-tester.dpd_timeout", 0, charon->name);
 
 	this->initiator_auth = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.initiator_auth", "pubkey");
+			"%s.plugins.load-tester.initiator_auth", "pubkey", charon->name);
 	this->responder_auth = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.responder_auth", "pubkey");
+			"%s.plugins.load-tester.responder_auth", "pubkey", charon->name);
 	this->initiator_id = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.initiator_id", NULL);
+			"%s.plugins.load-tester.initiator_id", NULL, charon->name);
 	this->responder_id = lib->settings->get_str(lib->settings,
-				"charon.plugins.load-tester.responder_id", NULL);
+			"%s.plugins.load-tester.responder_id", NULL, charon->name);
 
 	this->port = lib->settings->get_int(lib->settings,
-				"charon.plugins.load-tester.dynamic_port", 0);
+			"%s.plugins.load-tester.dynamic_port", 0, charon->name);
 
 	this->peer_cfg = generate_config(this, 0);
 

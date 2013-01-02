@@ -169,14 +169,15 @@ METHOD(enumerator_t, peer_enumerator_enumerate, bool,
 	{
 		DESTROY_IF(this->peer_cfg);
 		ike_cfg = ike_cfg_create(FALSE, FALSE,
-					local_addr, IKEV2_UDP_PORT, remote_addr, IKEV2_UDP_PORT);
+								 local_addr, FALSE, charon->socket->get_port(charon->socket, FALSE),
+								 remote_addr, FALSE, IKEV2_UDP_PORT);
 		ike_cfg->add_proposal(ike_cfg, create_proposal(ike_proposal, PROTO_IKE));
 		this->peer_cfg = peer_cfg_create(
-					name, 2, ike_cfg, CERT_SEND_IF_ASKED, UNIQUE_NO,
+					name, IKEV2, ike_cfg, CERT_SEND_IF_ASKED, UNIQUE_NO,
 					1, create_rekey(ike_rekey), 0,  /* keytries, rekey, reauth */
 					1800, 900,						/* jitter, overtime */
-					TRUE, 60,						/* mobike, dpddelay */
-					NULL, NULL,					/* vip, pool */
+					TRUE, FALSE,				/* mobike, aggressive */
+					60, 0,						/* DPD delay, timeout */
 					FALSE, NULL, NULL);			/* mediation, med by, peer id */
 		auth = auth_cfg_create();
 		auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PSK);
@@ -264,8 +265,9 @@ METHOD(enumerator_t, ike_enumerator_enumerate, bool,
 							   &local_addr, &remote_addr, &ike_proposal))
 	{
 		DESTROY_IF(this->ike_cfg);
-		this->ike_cfg = ike_cfg_create(FALSE, FALSE, local_addr, IKEV2_UDP_PORT,
-										remote_addr, IKEV2_UDP_PORT);
+		this->ike_cfg = ike_cfg_create(FALSE, FALSE,
+									   local_addr, FALSE, charon->socket->get_port(charon->socket, FALSE),
+									   remote_addr, FALSE, IKEV2_UDP_PORT);
 		this->ike_cfg->add_proposal(this->ike_cfg,
 									create_proposal(ike_proposal, PROTO_IKE));
 

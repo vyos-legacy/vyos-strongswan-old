@@ -259,7 +259,8 @@ static ike_cfg_t *build_ike_cfg(private_sql_config_t *this, enumerator_t *e,
 		ike_cfg_t *ike_cfg;
 
 		ike_cfg = ike_cfg_create(certreq, force_encap,
-								 local, IKEV2_UDP_PORT, remote, IKEV2_UDP_PORT);
+								 local, FALSE, charon->socket->get_port(charon->socket, FALSE),
+								 remote, FALSE, IKEV2_UDP_PORT);
 		add_ike_proposals(this, ike_cfg, id);
 		return ike_cfg;
 	}
@@ -332,6 +333,7 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 		mediation, mediated_by, p_type;
 	chunk_t l_data, r_data, p_data;
 	char *name, *virtual, *pool;
+	enumerator_t *enumerator;
 
 	while (e->enumerate(e,
 			&id, &name, &ike_cfg, &l_type, &l_data, &r_type, &r_data,
@@ -368,10 +370,25 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 		if (ike)
 		{
 			peer_cfg = peer_cfg_create(
-					name, 2, ike, cert_policy, uniqueid,
+					name, IKEV2, ike, cert_policy, uniqueid,
 					keyingtries, rekeytime, reauthtime, jitter, overtime,
-					mobike,	dpd_delay, vip, pool,
+					mobike, FALSE, dpd_delay, 0,
 					mediation, mediated_cfg, peer_id);
+			if (vip)
+			{
+				peer_cfg->add_virtual_ip(peer_cfg, vip);
+			}
+			if (pool)
+			{
+				/* attr-sql used comma separated pools, but we now completely
+				 * support multiple pools directly. Support old SQL configs: */
+				enumerator = enumerator_create_token(pool, ",", " ");
+				while (enumerator->enumerate(enumerator, &pool))
+				{
+					peer_cfg->add_pool(peer_cfg, pool);
+				}
+				enumerator->destroy(enumerator);
+			}
 			auth = auth_cfg_create();
 			auth->add(auth, AUTH_RULE_AUTH_CLASS, auth_method);
 			auth->add(auth, AUTH_RULE_IDENTITY, local_id);

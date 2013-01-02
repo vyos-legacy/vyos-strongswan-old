@@ -82,6 +82,19 @@ struct pts_database_t {
 	enumerator_t* (*create_comp_evid_enumerator)(pts_database_t *this, int kid);
 
 	/**
+	* Check PTS file measurement against reference stored in database
+	*
+	* @param product		Software product (os, vpn client, etc.)
+	* @param algo			File measurement hash algorithm used
+	* @param measurement	File measurement hash
+	* @param filename		Optional name of the file to be checked
+	* @return				Status
+	*/
+	status_t (*check_file_measurement)(pts_database_t *this, char *product,
+									   pts_meas_algorithms_t algo,
+									   chunk_t measurement, char *filename);
+
+	/**
 	* Check a functional component measurement against value stored in database
 	*
 	* @param measurement	measurement hash

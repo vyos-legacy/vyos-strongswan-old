@@ -107,24 +107,21 @@ static size_t lookup_alg(integrity_algorithm_t algo, char **name,
 	return 0;
 }
 
-METHOD(signer_t, get_signature, void,
+METHOD(signer_t, get_signature, bool,
 	private_af_alg_signer_t *this, chunk_t data, u_int8_t *buffer)
 {
-	this->ops->hash(this->ops, data, buffer, this->block_size);
+	return this->ops->hash(this->ops, data, buffer, this->block_size);
 }
 
-METHOD(signer_t, allocate_signature, void,
+METHOD(signer_t, allocate_signature, bool,
 	private_af_alg_signer_t *this, chunk_t data, chunk_t *chunk)
 {
 	if (chunk)
 	{
 		*chunk = chunk_alloc(this->block_size);
-		get_signature(this, data, chunk->ptr);
+		return get_signature(this, data, chunk->ptr);
 	}
-	else
-	{
-		get_signature(this, data, NULL);
-	}
+	return get_signature(this, data, NULL);
 }
 
 METHOD(signer_t, verify_signature, bool,
@@ -136,7 +133,10 @@ METHOD(signer_t, verify_signature, bool,
 	{
 		return FALSE;
 	}
-	get_signature(this, data, sig);
+	if (!get_signature(this, data, sig))
+	{
+		return FALSE;
+	}
 	return memeq(signature.ptr, sig, signature.len);
 }
 
@@ -152,10 +152,10 @@ METHOD(signer_t, get_block_size, size_t,
 	return this->block_size;
 }
 
-METHOD(signer_t, set_key, void,
+METHOD(signer_t, set_key, bool,
 	private_af_alg_signer_t *this, chunk_t key)
 {
-	this->ops->set_key(this->ops, key);
+	return this->ops->set_key(this->ops, key);
 }
 
 METHOD(signer_t, destroy, void,

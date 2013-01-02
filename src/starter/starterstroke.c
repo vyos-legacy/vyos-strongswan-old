@@ -1,4 +1,4 @@
-/* Stroke for charon is the counterpart to whack from pluto
+/*
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -26,11 +26,8 @@
 
 #include <credentials/auth_cfg.h>
 
-#include <freeswan.h>
-
-#include <constants.h>
-#include <defs.h>
-#include <log.h>
+#include <library.h>
+#include <debug.h>
 
 #include <stroke_msg.h>
 
@@ -73,12 +70,12 @@ static int send_stroke_msg (stroke_msg_t *msg)
 
 	if (sock < 0)
 	{
-		plog("socket() failed: %s", strerror(errno));
+		DBG1(DBG_APP, "socket() failed: %s", strerror(errno));
 		return -1;
 	}
 	if (connect(sock, (struct sockaddr *)&ctl_addr, offsetof(struct sockaddr_un, sun_path) + strlen(ctl_addr.sun_path)) < 0)
 	{
-		plog("connect(charon_ctl) failed: %s", strerror(errno));
+		DBG1(DBG_APP, "connect(charon_ctl) failed: %s", strerror(errno));
 		close(sock);
 		return -1;
 	}
@@ -86,18 +83,18 @@ static int send_stroke_msg (stroke_msg_t *msg)
 	/* send message */
 	if (write(sock, msg, msg->length) != msg->length)
 	{
-		plog("write(charon_ctl) failed: %s", strerror(errno));
+		DBG1(DBG_APP, "write(charon_ctl) failed: %s", strerror(errno));
 		close(sock);
 		return -1;
 	}
 	while ((byte_count = read(sock, buffer, sizeof(buffer)-1)) > 0)
 	{
 		buffer[byte_count] = '\0';
-		plog("%s", buffer);
+		DBG1(DBG_APP, "%s", buffer);
 	}
 	if (byte_count < 0)
 	{
-		plog("read() failed: %s", strerror(errno));
+		DBG1(DBG_APP, "read() failed: %s", strerror(errno));
 	}
 
 	close(sock);
@@ -117,47 +114,8 @@ static char* connection_name(starter_conn_t *conn)
 	return conn->name;
 }
 
-static void ip_address2string(ip_address *addr, char *buffer, size_t len)
-{
-	switch (((struct sockaddr*)addr)->sa_family)
-	{
-		case AF_INET6:
-		{
-			struct sockaddr_in6* sin6 = (struct sockaddr_in6*)addr;
-			u_int8_t zeroes[IPV6_LEN];
-
-			memset(zeroes, 0, IPV6_LEN);
-			if (memcmp(zeroes, &(sin6->sin6_addr.s6_addr), IPV6_LEN) &&
-				inet_ntop(AF_INET6, &sin6->sin6_addr, buffer, len))
-			{
-				return;
-			}
-			snprintf(buffer, len, "%%any6");
-			break;
-		}
-		case AF_INET:
-		{
-			struct sockaddr_in* sin = (struct sockaddr_in*)addr;
-			u_int8_t zeroes[IPV4_LEN];
-
-			memset(zeroes, 0, IPV4_LEN);
-			if (memcmp(zeroes, &(sin->sin_addr.s_addr), IPV4_LEN) &&
-				inet_ntop(AF_INET, &sin->sin_addr, buffer, len))
-			{
-				return;
-			}
-			/* fall through to default */
-		}
-		default:
-			snprintf(buffer, len, "%%any");
-			break;
-	}
-}
-
 static void starter_stroke_add_end(stroke_msg_t *msg, stroke_end_t *msg_end, starter_end_t *conn_end)
 {
-	char buffer[INET6_ADDRSTRLEN];
-
 	msg_end->auth = push_string(msg, conn_end->auth);
 	msg_end->auth2 = push_string(msg, conn_end->auth2);
 	msg_end->id = push_string(msg, conn_end->id);
@@ -169,6 +127,7 @@ static void starter_stroke_add_end(stroke_msg_t *msg, stroke_end_t *msg_end, sta
 	msg_end->ca = push_string(msg, conn_end->ca);
 	msg_end->ca2 = push_string(msg, conn_end->ca2);
 	msg_end->groups = push_string(msg, conn_end->groups);
+	msg_end->groups2 = push_string(msg, conn_end->groups2);
 	msg_end->updown = push_string(msg, conn_end->updown);
 	if (conn_end->host)
 	{
@@ -176,16 +135,16 @@ static void starter_stroke_add_end(stroke_msg_t *msg, stroke_end_t *msg_end, sta
 	}
 	else
 	{
-		ip_address2string(&conn_end->addr, buffer, sizeof(buffer));
-		msg_end->address = push_string(msg, buffer);
+		msg_end->address = push_string(msg, "%any");
 	}
 	msg_end->ikeport = conn_end->ikeport;
 	msg_end->subnets = push_string(msg, conn_end->subnet);
 	msg_end->sourceip = push_string(msg, conn_end->sourceip);
-	msg_end->sourceip_mask = conn_end->sourceip_mask;
+	msg_end->dns = push_string(msg, conn_end->dns);
 	msg_end->sendcert = conn_end->sendcert;
 	msg_end->hostaccess = conn_end->hostaccess;
-	msg_end->tohost = !conn_end->has_client;
+	msg_end->tohost = !conn_end->subnet;
+	msg_end->allow_any = conn_end->allow_any;
 	msg_end->protocol = conn_end->protocol;
 	msg_end->port = conn_end->port;
 }
@@ -197,60 +156,18 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	memset(&msg, 0, sizeof(msg));
 	msg.type = STR_ADD_CONN;
 	msg.length = offsetof(stroke_msg_t, buffer);
-	msg.add_conn.ikev2 = conn->keyexchange != KEY_EXCHANGE_IKEV1;
+	msg.add_conn.version = conn->keyexchange;
 	msg.add_conn.name = push_string(&msg, connection_name(conn));
-
-	/* PUBKEY is preferred to PSK and EAP */
-	if (conn->policy & POLICY_PUBKEY)
-	{
-		msg.add_conn.auth_method = AUTH_CLASS_PUBKEY;
-	}
-	else if (conn->policy & POLICY_PSK)
-	{
-		msg.add_conn.auth_method = AUTH_CLASS_PSK;
-	}
-	else if (conn->policy & POLICY_XAUTH_PSK)
-	{
-		msg.add_conn.auth_method = AUTH_CLASS_EAP;
-	}
-	else
-	{
-		msg.add_conn.auth_method = AUTH_CLASS_ANY;
-	}
-	msg.add_conn.eap_type = conn->eap_type;
-	msg.add_conn.eap_vendor = conn->eap_vendor;
 	msg.add_conn.eap_identity = push_string(&msg, conn->eap_identity);
 	msg.add_conn.aaa_identity = push_string(&msg, conn->aaa_identity);
+	msg.add_conn.xauth_identity = push_string(&msg, conn->xauth_identity);
 
-	if (conn->policy & POLICY_TUNNEL)
-	{
-		msg.add_conn.mode = MODE_TUNNEL;
-	}
-	else if (conn->policy & POLICY_BEET)
-	{
-		msg.add_conn.mode = MODE_BEET;
-	}
-	else if (conn->policy & POLICY_PROXY)
-	{
-		msg.add_conn.mode = MODE_TRANSPORT;
-		msg.add_conn.proxy_mode = TRUE;
-	}
-	else if (conn->policy & POLICY_SHUNT_PASS)
-	{
-		msg.add_conn.mode = MODE_PASS;
-	}
-	else if (conn->policy & (POLICY_SHUNT_DROP | POLICY_SHUNT_REJECT))
-	{
-		msg.add_conn.mode = MODE_DROP;
-	}
-	else
-	{
-		msg.add_conn.mode = MODE_TRANSPORT;
-	}
+	msg.add_conn.mode = conn->mode;
+	msg.add_conn.proxy_mode = conn->proxy_mode;
 
-	if (!(conn->policy & POLICY_DONT_REKEY))
+	if (!(conn->options & SA_OPTION_DONT_REKEY))
 	{
-		msg.add_conn.rekey.reauth = (conn->policy & POLICY_DONT_REAUTH) == LEMPTY;
+		msg.add_conn.rekey.reauth = !(conn->options & SA_OPTION_DONT_REAUTH);
 		msg.add_conn.rekey.ipsec_lifetime = conn->sa_ipsec_life_seconds;
 		msg.add_conn.rekey.ike_lifetime = conn->sa_ike_life_seconds;
 		msg.add_conn.rekey.margin = conn->sa_rekey_margin;
@@ -261,15 +178,17 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 		msg.add_conn.rekey.tries = conn->sa_keying_tries;
 		msg.add_conn.rekey.fuzz = conn->sa_rekey_fuzz;
 	}
-	msg.add_conn.mobike = (conn->policy & POLICY_MOBIKE) != 0;
-	msg.add_conn.force_encap = (conn->policy & POLICY_FORCE_ENCAP) != 0;
-	msg.add_conn.ipcomp = (conn->policy & POLICY_COMPRESS) != 0;
+	msg.add_conn.mobike = conn->options & SA_OPTION_MOBIKE;
+	msg.add_conn.force_encap = conn->options & SA_OPTION_FORCE_ENCAP;
+	msg.add_conn.ipcomp = conn->options & SA_OPTION_COMPRESS;
 	msg.add_conn.install_policy = conn->install_policy;
-	msg.add_conn.crl_policy = cfg->setup.strictcrlpolicy;
+	msg.add_conn.aggressive = conn->aggressive;
+	msg.add_conn.crl_policy = (crl_policy_t)cfg->setup.strictcrlpolicy;
 	msg.add_conn.unique = cfg->setup.uniqueids;
 	msg.add_conn.algorithms.ike = push_string(&msg, conn->ike);
 	msg.add_conn.algorithms.esp = push_string(&msg, conn->esp);
 	msg.add_conn.dpd.delay = conn->dpd_delay;
+	msg.add_conn.dpd.timeout = conn->dpd_timeout;
 	msg.add_conn.dpd.action = conn->dpd_action;
 	msg.add_conn.close_action = conn->close_action;
 	msg.add_conn.inactivity = conn->inactivity;
@@ -286,6 +205,48 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	starter_stroke_add_end(&msg, &msg.add_conn.me, &conn->left);
 	starter_stroke_add_end(&msg, &msg.add_conn.other, &conn->right);
 
+	if (!msg.add_conn.me.auth && !msg.add_conn.other.auth &&
+		 conn->authby)
+	{	/* leftauth/rightauth not set, use legacy options */
+		if (streq(conn->authby, "rsa")   || streq(conn->authby, "rsasig")   ||
+			streq(conn->authby, "ecdsa") || streq(conn->authby, "ecdsasig") ||
+			streq(conn->authby, "pubkey"))
+		{
+			msg.add_conn.me.auth = push_string(&msg, "pubkey");
+			msg.add_conn.other.auth = push_string(&msg, "pubkey");
+		}
+		else if (streq(conn->authby, "secret") || streq(conn->authby, "psk"))
+		{
+			msg.add_conn.me.auth = push_string(&msg, "psk");
+			msg.add_conn.other.auth = push_string(&msg, "psk");
+		}
+		else if (streq(conn->authby, "xauthrsasig"))
+		{
+			msg.add_conn.me.auth = push_string(&msg, "pubkey");
+			msg.add_conn.other.auth = push_string(&msg, "pubkey");
+			if (conn->options & SA_OPTION_XAUTH_SERVER)
+			{
+				msg.add_conn.other.auth2 = push_string(&msg, "xauth");
+			}
+			else
+			{
+				msg.add_conn.me.auth2 = push_string(&msg, "xauth");
+			}
+		}
+		else if (streq(conn->authby, "xauthpsk"))
+		{
+			msg.add_conn.me.auth = push_string(&msg, "psk");
+			msg.add_conn.other.auth = push_string(&msg, "psk");
+			if (conn->options & SA_OPTION_XAUTH_SERVER)
+			{
+				msg.add_conn.other.auth2 = push_string(&msg, "xauth");
+			}
+			else
+			{
+				msg.add_conn.me.auth2 = push_string(&msg, "xauth");
+			}
+		}
+	}
 	return send_stroke_msg(&msg);
 }
 

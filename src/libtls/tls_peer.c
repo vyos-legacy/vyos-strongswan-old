@@ -709,13 +709,15 @@ static status_t send_client_hello(private_tls_peer_t *this,
 
 	htoun32(&this->client_random, time(NULL));
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng ||
+		!rng->get_bytes(rng, sizeof(this->client_random) - 4,
+						this->client_random + 4))
 	{
-		DBG1(DBG_TLS, "no suitable RNG found to generate client random");
+		DBG1(DBG_TLS, "failed to generate client random");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(this->client_random) - 4, this->client_random + 4);
 	rng->destroy(rng);
 
 	/* TLS version */
@@ -903,20 +905,24 @@ static status_t send_key_exchange_encrypt(private_tls_peer_t *this,
 	chunk_t encrypted;
 
 	rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
-	if (!rng)
+	if (!rng || !rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2))
 	{
-		DBG1(DBG_TLS, "no suitable RNG found for TLS premaster secret");
+		DBG1(DBG_TLS, "failed to generate TLS premaster secret");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2);
 	rng->destroy(rng);
 	htoun16(premaster, TLS_1_2);
 
-	this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
-								 this->session, this->server,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
+									  this->session, this->server,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		return NEED_MORE;
+	}
 
 	public = find_public_key(this);
 	if (!public)
@@ -958,10 +964,15 @@ static status_t send_key_exchange_dhe(private_tls_peer_t *this,
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
 		return NEED_MORE;
 	}
-	this->crypto->derive_secrets(this->crypto, premaster,
-								 this->session, this->server,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, premaster,
+									  this->session, this->server,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		chunk_clear(&premaster);
+		return NEED_MORE;
+	}
 	chunk_clear(&premaster);
 
 	this->dh->get_my_public_value(this->dh, &pub);

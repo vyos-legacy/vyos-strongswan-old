@@ -50,6 +50,7 @@ struct entry_t {
 		hasher_constructor_t create_hasher;
 		prf_constructor_t create_prf;
 		rng_constructor_t create_rng;
+		nonce_gen_constructor_t create_nonce_gen;
 		dh_constructor_t create_dh;
 		void *create;
 	};
@@ -96,6 +97,11 @@ struct private_crypto_factory_t {
 	 * registered rngs, as entry_t
 	 */
 	linked_list_t *rngs;
+
+	/**
+	 * registered nonce generators, as entry_t
+	 */
+	linked_list_t *nonce_gens;
 
 	/**
 	 * registered diffie hellman, as entry_t
@@ -329,12 +335,41 @@ METHOD(crypto_factory_t, create_rng, rng_t*,
 	return NULL;
 }
 
+METHOD(crypto_factory_t, create_nonce_gen, nonce_gen_t*,
+	private_crypto_factory_t *this)
+{
+	enumerator_t *enumerator;
+	entry_t *entry;
+	nonce_gen_t *nonce_gen = NULL;
+
+	this->lock->read_lock(this->lock);
+	enumerator = this->nonce_gens->create_enumerator(this->nonce_gens);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		nonce_gen = entry->create_nonce_gen();
+	}
+	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
+
+	return nonce_gen;
+}
+
 METHOD(crypto_factory_t, create_dh, diffie_hellman_t*,
 	private_crypto_factory_t *this, diffie_hellman_group_t group, ...)
 {
 	enumerator_t *enumerator;
 	entry_t *entry;
+	va_list args;
+	chunk_t g = chunk_empty, p = chunk_empty;
 	diffie_hellman_t *diffie_hellman = NULL;
+
+	if (group == MODP_CUSTOM)
+	{
+		va_start(args, group);
+		g = va_arg(args, chunk_t);
+		p = va_arg(args, chunk_t);
+		va_end(args);
+	}
 
 	this->lock->read_lock(this->lock);
 	enumerator = this->dhs->create_enumerator(this->dhs);
@@ -342,21 +377,7 @@ METHOD(crypto_factory_t, create_dh, diffie_hellman_t*,
 	{
 		if (entry->algo == group)
 		{
-			if (group == MODP_CUSTOM)
-			{
-				va_list args;
-				chunk_t g, p;
-
-				va_start(args, group);
-				g = va_arg(args, chunk_t);
-				p = va_arg(args, chunk_t);
-				va_end(args);
-				diffie_hellman = entry->create_dh(MODP_CUSTOM, g, p);
-			}
-			else
-			{
-				diffie_hellman = entry->create_dh(group);
-			}
+			diffie_hellman = entry->create_dh(group, g, p);
 			if (diffie_hellman)
 			{
 				break;
@@ -618,6 +639,33 @@ METHOD(crypto_factory_t, remove_rng, void,
 	this->lock->unlock(this->lock);
 }
 
+METHOD(crypto_factory_t, add_nonce_gen, void,
+	private_crypto_factory_t *this, const char *plugin_name,
+	nonce_gen_constructor_t create)
+{
+	add_entry(this, this->nonce_gens, 0, plugin_name, 0, create);
+}
+
+METHOD(crypto_factory_t, remove_nonce_gen, void,
+	private_crypto_factory_t *this, nonce_gen_constructor_t create)
+{
+	entry_t *entry;
+	enumerator_t *enumerator;
+
+	this->lock->write_lock(this->lock);
+	enumerator = this->nonce_gens->create_enumerator(this->nonce_gens);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (entry->create_nonce_gen == create)
+		{
+			this->nonce_gens->remove_at(this->nonce_gens, enumerator);
+			free(entry);
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
+}
+
 METHOD(crypto_factory_t, add_dh, void,
 	private_crypto_factory_t *this,	diffie_hellman_group_t group,
 	 const char *plugin_name, dh_constructor_t create)
@@ -756,7 +804,7 @@ METHOD(crypto_factory_t, create_prf_enumerator, enumerator_t*,
 }
 
 /**
- * Filter function to enumerate algorithm, not entry
+ * Filter function to enumerate group, not entry
  */
 static bool dh_filter(void *n, entry_t **entry, diffie_hellman_group_t *group,
 					  void *i2, const char **plugin_name)
@@ -773,7 +821,7 @@ METHOD(crypto_factory_t, create_dh_enumerator, enumerator_t*,
 }
 
 /**
- * Filter function to enumerate algorithm, not entry
+ * Filter function to enumerate strength, not entry
  */
 static bool rng_filter(void *n, entry_t **entry, rng_quality_t *quality,
 					   void *i2, const char **plugin_name)
@@ -788,6 +836,22 @@ METHOD(crypto_factory_t, create_rng_enumerator, enumerator_t*,
 {
 	return create_enumerator(this, this->rngs, rng_filter);
 }
+
+/**
+ * Filter function to enumerate plugin name, not entry
+ */
+static bool nonce_gen_filter(void *n, entry_t **entry, const char **plugin_name)
+{
+	*plugin_name = (*entry)->plugin_name;
+	return TRUE;
+}
+
+METHOD(crypto_factory_t, create_nonce_gen_enumerator, enumerator_t*,
+	private_crypto_factory_t *this)
+{
+	return create_enumerator(this, this->nonce_gens, nonce_gen_filter);
+}
+
 METHOD(crypto_factory_t, add_test_vector, void,
 	private_crypto_factory_t *this, transform_type_t type, void *vector)
 {
@@ -820,6 +884,7 @@ METHOD(crypto_factory_t, destroy, void,
 	this->hashers->destroy(this->hashers);
 	this->prfs->destroy(this->prfs);
 	this->rngs->destroy(this->rngs);
+	this->nonce_gens->destroy(this->nonce_gens);
 	this->dhs->destroy(this->dhs);
 	this->tester->destroy(this->tester);
 	this->lock->destroy(this->lock);
@@ -841,6 +906,7 @@ crypto_factory_t *crypto_factory_create()
 			.create_hasher = _create_hasher,
 			.create_prf = _create_prf,
 			.create_rng = _create_rng,
+			.create_nonce_gen = _create_nonce_gen,
 			.create_dh = _create_dh,
 			.add_crypter = _add_crypter,
 			.remove_crypter = _remove_crypter,
@@ -854,6 +920,8 @@ crypto_factory_t *crypto_factory_create()
 			.remove_prf = _remove_prf,
 			.add_rng = _add_rng,
 			.remove_rng = _remove_rng,
+			.add_nonce_gen = _add_nonce_gen,
+			.remove_nonce_gen = _remove_nonce_gen,
 			.add_dh = _add_dh,
 			.remove_dh = _remove_dh,
 			.create_crypter_enumerator = _create_crypter_enumerator,
@@ -863,6 +931,7 @@ crypto_factory_t *crypto_factory_create()
 			.create_prf_enumerator = _create_prf_enumerator,
 			.create_dh_enumerator = _create_dh_enumerator,
 			.create_rng_enumerator = _create_rng_enumerator,
+			.create_nonce_gen_enumerator = _create_nonce_gen_enumerator,
 			.add_test_vector = _add_test_vector,
 			.destroy = _destroy,
 		},
@@ -872,6 +941,7 @@ crypto_factory_t *crypto_factory_create()
 		.hashers = linked_list_create(),
 		.prfs = linked_list_create(),
 		.rngs = linked_list_create(),
+		.nonce_gens = linked_list_create(),
 		.dhs = linked_list_create(),
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 		.tester = crypto_tester_create(),

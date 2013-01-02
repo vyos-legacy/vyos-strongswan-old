@@ -27,6 +27,7 @@ static void* testing(void *thread)
 	int i;
 	host_t *addr[ALLOCS];
 	identification_t *id[ALLOCS];
+	linked_list_t *pools;
 
 	/* prepare identities */
 	for (i = 0; i < ALLOCS; i++)
@@ -37,13 +38,17 @@ static void* testing(void *thread)
 		id[i] = identification_create_from_string(buf);
 	}
 
+	pools = linked_list_create();
+	pools->insert_last(pools, "test");
+
 	/* allocate addresses */
 	for (i = 0; i < ALLOCS; i++)
 	{
 		addr[i] = hydra->attributes->acquire_address(hydra->attributes,
-													 "test", id[i], NULL);
+													 pools, id[i], NULL);
 		if (!addr[i])
 		{
+			pools->destroy(pools);
 			return (void*)FALSE;
 		}
 	}
@@ -52,8 +57,10 @@ static void* testing(void *thread)
 	for (i = 0; i < ALLOCS; i++)
 	{
 		hydra->attributes->release_address(hydra->attributes,
-										   "test", addr[i], id[i]);
+										   pools, addr[i], id[i]);
 	}
+
+	pools->destroy(pools);
 
 	/* cleanup */
 	for (i = 0; i < ALLOCS; i++)

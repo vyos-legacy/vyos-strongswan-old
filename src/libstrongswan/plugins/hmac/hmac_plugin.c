@@ -16,8 +16,7 @@
 #include "hmac_plugin.h"
 
 #include <library.h>
-#include "hmac_signer.h"
-#include "hmac_prf.h"
+#include "hmac.h"
 
 typedef struct private_hmac_plugin_t private_hmac_plugin_t;
 

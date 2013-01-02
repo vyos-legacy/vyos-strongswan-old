@@ -138,11 +138,6 @@ struct private_kernel_klips_ipsec_t
 	linked_list_t *ipsec_devices;
 
 	/**
-	 * job receiving PF_KEY events
-	 */
-	callback_job_t *job;
-
-	/**
 	 * mutex to lock access to the PF_KEY socket
 	 */
 	mutex_t *mutex_pfkey;
@@ -825,8 +820,22 @@ static kernel_algorithm_t compression_algs[] = {
 /**
  * Look up a kernel algorithm ID and its key size
  */
-static int lookup_algorithm(kernel_algorithm_t *list, int ikev2)
+static int lookup_algorithm(transform_type_t type, int ikev2)
 {
+	kernel_algorithm_t *list;
+	int alg = 0;
+
+	switch (type)
+	{
+		case ENCRYPTION_ALGORITHM:
+			list = encryption_algs;
+			break;
+		case INTEGRITY_ALGORITHM:
+			list = integrity_algs;
+			break;
+		default:
+			return 0;
+	}
 	while (list->ikev2 != END_OF_LIST)
 	{
 		if (ikev2 == list->ikev2)
@@ -835,7 +844,9 @@ static int lookup_algorithm(kernel_algorithm_t *list, int ikev2)
 		}
 		list++;
 	}
-	return 0;
+	hydra->kernel_interface->lookup_algorithm(hydra->kernel_interface, ikev2,
+											  type, &alg, NULL);
+	return alg;
 }
 
 /**
@@ -1525,12 +1536,12 @@ METHOD(kernel_ipsec_t, get_spi, status_t,
 	u_int32_t spi_gen;
 
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng || !rng->get_bytes(rng, sizeof(spi_gen), (void*)&spi_gen))
 	{
-		DBG1(DBG_KNL, "allocating SPI failed: no RNG");
+		DBG1(DBG_KNL, "allocating SPI failed");
+		DESTROY_IF(rng);
 		return FAILED;
 	}
-	rng->get_bytes(rng, sizeof(spi_gen), (void*)&spi_gen);
 	rng->destroy(rng);
 
 	/* allocated SPIs lie within the range from 0xc0000000 to 0xcFFFFFFF */
@@ -1718,8 +1729,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	sa->sadb_sa_spi = spi;
 	sa->sadb_sa_state = SADB_SASTATE_MATURE;
 	sa->sadb_sa_replay = (protocol == IPPROTO_COMP) ? 0 : 32;
-	sa->sadb_sa_auth = lookup_algorithm(integrity_algs, int_alg);
-	sa->sadb_sa_encrypt = lookup_algorithm(encryption_algs, enc_alg);
+	sa->sadb_sa_auth = lookup_algorithm(INTEGRITY_ALGORITHM, int_alg);
+	sa->sadb_sa_encrypt = lookup_algorithm(ENCRYPTION_ALGORITHM, enc_alg);
 	PFKEY_EXT_ADD(msg, sa);
 
 	add_addr_ext(msg, src, SADB_EXT_ADDRESS_SRC);
@@ -2097,7 +2108,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	 */
 	if (policy->route == NULL && direction == POLICY_OUT)
 	{
-		char *iface;
+		char *iface = NULL;
 		ipsec_dev_t *dev;
 		route_entry_t *route = malloc_thing(route_entry_t);
 		route->src_ip = NULL;
@@ -2115,8 +2126,8 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 		}
 
 		/* find the virtual interface */
-		iface = hydra->kernel_interface->get_interface(hydra->kernel_interface,
-													   src);
+		hydra->kernel_interface->get_interface(hydra->kernel_interface,
+											   src, &iface);
 		if (find_ipsec_dev(this, iface, &dev) == SUCCESS)
 		{
 			/* above, we got either the name of a virtual or a physical
@@ -2163,7 +2174,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 
 		/* get the nexthop to dst */
 		route->gateway = hydra->kernel_interface->get_nexthop(
-												hydra->kernel_interface, dst);
+								hydra->kernel_interface, dst, route->src_ip);
 		route->dst_net = chunk_clone(policy->dst.net->get_address(policy->dst.net));
 		route->prefixlen = policy->dst.mask;
 
@@ -2542,20 +2553,9 @@ static status_t register_pfkey_socket(private_kernel_klips_ipsec_t *this, u_int8
 	return SUCCESS;
 }
 
-METHOD(kernel_ipsec_t, bypass_socket, bool,
-	private_kernel_klips_ipsec_t *this, int fd, int family)
-{
-	/* KLIPS does not need a bypass policy for IKE */
-	return TRUE;
-}
-
 METHOD(kernel_ipsec_t, destroy, void,
 	private_kernel_klips_ipsec_t *this)
 {
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	if (this->socket > 0)
 	{
 		close(this->socket);
@@ -2594,7 +2594,10 @@ kernel_klips_ipsec_t *kernel_klips_ipsec_create()
 				.query_policy = _query_policy,
 				.del_policy = _del_policy,
 				.flush_policies = (void*)return_failed,
-				.bypass_socket = _bypass_socket,
+				/* KLIPS does not need a bypass policy for IKE */
+				.bypass_socket = (void*)return_true,
+				/* KLIPS does not need enabling UDP decap explicitly */
+				.enable_udp_decap = (void*)return_true,
 				.destroy = _destroy,
 			},
 		},
@@ -2639,9 +2642,9 @@ kernel_klips_ipsec_t *kernel_klips_ipsec_create()
 		return NULL;
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_events,
-									this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive_events,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

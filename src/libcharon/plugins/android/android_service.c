@@ -42,11 +42,6 @@ struct private_android_service_t {
 	ike_sa_t *ike_sa;
 
 	/**
-	 * job that handles requests from the Android control socket
-	 */
-	callback_job_t *job;
-
-	/**
 	 * android credentials
 	 */
 	android_creds_t *creds;
@@ -269,17 +264,19 @@ static job_requeue_t initiate(private_android_service_t *this)
 		this->creds->set_username_password(this->creds, user, password);
 	}
 
-	ike_cfg = ike_cfg_create(TRUE, FALSE, "0.0.0.0", IKEV2_UDP_PORT,
-							 hostname, IKEV2_UDP_PORT);
+	ike_cfg = ike_cfg_create(TRUE, FALSE, "0.0.0.0", FALSE,
+							 charon->socket->get_port(charon->socket, FALSE),
+							 hostname, FALSE, IKEV2_UDP_PORT);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
 
-	peer_cfg = peer_cfg_create("android", 2, ike_cfg, CERT_SEND_IF_ASKED,
+	peer_cfg = peer_cfg_create("android", IKEV2, ike_cfg, CERT_SEND_IF_ASKED,
 							   UNIQUE_REPLACE, 1, /* keyingtries */
 							   36000, 0, /* rekey 10h, reauth none */
 							   600, 600, /* jitter, over 10min */
-							   TRUE, 0, /* mobike, DPD */
-							   host_create_from_string("0.0.0.0", 0) /* virt */,
-							   NULL, FALSE, NULL, NULL); /* pool, mediation */
+							   TRUE, FALSE, /* mobike, aggressive */
+							   0, 0, /* DPD delay, timeout */
+							   FALSE, NULL, NULL); /* mediation */
+	peer_cfg->add_virtual_ip(peer_cfg,  host_create_from_string("0.0.0.0", 0));
 
 	auth = auth_cfg_create();
 	auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_EAP);
@@ -300,12 +297,17 @@ static job_requeue_t initiate(private_android_service_t *this)
 											 0, "255.255.255.255", 65535);
 	child_cfg->add_traffic_selector(child_cfg, FALSE, ts);
 	peer_cfg->add_child_cfg(peer_cfg, child_cfg);
-	/* get an additional reference because initiate consumes one */
-	child_cfg->get_ref(child_cfg);
 
 	/* get us an IKE_SA */
 	ike_sa = charon->ike_sa_manager->checkout_by_config(charon->ike_sa_manager,
 														peer_cfg);
+	if (!ike_sa)
+	{
+		peer_cfg->destroy(peer_cfg);
+		send_status(this, VPN_ERROR_CONNECTION_FAILED);
+		return JOB_REQUEUE_NONE;
+	}
+
 	if (!ike_sa->get_peer_cfg(ike_sa))
 	{
 		ike_sa->set_peer_cfg(ike_sa, peer_cfg);
@@ -318,6 +320,8 @@ static job_requeue_t initiate(private_android_service_t *this)
 	/* confirm that we received the request */
 	send_status(this, i);
 
+	/* get an additional reference because initiate consumes one */
+	child_cfg->get_ref(child_cfg);
 	if (ike_sa->initiate(ike_sa, child_cfg, 0, NULL, NULL) != SUCCESS)
 	{
 		DBG1(DBG_CFG, "failed to initiate tunnel");
@@ -376,9 +380,9 @@ android_service_t *android_service_create(android_creds_t *creds)
 	}
 
 	charon->bus->add_listener(charon->bus, &this->public.listener);
-	this->job = callback_job_create((callback_job_cb_t)initiate, this,
-									NULL, NULL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create((callback_job_cb_t)initiate, this,
+									NULL, NULL));
 
 	return &this->public;
 }

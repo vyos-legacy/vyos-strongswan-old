@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,7 +16,6 @@
 #include "imv_attestation_build.h"
 #include "imv_attestation_state.h"
 
-#include <libpts.h>
 #include <tcg/tcg_pts_attr_proto_caps.h>
 #include <tcg/tcg_pts_attr_meas_algo.h>
 #include <tcg/tcg_pts_attr_dh_nonce_params_req.h>
@@ -198,7 +197,13 @@ bool imv_attestation_build(linked_list_t *attr_list,
 				attr_list->insert_last(attr_list, attr);
 			}
 			enumerator->destroy(enumerator);
-			break;
+
+			/* do we have any file metadata or measurement requests? */
+			if (attr_list->get_count(attr_list))
+			{
+				break;
+			}
+			/* fall through to next state */
 		}
 		case IMV_ATTESTATION_STATE_COMP_EVID:
 		{
@@ -252,15 +257,15 @@ bool imv_attestation_build(linked_list_t *attr_list,
 				comp_name = pts_comp_func_name_create(vid, name, qualifier);
 				comp_name->log(comp_name, "  ");
 
-				comp = pts_components->create(pts_components, comp_name,
-											  depth, pts_db);
+				comp = attestation_state->create_component(attestation_state,
+													comp_name, depth, pts_db);
 				if (!comp)
 				{
-					DBG2(DBG_IMV, "    not registered: removed from request");
+					DBG2(DBG_IMV, "    not registered or duplicate"
+								  " - removed from request");
 					comp_name->destroy(comp_name);
 					continue;
 				}
-				attestation_state->add_component(attestation_state, comp);
 				if (first_component)
 				{
 					attr = tcg_pts_attr_req_func_comp_evid_create();
@@ -290,8 +295,11 @@ bool imv_attestation_build(linked_list_t *attr_list,
 			break;
 		}
 		case IMV_ATTESTATION_STATE_EVID_FINAL:
-			attestation_state->set_handshake_state(attestation_state,
+			if (attestation_state->components_finalized(attestation_state))
+			{
+				attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_END);
+			}
 			break;
 		case IMV_ATTESTATION_STATE_END:
 			break;

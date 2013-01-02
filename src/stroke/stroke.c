@@ -140,8 +140,7 @@ static int add_connection(char *name,
 	msg.type = STR_ADD_CONN;
 
 	msg.add_conn.name = push_string(&msg, name);
-	msg.add_conn.ikev2 = 1;
-	msg.add_conn.auth_method = 2;
+	msg.add_conn.version = 2;
 	msg.add_conn.mode = 1;
 	msg.add_conn.mobike = 1;
 	msg.add_conn.dpd.action = 1;
@@ -408,7 +407,7 @@ static void exit_usage(char *error)
 	printf("    where: START and optional END define the clients source IP\n");
 	printf("  Set loglevel for a logging type:\n");
 	printf("    stroke loglevel TYPE LEVEL\n");
-	printf("    where: TYPE is any|dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|lib\n");
+	printf("    where: TYPE is any|dmn|mgr|ike|chd|job|cfg|knl|net|asn|enc|tnc|imc|imv|pts|tls|esp|lib\n");
 	printf("           LEVEL is -1|0|1|2|3|4\n");
 	printf("  Show connection status:\n");
 	printf("    stroke status\n");

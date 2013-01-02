@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,6 +27,7 @@
 
 #include <tncifimv.h>
 #include <pen/pen.h>
+#include <utils/linked_list.h>
 
 #include <library.h>
 
@@ -104,13 +106,13 @@ struct imv_agent_t {
 	 * @param excl				exclusive flag
 	 * @param src_imv_id		IMV ID to be set as source
 	 * @param dst_imc_id		IMD ID to be set as destination
-	 * @param msg				message to send
+	 * @param attr_list			list of PA-TNC attributes to send
 	 * @return					TNC result code
 	 */
 	TNC_Result (*send_message)(imv_agent_t *this,
 							   TNC_ConnectionID connection_id, bool excl,
 							   TNC_UInt32 src_imv_id, TNC_UInt32 dst_imc_id,
-							   chunk_t msg);
+							   linked_list_t *attr_list);
 
 	/**
 	 * Call when a PA-TNC message was received
@@ -149,10 +151,12 @@ struct imv_agent_t {
 	 * Deliver IMV Action Recommendation and IMV Evaluation Result to the TNCS
 	 *
 	 * @param connection_id		network connection ID assigned by TNCS
+	 * @param dst_imc_id		IMD ID to be set as destination
 	 * @return					TNC result code
 	 */
 	TNC_Result (*provide_recommendation)(imv_agent_t *this,
-										 TNC_ConnectionID connection_id);
+										 TNC_ConnectionID connection_id,
+										 TNC_UInt32 dst_imc_id);
 
 	/**
 	 * Reserve additional IMV IDs from TNCS

@@ -17,11 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <freeswan.h>
-
-#include "../pluto/constants.h"
-#include "../pluto/defs.h"
-#include "../pluto/log.h"
+#include <library.h>
+#include <debug.h>
 
 #include "keywords.h"
 #include "confread.h"
@@ -64,6 +61,7 @@ static const char *LST_unique[] = {
 	"yes",
 	"replace",
 	"keep",
+	"never",
 	 NULL
 };
 
@@ -89,13 +87,6 @@ static const char *LST_startup[] = {
 	 NULL
 };
 
-static const char *LST_packetdefault[] = {
-	"drop",
-	"reject",
-	"pass",
-	 NULL
-};
-
 static const char *LST_keyexchange[] = {
 	"ike",
 	"ikev1",
@@ -103,55 +94,17 @@ static const char *LST_keyexchange[] = {
 	 NULL
 };
 
-static const char *LST_pfsgroup[] = {
-	"modp1024",
-	"modp1536",
-	"modp2048",
-	"modp3072",
-	"modp4096",
-	"modp6144",
-	"modp8192",
-	"ecp192",
-	"ecp224",
-	"ecp256",
-	"ecp384",
-	"ecp521",
-	 NULL
-};
-
-static const char *LST_plutodebug[] = {
-	"none",
-	"all",
-	"raw",
-	"crypt",
-	"parsing",
-	"emitting",
-	"control",
-	"lifecycle",
-	"klips",
-	"kernel",
-	"dns",
-	"natt",
-	"oppo",
-	"controlmore",
-	"private",
-	 NULL
-};
-
-static const char *LST_klipsdebug[] = {
-	"tunnel",
-	"tunnel-xmit",
-	"pfkey",
-	"xform",
-	"eroute",
-	"spi",
-	"radij",
-	"esp",
-	"ah",
-	"ipcomp",
-	"verbose",
-	"all",
-	"none",
+static const char *LST_authby[] = {
+	"psk",
+	"secret",
+	"pubkey",
+	"rsa",
+	"rsasig",
+	"ecdsa",
+	"ecdsasig",
+	"xauthpsk",
+	"xauthrsasig",
+	"never",
 	 NULL
 };
 
@@ -164,49 +117,23 @@ typedef struct {
 static const token_info_t token_info[] =
 {
 	/* config setup keywords */
-	{ ARG_LST,  offsetof(starter_config_t, setup.interfaces), NULL                 },
-	{ ARG_STR,  offsetof(starter_config_t, setup.dumpdir), NULL                    },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.charonstart), LST_bool            },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.plutostart), LST_bool             },
-
-	/* pluto/charon keywords */
-	{ ARG_LST,  offsetof(starter_config_t, setup.plutodebug), LST_plutodebug       },
 	{ ARG_STR,  offsetof(starter_config_t, setup.charondebug),  NULL               },
-	{ ARG_STR,  offsetof(starter_config_t, setup.prepluto), NULL                   },
-	{ ARG_STR,  offsetof(starter_config_t, setup.postpluto), NULL                  },
-	{ ARG_STR,  offsetof(starter_config_t, setup.plutostderrlog), NULL             },
 	{ ARG_ENUM, offsetof(starter_config_t, setup.uniqueids), LST_unique            },
-	{ ARG_UINT, offsetof(starter_config_t, setup.overridemtu), NULL                },
-	{ ARG_TIME, offsetof(starter_config_t, setup.crlcheckinterval), NULL           },
 	{ ARG_ENUM, offsetof(starter_config_t, setup.cachecrls), LST_bool              },
 	{ ARG_ENUM, offsetof(starter_config_t, setup.strictcrlpolicy), LST_strict      },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.nocrsend), LST_bool               },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.nat_traversal), LST_bool          },
-	{ ARG_TIME, offsetof(starter_config_t, setup.keep_alive), NULL                 },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.force_keepalive), LST_bool        },
-	{ ARG_STR,  offsetof(starter_config_t, setup.virtual_private), NULL            },
-	{ ARG_STR,  offsetof(starter_config_t, setup.pkcs11module), NULL               },
-	{ ARG_STR,  offsetof(starter_config_t, setup.pkcs11initargs), NULL             },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.pkcs11keepstate), LST_bool        },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.pkcs11proxy), LST_bool            },
-
-	/* KLIPS keywords */
-	{ ARG_LST,  offsetof(starter_config_t, setup.klipsdebug), LST_klipsdebug       },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.fragicmp), LST_bool               },
-	{ ARG_STR,  offsetof(starter_config_t, setup.packetdefault), LST_packetdefault },
-	{ ARG_ENUM, offsetof(starter_config_t, setup.hidetos), LST_bool                },
+	{ ARG_MISC, 0, NULL  /* KW_PKCS11_DEPRECATED */                                },
+	{ ARG_MISC, 0, NULL  /* KW_SETUP_DEPRECATED */                                 },
 
 	/* conn section keywords */
 	{ ARG_STR,  offsetof(starter_conn_t, name), NULL                               },
 	{ ARG_ENUM, offsetof(starter_conn_t, startup), LST_startup                     },
 	{ ARG_ENUM, offsetof(starter_conn_t, keyexchange), LST_keyexchange             },
 	{ ARG_MISC, 0, NULL  /* KW_TYPE */                                             },
-	{ ARG_MISC, 0, NULL  /* KW_PFS */                                              },
 	{ ARG_MISC, 0, NULL  /* KW_COMPRESS */                                         },
 	{ ARG_ENUM, offsetof(starter_conn_t, install_policy), LST_bool                 },
+	{ ARG_ENUM, offsetof(starter_conn_t, aggressive), LST_bool                     },
 	{ ARG_MISC, 0, NULL  /* KW_AUTH */                                             },
-	{ ARG_MISC, 0, NULL  /* KW_AUTHBY */                                           },
-	{ ARG_MISC, 0, NULL  /* KW_EAP */                                              },
+	{ ARG_STR,  offsetof(starter_conn_t, authby), LST_authby                       },
 	{ ARG_STR,  offsetof(starter_conn_t, eap_identity), NULL                       },
 	{ ARG_STR,  offsetof(starter_conn_t, aaa_identity), NULL                       },
 	{ ARG_MISC, 0, NULL  /* KW_MOBIKE */                                           },
@@ -224,7 +151,6 @@ static const token_info_t token_info[] =
 	{ ARG_MISC, 0, NULL  /* KW_REAUTH */                                           },
 	{ ARG_STR,  offsetof(starter_conn_t, ike), NULL                                },
 	{ ARG_STR,  offsetof(starter_conn_t, esp), NULL                                },
-	{ ARG_STR,  offsetof(starter_conn_t, pfsgroup), LST_pfsgroup                   },
 	{ ARG_TIME, offsetof(starter_conn_t, dpd_delay), NULL                          },
 	{ ARG_TIME, offsetof(starter_conn_t, dpd_timeout), NULL                        },
 	{ ARG_ENUM, offsetof(starter_conn_t, dpd_action), LST_dpd_action               },
@@ -241,28 +167,27 @@ static const token_info_t token_info[] =
 	{ ARG_MISC, 0, NULL  /* KW_MARK_IN */                                          },
 	{ ARG_MISC, 0, NULL  /* KW_MARK_OUT */                                         },
 	{ ARG_MISC, 0, NULL  /* KW_TFC */                                              },
+	{ ARG_MISC, 0, NULL  /* KW_PFS_DEPRECATED */                                   },
+	{ ARG_MISC, 0, NULL  /* KW_CONN_DEPRECATED */                                  },
 
 	/* ca section keywords */
 	{ ARG_STR,  offsetof(starter_ca_t, name), NULL                                 },
 	{ ARG_ENUM, offsetof(starter_ca_t, startup), LST_startup                       },
 	{ ARG_STR,  offsetof(starter_ca_t, cacert), NULL                               },
-	{ ARG_STR,  offsetof(starter_ca_t, ldaphost), NULL                             },
-	{ ARG_STR,  offsetof(starter_ca_t, ldapbase), NULL                             },
 	{ ARG_STR,  offsetof(starter_ca_t, crluri), NULL                               },
 	{ ARG_STR,  offsetof(starter_ca_t, crluri2), NULL                              },
 	{ ARG_STR,  offsetof(starter_ca_t, ocspuri), NULL                              },
 	{ ARG_STR,  offsetof(starter_ca_t, ocspuri2), NULL                             },
 	{ ARG_STR,  offsetof(starter_ca_t, certuribase), NULL                          },
+	{ ARG_MISC, 0, NULL  /* KW_CA_DEPRECATED */                                    },
 
 	/* end keywords */
 	{ ARG_STR,  offsetof(starter_end_t, host), NULL                                },
 	{ ARG_UINT, offsetof(starter_end_t, ikeport), NULL                             },
-	{ ARG_MISC, 0, NULL  /* KW_NEXTHOP */                                          },
-	{ ARG_STR, offsetof(starter_end_t, subnet), NULL                               },
-	{ ARG_MISC, 0, NULL  /* KW_SUBNETWITHIN */                                     },
+	{ ARG_STR,  offsetof(starter_end_t, subnet), NULL                              },
 	{ ARG_MISC, 0, NULL  /* KW_PROTOPORT */                                        },
 	{ ARG_STR,  offsetof(starter_end_t, sourceip), NULL                            },
-	{ ARG_MISC, 0, NULL  /* KW_NATIP */                                            },
+	{ ARG_STR,  offsetof(starter_end_t, dns), NULL                                 },
 	{ ARG_ENUM, offsetof(starter_end_t, firewall), LST_bool                        },
 	{ ARG_ENUM, offsetof(starter_end_t, hostaccess), LST_bool                      },
 	{ ARG_ENUM, offsetof(starter_end_t, allow_any), LST_bool                       },
@@ -279,7 +204,8 @@ static const token_info_t token_info[] =
 	{ ARG_STR,  offsetof(starter_end_t, ca), NULL                                  },
 	{ ARG_STR,  offsetof(starter_end_t, ca2), NULL                                 },
 	{ ARG_STR,  offsetof(starter_end_t, groups), NULL                              },
-	{ ARG_STR,  offsetof(starter_end_t, iface), NULL                               }
+	{ ARG_STR,  offsetof(starter_end_t, groups2), NULL                             },
+	{ ARG_MISC, 0, NULL  /* KW_END_DEPRECATED */                                   },
 };
 
 static void free_list(char **list)
@@ -298,7 +224,7 @@ char** new_list(char *value)
 	char *val, *b, *e, *end, **ret;
 	int count;
 
-	val = value ? clone_str(value) : NULL;
+	val = strdupnull(value);
 	if (!val)
 	{
 		return NULL;
@@ -326,7 +252,7 @@ char** new_list(char *value)
 		for (e = b; (*e != '\0'); e++);
 		if (e != b)
 		{
-			ret[count++] = clone_str(b);
+			ret[count++] = strdupnull(b);
 		}
 		b = e + 1;
 	}
@@ -347,23 +273,20 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 
 	int index = -1;  /* used for enumeration arguments */
 
-	lset_t *seen = (lset_t *)base;    /* seen flags are at the top of the struct */
-	lset_t f = LELEM(token - first);  /* compute flag position of argument */
+	seen_t *seen = (seen_t*)base; /* seen flags are at the top of the struct */
 
 	*assigned = FALSE;
 
-	DBG(DBG_CONTROLMORE,
-		DBG_log("  %s=%s", kw->entry->name, kw->value)
-	)
+	DBG3(DBG_APP, "  %s=%s", kw->entry->name, kw->value);
 
-	if (*seen & f)
+	if (*seen & SEEN_KW(token, first))
 	{
-		plog("# duplicate '%s' option", kw->entry->name);
+		DBG1(DBG_APP, "# duplicate '%s' option", kw->entry->name);
 		return FALSE;
 	}
 
 	/* set flag that this argument has been seen */
-	*seen |= f;
+	*seen |= SEEN_KW(token, first);
 
 	/* is there a keyword list? */
 	if (list != NULL && token_info[token].type != ARG_LST)
@@ -377,7 +300,7 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 		}
 		if (!match)
 		{
-			plog("# bad value: %s=%s", kw->entry->name, kw->value);
+			DBG1(DBG_APP, "# bad value: %s=%s", kw->entry->name, kw->value);
 			return FALSE;
 		}
 	}
@@ -385,14 +308,14 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 	switch (token_info[token].type)
 	{
 	case ARG_NONE:
-		plog("# option '%s' not supported yet", kw->entry->name);
+		DBG1(DBG_APP, "# option '%s' not supported yet", kw->entry->name);
 		return FALSE;
 	case ARG_ENUM:
 		{
 			if (index < 0)
 			{
-				plog("# bad enumeration value: %s=%s (%d)"
-					, kw->entry->name, kw->value, index);
+				DBG1(DBG_APP, "# bad enumeration value: %s=%s (%d)",
+					 kw->entry->name, kw->value, index);
 				return FALSE;
 			}
 
@@ -418,7 +341,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 
 			if (*endptr != '\0')
 			{
-				plog("# bad integer value: %s=%s", kw->entry->name, kw->value);
+				DBG1(DBG_APP, "# bad integer value: %s=%s", kw->entry->name,
+					 kw->value);
 				return FALSE;
 			}
 		}
@@ -435,7 +359,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 			{
 				if (*endptr != '\0')
 				{
-					plog("# bad integer value: %s=%s", kw->entry->name, kw->value);
+					DBG1(DBG_APP, "# bad integer value: %s=%s", kw->entry->name,
+						 kw->value);
 					return FALSE;
 				}
 			}
@@ -443,7 +368,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 			{
 				if ((*endptr != '%') || (endptr[1] != '\0') || endptr == kw->value)
 				{
-					plog("# bad percent value: %s=%s", kw->entry->name, kw->value);
+					DBG1(DBG_APP, "# bad percent value: %s=%s", kw->entry->name,
+						 kw->value);
 					return FALSE;
 				}
 			}
@@ -459,7 +385,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 
 			if (*endptr != '\0')
 			{
-				plog("# bad integer value: %s=%s", kw->entry->name, kw->value);
+				DBG1(DBG_APP, "# bad integer value: %s=%s", kw->entry->name,
+					 kw->value);
 				return FALSE;
 			}
 		}
@@ -494,7 +421,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 					break;
 				}
 			}
-			plog("# bad duration value: %s=%s", kw->entry->name, kw->value);
+			DBG1(DBG_APP, "# bad duration value: %s=%s", kw->entry->name,
+				 kw->value);
 			return FALSE;
 		}
 	case ARG_STR:
@@ -505,7 +433,7 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 			free(*cp);
 
 			/* assign the new string */
-			*cp = clone_str(kw->value);
+			*cp = strdupnull(kw->value);
 		}
 		break;
 	case ARG_LST:
@@ -537,7 +465,8 @@ bool assign_arg(kw_token_t token, kw_token_t first, kw_list_t *kw, char *base,
 					}
 					if (!match)
 					{
-						plog("# bad value: %s=%s", kw->entry->name, *lst);
+						DBG1(DBG_APP, "# bad value: %s=%s",
+							 kw->entry->name, *lst);
 						return FALSE;
 					}
 				}
@@ -604,7 +533,7 @@ void clone_args(kw_token_t first, kw_token_t last, char *base1, char *base2)
 			char **cp1 = (char **)(base1 + token_info[token].offset);
 			char **cp2 = (char **)(base2 + token_info[token].offset);
 
-			*cp1 = clone_str(*cp2);
+			*cp1 = strdupnull(*cp2);
 		}
 	}
 }

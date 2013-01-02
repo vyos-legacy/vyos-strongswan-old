@@ -149,7 +149,12 @@ static status_t compute_prime(private_gmp_rsa_private_key_t *this,
 	mpz_init(*prime);
 	do
 	{
-		rng->allocate_bytes(rng, prime_size, &random_bytes);
+		if (!rng->allocate_bytes(rng, prime_size, &random_bytes))
+		{
+			DBG1(DBG_LIB, "failed to allocate random prime");
+			rng->destroy(rng);
+			return FAILED;
+		}
 		/* make sure the two most significant bits are set */
 		random_bytes.ptr[0] = random_bytes.ptr[0] | 0xC0;
 
@@ -230,11 +235,11 @@ static bool build_emsa_pkcs1_signature(private_gmp_rsa_private_key_t *this,
 		}
 
 		hasher = lib->crypto->create_hasher(lib->crypto, hash_algorithm);
-		if (hasher == NULL)
+		if (!hasher || !hasher->allocate_hash(hasher, data, &hash))
 		{
+			DESTROY_IF(hasher);
 			return FALSE;
 		}
-		hasher->allocate_hash(hasher, data, &hash);
 		hasher->destroy(hasher);
 
 		/* build DER-encoded digestInfo */

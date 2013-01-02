@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,6 +19,17 @@
 #include <tnc/tnccs/tnccs_manager.h>
 #include <tls_eap.h>
 #include <debug.h>
+#include <daemon.h>
+
+/**
+ * Maximum size of an EAP-TNC message
+ */
+#define EAP_TNC_MAX_MESSAGE_LEN 65535
+
+/**
+ * Maximum number of EAP-TNC messages allowed
+ */
+#define EAP_TNC_MAX_MESSAGE_COUNT 10
 
 typedef struct private_eap_tnc_t private_eap_tnc_t;
 
@@ -37,12 +48,6 @@ struct private_eap_tnc_t {
 	 */
 	tls_eap_t *tls_eap;
 };
-
-
-/** Maximum number of EAP-TNC messages/fragments allowed */
-#define MAX_MESSAGE_COUNT 10 
-/** Default size of a EAP-TNC fragment */
-#define MAX_FRAGMENT_LEN 50000
 
 METHOD(eap_method_t, initiate, status_t,
 	private_eap_tnc_t *this, eap_payload_t **out)
@@ -124,9 +129,7 @@ static eap_tnc_t *eap_tnc_create(identification_t *server,
 								 identification_t *peer, bool is_server)
 {
 	private_eap_tnc_t *this;
-	size_t frag_size;
 	int max_msg_count;
-	bool include_length;
 	char* protocol;
 	tnccs_type_t type;
 	tnccs_t *tnccs;
@@ -146,14 +149,11 @@ static eap_tnc_t *eap_tnc_create(identification_t *server,
 		},
 	);
 
-	frag_size = lib->settings->get_int(lib->settings,
-					"charon.plugins.eap-tnc.fragment_size", MAX_FRAGMENT_LEN);
 	max_msg_count = lib->settings->get_int(lib->settings,
-					"charon.plugins.eap-tnc.max_message_count", MAX_MESSAGE_COUNT);
-	include_length = lib->settings->get_bool(lib->settings,
-					"charon.plugins.eap-tnc.include_length", TRUE);
- 	protocol = lib->settings->get_str(lib->settings,
-					"charon.plugins.eap-tnc.protocol", "tnccs-1.1");
+					"%s.plugins.eap-tnc.max_message_count",
+					EAP_TNC_MAX_MESSAGE_COUNT, charon->name);
+	protocol = lib->settings->get_str(lib->settings,
+					"%s.plugins.eap-tnc.protocol", "tnccs-1.1", charon->name);
 	if (strcaseeq(protocol, "tnccs-2.0"))
 	{
 		type = TNCCS_2_0;
@@ -173,8 +173,9 @@ static eap_tnc_t *eap_tnc_create(identification_t *server,
 		return NULL;
 	}
 	tnccs = tnc->tnccs->create_instance(tnc->tnccs, type, is_server);
-	this->tls_eap = tls_eap_create(EAP_TNC, (tls_t*)tnccs, frag_size,
-											 max_msg_count, include_length);
+	this->tls_eap = tls_eap_create(EAP_TNC, (tls_t*)tnccs,
+											 EAP_TNC_MAX_MESSAGE_LEN,
+											 max_msg_count, FALSE);
 	if (!this->tls_eap)
 	{
 		free(this);

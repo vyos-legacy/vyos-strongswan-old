@@ -77,10 +77,10 @@ static bool attr_enum_filter(void *null, attribute_entry_t **in,
 }
 
 METHOD(attribute_provider_t, create_attribute_enumerator, enumerator_t*,
-	private_attr_provider_t *this, char *pool,
-	identification_t *id, host_t *vip)
+	private_attr_provider_t *this, linked_list_t *pools,
+	identification_t *id, linked_list_t *vips)
 {
-	if (vip)
+	if (vips->get_count(vips))
 	{
 		this->lock->read_lock(this->lock);
 		return enumerator_create_filter(
@@ -145,18 +145,22 @@ static void add_legacy_entry(private_attr_provider_t *this, char *key, int nr,
 /**
  * Key to attribute type mappings, for v4 and v6 attributes
  */
-static struct {
+typedef struct {
 	char *name;
 	configuration_attribute_type_t v4;
 	configuration_attribute_type_t v6;
-} keys[] = {
-	{"address",		INTERNAL_IP4_ADDRESS,	INTERNAL_IP6_ADDRESS},
-	{"dns",			INTERNAL_IP4_DNS,		INTERNAL_IP6_DNS},
-	{"nbns",		INTERNAL_IP4_NBNS,		INTERNAL_IP6_NBNS},
-	{"dhcp",		INTERNAL_IP4_DHCP,		INTERNAL_IP6_DHCP},
-	{"netmask",		INTERNAL_IP4_NETMASK,	INTERNAL_IP6_NETMASK},
-	{"server",		INTERNAL_IP4_SERVER,	INTERNAL_IP6_SERVER},
-	{"subnet",		INTERNAL_IP4_SUBNET,	INTERNAL_IP6_SUBNET},
+} attribute_type_key_t;
+
+static attribute_type_key_t keys[] = {
+	{"address",			INTERNAL_IP4_ADDRESS,	INTERNAL_IP6_ADDRESS},
+	{"dns",				INTERNAL_IP4_DNS,		INTERNAL_IP6_DNS},
+	{"nbns",			INTERNAL_IP4_NBNS,		INTERNAL_IP6_NBNS},
+	{"dhcp",			INTERNAL_IP4_DHCP,		INTERNAL_IP6_DHCP},
+	{"netmask",			INTERNAL_IP4_NETMASK,	INTERNAL_IP6_NETMASK},
+	{"server",			INTERNAL_IP4_SERVER,	INTERNAL_IP6_SERVER},
+	{"subnet",			INTERNAL_IP4_SUBNET,	INTERNAL_IP6_SUBNET},
+	{"split-include",	UNITY_SPLIT_INCLUDE,	UNITY_SPLIT_INCLUDE},
+	{"split-exclude",	UNITY_LOCAL_LAN,		UNITY_LOCAL_LAN},
 };
 
 /**
@@ -179,12 +183,29 @@ static void load_entries(private_attr_provider_t *this)
 	while (enumerator->enumerate(enumerator, &key, &value))
 	{
 		configuration_attribute_type_t type;
+		attribute_type_key_t *mapped = NULL;
 		attribute_entry_t *entry;
 		host_t *host;
 		char *pos;
-		int i, mask = -1;
+		int i, mask = -1, family;
 
 		type = atoi(key);
+		if (!type)
+		{
+			for (i = 0; i < countof(keys); i++)
+			{
+				if (streq(key, keys[i].name))
+				{
+					mapped = &keys[i];
+					break;
+				}
+			}
+			if (!mapped)
+			{
+				DBG1(DBG_CFG, "mapping attribute type %s failed", key);
+				continue;
+			}
+		}
 		tokens = enumerator_create_token(value, ",", " ");
 		while (tokens->enumerate(tokens, &token))
 		{
@@ -200,37 +221,16 @@ static void load_entries(private_attr_provider_t *this)
 				DBG1(DBG_CFG, "invalid host in key %s: %s", key, token);
 				continue;
 			}
-			if (!type)
-			{
-				for (i = 0; i < countof(keys); i++)
-				{
-					if (streq(key, keys[i].name))
-					{
-						if (host->get_family(host) == AF_INET)
-						{
-							type = keys[i].v4;
-						}
-						else
-						{
-							type = keys[i].v6;
-						}
-					}
-				}
-				if (!type)
-				{
-					DBG1(DBG_CFG, "mapping attribute type %s failed", key);
-					break;
-				}
-			}
+			family = host->get_family(host);
 			entry = malloc_thing(attribute_entry_t);
-			entry->type = type;
+			entry->type = type ?: (family == AF_INET ? mapped->v4 : mapped->v6);
 			if (mask == -1)
 			{
 				entry->value = chunk_clone(host->get_address(host));
 			}
 			else
 			{
-				if (host->get_family(host) == AF_INET)
+				if (family == AF_INET)
 				{	/* IPv4 attributes contain a subnet mask */
 					u_int32_t netmask;
 

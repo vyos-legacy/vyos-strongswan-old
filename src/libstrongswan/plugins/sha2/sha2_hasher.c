@@ -426,41 +426,49 @@ static void sha512_final(private_sha512_hasher_t *ctx)
 	} while(++j < 8);
 }
 
-METHOD(hasher_t, reset224, void,
+METHOD(hasher_t, reset224, bool,
 	private_sha256_hasher_t *this)
 {
 	memcpy(&this->sha_H[0], &sha224_hashInit[0], sizeof(this->sha_H));
 	this->sha_blocks = 0;
 	this->sha_bufCnt = 0;
+
+	return TRUE;
 }
 
-METHOD(hasher_t, reset256, void,
+METHOD(hasher_t, reset256, bool,
 	private_sha256_hasher_t *this)
 {
 	memcpy(&this->sha_H[0], &sha256_hashInit[0], sizeof(this->sha_H));
 	this->sha_blocks = 0;
 	this->sha_bufCnt = 0;
+
+	return TRUE;
 }
 
-METHOD(hasher_t, reset384, void,
+METHOD(hasher_t, reset384, bool,
 	private_sha512_hasher_t *this)
 {
 	memcpy(&this->sha_H[0], &sha384_hashInit[0], sizeof(this->sha_H));
 	this->sha_blocks = 0;
 	this->sha_blocksMSB = 0;
 	this->sha_bufCnt = 0;
+
+	return TRUE;
 }
 
-METHOD(hasher_t, reset512, void,
+METHOD(hasher_t, reset512, bool,
 	private_sha512_hasher_t *this)
 {
 	memcpy(&this->sha_H[0], &sha512_hashInit[0], sizeof(this->sha_H));
 	this->sha_blocks = 0;
 	this->sha_blocksMSB = 0;
 	this->sha_bufCnt = 0;
+
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash224, void,
+METHOD(hasher_t, get_hash224, bool,
 	private_sha256_hasher_t *this, chunk_t chunk, u_int8_t *buffer)
 {
 	sha256_write(this, chunk.ptr, chunk.len);
@@ -470,9 +478,10 @@ METHOD(hasher_t, get_hash224, void,
 		memcpy(buffer, this->sha_out, HASH_SIZE_SHA224);
 		reset224(this);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash256, void,
+METHOD(hasher_t, get_hash256, bool,
 	private_sha256_hasher_t *this, chunk_t chunk, u_int8_t *buffer)
 {
 	sha256_write(this, chunk.ptr, chunk.len);
@@ -482,9 +491,10 @@ METHOD(hasher_t, get_hash256, void,
 		memcpy(buffer, this->sha_out, HASH_SIZE_SHA256);
 		reset256(this);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash384, void,
+METHOD(hasher_t, get_hash384, bool,
 	private_sha512_hasher_t *this, chunk_t chunk, u_int8_t *buffer)
 {
 	sha512_write(this, chunk.ptr, chunk.len);
@@ -494,9 +504,10 @@ METHOD(hasher_t, get_hash384, void,
 		memcpy(buffer, this->sha_out, HASH_SIZE_SHA384);
 		reset384(this);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash512, void,
+METHOD(hasher_t, get_hash512, bool,
 	private_sha512_hasher_t *this, chunk_t chunk, u_int8_t *buffer)
 {
 	sha512_write(this, chunk.ptr, chunk.len);
@@ -506,9 +517,10 @@ METHOD(hasher_t, get_hash512, void,
 		memcpy(buffer, this->sha_out, HASH_SIZE_SHA512);
 		reset512(this);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash224, void,
+METHOD(hasher_t, allocate_hash224, bool,
 	private_sha256_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	chunk_t allocated_hash;
@@ -522,9 +534,10 @@ METHOD(hasher_t, allocate_hash224, void,
 		reset224(this);
 		*hash = allocated_hash;
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash256, void,
+METHOD(hasher_t, allocate_hash256, bool,
 	private_sha256_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	chunk_t allocated_hash;
@@ -538,9 +551,10 @@ METHOD(hasher_t, allocate_hash256, void,
 		reset256(this);
 		*hash = allocated_hash;
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash384, void,
+METHOD(hasher_t, allocate_hash384, bool,
 	private_sha512_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	chunk_t allocated_hash;
@@ -554,9 +568,10 @@ METHOD(hasher_t, allocate_hash384, void,
 		reset384(this);
 		*hash = allocated_hash;
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash512, void,
+METHOD(hasher_t, allocate_hash512, bool,
 	private_sha512_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	chunk_t allocated_hash;
@@ -570,6 +585,7 @@ METHOD(hasher_t, allocate_hash512, void,
 		reset512(this);
 		*hash = allocated_hash;
 	}
+	return TRUE;
 }
 
 METHOD(hasher_t, get_hash_size224, size_t,

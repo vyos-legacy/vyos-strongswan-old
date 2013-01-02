@@ -265,6 +265,15 @@ static inline bool chunk_equals(chunk_t a, chunk_t b)
 }
 
 /**
+ * Compare two chunks (given as pointers) for equality (useful as callback),
+ * NULL chunks are never equal.
+ */
+static inline bool chunk_equals_ptr(chunk_t *a, chunk_t *b)
+{
+	return a != NULL && b != NULL && chunk_equals(*a, *b);
+}
+
+/**
  * Increment a chunk, as it would reprensent a network order integer.
  *
  * @param chunk			chunk to increment
@@ -303,7 +312,7 @@ u_int32_t chunk_hash_inc(chunk_t chunk, u_int32_t hash);
  *	chunk_t *chunk
  * Use #-modifier to print a compact version
  */
-int chunk_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
+int chunk_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 					  const void *const *args);
 
 #endif /** CHUNK_H_ @}*/

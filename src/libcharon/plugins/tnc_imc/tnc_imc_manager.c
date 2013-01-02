@@ -21,6 +21,7 @@
 
 #include <utils/linked_list.h>
 #include <debug.h>
+#include <daemon.h>
 
 typedef struct private_tnc_imc_manager_t private_tnc_imc_manager_t;
 
@@ -171,7 +172,7 @@ METHOD(imc_manager_t, get_preferred_language, char*,
 	private_tnc_imc_manager_t *this)
 {
 	return lib->settings->get_str(lib->settings,
-					"charon.plugins.tnc-imc.preferred_language", "en");
+				"%s.plugins.tnc-imc.preferred_language", "en", charon->name);
 }
 
 METHOD(imc_manager_t, notify_connection_change, void,

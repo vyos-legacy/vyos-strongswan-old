@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -19,6 +20,7 @@
 
 #include "file_logger.h"
 
+#include <threading/mutex.h>
 
 typedef struct private_file_logger_t private_file_logger_t;
 
@@ -51,73 +53,80 @@ struct private_file_logger_t {
 	 * Print the name/# of the IKE_SA?
 	 */
 	bool ike_name;
+
+	/**
+	 * Mutex to ensure multi-line log messages are not torn apart
+	 */
+	mutex_t *mutex;
 };
 
-METHOD(listener_t, log_, bool,
-	   private_file_logger_t *this, debug_t group, level_t level, int thread,
-	   ike_sa_t* ike_sa, char *format, va_list args)
+METHOD(logger_t, log_, void,
+	private_file_logger_t *this, debug_t group, level_t level, int thread,
+	ike_sa_t* ike_sa, const char *message)
 {
-	if (level <= this->levels[group])
-	{
-		char buffer[8192], timestr[128], namestr[128] = "";
-		char *current = buffer, *next;
-		struct tm tm;
-		time_t t;
+	char timestr[128], namestr[128] = "";
+	const char *current = message, *next;
+	struct tm tm;
+	time_t t;
 
-		if (this->time_format)
+	if (this->time_format)
+	{
+		t = time(NULL);
+		localtime_r(&t, &tm);
+		strftime(timestr, sizeof(timestr), this->time_format, &tm);
+	}
+	if (this->ike_name && ike_sa)
+	{
+		if (ike_sa->get_peer_cfg(ike_sa))
 		{
-			t = time(NULL);
-			localtime_r(&t, &tm);
-			strftime(timestr, sizeof(timestr), this->time_format, &tm);
-		}
-		if (this->ike_name && ike_sa)
-		{
-			if (ike_sa->get_peer_cfg(ike_sa))
-			{
-				snprintf(namestr, sizeof(namestr), " <%s|%d>",
-					ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
-			}
-			else
-			{
-				snprintf(namestr, sizeof(namestr), " <%d>",
-					ike_sa->get_unique_id(ike_sa));
-			}
+			snprintf(namestr, sizeof(namestr), " <%s|%d>",
+				ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
 		}
 		else
 		{
-			namestr[0] = '\0';
-		}
-
-		/* write in memory buffer first */
-		vsnprintf(buffer, sizeof(buffer), format, args);
-
-		/* prepend a prefix in front of every line */
-		while (current)
-		{
-			next = strchr(current, '\n');
-			if (next)
-			{
-				*(next++) = '\0';
-			}
-			if (this->time_format)
-			{
-				fprintf(this->out, "%s %.2d[%N]%s %s\n",
-						timestr, thread, debug_names, group, namestr, current);
-			}
-			else
-			{
-				fprintf(this->out, "%.2d[%N]%s %s\n",
-						thread, debug_names, group, namestr, current);
-			}
-			current = next;
+			snprintf(namestr, sizeof(namestr), " <%d>",
+				ike_sa->get_unique_id(ike_sa));
 		}
 	}
-	/* always stay registered */
-	return TRUE;
+	else
+	{
+		namestr[0] = '\0';
+	}
+
+	/* prepend a prefix in front of every line */
+	this->mutex->lock(this->mutex);
+	while (TRUE)
+	{
+		next = strchr(current, '\n');
+		if (this->time_format)
+		{
+			fprintf(this->out, "%s %.2d[%N]%s ",
+					timestr, thread, debug_names, group, namestr);
+		}
+		else
+		{
+			fprintf(this->out, "%.2d[%N]%s ",
+					thread, debug_names, group, namestr);
+		}
+		if (next == NULL)
+		{
+			fprintf(this->out, "%s\n", current);
+			break;
+		}
+		fprintf(this->out, "%.*s\n", (int)(next - current), current);
+		current = next + 1;
+	}
+	this->mutex->unlock(this->mutex);
+}
+
+METHOD(logger_t, get_level, level_t,
+	private_file_logger_t *this, debug_t group)
+{
+	return this->levels[group];
 }
 
 METHOD(file_logger_t, set_level, void,
-	   private_file_logger_t *this, debug_t group, level_t level)
+	private_file_logger_t *this, debug_t group, level_t level)
 {
 	if (group < DBG_ANY)
 	{
@@ -133,12 +142,13 @@ METHOD(file_logger_t, set_level, void,
 }
 
 METHOD(file_logger_t, destroy, void,
-	   private_file_logger_t *this)
+	private_file_logger_t *this)
 {
 	if (this->out != stdout && this->out != stderr)
 	{
 		fclose(this->out);
 	}
+	this->mutex->destroy(this->mutex);
 	free(this);
 }
 
@@ -151,8 +161,9 @@ file_logger_t *file_logger_create(FILE *out, char *time_format, bool ike_name)
 
 	INIT(this,
 		.public = {
-			.listener = {
+			.logger = {
 				.log = _log_,
+				.get_level = _get_level,
 			},
 			.set_level = _set_level,
 			.destroy = _destroy,
@@ -160,6 +171,7 @@ file_logger_t *file_logger_create(FILE *out, char *time_format, bool ike_name)
 		.out = out,
 		.time_format = time_format,
 		.ike_name = ike_name,
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 	);
 
 	set_level(this, DBG_ANY, LEVEL_SILENT);

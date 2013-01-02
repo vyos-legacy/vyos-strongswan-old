@@ -15,6 +15,7 @@
 
 @SET_MAKE@
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -35,91 +36,91 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @USE_LEAK_DETECTIVE_TRUE@am__append_1 = -DLEAK_DETECTIVE
-@USE_LEAK_DETECTIVE_TRUE@am__append_2 = \
-@USE_LEAK_DETECTIVE_TRUE@    utils/leak_detective.c utils/leak_detective.h
-
+@USE_LEAK_DETECTIVE_TRUE@am__append_2 = utils/leak_detective.c
 @USE_LOCK_PROFILER_TRUE@am__append_3 = -DLOCK_PROFILER
 @USE_INTEGRITY_TEST_TRUE@am__append_4 = -DINTEGRITY_TEST
-@USE_INTEGRITY_TEST_TRUE@am__append_5 = \
-@USE_INTEGRITY_TEST_TRUE@    integrity_checker.c integrity_checker.h
-
+@USE_INTEGRITY_TEST_TRUE@am__append_5 = integrity_checker.c
 @USE_VSTR_TRUE@am__append_6 = -lvstr
-@USE_AF_ALG_TRUE@am__append_7 = plugins/af_alg
-@MONOLITHIC_TRUE@@USE_AF_ALG_TRUE@am__append_8 = plugins/af_alg/libstrongswan-af-alg.la
-@USE_AES_TRUE@am__append_9 = plugins/aes
-@MONOLITHIC_TRUE@@USE_AES_TRUE@am__append_10 = plugins/aes/libstrongswan-aes.la
-@USE_DES_TRUE@am__append_11 = plugins/des
-@MONOLITHIC_TRUE@@USE_DES_TRUE@am__append_12 = plugins/des/libstrongswan-des.la
-@USE_BLOWFISH_TRUE@am__append_13 = plugins/blowfish
-@MONOLITHIC_TRUE@@USE_BLOWFISH_TRUE@am__append_14 = plugins/blowfish/libstrongswan-blowfish.la
-@USE_MD4_TRUE@am__append_15 = plugins/md4
-@MONOLITHIC_TRUE@@USE_MD4_TRUE@am__append_16 = plugins/md4/libstrongswan-md4.la
-@USE_MD5_TRUE@am__append_17 = plugins/md5
-@MONOLITHIC_TRUE@@USE_MD5_TRUE@am__append_18 = plugins/md5/libstrongswan-md5.la
-@USE_SHA1_TRUE@am__append_19 = plugins/sha1
-@MONOLITHIC_TRUE@@USE_SHA1_TRUE@am__append_20 = plugins/sha1/libstrongswan-sha1.la
-@USE_SHA2_TRUE@am__append_21 = plugins/sha2
-@MONOLITHIC_TRUE@@USE_SHA2_TRUE@am__append_22 = plugins/sha2/libstrongswan-sha2.la
-@USE_GMP_TRUE@am__append_23 = plugins/gmp
-@MONOLITHIC_TRUE@@USE_GMP_TRUE@am__append_24 = plugins/gmp/libstrongswan-gmp.la
-@USE_RANDOM_TRUE@am__append_25 = plugins/random
-@MONOLITHIC_TRUE@@USE_RANDOM_TRUE@am__append_26 = plugins/random/libstrongswan-random.la
-@USE_HMAC_TRUE@am__append_27 = plugins/hmac
-@MONOLITHIC_TRUE@@USE_HMAC_TRUE@am__append_28 = plugins/hmac/libstrongswan-hmac.la
-@USE_CMAC_TRUE@am__append_29 = plugins/cmac
-@MONOLITHIC_TRUE@@USE_CMAC_TRUE@am__append_30 = plugins/cmac/libstrongswan-cmac.la
-@USE_XCBC_TRUE@am__append_31 = plugins/xcbc
-@MONOLITHIC_TRUE@@USE_XCBC_TRUE@am__append_32 = plugins/xcbc/libstrongswan-xcbc.la
-@USE_X509_TRUE@am__append_33 = plugins/x509
-@MONOLITHIC_TRUE@@USE_X509_TRUE@am__append_34 = plugins/x509/libstrongswan-x509.la
-@USE_REVOCATION_TRUE@am__append_35 = plugins/revocation
-@MONOLITHIC_TRUE@@USE_REVOCATION_TRUE@am__append_36 = plugins/revocation/libstrongswan-revocation.la
-@USE_CONSTRAINTS_TRUE@am__append_37 = plugins/constraints
-@MONOLITHIC_TRUE@@USE_CONSTRAINTS_TRUE@am__append_38 = plugins/constraints/libstrongswan-constraints.la
-@USE_PUBKEY_TRUE@am__append_39 = plugins/pubkey
-@MONOLITHIC_TRUE@@USE_PUBKEY_TRUE@am__append_40 = plugins/pubkey/libstrongswan-pubkey.la
-@USE_PKCS1_TRUE@am__append_41 = plugins/pkcs1
-@MONOLITHIC_TRUE@@USE_PKCS1_TRUE@am__append_42 = plugins/pkcs1/libstrongswan-pkcs1.la
-@USE_PKCS8_TRUE@am__append_43 = plugins/pkcs8
-@MONOLITHIC_TRUE@@USE_PKCS8_TRUE@am__append_44 = plugins/pkcs8/libstrongswan-pkcs8.la
-@USE_PGP_TRUE@am__append_45 = plugins/pgp
-@MONOLITHIC_TRUE@@USE_PGP_TRUE@am__append_46 = plugins/pgp/libstrongswan-pgp.la
-@USE_DNSKEY_TRUE@am__append_47 = plugins/dnskey
-@MONOLITHIC_TRUE@@USE_DNSKEY_TRUE@am__append_48 = plugins/dnskey/libstrongswan-dnskey.la
-@USE_PEM_TRUE@am__append_49 = plugins/pem
-@MONOLITHIC_TRUE@@USE_PEM_TRUE@am__append_50 = plugins/pem/libstrongswan-pem.la
-@USE_CURL_TRUE@am__append_51 = plugins/curl
-@MONOLITHIC_TRUE@@USE_CURL_TRUE@am__append_52 = plugins/curl/libstrongswan-curl.la
-@USE_SOUP_TRUE@am__append_53 = plugins/soup
-@MONOLITHIC_TRUE@@USE_SOUP_TRUE@am__append_54 = plugins/soup/libstrongswan-soup.la
-@USE_LDAP_TRUE@am__append_55 = plugins/ldap
-@MONOLITHIC_TRUE@@USE_LDAP_TRUE@am__append_56 = plugins/ldap/libstrongswan-ldap.la
-@USE_MYSQL_TRUE@am__append_57 = plugins/mysql
-@MONOLITHIC_TRUE@@USE_MYSQL_TRUE@am__append_58 = plugins/mysql/libstrongswan-mysql.la
-@USE_SQLITE_TRUE@am__append_59 = plugins/sqlite
-@MONOLITHIC_TRUE@@USE_SQLITE_TRUE@am__append_60 = plugins/sqlite/libstrongswan-sqlite.la
-@USE_PADLOCK_TRUE@am__append_61 = plugins/padlock
-@MONOLITHIC_TRUE@@USE_PADLOCK_TRUE@am__append_62 = plugins/padlock/libstrongswan-padlock.la
-@USE_OPENSSL_TRUE@am__append_63 = plugins/openssl
-@MONOLITHIC_TRUE@@USE_OPENSSL_TRUE@am__append_64 = plugins/openssl/libstrongswan-openssl.la
-@USE_GCRYPT_TRUE@am__append_65 = plugins/gcrypt
-@MONOLITHIC_TRUE@@USE_GCRYPT_TRUE@am__append_66 = plugins/gcrypt/libstrongswan-gcrypt.la
-@USE_FIPS_PRF_TRUE@am__append_67 = plugins/fips_prf
-@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_68 = plugins/fips_prf/libstrongswan-fips-prf.la
-@USE_AGENT_TRUE@am__append_69 = plugins/agent
-@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_70 = plugins/agent/libstrongswan-agent.la
-@USE_PKCS11_TRUE@am__append_71 = plugins/pkcs11
-@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_72 = plugins/pkcs11/libstrongswan-pkcs11.la
-@USE_CTR_TRUE@am__append_73 = plugins/ctr
-@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_74 = plugins/ctr/libstrongswan-ctr.la
-@USE_CCM_TRUE@am__append_75 = plugins/ccm
-@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_76 = plugins/ccm/libstrongswan-ccm.la
-@USE_GCM_TRUE@am__append_77 = plugins/gcm
-@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_78 = plugins/gcm/libstrongswan-gcm.la
-@USE_TEST_VECTORS_TRUE@am__append_79 = plugins/test_vectors
-@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_80 = plugins/test_vectors/libstrongswan-test-vectors.la
+@USE_LIBCAP_TRUE@am__append_7 = -lcap
+@USE_AF_ALG_TRUE@am__append_8 = plugins/af_alg
+@MONOLITHIC_TRUE@@USE_AF_ALG_TRUE@am__append_9 = plugins/af_alg/libstrongswan-af-alg.la
+@USE_AES_TRUE@am__append_10 = plugins/aes
+@MONOLITHIC_TRUE@@USE_AES_TRUE@am__append_11 = plugins/aes/libstrongswan-aes.la
+@USE_DES_TRUE@am__append_12 = plugins/des
+@MONOLITHIC_TRUE@@USE_DES_TRUE@am__append_13 = plugins/des/libstrongswan-des.la
+@USE_BLOWFISH_TRUE@am__append_14 = plugins/blowfish
+@MONOLITHIC_TRUE@@USE_BLOWFISH_TRUE@am__append_15 = plugins/blowfish/libstrongswan-blowfish.la
+@USE_MD4_TRUE@am__append_16 = plugins/md4
+@MONOLITHIC_TRUE@@USE_MD4_TRUE@am__append_17 = plugins/md4/libstrongswan-md4.la
+@USE_MD5_TRUE@am__append_18 = plugins/md5
+@MONOLITHIC_TRUE@@USE_MD5_TRUE@am__append_19 = plugins/md5/libstrongswan-md5.la
+@USE_SHA1_TRUE@am__append_20 = plugins/sha1
+@MONOLITHIC_TRUE@@USE_SHA1_TRUE@am__append_21 = plugins/sha1/libstrongswan-sha1.la
+@USE_SHA2_TRUE@am__append_22 = plugins/sha2
+@MONOLITHIC_TRUE@@USE_SHA2_TRUE@am__append_23 = plugins/sha2/libstrongswan-sha2.la
+@USE_GMP_TRUE@am__append_24 = plugins/gmp
+@MONOLITHIC_TRUE@@USE_GMP_TRUE@am__append_25 = plugins/gmp/libstrongswan-gmp.la
+@USE_RANDOM_TRUE@am__append_26 = plugins/random
+@MONOLITHIC_TRUE@@USE_RANDOM_TRUE@am__append_27 = plugins/random/libstrongswan-random.la
+@USE_NONCE_TRUE@am__append_28 = plugins/nonce
+@MONOLITHIC_TRUE@@USE_NONCE_TRUE@am__append_29 = plugins/nonce/libstrongswan-nonce.la
+@USE_HMAC_TRUE@am__append_30 = plugins/hmac
+@MONOLITHIC_TRUE@@USE_HMAC_TRUE@am__append_31 = plugins/hmac/libstrongswan-hmac.la
+@USE_CMAC_TRUE@am__append_32 = plugins/cmac
+@MONOLITHIC_TRUE@@USE_CMAC_TRUE@am__append_33 = plugins/cmac/libstrongswan-cmac.la
+@USE_XCBC_TRUE@am__append_34 = plugins/xcbc
+@MONOLITHIC_TRUE@@USE_XCBC_TRUE@am__append_35 = plugins/xcbc/libstrongswan-xcbc.la
+@USE_X509_TRUE@am__append_36 = plugins/x509
+@MONOLITHIC_TRUE@@USE_X509_TRUE@am__append_37 = plugins/x509/libstrongswan-x509.la
+@USE_REVOCATION_TRUE@am__append_38 = plugins/revocation
+@MONOLITHIC_TRUE@@USE_REVOCATION_TRUE@am__append_39 = plugins/revocation/libstrongswan-revocation.la
+@USE_CONSTRAINTS_TRUE@am__append_40 = plugins/constraints
+@MONOLITHIC_TRUE@@USE_CONSTRAINTS_TRUE@am__append_41 = plugins/constraints/libstrongswan-constraints.la
+@USE_PUBKEY_TRUE@am__append_42 = plugins/pubkey
+@MONOLITHIC_TRUE@@USE_PUBKEY_TRUE@am__append_43 = plugins/pubkey/libstrongswan-pubkey.la
+@USE_PKCS1_TRUE@am__append_44 = plugins/pkcs1
+@MONOLITHIC_TRUE@@USE_PKCS1_TRUE@am__append_45 = plugins/pkcs1/libstrongswan-pkcs1.la
+@USE_PKCS8_TRUE@am__append_46 = plugins/pkcs8
+@MONOLITHIC_TRUE@@USE_PKCS8_TRUE@am__append_47 = plugins/pkcs8/libstrongswan-pkcs8.la
+@USE_PGP_TRUE@am__append_48 = plugins/pgp
+@MONOLITHIC_TRUE@@USE_PGP_TRUE@am__append_49 = plugins/pgp/libstrongswan-pgp.la
+@USE_DNSKEY_TRUE@am__append_50 = plugins/dnskey
+@MONOLITHIC_TRUE@@USE_DNSKEY_TRUE@am__append_51 = plugins/dnskey/libstrongswan-dnskey.la
+@USE_PEM_TRUE@am__append_52 = plugins/pem
+@MONOLITHIC_TRUE@@USE_PEM_TRUE@am__append_53 = plugins/pem/libstrongswan-pem.la
+@USE_CURL_TRUE@am__append_54 = plugins/curl
+@MONOLITHIC_TRUE@@USE_CURL_TRUE@am__append_55 = plugins/curl/libstrongswan-curl.la
+@USE_SOUP_TRUE@am__append_56 = plugins/soup
+@MONOLITHIC_TRUE@@USE_SOUP_TRUE@am__append_57 = plugins/soup/libstrongswan-soup.la
+@USE_LDAP_TRUE@am__append_58 = plugins/ldap
+@MONOLITHIC_TRUE@@USE_LDAP_TRUE@am__append_59 = plugins/ldap/libstrongswan-ldap.la
+@USE_MYSQL_TRUE@am__append_60 = plugins/mysql
+@MONOLITHIC_TRUE@@USE_MYSQL_TRUE@am__append_61 = plugins/mysql/libstrongswan-mysql.la
+@USE_SQLITE_TRUE@am__append_62 = plugins/sqlite
+@MONOLITHIC_TRUE@@USE_SQLITE_TRUE@am__append_63 = plugins/sqlite/libstrongswan-sqlite.la
+@USE_PADLOCK_TRUE@am__append_64 = plugins/padlock
+@MONOLITHIC_TRUE@@USE_PADLOCK_TRUE@am__append_65 = plugins/padlock/libstrongswan-padlock.la
+@USE_OPENSSL_TRUE@am__append_66 = plugins/openssl
+@MONOLITHIC_TRUE@@USE_OPENSSL_TRUE@am__append_67 = plugins/openssl/libstrongswan-openssl.la
+@USE_GCRYPT_TRUE@am__append_68 = plugins/gcrypt
+@MONOLITHIC_TRUE@@USE_GCRYPT_TRUE@am__append_69 = plugins/gcrypt/libstrongswan-gcrypt.la
+@USE_FIPS_PRF_TRUE@am__append_70 = plugins/fips_prf
+@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_71 = plugins/fips_prf/libstrongswan-fips-prf.la
+@USE_AGENT_TRUE@am__append_72 = plugins/agent
+@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_73 = plugins/agent/libstrongswan-agent.la
+@USE_PKCS11_TRUE@am__append_74 = plugins/pkcs11
+@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_75 = plugins/pkcs11/libstrongswan-pkcs11.la
+@USE_CTR_TRUE@am__append_76 = plugins/ctr
+@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_77 = plugins/ctr/libstrongswan-ctr.la
+@USE_CCM_TRUE@am__append_78 = plugins/ccm
+@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_79 = plugins/ccm/libstrongswan-ccm.la
+@USE_GCM_TRUE@am__append_80 = plugins/gcm
+@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_81 = plugins/gcm/libstrongswan-gcm.la
+@USE_TEST_VECTORS_TRUE@am__append_82 = plugins/test_vectors
+@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_83 = plugins/test_vectors/libstrongswan-test-vectors.la
 subdir = src/libstrongswan
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(am__nobase_strongswan_include_HEADERS_DIST) \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -133,6 +134,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -156,101 +158,70 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(ipseclibdir)"
+am__installdirs = "$(DESTDIR)$(ipseclibdir)" \
+	"$(DESTDIR)$(strongswan_includedir)"
 LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libstrongswan_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__append_8) $(am__append_10) \
-	$(am__append_12) $(am__append_14) $(am__append_16) \
-	$(am__append_18) $(am__append_20) $(am__append_22) \
-	$(am__append_24) $(am__append_26) $(am__append_28) \
-	$(am__append_30) $(am__append_32) $(am__append_34) \
-	$(am__append_36) $(am__append_38) $(am__append_40) \
-	$(am__append_42) $(am__append_44) $(am__append_46) \
-	$(am__append_48) $(am__append_50) $(am__append_52) \
-	$(am__append_54) $(am__append_56) $(am__append_58) \
-	$(am__append_60) $(am__append_62) $(am__append_64) \
-	$(am__append_66) $(am__append_68) $(am__append_70) \
-	$(am__append_72) $(am__append_74) $(am__append_76) \
-	$(am__append_78) $(am__append_80)
-am__libstrongswan_la_SOURCES_DIST = library.c library.h chunk.c \
-	chunk.h debug.c debug.h enum.c enum.h settings.h settings.c \
-	printf_hook.c printf_hook.h asn1/asn1.c asn1/asn1.h \
-	asn1/asn1_parser.c asn1/asn1_parser.h asn1/oid.c asn1/oid.h \
-	bio/bio_reader.h bio/bio_reader.c bio/bio_writer.h \
-	bio/bio_writer.c crypto/crypters/crypter.c \
-	crypto/crypters/crypter.h crypto/hashers/hasher.h \
-	crypto/hashers/hasher.c crypto/pkcs9.c crypto/pkcs9.h \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__append_9) $(am__append_11) \
+	$(am__append_13) $(am__append_15) $(am__append_17) \
+	$(am__append_19) $(am__append_21) $(am__append_23) \
+	$(am__append_25) $(am__append_27) $(am__append_29) \
+	$(am__append_31) $(am__append_33) $(am__append_35) \
+	$(am__append_37) $(am__append_39) $(am__append_41) \
+	$(am__append_43) $(am__append_45) $(am__append_47) \
+	$(am__append_49) $(am__append_51) $(am__append_53) \
+	$(am__append_55) $(am__append_57) $(am__append_59) \
+	$(am__append_61) $(am__append_63) $(am__append_65) \
+	$(am__append_67) $(am__append_69) $(am__append_71) \
+	$(am__append_73) $(am__append_75) $(am__append_77) \
+	$(am__append_79) $(am__append_81) $(am__append_83)
+am__libstrongswan_la_SOURCES_DIST = library.c chunk.c debug.c enum.c \
+	settings.c printf_hook.c asn1/asn1.c asn1/asn1_parser.c \
+	asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
+	crypto/crypters/crypter.c crypto/hashers/hasher.c \
+	crypto/pkcs7.c crypto/pkcs9.c \
 	crypto/proposal/proposal_keywords.c \
-	crypto/proposal/proposal_keywords.h crypto/prfs/prf.c \
-	crypto/prfs/prf.h crypto/rngs/rng.c crypto/rngs/rng.h \
-	crypto/prf_plus.h crypto/prf_plus.c crypto/signers/signer.c \
-	crypto/signers/signer.h crypto/crypto_factory.c \
-	crypto/crypto_factory.h crypto/crypto_tester.c \
-	crypto/crypto_tester.h crypto/diffie_hellman.c \
-	crypto/diffie_hellman.h crypto/aead.c crypto/aead.h \
-	crypto/transform.c crypto/transform.h \
-	credentials/credential_factory.c \
-	credentials/credential_factory.h credentials/builder.c \
-	credentials/builder.h credentials/cred_encoding.c \
-	credentials/cred_encoding.h credentials/keys/private_key.c \
-	credentials/keys/private_key.h credentials/keys/public_key.c \
-	credentials/keys/public_key.h credentials/keys/shared_key.c \
-	credentials/keys/shared_key.h \
+	crypto/proposal/proposal_keywords_static.c crypto/prfs/prf.c \
+	crypto/prfs/mac_prf.c crypto/rngs/rng.c crypto/prf_plus.c \
+	crypto/signers/signer.c crypto/signers/mac_signer.c \
+	crypto/crypto_factory.c crypto/crypto_tester.c \
+	crypto/diffie_hellman.c crypto/aead.c crypto/transform.c \
+	credentials/credential_factory.c credentials/builder.c \
+	credentials/cred_encoding.c credentials/keys/private_key.c \
+	credentials/keys/public_key.c credentials/keys/shared_key.c \
 	credentials/certificates/certificate.c \
-	credentials/certificates/certificate.h \
-	credentials/certificates/x509.h credentials/certificates/ac.h \
-	credentials/certificates/crl.h credentials/certificates/crl.c \
-	credentials/certificates/pkcs10.h \
-	credentials/certificates/ocsp_request.h \
-	credentials/certificates/ocsp_response.h \
+	credentials/certificates/crl.c \
 	credentials/certificates/ocsp_response.c \
-	credentials/certificates/pgp_certificate.h \
 	credentials/ietf_attributes/ietf_attributes.c \
-	credentials/ietf_attributes/ietf_attributes.h \
 	credentials/credential_manager.c \
-	credentials/credential_manager.h \
 	credentials/sets/auth_cfg_wrapper.c \
-	credentials/sets/auth_cfg_wrapper.h \
 	credentials/sets/ocsp_response_wrapper.c \
-	credentials/sets/ocsp_response_wrapper.h \
-	credentials/sets/cert_cache.c credentials/sets/cert_cache.h \
-	credentials/sets/mem_cred.c credentials/sets/mem_cred.h \
-	credentials/sets/callback_cred.c \
-	credentials/sets/callback_cred.h credentials/auth_cfg.c \
-	credentials/auth_cfg.h credentials/credential_set.h \
-	credentials/cert_validator.h database/database.h \
-	database/database.c database/database_factory.h \
-	database/database_factory.c fetcher/fetcher.h \
-	fetcher/fetcher.c fetcher/fetcher_manager.h \
-	fetcher/fetcher_manager.c eap/eap.h eap/eap.c pen/pen.h \
-	pen/pen.c plugins/plugin_loader.c plugins/plugin_loader.h \
-	plugins/plugin.h plugins/plugin_feature.c \
-	plugins/plugin_feature.h processing/jobs/job.h \
-	processing/jobs/job.c processing/jobs/callback_job.c \
-	processing/jobs/callback_job.h processing/processor.c \
-	processing/processor.h processing/scheduler.c \
-	processing/scheduler.h selectors/traffic_selector.c \
-	selectors/traffic_selector.h threading/thread.h \
-	threading/thread.c threading/thread_value.h \
-	threading/thread_value.c threading/mutex.h threading/mutex.c \
-	threading/condvar.h threading/rwlock.h threading/rwlock.c \
-	threading/lock_profiler.h utils.h utils.c utils/host.c \
-	utils/host.h utils/identification.c utils/identification.h \
-	utils/lexparser.c utils/lexparser.h utils/linked_list.c \
-	utils/linked_list.h utils/hashtable.c utils/hashtable.h \
-	utils/enumerator.c utils/enumerator.h utils/optionsfrom.c \
-	utils/optionsfrom.h utils/backtrace.c utils/backtrace.h \
-	utils/leak_detective.c utils/leak_detective.h \
-	integrity_checker.c integrity_checker.h
+	credentials/sets/cert_cache.c credentials/sets/mem_cred.c \
+	credentials/sets/callback_cred.c credentials/auth_cfg.c \
+	database/database.c database/database_factory.c \
+	fetcher/fetcher.c fetcher/fetcher_manager.c eap/eap.c \
+	ipsec/ipsec_types.c pen/pen.c plugins/plugin_loader.c \
+	plugins/plugin_feature.c processing/jobs/job.c \
+	processing/jobs/callback_job.c processing/processor.c \
+	processing/scheduler.c selectors/traffic_selector.c \
+	threading/thread.c threading/thread_value.c threading/mutex.c \
+	threading/semaphore.c threading/rwlock.c threading/spinlock.c \
+	utils.c utils/host.c utils/packet.c utils/identification.c \
+	utils/lexparser.c utils/linked_list.c utils/blocking_queue.c \
+	utils/hashtable.c utils/enumerator.c utils/optionsfrom.c \
+	utils/capabilities.c utils/backtrace.c utils/tun_device.c \
+	utils/leak_detective.c integrity_checker.c
 @USE_LEAK_DETECTIVE_TRUE@am__objects_1 = leak_detective.lo
 @USE_INTEGRITY_TEST_TRUE@am__objects_2 = integrity_checker.lo
 am_libstrongswan_la_OBJECTS = library.lo chunk.lo debug.lo enum.lo \
 	settings.lo printf_hook.lo asn1.lo asn1_parser.lo oid.lo \
-	bio_reader.lo bio_writer.lo crypter.lo hasher.lo pkcs9.lo \
-	proposal_keywords.lo prf.lo rng.lo prf_plus.lo signer.lo \
+	bio_reader.lo bio_writer.lo crypter.lo hasher.lo pkcs7.lo \
+	pkcs9.lo proposal_keywords.lo proposal_keywords_static.lo \
+	prf.lo mac_prf.lo rng.lo prf_plus.lo signer.lo mac_signer.lo \
 	crypto_factory.lo crypto_tester.lo diffie_hellman.lo aead.lo \
 	transform.lo credential_factory.lo builder.lo cred_encoding.lo \
 	private_key.lo public_key.lo shared_key.lo certificate.lo \
@@ -258,14 +229,16 @@ am_libstrongswan_la_OBJECTS = library.lo chunk.lo debug.lo enum.lo \
 	credential_manager.lo auth_cfg_wrapper.lo \
 	ocsp_response_wrapper.lo cert_cache.lo mem_cred.lo \
 	callback_cred.lo auth_cfg.lo database.lo database_factory.lo \
-	fetcher.lo fetcher_manager.lo eap.lo pen.lo plugin_loader.lo \
-	plugin_feature.lo job.lo callback_job.lo processor.lo \
-	scheduler.lo traffic_selector.lo thread.lo thread_value.lo \
-	mutex.lo rwlock.lo utils.lo host.lo identification.lo \
-	lexparser.lo linked_list.lo hashtable.lo enumerator.lo \
-	optionsfrom.lo backtrace.lo $(am__objects_1) $(am__objects_2)
+	fetcher.lo fetcher_manager.lo eap.lo ipsec_types.lo pen.lo \
+	plugin_loader.lo plugin_feature.lo job.lo callback_job.lo \
+	processor.lo scheduler.lo traffic_selector.lo thread.lo \
+	thread_value.lo mutex.lo semaphore.lo rwlock.lo spinlock.lo \
+	utils.lo host.lo packet.lo identification.lo lexparser.lo \
+	linked_list.lo blocking_queue.lo hashtable.lo enumerator.lo \
+	optionsfrom.lo capabilities.lo backtrace.lo tun_device.lo \
+	$(am__objects_1) $(am__objects_2)
 libstrongswan_la_OBJECTS = $(am_libstrongswan_la_OBJECTS)
-DEFAULT_INCLUDES = -I.@am__isrc@
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
@@ -287,6 +260,51 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
+am__nobase_strongswan_include_HEADERS_DIST = library.h chunk.h debug.h \
+	enum.h settings.h printf_hook.h asn1/asn1.h asn1/asn1_parser.h \
+	asn1/oid.h bio/bio_reader.h bio/bio_writer.h \
+	crypto/crypters/crypter.h crypto/hashers/hasher.h crypto/mac.h \
+	crypto/pkcs7.h crypto/pkcs9.h \
+	crypto/proposal/proposal_keywords.h \
+	crypto/proposal/proposal_keywords_static.h crypto/prfs/prf.h \
+	crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
+	crypto/prf_plus.h crypto/signers/signer.h \
+	crypto/signers/mac_signer.h crypto/crypto_factory.h \
+	crypto/crypto_tester.h crypto/diffie_hellman.h crypto/aead.h \
+	crypto/transform.h credentials/credential_factory.h \
+	credentials/builder.h credentials/cred_encoding.h \
+	credentials/keys/private_key.h credentials/keys/public_key.h \
+	credentials/keys/shared_key.h \
+	credentials/certificates/certificate.h \
+	credentials/certificates/x509.h credentials/certificates/ac.h \
+	credentials/certificates/crl.h \
+	credentials/certificates/pkcs10.h \
+	credentials/certificates/ocsp_request.h \
+	credentials/certificates/ocsp_response.h \
+	credentials/certificates/pgp_certificate.h \
+	credentials/ietf_attributes/ietf_attributes.h \
+	credentials/credential_manager.h \
+	credentials/sets/auth_cfg_wrapper.h \
+	credentials/sets/ocsp_response_wrapper.h \
+	credentials/sets/cert_cache.h credentials/sets/mem_cred.h \
+	credentials/sets/callback_cred.h credentials/auth_cfg.h \
+	credentials/credential_set.h credentials/cert_validator.h \
+	database/database.h database/database_factory.h \
+	fetcher/fetcher.h fetcher/fetcher_manager.h eap/eap.h \
+	pen/pen.h ipsec/ipsec_types.h plugins/plugin_loader.h \
+	plugins/plugin.h plugins/plugin_feature.h \
+	processing/jobs/job.h processing/jobs/callback_job.h \
+	processing/processor.h processing/scheduler.h \
+	selectors/traffic_selector.h threading/thread.h \
+	threading/thread_value.h threading/mutex.h threading/condvar.h \
+	threading/spinlock.h threading/semaphore.h threading/rwlock.h \
+	threading/rwlock_condvar.h threading/lock_profiler.h utils.h \
+	utils/host.h utils/packet.h utils/identification.h \
+	utils/lexparser.h utils/linked_list.h utils/blocking_queue.h \
+	utils/hashtable.h utils/enumerator.h utils/optionsfrom.h \
+	utils/capabilities.h utils/backtrace.h utils/tun_device.h \
+	utils/leak_detective.h integrity_checker.h
+HEADERS = $(nobase_strongswan_include_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
@@ -296,14 +314,14 @@ ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = . plugins/af_alg plugins/aes plugins/des \
 	plugins/blowfish plugins/md4 plugins/md5 plugins/sha1 \
-	plugins/sha2 plugins/gmp plugins/random plugins/hmac \
-	plugins/cmac plugins/xcbc plugins/x509 plugins/revocation \
-	plugins/constraints plugins/pubkey plugins/pkcs1 plugins/pkcs8 \
-	plugins/pgp plugins/dnskey plugins/pem plugins/curl \
-	plugins/soup plugins/ldap plugins/mysql plugins/sqlite \
-	plugins/padlock plugins/openssl plugins/gcrypt \
-	plugins/fips_prf plugins/agent plugins/pkcs11 plugins/ctr \
-	plugins/ccm plugins/gcm plugins/test_vectors
+	plugins/sha2 plugins/gmp plugins/random plugins/nonce \
+	plugins/hmac plugins/cmac plugins/xcbc plugins/x509 \
+	plugins/revocation plugins/constraints plugins/pubkey \
+	plugins/pkcs1 plugins/pkcs8 plugins/pgp plugins/dnskey \
+	plugins/pem plugins/curl plugins/soup plugins/ldap \
+	plugins/mysql plugins/sqlite plugins/padlock plugins/openssl \
+	plugins/gcrypt plugins/fips_prf plugins/agent plugins/pkcs11 \
+	plugins/ctr plugins/ccm plugins/gcm plugins/test_vectors
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -338,6 +356,7 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BFDLIB = @BFDLIB@
 BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
@@ -432,11 +451,14 @@ build_os = @build_os@
 build_vendor = @build_vendor@
 builddir = @builddir@
 c_plugins = @c_plugins@
+charon_natt_port = @charon_natt_port@
+charon_plugins = @charon_plugins@
+charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
-default_pkcs11 = @default_pkcs11@
+dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
@@ -453,11 +475,12 @@ imcvdir = @imcvdir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+ipsec_script = @ipsec_script@
+ipsec_script_upper = @ipsec_script_upper@
 ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
-libcharon_plugins = @libcharon_plugins@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -473,6 +496,7 @@ mkdir_p = @mkdir_p@
 nm_CFLAGS = @nm_CFLAGS@
 nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
+nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
 openac_plugins = @openac_plugins@
 p_plugins = @p_plugins@
@@ -482,7 +506,6 @@ pdfdir = @pdfdir@
 piddir = @piddir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
-pluto_plugins = @pluto_plugins@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
@@ -511,88 +534,93 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 ipseclib_LTLIBRARIES = libstrongswan.la
-libstrongswan_la_SOURCES = library.c library.h chunk.c chunk.h debug.c \
-	debug.h enum.c enum.h settings.h settings.c printf_hook.c \
-	printf_hook.h asn1/asn1.c asn1/asn1.h asn1/asn1_parser.c \
-	asn1/asn1_parser.h asn1/oid.c asn1/oid.h bio/bio_reader.h \
-	bio/bio_reader.c bio/bio_writer.h bio/bio_writer.c \
-	crypto/crypters/crypter.c crypto/crypters/crypter.h \
-	crypto/hashers/hasher.h crypto/hashers/hasher.c crypto/pkcs9.c \
-	crypto/pkcs9.h crypto/proposal/proposal_keywords.c \
-	crypto/proposal/proposal_keywords.h crypto/prfs/prf.c \
-	crypto/prfs/prf.h crypto/rngs/rng.c crypto/rngs/rng.h \
-	crypto/prf_plus.h crypto/prf_plus.c crypto/signers/signer.c \
-	crypto/signers/signer.h crypto/crypto_factory.c \
-	crypto/crypto_factory.h crypto/crypto_tester.c \
-	crypto/crypto_tester.h crypto/diffie_hellman.c \
-	crypto/diffie_hellman.h crypto/aead.c crypto/aead.h \
-	crypto/transform.c crypto/transform.h \
-	credentials/credential_factory.c \
-	credentials/credential_factory.h credentials/builder.c \
-	credentials/builder.h credentials/cred_encoding.c \
-	credentials/cred_encoding.h credentials/keys/private_key.c \
-	credentials/keys/private_key.h credentials/keys/public_key.c \
-	credentials/keys/public_key.h credentials/keys/shared_key.c \
-	credentials/keys/shared_key.h \
+libstrongswan_la_SOURCES = library.c chunk.c debug.c enum.c settings.c \
+	printf_hook.c asn1/asn1.c asn1/asn1_parser.c asn1/oid.c \
+	bio/bio_reader.c bio/bio_writer.c crypto/crypters/crypter.c \
+	crypto/hashers/hasher.c crypto/pkcs7.c crypto/pkcs9.c \
+	crypto/proposal/proposal_keywords.c \
+	crypto/proposal/proposal_keywords_static.c crypto/prfs/prf.c \
+	crypto/prfs/mac_prf.c crypto/rngs/rng.c crypto/prf_plus.c \
+	crypto/signers/signer.c crypto/signers/mac_signer.c \
+	crypto/crypto_factory.c crypto/crypto_tester.c \
+	crypto/diffie_hellman.c crypto/aead.c crypto/transform.c \
+	credentials/credential_factory.c credentials/builder.c \
+	credentials/cred_encoding.c credentials/keys/private_key.c \
+	credentials/keys/public_key.c credentials/keys/shared_key.c \
 	credentials/certificates/certificate.c \
-	credentials/certificates/certificate.h \
-	credentials/certificates/x509.h credentials/certificates/ac.h \
-	credentials/certificates/crl.h credentials/certificates/crl.c \
-	credentials/certificates/pkcs10.h \
-	credentials/certificates/ocsp_request.h \
-	credentials/certificates/ocsp_response.h \
+	credentials/certificates/crl.c \
 	credentials/certificates/ocsp_response.c \
-	credentials/certificates/pgp_certificate.h \
 	credentials/ietf_attributes/ietf_attributes.c \
-	credentials/ietf_attributes/ietf_attributes.h \
 	credentials/credential_manager.c \
-	credentials/credential_manager.h \
 	credentials/sets/auth_cfg_wrapper.c \
-	credentials/sets/auth_cfg_wrapper.h \
 	credentials/sets/ocsp_response_wrapper.c \
-	credentials/sets/ocsp_response_wrapper.h \
-	credentials/sets/cert_cache.c credentials/sets/cert_cache.h \
-	credentials/sets/mem_cred.c credentials/sets/mem_cred.h \
-	credentials/sets/callback_cred.c \
-	credentials/sets/callback_cred.h credentials/auth_cfg.c \
-	credentials/auth_cfg.h credentials/credential_set.h \
-	credentials/cert_validator.h database/database.h \
-	database/database.c database/database_factory.h \
-	database/database_factory.c fetcher/fetcher.h \
-	fetcher/fetcher.c fetcher/fetcher_manager.h \
-	fetcher/fetcher_manager.c eap/eap.h eap/eap.c pen/pen.h \
-	pen/pen.c plugins/plugin_loader.c plugins/plugin_loader.h \
-	plugins/plugin.h plugins/plugin_feature.c \
-	plugins/plugin_feature.h processing/jobs/job.h \
-	processing/jobs/job.c processing/jobs/callback_job.c \
-	processing/jobs/callback_job.h processing/processor.c \
-	processing/processor.h processing/scheduler.c \
-	processing/scheduler.h selectors/traffic_selector.c \
-	selectors/traffic_selector.h threading/thread.h \
-	threading/thread.c threading/thread_value.h \
-	threading/thread_value.c threading/mutex.h threading/mutex.c \
-	threading/condvar.h threading/rwlock.h threading/rwlock.c \
-	threading/lock_profiler.h utils.h utils.c utils/host.c \
-	utils/host.h utils/identification.c utils/identification.h \
-	utils/lexparser.c utils/lexparser.h utils/linked_list.c \
-	utils/linked_list.h utils/hashtable.c utils/hashtable.h \
-	utils/enumerator.c utils/enumerator.h utils/optionsfrom.c \
-	utils/optionsfrom.h utils/backtrace.c utils/backtrace.h \
+	credentials/sets/cert_cache.c credentials/sets/mem_cred.c \
+	credentials/sets/callback_cred.c credentials/auth_cfg.c \
+	database/database.c database/database_factory.c \
+	fetcher/fetcher.c fetcher/fetcher_manager.c eap/eap.c \
+	ipsec/ipsec_types.c pen/pen.c plugins/plugin_loader.c \
+	plugins/plugin_feature.c processing/jobs/job.c \
+	processing/jobs/callback_job.c processing/processor.c \
+	processing/scheduler.c selectors/traffic_selector.c \
+	threading/thread.c threading/thread_value.c threading/mutex.c \
+	threading/semaphore.c threading/rwlock.c threading/spinlock.c \
+	utils.c utils/host.c utils/packet.c utils/identification.c \
+	utils/lexparser.c utils/linked_list.c utils/blocking_queue.c \
+	utils/hashtable.c utils/enumerator.c utils/optionsfrom.c \
+	utils/capabilities.c utils/backtrace.c utils/tun_device.c \
 	$(am__append_2) $(am__append_5)
+@USE_DEV_HEADERS_TRUE@strongswan_includedir = ${dev_headers}
+@USE_DEV_HEADERS_TRUE@nobase_strongswan_include_HEADERS = \
+@USE_DEV_HEADERS_TRUE@library.h chunk.h debug.h enum.h settings.h printf_hook.h \
+@USE_DEV_HEADERS_TRUE@asn1/asn1.h asn1/asn1_parser.h asn1/oid.h bio/bio_reader.h bio/bio_writer.h \
+@USE_DEV_HEADERS_TRUE@crypto/crypters/crypter.h crypto/hashers/hasher.h crypto/mac.h \
+@USE_DEV_HEADERS_TRUE@crypto/pkcs7.h crypto/pkcs9.h crypto/proposal/proposal_keywords.h \
+@USE_DEV_HEADERS_TRUE@crypto/proposal/proposal_keywords_static.h \
+@USE_DEV_HEADERS_TRUE@crypto/prfs/prf.h crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
+@USE_DEV_HEADERS_TRUE@crypto/prf_plus.h crypto/signers/signer.h crypto/signers/mac_signer.h \
+@USE_DEV_HEADERS_TRUE@crypto/crypto_factory.h crypto/crypto_tester.h crypto/diffie_hellman.h \
+@USE_DEV_HEADERS_TRUE@crypto/aead.h crypto/transform.h \
+@USE_DEV_HEADERS_TRUE@credentials/credential_factory.h credentials/builder.h \
+@USE_DEV_HEADERS_TRUE@credentials/cred_encoding.h credentials/keys/private_key.h \
+@USE_DEV_HEADERS_TRUE@credentials/keys/public_key.h credentials/keys/shared_key.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/certificate.h credentials/certificates/x509.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/ac.h credentials/certificates/crl.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/pkcs10.h credentials/certificates/ocsp_request.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/ocsp_response.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/pgp_certificate.h \
+@USE_DEV_HEADERS_TRUE@credentials/ietf_attributes/ietf_attributes.h \
+@USE_DEV_HEADERS_TRUE@credentials/credential_manager.h credentials/sets/auth_cfg_wrapper.h \
+@USE_DEV_HEADERS_TRUE@credentials/sets/ocsp_response_wrapper.h credentials/sets/cert_cache.h \
+@USE_DEV_HEADERS_TRUE@credentials/sets/mem_cred.h credentials/sets/callback_cred.h \
+@USE_DEV_HEADERS_TRUE@credentials/auth_cfg.h credentials/credential_set.h credentials/cert_validator.h \
+@USE_DEV_HEADERS_TRUE@database/database.h database/database_factory.h fetcher/fetcher.h \
+@USE_DEV_HEADERS_TRUE@fetcher/fetcher_manager.h eap/eap.h pen/pen.h ipsec/ipsec_types.h \
+@USE_DEV_HEADERS_TRUE@plugins/plugin_loader.h plugins/plugin.h plugins/plugin_feature.h \
+@USE_DEV_HEADERS_TRUE@processing/jobs/job.h processing/jobs/callback_job.h processing/processor.h \
+@USE_DEV_HEADERS_TRUE@processing/scheduler.h selectors/traffic_selector.h \
+@USE_DEV_HEADERS_TRUE@threading/thread.h threading/thread_value.h \
+@USE_DEV_HEADERS_TRUE@threading/mutex.h threading/condvar.h threading/spinlock.h threading/semaphore.h \
+@USE_DEV_HEADERS_TRUE@threading/rwlock.h threading/rwlock_condvar.h threading/lock_profiler.h \
+@USE_DEV_HEADERS_TRUE@utils.h utils/host.h utils/packet.h utils/identification.h utils/lexparser.h \
+@USE_DEV_HEADERS_TRUE@utils/linked_list.h utils/blocking_queue.h utils/hashtable.h utils/enumerator.h \
+@USE_DEV_HEADERS_TRUE@utils/optionsfrom.h utils/capabilities.h utils/backtrace.h utils/tun_device.h \
+@USE_DEV_HEADERS_TRUE@utils/leak_detective.h integrity_checker.h
+
 libstrongswan_la_LIBADD = $(PTHREADLIB) $(DLLIB) $(BTLIB) $(SOCKLIB) \
-	$(RTLIB) $(am__append_6) $(am__append_8) $(am__append_10) \
-	$(am__append_12) $(am__append_14) $(am__append_16) \
-	$(am__append_18) $(am__append_20) $(am__append_22) \
-	$(am__append_24) $(am__append_26) $(am__append_28) \
-	$(am__append_30) $(am__append_32) $(am__append_34) \
-	$(am__append_36) $(am__append_38) $(am__append_40) \
-	$(am__append_42) $(am__append_44) $(am__append_46) \
-	$(am__append_48) $(am__append_50) $(am__append_52) \
-	$(am__append_54) $(am__append_56) $(am__append_58) \
-	$(am__append_60) $(am__append_62) $(am__append_64) \
-	$(am__append_66) $(am__append_68) $(am__append_70) \
-	$(am__append_72) $(am__append_74) $(am__append_76) \
-	$(am__append_78) $(am__append_80)
+	$(RTLIB) $(BFDLIB) $(am__append_6) $(am__append_7) \
+	$(am__append_9) $(am__append_11) $(am__append_13) \
+	$(am__append_15) $(am__append_17) $(am__append_19) \
+	$(am__append_21) $(am__append_23) $(am__append_25) \
+	$(am__append_27) $(am__append_29) $(am__append_31) \
+	$(am__append_33) $(am__append_35) $(am__append_37) \
+	$(am__append_39) $(am__append_41) $(am__append_43) \
+	$(am__append_45) $(am__append_47) $(am__append_49) \
+	$(am__append_51) $(am__append_53) $(am__append_55) \
+	$(am__append_57) $(am__append_59) $(am__append_61) \
+	$(am__append_63) $(am__append_65) $(am__append_67) \
+	$(am__append_69) $(am__append_71) $(am__append_73) \
+	$(am__append_75) $(am__append_77) $(am__append_79) \
+	$(am__append_81) $(am__append_83)
 INCLUDES = -I$(top_srcdir)/src/libstrongswan
 AM_CFLAGS = -DIPSEC_DIR=\"${ipsecdir}\" \
 	-DIPSEC_LIB_DIR=\"${ipseclibdir}\" \
@@ -601,58 +629,58 @@ AM_CFLAGS = -DIPSEC_DIR=\"${ipsecdir}\" \
 	$(am__append_3) $(am__append_4)
 EXTRA_DIST = \
 asn1/oid.txt asn1/oid.pl \
-crypto/proposal/proposal_keywords.txt \
+crypto/proposal/proposal_keywords_static.txt \
 Android.mk AndroidConfigLocal.h
 
 BUILT_SOURCES = \
 $(srcdir)/asn1/oid.c $(srcdir)/asn1/oid.h \
-$(srcdir)/crypto/proposal/proposal_keywords.c
+$(srcdir)/crypto/proposal/proposal_keywords_static.c
 
 MAINTAINERCLEANFILES = \
 $(srcdir)/asn1/oid.c $(srcdir)/asn1/oid.h \
-$(srcdir)/crypto/proposal/proposal_keywords.c
+$(srcdir)/crypto/proposal/proposal_keywords_static.c
 
-@MONOLITHIC_FALSE@SUBDIRS = . $(am__append_7) $(am__append_9) \
-@MONOLITHIC_FALSE@	$(am__append_11) $(am__append_13) \
-@MONOLITHIC_FALSE@	$(am__append_15) $(am__append_17) \
-@MONOLITHIC_FALSE@	$(am__append_19) $(am__append_21) \
-@MONOLITHIC_FALSE@	$(am__append_23) $(am__append_25) \
-@MONOLITHIC_FALSE@	$(am__append_27) $(am__append_29) \
-@MONOLITHIC_FALSE@	$(am__append_31) $(am__append_33) \
-@MONOLITHIC_FALSE@	$(am__append_35) $(am__append_37) \
-@MONOLITHIC_FALSE@	$(am__append_39) $(am__append_41) \
-@MONOLITHIC_FALSE@	$(am__append_43) $(am__append_45) \
-@MONOLITHIC_FALSE@	$(am__append_47) $(am__append_49) \
-@MONOLITHIC_FALSE@	$(am__append_51) $(am__append_53) \
-@MONOLITHIC_FALSE@	$(am__append_55) $(am__append_57) \
-@MONOLITHIC_FALSE@	$(am__append_59) $(am__append_61) \
-@MONOLITHIC_FALSE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_FALSE@	$(am__append_67) $(am__append_69) \
-@MONOLITHIC_FALSE@	$(am__append_71) $(am__append_73) \
-@MONOLITHIC_FALSE@	$(am__append_75) $(am__append_77) \
-@MONOLITHIC_FALSE@	$(am__append_79)
+@MONOLITHIC_FALSE@SUBDIRS = . $(am__append_8) $(am__append_10) \
+@MONOLITHIC_FALSE@	$(am__append_12) $(am__append_14) \
+@MONOLITHIC_FALSE@	$(am__append_16) $(am__append_18) \
+@MONOLITHIC_FALSE@	$(am__append_20) $(am__append_22) \
+@MONOLITHIC_FALSE@	$(am__append_24) $(am__append_26) \
+@MONOLITHIC_FALSE@	$(am__append_28) $(am__append_30) \
+@MONOLITHIC_FALSE@	$(am__append_32) $(am__append_34) \
+@MONOLITHIC_FALSE@	$(am__append_36) $(am__append_38) \
+@MONOLITHIC_FALSE@	$(am__append_40) $(am__append_42) \
+@MONOLITHIC_FALSE@	$(am__append_44) $(am__append_46) \
+@MONOLITHIC_FALSE@	$(am__append_48) $(am__append_50) \
+@MONOLITHIC_FALSE@	$(am__append_52) $(am__append_54) \
+@MONOLITHIC_FALSE@	$(am__append_56) $(am__append_58) \
+@MONOLITHIC_FALSE@	$(am__append_60) $(am__append_62) \
+@MONOLITHIC_FALSE@	$(am__append_64) $(am__append_66) \
+@MONOLITHIC_FALSE@	$(am__append_68) $(am__append_70) \
+@MONOLITHIC_FALSE@	$(am__append_72) $(am__append_74) \
+@MONOLITHIC_FALSE@	$(am__append_76) $(am__append_78) \
+@MONOLITHIC_FALSE@	$(am__append_80) $(am__append_82)
 
 # build plugins with their own Makefile
 #######################################
-@MONOLITHIC_TRUE@SUBDIRS = $(am__append_7) $(am__append_9) \
-@MONOLITHIC_TRUE@	$(am__append_11) $(am__append_13) \
-@MONOLITHIC_TRUE@	$(am__append_15) $(am__append_17) \
-@MONOLITHIC_TRUE@	$(am__append_19) $(am__append_21) \
-@MONOLITHIC_TRUE@	$(am__append_23) $(am__append_25) \
-@MONOLITHIC_TRUE@	$(am__append_27) $(am__append_29) \
-@MONOLITHIC_TRUE@	$(am__append_31) $(am__append_33) \
-@MONOLITHIC_TRUE@	$(am__append_35) $(am__append_37) \
-@MONOLITHIC_TRUE@	$(am__append_39) $(am__append_41) \
-@MONOLITHIC_TRUE@	$(am__append_43) $(am__append_45) \
-@MONOLITHIC_TRUE@	$(am__append_47) $(am__append_49) \
-@MONOLITHIC_TRUE@	$(am__append_51) $(am__append_53) \
-@MONOLITHIC_TRUE@	$(am__append_55) $(am__append_57) \
-@MONOLITHIC_TRUE@	$(am__append_59) $(am__append_61) \
-@MONOLITHIC_TRUE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_TRUE@	$(am__append_67) $(am__append_69) \
-@MONOLITHIC_TRUE@	$(am__append_71) $(am__append_73) \
-@MONOLITHIC_TRUE@	$(am__append_75) $(am__append_77) \
-@MONOLITHIC_TRUE@	$(am__append_79)
+@MONOLITHIC_TRUE@SUBDIRS = $(am__append_8) $(am__append_10) \
+@MONOLITHIC_TRUE@	$(am__append_12) $(am__append_14) \
+@MONOLITHIC_TRUE@	$(am__append_16) $(am__append_18) \
+@MONOLITHIC_TRUE@	$(am__append_20) $(am__append_22) \
+@MONOLITHIC_TRUE@	$(am__append_24) $(am__append_26) \
+@MONOLITHIC_TRUE@	$(am__append_28) $(am__append_30) \
+@MONOLITHIC_TRUE@	$(am__append_32) $(am__append_34) \
+@MONOLITHIC_TRUE@	$(am__append_36) $(am__append_38) \
+@MONOLITHIC_TRUE@	$(am__append_40) $(am__append_42) \
+@MONOLITHIC_TRUE@	$(am__append_44) $(am__append_46) \
+@MONOLITHIC_TRUE@	$(am__append_48) $(am__append_50) \
+@MONOLITHIC_TRUE@	$(am__append_52) $(am__append_54) \
+@MONOLITHIC_TRUE@	$(am__append_56) $(am__append_58) \
+@MONOLITHIC_TRUE@	$(am__append_60) $(am__append_62) \
+@MONOLITHIC_TRUE@	$(am__append_64) $(am__append_66) \
+@MONOLITHIC_TRUE@	$(am__append_68) $(am__append_70) \
+@MONOLITHIC_TRUE@	$(am__append_72) $(am__append_74) \
+@MONOLITHIC_TRUE@	$(am__append_76) $(am__append_78) \
+@MONOLITHIC_TRUE@	$(am__append_80) $(am__append_82)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -736,9 +764,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/backtrace.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bio_reader.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bio_writer.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/blocking_queue.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/builder.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/callback_cred.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/callback_job.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/capabilities.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cert_cache.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/certificate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chunk.Plo@am__quote@
@@ -764,18 +794,23 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/identification.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ietf_attributes.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/integrity_checker.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipsec_types.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/leak_detective.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lexparser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/library.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/linked_list.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mac_prf.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mac_signer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_cred.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mutex.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ocsp_response.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ocsp_response_wrapper.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oid.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/optionsfrom.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/packet.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pen.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs7.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pkcs9.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plugin_feature.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/plugin_loader.Plo@am__quote@
@@ -785,17 +820,21 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/private_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/processor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proposal_keywords.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proposal_keywords_static.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/public_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rng.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rwlock.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scheduler.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/semaphore.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/settings.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shared_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/signer.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spinlock.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread_value.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/traffic_selector.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transform.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tun_device.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Plo@am__quote@
 
 .c.o:
@@ -868,6 +907,13 @@ hasher.lo: crypto/hashers/hasher.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o hasher.lo `test -f 'crypto/hashers/hasher.c' || echo '$(srcdir)/'`crypto/hashers/hasher.c
 
+pkcs7.lo: crypto/pkcs7.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pkcs7.lo -MD -MP -MF $(DEPDIR)/pkcs7.Tpo -c -o pkcs7.lo `test -f 'crypto/pkcs7.c' || echo '$(srcdir)/'`crypto/pkcs7.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/pkcs7.Tpo $(DEPDIR)/pkcs7.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/pkcs7.c' object='pkcs7.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o pkcs7.lo `test -f 'crypto/pkcs7.c' || echo '$(srcdir)/'`crypto/pkcs7.c
+
 pkcs9.lo: crypto/pkcs9.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pkcs9.lo -MD -MP -MF $(DEPDIR)/pkcs9.Tpo -c -o pkcs9.lo `test -f 'crypto/pkcs9.c' || echo '$(srcdir)/'`crypto/pkcs9.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/pkcs9.Tpo $(DEPDIR)/pkcs9.Plo
@@ -882,12 +928,26 @@ proposal_keywords.lo: crypto/proposal/proposal_keywords.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o proposal_keywords.lo `test -f 'crypto/proposal/proposal_keywords.c' || echo '$(srcdir)/'`crypto/proposal/proposal_keywords.c
 
+proposal_keywords_static.lo: crypto/proposal/proposal_keywords_static.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT proposal_keywords_static.lo -MD -MP -MF $(DEPDIR)/proposal_keywords_static.Tpo -c -o proposal_keywords_static.lo `test -f 'crypto/proposal/proposal_keywords_static.c' || echo '$(srcdir)/'`crypto/proposal/proposal_keywords_static.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/proposal_keywords_static.Tpo $(DEPDIR)/proposal_keywords_static.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/proposal/proposal_keywords_static.c' object='proposal_keywords_static.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o proposal_keywords_static.lo `test -f 'crypto/proposal/proposal_keywords_static.c' || echo '$(srcdir)/'`crypto/proposal/proposal_keywords_static.c
+
 prf.lo: crypto/prfs/prf.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT prf.lo -MD -MP -MF $(DEPDIR)/prf.Tpo -c -o prf.lo `test -f 'crypto/prfs/prf.c' || echo '$(srcdir)/'`crypto/prfs/prf.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/prf.Tpo $(DEPDIR)/prf.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/prfs/prf.c' object='prf.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o prf.lo `test -f 'crypto/prfs/prf.c' || echo '$(srcdir)/'`crypto/prfs/prf.c
+
+mac_prf.lo: crypto/prfs/mac_prf.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT mac_prf.lo -MD -MP -MF $(DEPDIR)/mac_prf.Tpo -c -o mac_prf.lo `test -f 'crypto/prfs/mac_prf.c' || echo '$(srcdir)/'`crypto/prfs/mac_prf.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/mac_prf.Tpo $(DEPDIR)/mac_prf.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/prfs/mac_prf.c' object='mac_prf.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o mac_prf.lo `test -f 'crypto/prfs/mac_prf.c' || echo '$(srcdir)/'`crypto/prfs/mac_prf.c
 
 rng.lo: crypto/rngs/rng.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rng.lo -MD -MP -MF $(DEPDIR)/rng.Tpo -c -o rng.lo `test -f 'crypto/rngs/rng.c' || echo '$(srcdir)/'`crypto/rngs/rng.c
@@ -909,6 +969,13 @@ signer.lo: crypto/signers/signer.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/signers/signer.c' object='signer.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o signer.lo `test -f 'crypto/signers/signer.c' || echo '$(srcdir)/'`crypto/signers/signer.c
+
+mac_signer.lo: crypto/signers/mac_signer.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT mac_signer.lo -MD -MP -MF $(DEPDIR)/mac_signer.Tpo -c -o mac_signer.lo `test -f 'crypto/signers/mac_signer.c' || echo '$(srcdir)/'`crypto/signers/mac_signer.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/mac_signer.Tpo $(DEPDIR)/mac_signer.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='crypto/signers/mac_signer.c' object='mac_signer.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o mac_signer.lo `test -f 'crypto/signers/mac_signer.c' || echo '$(srcdir)/'`crypto/signers/mac_signer.c
 
 crypto_factory.lo: crypto/crypto_factory.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT crypto_factory.lo -MD -MP -MF $(DEPDIR)/crypto_factory.Tpo -c -o crypto_factory.lo `test -f 'crypto/crypto_factory.c' || echo '$(srcdir)/'`crypto/crypto_factory.c
@@ -1099,6 +1166,13 @@ eap.lo: eap/eap.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o eap.lo `test -f 'eap/eap.c' || echo '$(srcdir)/'`eap/eap.c
 
+ipsec_types.lo: ipsec/ipsec_types.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT ipsec_types.lo -MD -MP -MF $(DEPDIR)/ipsec_types.Tpo -c -o ipsec_types.lo `test -f 'ipsec/ipsec_types.c' || echo '$(srcdir)/'`ipsec/ipsec_types.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/ipsec_types.Tpo $(DEPDIR)/ipsec_types.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ipsec/ipsec_types.c' object='ipsec_types.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o ipsec_types.lo `test -f 'ipsec/ipsec_types.c' || echo '$(srcdir)/'`ipsec/ipsec_types.c
+
 pen.lo: pen/pen.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT pen.lo -MD -MP -MF $(DEPDIR)/pen.Tpo -c -o pen.lo `test -f 'pen/pen.c' || echo '$(srcdir)/'`pen/pen.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/pen.Tpo $(DEPDIR)/pen.Plo
@@ -1176,6 +1250,13 @@ mutex.lo: threading/mutex.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o mutex.lo `test -f 'threading/mutex.c' || echo '$(srcdir)/'`threading/mutex.c
 
+semaphore.lo: threading/semaphore.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT semaphore.lo -MD -MP -MF $(DEPDIR)/semaphore.Tpo -c -o semaphore.lo `test -f 'threading/semaphore.c' || echo '$(srcdir)/'`threading/semaphore.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/semaphore.Tpo $(DEPDIR)/semaphore.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='threading/semaphore.c' object='semaphore.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o semaphore.lo `test -f 'threading/semaphore.c' || echo '$(srcdir)/'`threading/semaphore.c
+
 rwlock.lo: threading/rwlock.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rwlock.lo -MD -MP -MF $(DEPDIR)/rwlock.Tpo -c -o rwlock.lo `test -f 'threading/rwlock.c' || echo '$(srcdir)/'`threading/rwlock.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rwlock.Tpo $(DEPDIR)/rwlock.Plo
@@ -1183,12 +1264,26 @@ rwlock.lo: threading/rwlock.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rwlock.lo `test -f 'threading/rwlock.c' || echo '$(srcdir)/'`threading/rwlock.c
 
+spinlock.lo: threading/spinlock.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spinlock.lo -MD -MP -MF $(DEPDIR)/spinlock.Tpo -c -o spinlock.lo `test -f 'threading/spinlock.c' || echo '$(srcdir)/'`threading/spinlock.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/spinlock.Tpo $(DEPDIR)/spinlock.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='threading/spinlock.c' object='spinlock.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spinlock.lo `test -f 'threading/spinlock.c' || echo '$(srcdir)/'`threading/spinlock.c
+
 host.lo: utils/host.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT host.lo -MD -MP -MF $(DEPDIR)/host.Tpo -c -o host.lo `test -f 'utils/host.c' || echo '$(srcdir)/'`utils/host.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/host.Tpo $(DEPDIR)/host.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/host.c' object='host.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o host.lo `test -f 'utils/host.c' || echo '$(srcdir)/'`utils/host.c
+
+packet.lo: utils/packet.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT packet.lo -MD -MP -MF $(DEPDIR)/packet.Tpo -c -o packet.lo `test -f 'utils/packet.c' || echo '$(srcdir)/'`utils/packet.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/packet.Tpo $(DEPDIR)/packet.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/packet.c' object='packet.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o packet.lo `test -f 'utils/packet.c' || echo '$(srcdir)/'`utils/packet.c
 
 identification.lo: utils/identification.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT identification.lo -MD -MP -MF $(DEPDIR)/identification.Tpo -c -o identification.lo `test -f 'utils/identification.c' || echo '$(srcdir)/'`utils/identification.c
@@ -1211,6 +1306,13 @@ linked_list.lo: utils/linked_list.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o linked_list.lo `test -f 'utils/linked_list.c' || echo '$(srcdir)/'`utils/linked_list.c
 
+blocking_queue.lo: utils/blocking_queue.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT blocking_queue.lo -MD -MP -MF $(DEPDIR)/blocking_queue.Tpo -c -o blocking_queue.lo `test -f 'utils/blocking_queue.c' || echo '$(srcdir)/'`utils/blocking_queue.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/blocking_queue.Tpo $(DEPDIR)/blocking_queue.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/blocking_queue.c' object='blocking_queue.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o blocking_queue.lo `test -f 'utils/blocking_queue.c' || echo '$(srcdir)/'`utils/blocking_queue.c
+
 hashtable.lo: utils/hashtable.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT hashtable.lo -MD -MP -MF $(DEPDIR)/hashtable.Tpo -c -o hashtable.lo `test -f 'utils/hashtable.c' || echo '$(srcdir)/'`utils/hashtable.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/hashtable.Tpo $(DEPDIR)/hashtable.Plo
@@ -1232,12 +1334,26 @@ optionsfrom.lo: utils/optionsfrom.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o optionsfrom.lo `test -f 'utils/optionsfrom.c' || echo '$(srcdir)/'`utils/optionsfrom.c
 
+capabilities.lo: utils/capabilities.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT capabilities.lo -MD -MP -MF $(DEPDIR)/capabilities.Tpo -c -o capabilities.lo `test -f 'utils/capabilities.c' || echo '$(srcdir)/'`utils/capabilities.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/capabilities.Tpo $(DEPDIR)/capabilities.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/capabilities.c' object='capabilities.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o capabilities.lo `test -f 'utils/capabilities.c' || echo '$(srcdir)/'`utils/capabilities.c
+
 backtrace.lo: utils/backtrace.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT backtrace.lo -MD -MP -MF $(DEPDIR)/backtrace.Tpo -c -o backtrace.lo `test -f 'utils/backtrace.c' || echo '$(srcdir)/'`utils/backtrace.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/backtrace.Tpo $(DEPDIR)/backtrace.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/backtrace.c' object='backtrace.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o backtrace.lo `test -f 'utils/backtrace.c' || echo '$(srcdir)/'`utils/backtrace.c
+
+tun_device.lo: utils/tun_device.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tun_device.lo -MD -MP -MF $(DEPDIR)/tun_device.Tpo -c -o tun_device.lo `test -f 'utils/tun_device.c' || echo '$(srcdir)/'`utils/tun_device.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tun_device.Tpo $(DEPDIR)/tun_device.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='utils/tun_device.c' object='tun_device.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tun_device.lo `test -f 'utils/tun_device.c' || echo '$(srcdir)/'`utils/tun_device.c
 
 leak_detective.lo: utils/leak_detective.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT leak_detective.lo -MD -MP -MF $(DEPDIR)/leak_detective.Tpo -c -o leak_detective.lo `test -f 'utils/leak_detective.c' || echo '$(srcdir)/'`utils/leak_detective.c
@@ -1251,6 +1367,29 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-nobase_strongswan_includeHEADERS: $(nobase_strongswan_include_HEADERS)
+	@$(NORMAL_INSTALL)
+	test -z "$(strongswan_includedir)" || $(MKDIR_P) "$(DESTDIR)$(strongswan_includedir)"
+	@list='$(nobase_strongswan_include_HEADERS)'; test -n "$(strongswan_includedir)" || list=; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo "$(MKDIR_P) '$(DESTDIR)$(strongswan_includedir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(strongswan_includedir)/$$dir"; }; \
+	    echo " $(INSTALL_HEADER) $$xfiles '$(DESTDIR)$(strongswan_includedir)/$$dir'"; \
+	    $(INSTALL_HEADER) $$xfiles "$(DESTDIR)$(strongswan_includedir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_strongswan_includeHEADERS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_strongswan_include_HEADERS)'; test -n "$(strongswan_includedir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(strongswan_includedir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(strongswan_includedir)" && rm -f $$files
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.
@@ -1448,10 +1587,10 @@ distdir: $(DISTFILES)
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-recursive
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LTLIBRARIES) $(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(ipseclibdir)"; do \
+	for dir in "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(strongswan_includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -1505,7 +1644,8 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-ipseclibLTLIBRARIES
+install-data-am: install-ipseclibLTLIBRARIES \
+	install-nobase_strongswan_includeHEADERS
 
 install-dvi: install-dvi-recursive
 
@@ -1551,7 +1691,8 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-ipseclibLTLIBRARIES
+uninstall-am: uninstall-ipseclibLTLIBRARIES \
+	uninstall-nobase_strongswan_includeHEADERS
 
 .MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) all check \
 	ctags-recursive install install-am install-strip \
@@ -1566,12 +1707,14 @@ uninstall-am: uninstall-ipseclibLTLIBRARIES
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
 	install-info-am install-ipseclibLTLIBRARIES install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
-	uninstall uninstall-am uninstall-ipseclibLTLIBRARIES
+	install-nobase_strongswan_includeHEADERS install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-recursive uninstall uninstall-am \
+	uninstall-ipseclibLTLIBRARIES \
+	uninstall-nobase_strongswan_includeHEADERS
 
 
 library.lo :	$(top_builddir)/config.status
@@ -1582,10 +1725,10 @@ $(srcdir)/asn1/oid.c :	$(srcdir)/asn1/oid.pl $(srcdir)/asn1/oid.txt
 $(srcdir)/asn1/oid.h :	$(srcdir)/asn1/oid.pl $(srcdir)/asn1/oid.txt
 		(cd $(srcdir)/asn1/ && $(PERL) oid.pl)
 
-$(srcdir)/crypto/proposal/proposal_keywords.c:	$(srcdir)/crypto/proposal/proposal_keywords.txt \
-												$(srcdir)/crypto/proposal/proposal_keywords.h
-		$(GPERF) -N proposal_get_token -m 10 -C -G -c -t -D < \
-												$(srcdir)/crypto/proposal/proposal_keywords.txt > $@
+$(srcdir)/crypto/proposal/proposal_keywords_static.c:	$(srcdir)/crypto/proposal/proposal_keywords_static.txt \
+														$(srcdir)/crypto/proposal/proposal_keywords_static.h
+		$(GPERF) -N proposal_get_token_static -m 10 -C -G -c -t -D < \
+												$(srcdir)/crypto/proposal/proposal_keywords_static.txt > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

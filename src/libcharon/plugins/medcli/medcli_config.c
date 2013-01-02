@@ -119,15 +119,16 @@ METHOD(backend_t, get_peer_cfg_by_name, peer_cfg_t*,
 		return NULL;
 	}
 	ike_cfg = ike_cfg_create(FALSE, FALSE,
-						"0.0.0.0", IKEV2_UDP_PORT, address, IKEV2_UDP_PORT);
+							 "0.0.0.0", FALSE, charon->socket->get_port(charon->socket, FALSE),
+							 address, FALSE, IKEV2_UDP_PORT);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
 	med_cfg = peer_cfg_create(
-		"mediation", 2, ike_cfg,
+		"mediation", IKEV2, ike_cfg,
 		CERT_NEVER_SEND, UNIQUE_REPLACE,
 		1, this->rekey*60, 0,			/* keytries, rekey, reauth */
 		this->rekey*5, this->rekey*3,	/* jitter, overtime */
-		TRUE, this->dpd,				/* mobike, dpddelay */
-		NULL, NULL,						/* vip, pool */
+		TRUE, FALSE,					/* mobike, aggressive */
+		this->dpd, 0,					/* DPD delay, timeout */
 		TRUE, NULL, NULL);				/* mediation, med by, peer id */
 	e->destroy(e);
 
@@ -159,12 +160,12 @@ METHOD(backend_t, get_peer_cfg_by_name, peer_cfg_t*,
 		return NULL;
 	}
 	peer_cfg = peer_cfg_create(
-		name, 2, this->ike->get_ref(this->ike),
+		name, IKEV2, this->ike->get_ref(this->ike),
 		CERT_NEVER_SEND, UNIQUE_REPLACE,
 		1, this->rekey*60, 0,			/* keytries, rekey, reauth */
 		this->rekey*5, this->rekey*3,	/* jitter, overtime */
-		TRUE, this->dpd,				/* mobike, dpddelay */
-		NULL, NULL,						/* vip, pool */
+		TRUE, FALSE,					/* mobike, aggressive */
+		this->dpd, 0,					/* DPD delay, timeout */
 		FALSE, med_cfg,					/* mediation, med by */
 		identification_create_from_encoding(ID_KEY_ID, other));
 
@@ -234,12 +235,12 @@ METHOD(enumerator_t, peer_enumerator_enumerate, bool,
 		return FALSE;
 	}
 	this->current = peer_cfg_create(
-				name, 2, this->ike->get_ref(this->ike),
+				name, IKEV2, this->ike->get_ref(this->ike),
 				CERT_NEVER_SEND, UNIQUE_REPLACE,
 				1, this->rekey*60, 0,			/* keytries, rekey, reauth */
 				this->rekey*5, this->rekey*3,	/* jitter, overtime */
-				TRUE, this->dpd,				/* mobike, dpddelay */
-				NULL, NULL,						/* vip, pool */
+				TRUE, FALSE,					/* mobike, aggressive */
+				this->dpd, 0,					/* DPD delay, timeout */
 				FALSE, NULL, NULL);				/* mediation, med by, peer id */
 
 	auth = auth_cfg_create();
@@ -391,8 +392,9 @@ medcli_config_t *medcli_config_create(database_t *db)
 		.db = db,
 		.rekey = lib->settings->get_time(lib->settings, "medcli.rekey", 1200),
 		.dpd = lib->settings->get_time(lib->settings, "medcli.dpd", 300),
-		.ike = ike_cfg_create(FALSE, FALSE, "0.0.0.0", IKEV2_UDP_PORT,
-							  "0.0.0.0", IKEV2_UDP_PORT),
+		.ike = ike_cfg_create(FALSE, FALSE,
+							  "0.0.0.0", FALSE, charon->socket->get_port(charon->socket, FALSE),
+							  "0.0.0.0", FALSE, IKEV2_UDP_PORT),
 	);
 	this->ike->add_proposal(this->ike, proposal_create_default(PROTO_IKE));
 

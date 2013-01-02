@@ -25,6 +25,7 @@
 #include <debug.h>
 #include <library.h>
 #include <integrity_checker.h>
+#include <utils/hashtable.h>
 #include <utils/linked_list.h>
 #include <plugins/plugin.h>
 
@@ -47,6 +48,11 @@ struct private_plugin_loader_t {
 	linked_list_t *plugins;
 
 	/**
+	 * Hashtable for loaded features, as plugin_feature_t
+	 */
+	hashtable_t *loaded_features;
+
+	/**
 	 * List of names of loaded plugins
 	 */
 	char *loaded_plugins;
@@ -61,6 +67,11 @@ struct plugin_entry_t {
 	 * Plugin instance
 	 */
 	plugin_t *plugin;
+
+	/**
+	 * TRUE, if the plugin is marked as critical
+	 */
+	bool critical;
 
 	/**
 	 * dlopen handle, if in separate lib
@@ -94,12 +105,93 @@ static void plugin_entry_destroy(plugin_entry_t *entry)
 }
 
 /**
+ * Wrapper for static plugin features
+ */
+typedef struct {
+
+	/**
+	 * Implements plugin_t interface
+	 */
+	plugin_t public;
+
+	/**
+	 * Name of the module registering these features
+	 */
+	char *name;
+
+	/**
+	 * Static plugin features
+	 */
+	plugin_feature_t *features;
+
+	/**
+	 * Number of plugin features
+	 */
+	int count;
+
+} static_features_t;
+
+METHOD(plugin_t, get_static_name, char*,
+	static_features_t *this)
+{
+	return this->name;
+}
+
+METHOD(plugin_t, get_static_features, int,
+	static_features_t *this, plugin_feature_t *features[])
+{
+	*features = this->features;
+	return this->count;
+}
+
+METHOD(plugin_t, static_destroy, void,
+	static_features_t *this)
+{
+	free(this->features);
+	free(this->name);
+	free(this);
+}
+
+/**
+ * Create a wrapper around static plugin features.
+ */
+static plugin_t *static_features_create(const char *name,
+										plugin_feature_t features[], int count)
+{
+	static_features_t *this;
+
+	INIT(this,
+		.public = {
+			.get_name = _get_static_name,
+			.get_features = _get_static_features,
+			.destroy = _static_destroy,
+		},
+		.name = strdup(name),
+		.features = calloc(count, sizeof(plugin_feature_t)),
+		.count = count,
+	);
+
+	memcpy(this->features, features, sizeof(plugin_feature_t) * count);
+
+	return &this->public;
+}
+
+/**
+ * Compare function for hashtable of loaded features.
+ */
+static bool plugin_feature_equals(plugin_feature_t *a, plugin_feature_t *b)
+{
+	return a == b;
+}
+
+/**
  * create a plugin
  * returns: NOT_FOUND, if the constructor was not found
  *          FAILED, if the plugin could not be constructed
  */
 static status_t create_plugin(private_plugin_loader_t *this, void *handle,
-						char *name, bool integrity, plugin_entry_t **entry)
+							  char *name, bool integrity, bool critical,
+							  plugin_entry_t **entry)
 {
 	char create[128];
 	plugin_t *plugin;
@@ -135,6 +227,7 @@ static status_t create_plugin(private_plugin_loader_t *this, void *handle,
 	}
 	INIT(*entry,
 		.plugin = plugin,
+		.critical = critical,
 		.loaded = linked_list_create(),
 		.failed = linked_list_create(),
 	);
@@ -145,19 +238,23 @@ static status_t create_plugin(private_plugin_loader_t *this, void *handle,
 /**
  * load a single plugin
  */
-static bool load_plugin(private_plugin_loader_t *this, char *name, char *file)
+static bool load_plugin(private_plugin_loader_t *this, char *name, char *file,
+						bool critical)
 {
 	plugin_entry_t *entry;
 	void *handle;
 
-	switch (create_plugin(this, RTLD_DEFAULT, name, FALSE, &entry))
+	switch (create_plugin(this, RTLD_DEFAULT, name, FALSE, critical, &entry))
 	{
 		case SUCCESS:
 			this->plugins->insert_last(this->plugins, entry);
 			return TRUE;
 		case NOT_FOUND:
-			/* try to load the plugin from a file */
-			break;
+			if (file)
+			{	/* try to load the plugin from a file */
+				break;
+			}
+			/* fall-through */
 		default:
 			return FALSE;
 	}
@@ -176,7 +273,7 @@ static bool load_plugin(private_plugin_loader_t *this, char *name, char *file)
 		DBG1(DBG_LIB, "plugin '%s' failed to load: %s", name, dlerror());
 		return FALSE;
 	}
-	if (create_plugin(this, handle, name, TRUE, &entry) != SUCCESS)
+	if (create_plugin(this, handle, name, TRUE, critical, &entry) != SUCCESS)
 	{
 		dlclose(handle);
 		return FALSE;
@@ -294,32 +391,15 @@ static bool dependencies_satisfied(private_plugin_loader_t *this,
 	/* first entry is provided feature, followed by dependencies */
 	for (i = 1; i < count; i++)
 	{
-		enumerator_t *entries, *loaded;
-		plugin_feature_t *feature;
-		plugin_entry_t *current;
-		bool found = FALSE;
+		plugin_feature_t *found;
 
 		if (features[i].kind != FEATURE_DEPENDS &&
 			features[i].kind != FEATURE_SDEPEND)
 		{	/* end of dependencies */
 			break;
 		}
-		entries = this->plugins->create_enumerator(this->plugins);
-		while (entries->enumerate(entries, &current))
-		{
-			loaded = current->loaded->create_enumerator(current->loaded);
-			while (loaded->enumerate(loaded, &feature))
-			{
-				if (plugin_feature_matches(&features[i], feature))
-				{
-					found = TRUE;
-					break;
-				}
-			}
-			loaded->destroy(loaded);
-		}
-		entries->destroy(entries);
-
+		found = this->loaded_features->get_match(this->loaded_features,
+					&features[i], (hashtable_equals_t)plugin_feature_matches);
 		if (!found && (features[i].kind != FEATURE_SDEPEND || soft))
 		{
 			if (report)
@@ -361,7 +441,8 @@ static bool dependency_required(private_plugin_loader_t *this,
 		count = entry->plugin->get_features(entry->plugin, &features);
 		for (i = 0; i < count; i++)
 		{
-			if (feature_loaded(this, entry, &features[i]))
+			if (&features[i] != dep &&
+				feature_loaded(this, entry, &features[i]))
 			{
 				while (++i < count && (features[i].kind == FEATURE_DEPENDS ||
 									   features[i].kind == FEATURE_SDEPEND))
@@ -410,6 +491,8 @@ static int load_features(private_plugin_loader_t *this, bool soft, bool report)
 					{
 						if (plugin_feature_load(entry->plugin, feature, reg))
 						{
+							this->loaded_features->put(this->loaded_features,
+													   feature, feature);
 							entry->loaded->insert_last(entry->loaded, feature);
 							loaded++;
 						}
@@ -427,6 +510,10 @@ static int load_features(private_plugin_loader_t *this, bool soft, bool report)
 					break;
 			}
 			feature++;
+		}
+		if (loaded && !report)
+		{	/* got new feature, restart from beginning of list */
+			break;
 		}
 	}
 	enumerator->destroy(enumerator);
@@ -451,6 +538,8 @@ static int unload_features(private_plugin_loader_t *this, plugin_entry_t *entry)
 					!dependency_required(this, feature) &&
 					plugin_feature_unload(entry->plugin, feature, reg))
 				{
+					this->loaded_features->remove(this->loaded_features,
+												  feature);
 					entry->loaded->remove(entry->loaded, feature, NULL);
 					unloaded++;
 				}
@@ -465,6 +554,55 @@ static int unload_features(private_plugin_loader_t *this, plugin_entry_t *entry)
 		feature++;
 	}
 	return unloaded;
+}
+
+/**
+ * Check that we have all features loaded for critical plugins
+ */
+static bool missing_critical_features(private_plugin_loader_t *this)
+{
+	enumerator_t *enumerator;
+	plugin_entry_t *entry;
+	bool critical_failed = FALSE;
+
+	enumerator = this->plugins->create_enumerator(this->plugins);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (!entry->plugin->get_features)
+		{	/* feature interface not supported */
+			continue;
+		}
+		if (entry->critical)
+		{
+			plugin_feature_t *feature;
+			char *name, *provide;
+			int count, i, failed = 0;
+
+			name = entry->plugin->get_name(entry->plugin);
+			count = entry->plugin->get_features(entry->plugin, &feature);
+			for (i = 0; i < count; i++, feature++)
+			{
+				if (feature->kind == FEATURE_PROVIDE &&
+					!feature_loaded(this, entry, feature))
+				{
+					provide = plugin_feature_get_string(feature);
+					DBG2(DBG_LIB, "  failed to load %s in critical plugin '%s'",
+						 provide, name);
+					free(provide);
+					failed++;
+				}
+			}
+			if (failed)
+			{
+				DBG1(DBG_LIB, "failed to load %d feature%s in critical plugin "
+					 "'%s'", failed, failed > 1 ? "s" : "", name);
+				critical_failed = TRUE;
+			}
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	return critical_failed;
 }
 
 /**
@@ -491,6 +629,24 @@ static void purge_plugins(private_plugin_loader_t *this)
 	enumerator->destroy(enumerator);
 }
 
+METHOD(plugin_loader_t, add_static_features, void,
+	private_plugin_loader_t *this, const char *name,
+	plugin_feature_t features[], int count, bool critical)
+{
+	plugin_entry_t *entry;
+	plugin_t *plugin;
+
+	plugin = static_features_create(name, features, count);
+
+	INIT(entry,
+		.plugin = plugin,
+		.critical = critical,
+		.loaded = linked_list_create(),
+		.failed = linked_list_create(),
+	);
+	this->plugins->insert_last(this->plugins, entry);
+}
+
 METHOD(plugin_loader_t, load_plugins, bool,
 	private_plugin_loader_t *this, char *path, char *list)
 {
@@ -498,16 +654,18 @@ METHOD(plugin_loader_t, load_plugins, bool,
 	char *token;
 	bool critical_failed = FALSE;
 
+#ifdef PLUGINDIR
 	if (path == NULL)
 	{
 		path = PLUGINDIR;
 	}
+#endif /* PLUGINDIR */
 
 	enumerator = enumerator_create_token(list, " ", " ");
 	while (!critical_failed && enumerator->enumerate(enumerator, &token))
 	{
 		bool critical = FALSE;
-		char file[PATH_MAX];
+		char buf[PATH_MAX], *file = NULL;
 		int len;
 
 		token = strdup(token);
@@ -522,12 +680,16 @@ METHOD(plugin_loader_t, load_plugins, bool,
 			free(token);
 			continue;
 		}
-		if (snprintf(file, sizeof(file), "%s/libstrongswan-%s.so",
-					 path, token) >= sizeof(file))
+		if (path)
 		{
-			return FALSE;
+			if (snprintf(buf, sizeof(buf), "%s/libstrongswan-%s.so",
+						 path, token) >= sizeof(buf))
+			{
+				return FALSE;
+			}
+			file = buf;
 		}
-		if (!load_plugin(this, token, file) && critical)
+		if (!load_plugin(this, token, file, critical) && critical)
 		{
 			critical_failed = TRUE;
 			DBG1(DBG_LIB, "loading critical plugin '%s' failed", token);
@@ -550,6 +712,8 @@ METHOD(plugin_loader_t, load_plugins, bool,
 		}
 		/* report missing dependencies */
 		load_features(this, FALSE, TRUE);
+		/* check for unloaded features provided by critical plugins */
+		critical_failed = missing_critical_features(this);
 		/* unload plugins that we were not able to load any features for */
 		purge_plugins(this);
 	}
@@ -660,6 +824,7 @@ METHOD(plugin_loader_t, destroy, void,
 	private_plugin_loader_t *this)
 {
 	unload(this);
+	this->loaded_features->destroy(this->loaded_features);
 	this->plugins->destroy(this->plugins);
 	free(this->loaded_plugins);
 	free(this);
@@ -674,6 +839,7 @@ plugin_loader_t *plugin_loader_create()
 
 	INIT(this,
 		.public = {
+			.add_static_features = _add_static_features,
 			.load = _load_plugins,
 			.reload = _reload,
 			.unload = _unload,
@@ -682,6 +848,9 @@ plugin_loader_t *plugin_loader_create()
 			.destroy = _destroy,
 		},
 		.plugins = linked_list_create(),
+		.loaded_features = hashtable_create(
+								(hashtable_hash_t)plugin_feature_hash,
+								(hashtable_equals_t)plugin_feature_equals, 64),
 	);
 
 	return &this->public;

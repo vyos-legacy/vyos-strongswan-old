@@ -100,7 +100,11 @@ static status_t hash_challenge(private_eap_md5_t *this, chunk_t *response,
 		DBG1(DBG_IKE, "EAP-MD5 failed, MD5 not supported");
 		return FAILED;
 	}
-	hasher->allocate_hash(hasher, concat, response);
+	if (!hasher->allocate_hash(hasher, concat, response))
+	{
+		hasher->destroy(hasher);
+		return FAILED;
+	}
 	hasher->destroy(hasher);
 	return SUCCESS;
 }
@@ -119,11 +123,11 @@ METHOD(eap_method_t, initiate_server, status_t,
 	eap_md5_header_t *req;
 
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng || !rng->allocate_bytes(rng, CHALLENGE_LEN, &this->challenge))
 	{
+		DESTROY_IF(rng);
 		return FAILED;
 	}
-	rng->allocate_bytes(rng, CHALLENGE_LEN, &this->challenge);
 	rng->destroy(rng);
 
 	req = alloca(PAYLOAD_LEN);

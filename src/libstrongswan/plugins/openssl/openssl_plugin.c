@@ -40,6 +40,8 @@
 #include "openssl_ec_public_key.h"
 #include "openssl_x509.h"
 #include "openssl_crl.h"
+#include "openssl_rng.h"
+#include "openssl_hmac.h"
 
 typedef struct private_openssl_plugin_t private_openssl_plugin_t;
 
@@ -127,7 +129,9 @@ static void destroy_function(struct CRYPTO_dynlock_value *lock,
  */
 static unsigned long id_function(void)
 {
-	return (unsigned long)thread_current_id();
+	/* ensure the thread ID is never zero, otherwise OpenSSL might try to
+	 * acquire locks recursively */
+	return 1 + (unsigned long)thread_current_id();
 }
 
 /**
@@ -170,7 +174,11 @@ static bool seed_rng()
 				return FALSE;
 			}
 		}
-		rng->get_bytes(rng, sizeof(buf), buf);
+		if (!rng->get_bytes(rng, sizeof(buf), buf))
+		{
+			rng->destroy(rng);
+			return FALSE;
+		}
 		RAND_seed(buf, sizeof(buf));
 	}
 	DESTROY_IF(rng);
@@ -260,6 +268,41 @@ METHOD(plugin_t, get_features, int,
 		PLUGIN_REGISTER(PRF, openssl_sha1_prf_create),
 			PLUGIN_PROVIDE(PRF, PRF_KEYED_SHA1),
 #endif
+#ifndef OPENSSL_NO_HMAC
+		PLUGIN_REGISTER(PRF, openssl_hmac_prf_create),
+#ifndef OPENSSL_NO_MD5
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_MD5),
+#endif
+#ifndef OPENSSL_NO_SHA1
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA1),
+#endif
+#ifndef OPENSSL_NO_SHA256
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_256),
+#endif
+#ifndef OPENSSL_NO_SHA512
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_384),
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_512),
+#endif
+		PLUGIN_REGISTER(SIGNER, openssl_hmac_signer_create),
+#ifndef OPENSSL_NO_MD5
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_MD5_96),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_MD5_128),
+#endif
+#ifndef OPENSSL_NO_SHA1
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_96),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_128),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_160),
+#endif
+#ifndef OPENSSL_NO_SHA256
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_256_128),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_256_256),
+#endif
+#ifndef OPENSSL_NO_SHA512
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_384_192),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_384_384),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_512_256),
+#endif
+#endif /* OPENSSL_NO_HMAC */
 #ifndef OPENSSL_NO_DH
 		/* MODP DH groups */
 		PLUGIN_REGISTER(DH, openssl_diffie_hellman_create),
@@ -284,7 +327,7 @@ METHOD(plugin_t, get_features, int,
 			PLUGIN_PROVIDE(PRIVKEY, KEY_ANY),
 		PLUGIN_REGISTER(PRIVKEY_GEN, openssl_rsa_private_key_gen, FALSE),
 			PLUGIN_PROVIDE(PRIVKEY_GEN, KEY_RSA),
-		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, FALSE),
+		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, TRUE),
 			PLUGIN_PROVIDE(PUBKEY, KEY_RSA),
 		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, TRUE),
 			PLUGIN_PROVIDE(PUBKEY, KEY_ANY),
@@ -317,6 +360,9 @@ METHOD(plugin_t, get_features, int,
 		/* certificate/CRL loading */
 		PLUGIN_REGISTER(CERT_DECODE, openssl_x509_load, TRUE),
 			PLUGIN_PROVIDE(CERT_DECODE, CERT_X509),
+				PLUGIN_SDEPEND(PUBKEY, KEY_RSA),
+				PLUGIN_SDEPEND(PUBKEY, KEY_ECDSA),
+				PLUGIN_SDEPEND(PUBKEY, KEY_DSA),
 		PLUGIN_REGISTER(CERT_DECODE, openssl_crl_load, TRUE),
 			PLUGIN_PROVIDE(CERT_DECODE, CERT_X509_CRL),
 #ifndef OPENSSL_NO_ECDH
@@ -360,6 +406,9 @@ METHOD(plugin_t, get_features, int,
 		PLUGIN_PROVIDE(PUBKEY_VERIFY, SIGN_ECDSA_521),
 #endif
 #endif /* OPENSSL_NO_ECDSA */
+		PLUGIN_REGISTER(RNG, openssl_rng_create),
+			PLUGIN_PROVIDE(RNG, RNG_STRONG),
+			PLUGIN_PROVIDE(RNG, RNG_WEAK),
 	};
 	*features = f;
 	return countof(f);

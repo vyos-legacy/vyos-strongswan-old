@@ -24,27 +24,26 @@
 #include <bus/bus.h>
 
 /**
- * callback to log things triggered by controller.
+ * Callback to log things triggered by controller.
  *
- * @param param			echoed parameter supplied when function invoked
+ * @param param			parameter supplied when controller method was called
  * @param group			debugging group
- * @param level			verbosity level if log
+ * @param level			verbosity level
  * @param ike_sa		associated IKE_SA, if any
- * @param format		printf like format string
- * @param args			list of arguments to use for format
- * @return				FALSE to return from invoked function
+ * @param message		log message
+ * @return				FALSE to return from called controller method
  */
-typedef bool(*controller_cb_t)(void* param, debug_t group, level_t level,
-							   ike_sa_t* ike_sa, char* format, va_list args);
+typedef bool (*controller_cb_t)(void* param, debug_t group, level_t level,
+								ike_sa_t* ike_sa, const char *message);
 
 /**
- * Empty callback function for controller_t functions.
+ * Empty callback function for controller_t methods.
  *
  * If you want to do a synchronous call, but don't need a callback, pass
- * this function to the controllers methods.
+ * this function to the controller methods.
  */
 bool controller_cb_empty(void *param, debug_t group, level_t level,
-						 ike_sa_t *ike_sa, char *format, va_list args);
+						 ike_sa_t *ike_sa, const char *message);
 
 typedef struct controller_t controller_t;
 
@@ -75,9 +74,8 @@ struct controller_t {
 	/**
 	 * Initiate a CHILD_SA, and if required, an IKE_SA.
 	 *
-	 * The initiate() function is synchronous and thus blocks until the
-	 * IKE_SA is established or failed. Because of this, the initiate() function
-	 * contains a thread cancellation point.
+	 * If a callback is provided the function is synchronous and thus blocks
+	 * until the IKE_SA is established or failed.
 	 *
 	 * @param peer_cfg		peer_cfg to use for IKE_SA setup
 	 * @param child_cfg		child_cfg to set up CHILD_SA from
@@ -97,9 +95,8 @@ struct controller_t {
 	/**
 	 * Terminate an IKE_SA and all of its CHILD_SAs.
 	 *
-	 * The terminate() function is synchronous and thus blocks until the
-	 * IKE_SA is properly deleted, or the delete timed out.
-	 * The terminate() function contains a thread cancellation point.
+	 * If a callback is provided the function is synchronous and thus blocks
+	 * until the IKE_SA is properly deleted, or the call timed out.
 	 *
 	 * @param unique_id		unique id of the IKE_SA to terminate.
 	 * @param cb			logging callback
@@ -117,6 +114,9 @@ struct controller_t {
 
 	/**
 	 * Terminate a CHILD_SA.
+	 *
+	 * If a callback is provided the function is synchronous and thus blocks
+	 * until the CHILD_SA is properly deleted, or the call timed out.
 	 *
 	 * @param reqid			reqid of the CHILD_SA to terminate
 	 * @param cb			logging callback
@@ -138,12 +138,11 @@ struct controller_t {
 	void (*destroy) (controller_t *this);
 };
 
-
 /**
  * Creates a controller instance.
  *
  * @return 			controller_t object
  */
-controller_t *controller_create(void);
+controller_t *controller_create();
 
 #endif /** CONTROLLER_H_ @}*/

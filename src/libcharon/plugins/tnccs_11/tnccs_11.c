@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@
 #include <tnc/tnccs/tnccs_manager.h>
 
 #include <debug.h>
+#include <daemon.h>
 #include <threading/mutex.h>
 
 typedef struct private_tnccs_11_t private_tnccs_11_t;
@@ -65,6 +66,11 @@ struct private_tnccs_11_t {
 	 * TNCCS batch being constructed
 	 */
 	tnccs_batch_t *batch;
+
+	/**
+	 * Maximum PA-TNC message size
+	 */
+	size_t max_msg_len;
 
 	/**
 	 * Mutex locking the batch in construction
@@ -122,7 +128,7 @@ METHOD(tnccs_t, send_msg, TNC_Result,
 		return TNC_RESULT_NO_LONG_MESSAGE_TYPES;
 	}
 	msg_type = (msg_vid << 8) | msg_subtype;
- 
+
 	pa_subtype_names = get_pa_subtype_names(msg_vid);
 	if (pa_subtype_names)
 	{
@@ -266,10 +272,10 @@ static void handle_message(private_tnccs_11_t *this, tnccs_msg_t *msg)
 
 			reason_msg = (tnccs_reason_strings_msg_t*)msg;
 			reason_string = reason_msg->get_reason(reason_msg, &reason_lang);
-			DBG2(DBG_TNC, "reason string is '%.*s'",   reason_string.len,
-													  reason_string.ptr);
-			DBG2(DBG_TNC, "reason language is '%.*s'", reason_lang.len,
-													  reason_lang.ptr);
+			DBG2(DBG_TNC, "reason string is '%.*s'", (int)reason_string.len,
+													 reason_string.ptr);
+			DBG2(DBG_TNC, "language code is '%.*s'", (int)reason_lang.len,
+													 reason_lang.ptr);
 			break;
 		}
 		default:
@@ -289,8 +295,9 @@ METHOD(tls_t, process, status_t,
 	if (this->is_server && !this->connection_id)
 	{
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
-								TNCCS_1_1, (tnccs_t*)this, _send_msg,
-								&this->request_handshake_retry, &this->recs);
+									TNCCS_1_1, (tnccs_t*)this, _send_msg,
+									&this->request_handshake_retry,
+									this->max_msg_len, &this->recs);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -304,7 +311,7 @@ METHOD(tls_t, process, status_t,
 	data = chunk_create(buf, buflen);
 	DBG1(DBG_TNC, "received TNCCS Batch (%u bytes) for Connection ID %u",
 				   data.len, this->connection_id);
-	DBG3(DBG_TNC, "%.*s", data.len, data.ptr);
+	DBG3(DBG_TNC, "%.*s", (int)data.len, data.ptr);
 	batch = tnccs_batch_create_from_data(this->is_server, ++this->batch_id, data);
 	status = batch->process(batch);
 
@@ -396,7 +403,6 @@ static void check_and_build_recommendation(private_tnccs_11_t *this)
 			this->batch->add_msg(this->batch, msg);
 		}
 		enumerator->destroy(enumerator);
-		this->recs->clear_reasons(this->recs);
 
 		/* we have reache the final state */
 		this->delete_state = TRUE;
@@ -416,7 +422,8 @@ METHOD(tls_t, build, status_t,
 
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
 										TNCCS_1_1, (tnccs_t*)this, _send_msg,
-										&this->request_handshake_retry, NULL);
+										&this->request_handshake_retry,
+										this->max_msg_len, NULL);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -456,8 +463,8 @@ METHOD(tls_t, build, status_t,
 		data = this->batch->get_encoding(this->batch);
 		DBG1(DBG_TNC, "sending TNCCS Batch (%d bytes) for Connection ID %u",
 					   data.len, this->connection_id);
-		DBG3(DBG_TNC, "%.*s", data.len, data.ptr);
-		*msglen = data.len;
+		DBG3(DBG_TNC, "%.*s", (int)data.len, data.ptr);
+		*msglen = 0;
 
 		if (data.len > *buflen)
 		{
@@ -545,6 +552,9 @@ tls_t *tnccs_11_create(bool is_server)
 		},
 		.is_server = is_server,
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.max_msg_len = lib->settings->get_int(lib->settings,
+								"%s.plugins.tnccs-11.max_message_size", 45000,
+								charon->name),
 	);
 
 	return &this->public;

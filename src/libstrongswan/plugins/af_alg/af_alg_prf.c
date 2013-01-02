@@ -105,24 +105,21 @@ static size_t lookup_alg(pseudo_random_function_t algo, char **name, bool *xcbc)
 	return 0;
 }
 
-METHOD(prf_t, get_bytes, void,
+METHOD(prf_t, get_bytes, bool,
 	private_af_alg_prf_t *this, chunk_t seed, u_int8_t *buffer)
 {
-	this->ops->hash(this->ops, seed, buffer, this->block_size);
+	return this->ops->hash(this->ops, seed, buffer, this->block_size);
 }
 
-METHOD(prf_t, allocate_bytes, void,
+METHOD(prf_t, allocate_bytes, bool,
 	private_af_alg_prf_t *this, chunk_t seed, chunk_t *chunk)
 {
 	if (chunk)
 	{
 		*chunk = chunk_alloc(this->block_size);
-		get_bytes(this, seed, chunk->ptr);
+		return get_bytes(this, seed, chunk->ptr);
 	}
-	else
-	{
-		get_bytes(this, seed, NULL);
-	}
+	return get_bytes(this, seed, NULL);
 }
 
 METHOD(prf_t, get_block_size, size_t,
@@ -137,7 +134,7 @@ METHOD(prf_t, get_key_size, size_t,
 	return this->block_size;
 }
 
-METHOD(prf_t, set_key, void,
+METHOD(prf_t, set_key, bool,
 	private_af_alg_prf_t *this, chunk_t key)
 {
 	char buf[this->block_size];
@@ -155,12 +152,15 @@ METHOD(prf_t, set_key, void,
 		else if (key.len > this->block_size)
 		{
 			memset(buf, 0, this->block_size);
-			this->ops->set_key(this->ops, chunk_from_thing(buf));
-			this->ops->hash(this->ops, key, buf, this->block_size);
+			if (!this->ops->set_key(this->ops, chunk_from_thing(buf)) ||
+				!this->ops->hash(this->ops, key, buf, this->block_size))
+			{
+				return FALSE;
+			}
 			key = chunk_from_thing(buf);
 		}
 	}
-	this->ops->set_key(this->ops, key);
+	return this->ops->set_key(this->ops, key);
 }
 
 METHOD(prf_t, destroy, void,

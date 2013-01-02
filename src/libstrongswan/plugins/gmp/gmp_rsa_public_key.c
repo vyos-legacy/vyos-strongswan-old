@@ -252,7 +252,11 @@ static bool verify_emsa_pkcs1_signature(private_gmp_rsa_public_key_t *this,
 					}
 
 					/* build our own hash and compare */
-					hasher->allocate_hash(hasher, data, &hash);
+					if (!hasher->allocate_hash(hasher, data, &hash))
+					{
+						hasher->destroy(hasher);
+						goto end_parser;
+					}
 					hasher->destroy(hasher);
 					success = memeq(object.ptr, hash.ptr, hash.len);
 					free(hash.ptr);
@@ -314,7 +318,7 @@ METHOD(public_key_t, encrypt_, bool,
 {
 	chunk_t em;
 	u_char *pos;
-	int padding, i;
+	int padding;
 	rng_t *rng;
 
 	if (scheme != ENCRYPT_RSA_PKCS1)
@@ -348,16 +352,12 @@ METHOD(public_key_t, encrypt_, bool,
 	*pos++ = 0x02;
 
 	/* fill with pseudo random octets */
-	rng->get_bytes(rng, padding, pos);
-
-	/* replace zero-valued random octets */
-	for (i = 0; i < padding; i++)
+	if (!rng_get_bytes_not_zero(rng, padding, pos, TRUE))
 	{
-		while (*pos == 0)
-		{
-			rng->get_bytes(rng, 1, pos);
-		}
-		pos++;
+		DBG1(DBG_LIB, "failed to allocate padding");
+		chunk_clear(&em);
+		rng->destroy(rng);
+		return FALSE;
 	}
 	rng->destroy(rng);
 

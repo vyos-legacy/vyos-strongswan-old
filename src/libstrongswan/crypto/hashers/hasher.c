@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2005 Jan Hutter
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2006 Martin Willi
- *
+ * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -30,6 +30,19 @@ ENUM(hash_algorithm_names, HASH_UNKNOWN, HASH_SHA512,
 	"HASH_SHA256",
 	"HASH_SHA384",
 	"HASH_SHA512"
+);
+
+ENUM(hash_algorithm_short_names, HASH_UNKNOWN, HASH_SHA512,
+	"unknown",
+	"preferred",
+	"md2",
+	"md4",
+	"md5",
+	"sha1",
+	"sha224",
+	"sha256",
+	"sha384",
+	"sha512"
 );
 
 /*
@@ -63,6 +76,105 @@ hash_algorithm_t hasher_algorithm_from_oid(int oid)
 		default:
 			return HASH_UNKNOWN;
 	}
+}
+
+/*
+ * Described in header.
+ */
+hash_algorithm_t hasher_algorithm_from_prf(pseudo_random_function_t alg)
+{
+	switch (alg)
+	{
+		case PRF_HMAC_MD5:
+			return HASH_MD5;
+		case PRF_HMAC_SHA1:
+		case PRF_FIPS_SHA1_160:
+		case PRF_KEYED_SHA1:
+			return HASH_SHA1;
+		case PRF_HMAC_SHA2_256:
+			return HASH_SHA256;
+		case PRF_HMAC_SHA2_384:
+			return HASH_SHA384;
+		case PRF_HMAC_SHA2_512:
+			return HASH_SHA512;
+		case PRF_HMAC_TIGER:
+		case PRF_AES128_XCBC:
+		case PRF_AES128_CMAC:
+		case PRF_FIPS_DES:
+		case PRF_CAMELLIA128_XCBC:
+		case PRF_UNDEFINED:
+			break;
+	}
+	return HASH_UNKNOWN;
+}
+
+/*
+ * Described in header.
+ */
+hash_algorithm_t hasher_algorithm_from_integrity(integrity_algorithm_t alg,
+												 size_t *length)
+{
+	if (length)
+	{
+		switch (alg)
+		{
+			case AUTH_HMAC_MD5_96:
+			case AUTH_HMAC_SHA1_96:
+			case AUTH_HMAC_SHA2_256_96:
+				*length = 12;
+				break;
+			case AUTH_HMAC_MD5_128:
+			case AUTH_HMAC_SHA1_128:
+			case AUTH_HMAC_SHA2_256_128:
+				*length = 16;
+				break;
+			case AUTH_HMAC_SHA1_160:
+				*length = 20;
+				break;
+			case AUTH_HMAC_SHA2_384_192:
+				*length = 24;
+				break;
+			case AUTH_HMAC_SHA2_256_256:
+			case AUTH_HMAC_SHA2_512_256:
+				*length = 32;
+				break;
+			case AUTH_HMAC_SHA2_384_384:
+				*length = 48;
+				break;
+			default:
+				break;
+		}
+	}
+	switch (alg)
+	{
+		case AUTH_HMAC_MD5_96:
+		case AUTH_HMAC_MD5_128:
+		case AUTH_KPDK_MD5:
+			return HASH_MD5;
+		case AUTH_HMAC_SHA1_96:
+		case AUTH_HMAC_SHA1_128:
+		case AUTH_HMAC_SHA1_160:
+			return HASH_SHA1;
+		case AUTH_HMAC_SHA2_256_96:
+		case AUTH_HMAC_SHA2_256_128:
+		case AUTH_HMAC_SHA2_256_256:
+			return HASH_SHA256;
+		case AUTH_HMAC_SHA2_384_192:
+		case AUTH_HMAC_SHA2_384_384:
+			return HASH_SHA384;
+		case AUTH_HMAC_SHA2_512_256:
+			return HASH_SHA512;
+		case AUTH_AES_CMAC_96:
+		case AUTH_AES_128_GMAC:
+		case AUTH_AES_192_GMAC:
+		case AUTH_AES_256_GMAC:
+		case AUTH_AES_XCBC_96:
+		case AUTH_DES_MAC:
+		case AUTH_CAMELLIA_XCBC_96:
+		case AUTH_UNDEFINED:
+			break;
+	}
+	return HASH_UNKNOWN;
 }
 
 /*

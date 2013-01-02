@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -186,6 +187,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 {
 	pa_tnc_msg_t *pa_tnc_msg;
 	pa_tnc_attr_t *attr;
+	pen_type_t type;
 	imv_state_t *state;
 	enumerator_t *enumerator;
 	TNC_Result result;
@@ -220,8 +222,9 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 	enumerator = pa_tnc_msg->create_attribute_enumerator(pa_tnc_msg);
 	while (enumerator->enumerate(enumerator, &attr))
 	{
-		if (attr->get_vendor_id(attr) == PEN_IETF &&
-			attr->get_type(attr) == IETF_ATTR_PORT_FILTER)
+		type = attr->get_type(attr);
+
+		if (type.vendor_id == PEN_IETF && type.type == IETF_ATTR_PORT_FILTER)
 		{
 			ietf_attr_port_filter_t *attr_port_filter;
 			enumerator_t *enumerator;
@@ -305,10 +308,9 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 		state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 								TNC_IMV_EVALUATION_RESULT_ERROR);			  
-		return imv_scanner->provide_recommendation(imv_scanner, connection_id);
 	}
-
-	return imv_scanner->provide_recommendation(imv_scanner, connection_id);
+	return imv_scanner->provide_recommendation(imv_scanner, connection_id,
+											   src_imc_id);
  }
 
 /**
@@ -359,7 +361,8 @@ TNC_Result TNC_IMV_SolicitRecommendation(TNC_IMVID imv_id,
 		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
 		return TNC_RESULT_NOT_INITIALIZED;
 	}
-	return imv_scanner->provide_recommendation(imv_scanner, connection_id);
+	return imv_scanner->provide_recommendation(imv_scanner, connection_id,
+											   TNC_IMCID_ANY);
 }
 
 /**

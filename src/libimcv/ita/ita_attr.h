@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ typedef enum ita_attr_t ita_attr_t;
  */
 enum ita_attr_t {
 	ITA_ATTR_COMMAND =	1,
+	ITA_ATTR_DUMMY = 2,
 };
 
 /**

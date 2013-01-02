@@ -48,11 +48,6 @@ struct private_ha_ctl_t {
 	 * Resynchronization message cache
 	 */
 	ha_cache_t *cache;
-
-	/**
-	 * FIFO reader thread
-	 */
-	callback_job_t *job;
 };
 
 /**
@@ -105,7 +100,6 @@ static job_requeue_t dispatch_fifo(private_ha_ctl_t *this)
 METHOD(ha_ctl_t, destroy, void,
 	private_ha_ctl_t *this)
 {
-	this->job->cancel(this->job);
 	free(this);
 }
 
@@ -135,15 +129,16 @@ ha_ctl_t *ha_ctl_create(ha_segments_t *segments, ha_cache_t *cache)
 		}
 		umask(old);
 	}
-	if (chown(HA_FIFO, charon->uid, charon->gid) != 0)
+	if (chown(HA_FIFO, charon->caps->get_uid(charon->caps),
+			  charon->caps->get_gid(charon->caps)) != 0)
 	{
 		DBG1(DBG_CFG, "changing HA FIFO permissions failed: %s",
 			 strerror(errno));
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)dispatch_fifo,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)dispatch_fifo,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 	return &this->public;
 }
 

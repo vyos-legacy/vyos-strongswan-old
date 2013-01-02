@@ -30,6 +30,7 @@ typedef struct crypto_factory_t crypto_factory_t;
 #include <crypto/hashers/hasher.h>
 #include <crypto/prfs/prf.h>
 #include <crypto/rngs/rng.h>
+#include <crypto/nonce_gen.h>
 #include <crypto/diffie_hellman.h>
 #include <crypto/transform.h>
 
@@ -64,6 +65,11 @@ typedef prf_t* (*prf_constructor_t)(pseudo_random_function_t algo);
  * Constructor function for source of randomness
  */
 typedef rng_t* (*rng_constructor_t)(rng_quality_t quality);
+
+/**
+ * Constructor function for nonce generators
+ */
+typedef nonce_gen_t* (*nonce_gen_constructor_t)();
 
 /**
  * Constructor function for diffie hellman
@@ -130,6 +136,13 @@ struct crypto_factory_t {
 	 * @return				rng_t instance, NULL if no RNG with such a quality
 	 */
 	rng_t* (*create_rng)(crypto_factory_t *this, rng_quality_t quality);
+
+	/**
+	 * Create a nonce generator instance.
+	 *
+	 * @return				nonce_gen_t instance, NULL if not supported
+	 */
+	nonce_gen_t* (*create_nonce_gen)(crypto_factory_t *this);
 
 	/**
 	 * Create a diffie hellman instance.
@@ -253,6 +266,23 @@ struct crypto_factory_t {
 	void (*remove_rng)(crypto_factory_t *this, rng_constructor_t create);
 
 	/**
+	 * Register a nonce generator.
+	 *
+	 * @param plugin_name	plugin that registered this algorithm
+	 * @param create		constructor function for that nonce generator
+	 */
+	void (*add_nonce_gen)(crypto_factory_t *this, const char *plugin_name,
+						  nonce_gen_constructor_t create);
+
+	/**
+	 * Unregister a nonce generator.
+	 *
+	 * @param create		constructor function to unregister
+	 */
+	void (*remove_nonce_gen)(crypto_factory_t *this,
+							 nonce_gen_constructor_t create);
+
+	/**
 	 * Register a diffie hellman constructor.
 	 *
 	 * @param group			dh group to constructor
@@ -273,51 +303,58 @@ struct crypto_factory_t {
 	/**
 	 * Create an enumerator over all registered crypter algorithms.
 	 *
-	 * @return				enumerator over encryption_algorithm_t
+	 * @return				enumerator over encryption_algorithm_t, plugin
 	 */
 	enumerator_t* (*create_crypter_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered aead algorithms.
 	 *
-	 * @return				enumerator over encryption_algorithm_t
+	 * @return				enumerator over encryption_algorithm_t, plugin
 	 */
 	enumerator_t* (*create_aead_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered signer algorithms.
 	 *
-	 * @return				enumerator over integrity_algorithm_t
+	 * @return				enumerator over integrity_algorithm_t, plugin
 	 */
 	enumerator_t* (*create_signer_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered hasher algorithms.
 	 *
-	 * @return				enumerator over hash_algorithm_t
+	 * @return				enumerator over hash_algorithm_t, plugin
 	 */
 	enumerator_t* (*create_hasher_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered PRFs.
 	 *
-	 * @return				enumerator over pseudo_random_function_t
+	 * @return				enumerator over pseudo_random_function_t, plugin
 	 */
 	enumerator_t* (*create_prf_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered diffie hellman groups.
 	 *
-	 * @return				enumerator over diffie_hellman_group_t
+	 * @return				enumerator over diffie_hellman_group_t, plugin
 	 */
 	enumerator_t* (*create_dh_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Create an enumerator over all registered random generators.
 	 *
-	 * @return				enumerator over rng_quality_t
+	 * @return				enumerator over rng_quality_t, plugin
 	 */
 	enumerator_t* (*create_rng_enumerator)(crypto_factory_t *this);
+
+	/**
+	 * Create an enumerator over all registered nonce generators.
+	 *
+	 * @return				enumerator over plugin
+	 */
+	enumerator_t* (*create_nonce_gen_enumerator)(crypto_factory_t *this);
 
 	/**
 	 * Add a test vector to the crypto factory.

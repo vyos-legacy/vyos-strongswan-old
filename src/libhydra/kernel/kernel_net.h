@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Tobias Brunner
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2007 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -23,10 +23,29 @@
 #define KERNEL_NET_H_
 
 typedef struct kernel_net_t kernel_net_t;
+typedef enum kernel_address_type_t kernel_address_type_t;
 
 #include <utils/enumerator.h>
 #include <utils/host.h>
 #include <plugins/plugin.h>
+
+/**
+ * Type of addresses (e.g. when enumerating them)
+ */
+enum kernel_address_type_t {
+	/** normal addresses (on regular, up, non-ignored) interfaces */
+	ADDR_TYPE_REGULAR = 0,
+	/** addresses on down interfaces */
+	ADDR_TYPE_DOWN =  (1 << 0),
+	/** addresses on ignored interfaces */
+	ADDR_TYPE_IGNORED = (1 << 1),
+	/** addresses on loopback interfaces */
+	ADDR_TYPE_LOOPBACK = (1 << 2),
+	/** virtual IP addresses */
+	ADDR_TYPE_VIRTUAL = (1 << 3),
+	/** to enumerate all available addresses */
+	ADDR_TYPE_ALL = (1 << 4) - 1,
+};
 
 /**
  * Interface to the network subsystem of the kernel.
@@ -42,7 +61,7 @@ struct kernel_net_t {
 	 * Does a route lookup to get the source address used to reach dest.
 	 * The returned host is allocated and must be destroyed.
 	 * An optional src address can be used to check if a route is available
-	 * for given source to dest.
+	 * for the given source to dest.
 	 *
 	 * @param dest			target destination address
 	 * @param src			source address to check, or NULL
@@ -55,19 +74,24 @@ struct kernel_net_t {
 	 *
 	 * Does a route lookup to get the next hop used to reach dest.
 	 * The returned host is allocated and must be destroyed.
+	 * An optional src address can be used to check if a route is available
+	 * for the given source to dest.
 	 *
 	 * @param dest			target destination address
+	 * @param src			source address to check, or NULL
 	 * @return				next hop address, NULL if unreachable
 	 */
-	host_t* (*get_nexthop)(kernel_net_t *this, host_t *dest);
+	host_t* (*get_nexthop)(kernel_net_t *this, host_t *dest, host_t *src);
 
 	/**
-	 * Get the interface name of a local address.
+	 * Get the interface name of a local address. Interfaces that are down or
+	 * ignored by config are not considered.
 	 *
 	 * @param host			address to get interface name from
-	 * @return				allocated interface name, or NULL if not found
+	 * @param name			allocated interface name (optional)
+	 * @return				TRUE if interface found and usable
 	 */
-	char* (*get_interface) (kernel_net_t *this, host_t *host);
+	bool (*get_interface) (kernel_net_t *this, host_t *host, char **name);
 
 	/**
 	 * Creates an enumerator over all local addresses.
@@ -76,12 +100,11 @@ struct kernel_net_t {
 	 * enumerator gets destroyed.
 	 * The hosts are read-only, do not modify of free.
 	 *
-	 * @param include_down_ifaces	TRUE to enumerate addresses from down interfaces
-	 * @param include_virtual_ips	TRUE to enumerate virtual ip addresses
-	 * @return						enumerator over host_t's
+	 * @param which			a combination of address types to enumerate
+	 * @return				enumerator over host_t's
 	 */
 	enumerator_t *(*create_address_enumerator) (kernel_net_t *this,
-						bool include_down_ifaces, bool include_virtual_ips);
+												kernel_address_type_t which);
 
 	/**
 	 * Add a virtual IP to an interface.

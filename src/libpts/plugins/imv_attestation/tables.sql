@@ -6,6 +6,10 @@ CREATE TABLE files (
   type INTEGER NOT NULL,
   path TEXT NOT NULL
 );
+DROP INDEX IF EXISTS files_path;
+CREATE INDEX files_path ON files (
+  path
+);
 
 DROP TABLE IF EXISTS products;
 CREATE TABLE products (
@@ -31,6 +35,7 @@ CREATE TABLE file_hashes (
   file INTEGER NOT NULL,
   directory INTEGER DEFAULT 0,
   product INTEGER NOT NULL,
+  key INTEGER DEFAULT 0,
   algo INTEGER NOT NULL,
   hash BLOB NOT NULL,
   PRIMARY KEY(file, directory, product, algo)

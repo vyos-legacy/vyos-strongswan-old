@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,21 +15,15 @@
 
 #include "imv_attestation_state.h"
 
+#include <libpts.h>
+
 #include <utils/lexparser.h>
 #include <utils/linked_list.h>
 #include <debug.h>
 
 typedef struct private_imv_attestation_state_t private_imv_attestation_state_t;
 typedef struct file_meas_request_t file_meas_request_t;
-
-/**
- * PTS File/Directory Measurement request entry
- */
-struct file_meas_request_t {
-	u_int16_t id;
-	int file_id;
-	bool is_dir;
-};
+typedef struct func_comp_t func_comp_t;
 
 /**
  * Private data of an imv_attestation_state_t object.
@@ -60,6 +54,11 @@ struct private_imv_attestation_state_t {
 	 * Does the TNCCS connection support exclusive delivery?
 	 */
 	bool has_excl;
+
+	/**
+	 * Maximum PA-TNC message size for this TNCCS connection
+	 */
+	u_int32_t max_msg_len;
 
 	/**
 	 * IMV Attestation handshake state
@@ -102,6 +101,32 @@ struct private_imv_attestation_state_t {
 	bool measurement_error;
 
 };
+
+/**
+ * PTS File/Directory Measurement request entry
+ */
+struct file_meas_request_t {
+	u_int16_t id;
+	int file_id;
+	bool is_dir;
+};
+
+/**
+ * PTS Functional Component entry
+ */
+struct func_comp_t {
+	pts_component_t *comp;
+	u_int8_t qualifier;
+};
+
+/**
+ * Frees a func_comp_t object
+ */
+static void free_func_comp(func_comp_t *this)
+{
+	this->comp->destroy(this->comp);
+	free(this);
+}
 
 typedef struct entry_t entry_t;
 
@@ -148,6 +173,18 @@ METHOD(imv_state_t, set_flags, void,
 {
 	this->has_long = has_long;
 	this->has_excl = has_excl;
+}
+
+METHOD(imv_state_t, set_max_msg_len, void,
+	private_imv_attestation_state_t *this, u_int32_t max_msg_len)
+{
+	this->max_msg_len = max_msg_len;
+}
+
+METHOD(imv_state_t, get_max_msg_len, u_int32_t,
+	private_imv_attestation_state_t *this)
+{
+	return this->max_msg_len;
 }
 
 METHOD(imv_state_t, change_state, void,
@@ -220,8 +257,7 @@ METHOD(imv_state_t, destroy, void,
 	private_imv_attestation_state_t *this)
 {
 	this->file_meas_requests->destroy_function(this->file_meas_requests, free);
-	this->components->destroy_offset(this->components,
-									 offsetof(pts_component_t, destroy));
+	this->components->destroy_function(this->components, (void *)free_func_comp);
 	this->pts->destroy(this->pts);
 	free(this);
 }
@@ -290,54 +326,74 @@ METHOD(imv_attestation_state_t, get_file_meas_request_count, int,
 	return this->file_meas_requests->get_count(this->file_meas_requests);
 }
 
-METHOD(imv_attestation_state_t, add_component, void,
-	private_imv_attestation_state_t *this, pts_component_t *entry)
-{
-	this->components->insert_last(this->components, entry);
-}
-
-METHOD(imv_attestation_state_t, check_off_component, pts_component_t*,
-	private_imv_attestation_state_t *this, pts_comp_func_name_t *name)
+METHOD(imv_attestation_state_t, create_component, pts_component_t*,
+	private_imv_attestation_state_t *this, pts_comp_func_name_t *name,
+	u_int32_t depth, pts_database_t *pts_db)
 {
 	enumerator_t *enumerator;
-	pts_component_t *entry, *found = NULL;
+	func_comp_t *entry, *new_entry;
+	pts_component_t *component;
+	bool found = FALSE;
 
 	enumerator = this->components->create_enumerator(this->components);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
-		if (name->equals(name, entry->get_comp_func_name(entry)))
+		if (name->equals(name, entry->comp->get_comp_func_name(entry->comp)))
 		{
-			found = entry;
-			this->components->remove_at(this->components, enumerator);
+			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (found)
+	{
+		if (name->get_qualifier(name) == entry->qualifier)
+		{
+			/* duplicate entry */
+			return NULL;
+		}
+		new_entry = malloc_thing(func_comp_t);
+		new_entry->qualifier = name->get_qualifier(name);
+		new_entry->comp = entry->comp->get_ref(entry->comp);
+		this->components->insert_last(this->components, new_entry);
+		return entry->comp;
+	}
+	else
+	{
+		component = pts_components->create(pts_components, name, depth, pts_db);
+		if (!component)
+		{
+			/* unsupported component */
+			return NULL;
+		}
+		new_entry = malloc_thing(func_comp_t);
+		new_entry->qualifier = name->get_qualifier(name);
+		new_entry->comp = component;
+		this->components->insert_last(this->components, new_entry);
+		return component;
+	}
+}
+
+METHOD(imv_attestation_state_t, get_component, pts_component_t*,
+	private_imv_attestation_state_t *this, pts_comp_func_name_t *name)
+{
+	enumerator_t *enumerator;
+	func_comp_t *entry;
+	pts_component_t *found = NULL;
+
+	enumerator = this->components->create_enumerator(this->components);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (name->equals(name, entry->comp->get_comp_func_name(entry->comp)) &&
+			name->get_qualifier(name) == entry->qualifier)
+		{
+			found = entry->comp;
 			break;
 		}
 	}
 	enumerator->destroy(enumerator);
 	return found;
-}
-
-METHOD(imv_attestation_state_t, check_off_registrations, void,
-	private_imv_attestation_state_t *this)
-{
-	enumerator_t *enumerator;
-	pts_component_t *entry;
-
-	enumerator = this->components->create_enumerator(this->components);
-	while (enumerator->enumerate(enumerator, &entry))
-	{
-		if (entry->check_off_registrations(entry))
-		{
-			this->components->remove_at(this->components, enumerator);
-			entry->destroy(entry);
-		}
-	}
-	enumerator->destroy(enumerator);
-}
-
-METHOD(imv_attestation_state_t, get_component_count, int,
-	private_imv_attestation_state_t *this)
-{
-	return this->components->get_count(this->components);
 }
 
 METHOD(imv_attestation_state_t, get_measurement_error, bool,
@@ -350,6 +406,28 @@ METHOD(imv_attestation_state_t, set_measurement_error, void,
 	private_imv_attestation_state_t *this)
 {
 	this->measurement_error = TRUE;
+}
+
+METHOD(imv_attestation_state_t, finalize_components, void,
+	private_imv_attestation_state_t *this)
+{
+	func_comp_t *entry;
+
+	while (this->components->remove_last(this->components,
+										(void**)&entry) == SUCCESS)
+	{
+		if (!entry->comp->finalize(entry->comp, entry->qualifier))
+		{
+			_set_measurement_error(this);
+		}
+		free_func_comp(entry);
+	}
+}
+
+METHOD(imv_attestation_state_t, components_finalized, bool,
+	private_imv_attestation_state_t *this)
+{
+	return this->components->get_count(this->components) == 0;
 }
 
 /**
@@ -367,6 +445,8 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 				.has_long = _has_long,
 				.has_excl = _has_excl,
 				.set_flags = _set_flags,
+				.set_max_msg_len = _set_max_msg_len,
+				.get_max_msg_len = _get_max_msg_len,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
@@ -379,10 +459,10 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 			.add_file_meas_request = _add_file_meas_request,
 			.check_off_file_meas_request = _check_off_file_meas_request,
 			.get_file_meas_request_count = _get_file_meas_request_count,
-			.add_component = _add_component,
-			.check_off_component = _check_off_component,
-			.check_off_registrations = _check_off_registrations,
-			.get_component_count = _get_component_count,
+			.create_component = _create_component,
+			.get_component = _get_component,
+			.finalize_components = _finalize_components,
+			.components_finalized = _components_finalized,
 			.get_measurement_error = _get_measurement_error,
 			.set_measurement_error = _set_measurement_error,
 		},
