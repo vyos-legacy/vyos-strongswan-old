@@ -3,6 +3,7 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
   * New upstream release.
   * debian/patches:
     - 01_fix-manpages refreshed.
+    - 02_add-LICENSE dropped, included upstream.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 
