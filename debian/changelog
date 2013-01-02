@@ -7,6 +7,16 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - 03_Pass-lo-as-faked-tundev-to-NM-as-it-now-needs-a-vali removed,
       included upstream.
     - 04-Fixed-IPv6-source-address-lookup dropped, included upstream. 
+  * debian/rules:
+    - --enable-smartcard, --with-default-pkcs11 and --enable-nat-transport not
+      valid anymore for ./configure, remove them.
+    - add --enable-xauth-eap and --enable-xauth-pam.
+    - remove pluto handling since it's gone
+    - don't special-case XAuth on kFreeBSD anymore.
+  * debian/control:
+    - drop strongswan-ikev1 package
+    - rename strongswan-ikev2 package to strongswan-ike for now.
+  * debian/strongswan-ikev1.install removed.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 

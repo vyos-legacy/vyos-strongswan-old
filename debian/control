@@ -17,7 +17,7 @@ Homepage: http://www.strongswan.org
 
 Package: strongswan
 Architecture: all
-Depends: ${misc:Depends}, strongswan-ikev1, strongswan-ikev2
+Depends: ${misc:Depends}, strongswan-ike
 Suggests: network-manager-strongswan
 Description: IPsec VPN solution metapackage
  The strongSwan VPN suite is based on the IPsec stack in standard Linux 2.6
@@ -61,7 +61,7 @@ Description: strongSwan library and binaries - debugging symbols
 Package: strongswan-starter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan-ikev1 | strongswan-ikev2, 
+  libstrongswan (= ${binary:Version}), strongswan,
   adduser
 Conflicts: strongswan (<< 4.2.12-1)
 Description: strongSwan daemon starter and configuration file parser
@@ -74,27 +74,7 @@ Description: strongSwan daemon starter and configuration file parser
  the daemons. While the IKEv2 daemon can use other configuration backends, the
  IKEv1 daemon is limited to configurations from ipsec.conf.
 
-Package: strongswan-ikev1
-Architecture: linux-any
-Pre-Depends: debconf | debconf-2.0
-Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan-starter, bsdmainutils,
-  debianutils (>=1.7), ipsec-tools, host, iproute
-Suggests: curl
-Provides: ike-server
-Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
-Replaces: openswan
-Description: strongSwan Internet Key Exchange (v1) daemon
- StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
- native IPsec stack and runs on any recent 2.6 kernel (no patching required).
- It supports both IKEv1 and the newer IKEv2 protocols.
- .
- Pluto is an IPsec IKEv1 daemon. It was inherited from the FreeS/WAN
- project, but provides improved X.509 certificate support and other features.
- .
- Pluto can run in parallel with charon, the newer IKEv2 daemon.
-
-Package: strongswan-ikev2
+Package: strongswan-ike
 Architecture: any
 Pre-Depends: debconf | debconf-2.0
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
@@ -116,7 +96,7 @@ Description: strongSwan Internet Key Exchange (v2) daemon
 
 Package: strongswan-nm
 Architecture: linux-any
-Depends: ${shlibs:Depends}, ${misc:Depends}, strongswan-ikev2
+Depends: ${shlibs:Depends}, ${misc:Depends}, strongswan-ike
 Recommends: network-manager-strongswan
 Description: strongSwan plugin to interact with NetworkManager
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
