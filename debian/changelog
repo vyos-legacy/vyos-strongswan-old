@@ -15,7 +15,8 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - don't special-case XAuth on kFreeBSD anymore.
   * debian/control:
     - drop strongswan-ikev1 package
-    - rename strongswan-ikev2 package to strongswan-ike for now.
+    - rename strongswan-ikev2 package to strongswan-ike for now and makes it
+      replace strongswan-ikev1 and strongswan-ikev2.
     - rephrase long description to remove references to pluto.
   * debian/strongswan-ikev1.install removed.
   * debian/strongswan-ikev2.* renamed to strongswan-ike.

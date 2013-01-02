@@ -82,6 +82,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
 Suggests: curl
 Provides: ike-server
 Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
+Replaces: strongswan-ikev1, strongswan-ikev2
 Description: strongSwan Internet Key Exchange (v2) daemon
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
  native IPsec stack and runs on any recent 2.6 kernel (no patching required).
