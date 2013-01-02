@@ -105,7 +105,7 @@ endif
 	echo >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 	echo "include /var/lib/strongswan/ipsec.conf.inc" >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 	# and to enable both IKEv1 and IKEv2 by default
-	sed -r 's/^[ \t]+# *plutostart=(yes|no) */\tplutostart=yes/;s/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
+	sed -r 's/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
 	mv $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 
 	# set permissions on ipsec.secrets
