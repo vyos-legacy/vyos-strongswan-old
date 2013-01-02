@@ -1,3 +1,9 @@
+strongswan (5.0.1-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
+
 strongswan (4.6.4-6) unstable; urgency=low
 
   * debian/rules:
