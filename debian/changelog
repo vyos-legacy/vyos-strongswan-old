@@ -5,7 +5,8 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - 01_fix-manpages refreshed.
     - 02_add-LICENSE dropped, included upstream.
     - 03_Pass-lo-as-faked-tundev-to-NM-as-it-now-needs-a-vali removed,
-      included upstream. 
+      included upstream.
+    - 04-Fixed-IPv6-source-address-lookup dropped, included upstream. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 
