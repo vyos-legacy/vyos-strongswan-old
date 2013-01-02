@@ -61,7 +61,7 @@ Description: strongSwan library and binaries - debugging symbols
 Package: strongswan-starter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan,
+  libstrongswan (= ${binary:Version}), strongswan-ike,
   adduser
 Conflicts: strongswan (<< 4.2.12-1)
 Description: strongSwan daemon starter and configuration file parser
