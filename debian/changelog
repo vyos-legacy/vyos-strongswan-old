@@ -19,6 +19,8 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
   * debian/strongswan-ikev1.install removed.
   * debian/strongswan-nm.install:
     - NetworkManager plugin is now a separate executable.
+  * debian/libstrongswan.install:
+    - install new xauth-eap, xauth-generic, xauth-pam and nonce plugins.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2013 14:18:34 +0100
 

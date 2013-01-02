@@ -42,4 +42,8 @@ usr/lib/ipsec/plugins/libstrongswan-ldap.so
 usr/lib/ipsec/plugins/libstrongswan-attr*.so
 usr/lib/ipsec/plugins/libstrongswan-curl.so
 usr/lib/ipsec/plugins/libstrongswan-gcrypt.so
+usr/lib/ipsec/plugins/libstrongswan-nonce.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-eap.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-generic.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-pam.so
 etc/strongswan.conf
