@@ -18,6 +18,7 @@ strongswan (5.0.1-1) UNRELEASED; urgency=low
     - rename strongswan-ikev2 package to strongswan-ike for now and makes it
       replace strongswan-ikev1 and strongswan-ikev2.
     - rephrase long description to remove references to pluto.
+    - provide transition -ikev{1,2} packages for upgrades.
   * debian/strongswan-ikev1.install removed.
   * debian/strongswan-ikev2.* renamed to strongswan-ike.
   * debian/strongswan-nm.install:
