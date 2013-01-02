@@ -109,6 +109,8 @@ Description: strongSwan plugin to interact with NetworkManager
 Package: strongswan-ikev1
 Architecture: all
 Depends: ${misc:Depends}, strongswan-ike
+Section: oldlibs
+Priority: extra
 Description: strongswan IKEv1 daemon, transitional package
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
  native IPsec stack and runs on any recent 2.6 kernel (no patching required).
@@ -120,6 +122,8 @@ Description: strongswan IKEv1 daemon, transitional package
 Package: strongswan-ikev2
 Architecture: all
 Depends: ${misc:Depends}, strongswan-ike
+Section: oldlibs
+Priority: extra
 Description: strongswan IKEv2 daemon, transitional package
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
  native IPsec stack and runs on any recent 2.6 kernel (no patching required).
