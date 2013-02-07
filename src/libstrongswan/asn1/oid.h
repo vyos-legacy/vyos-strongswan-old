@@ -205,22 +205,22 @@ extern const oid_t oid_names[];
 #define OID_SHA384							342
 #define OID_SHA512							343
 #define OID_SHA224							344
-#define OID_NS_REVOCATION_URL				350
-#define OID_NS_CA_REVOCATION_URL			351
-#define OID_NS_CA_POLICY_URL				352
-#define OID_NS_COMMENT						353
-#define OID_EMPLOYEE_NUMBER					356
-#define OID_PKI_MESSAGE_TYPE				362
-#define OID_PKI_STATUS						363
-#define OID_PKI_FAIL_INFO					364
-#define OID_PKI_SENDER_NONCE				365
-#define OID_PKI_RECIPIENT_NONCE				366
-#define OID_PKI_TRANS_ID					367
-#define OID_TPM_MANUFACTURER				373
-#define OID_TPM_MODEL						374
-#define OID_TPM_VERSION						375
-#define OID_TPM_ID_LABEL					376
+#define OID_NS_REVOCATION_URL				352
+#define OID_NS_CA_REVOCATION_URL			353
+#define OID_NS_CA_POLICY_URL				354
+#define OID_NS_COMMENT						355
+#define OID_EMPLOYEE_NUMBER					358
+#define OID_PKI_MESSAGE_TYPE				364
+#define OID_PKI_STATUS						365
+#define OID_PKI_FAIL_INFO					366
+#define OID_PKI_SENDER_NONCE				367
+#define OID_PKI_RECIPIENT_NONCE				368
+#define OID_PKI_TRANS_ID					369
+#define OID_TPM_MANUFACTURER				375
+#define OID_TPM_MODEL						376
+#define OID_TPM_VERSION						377
+#define OID_TPM_ID_LABEL					378
 
-#define OID_MAX								377
+#define OID_MAX								379
 
 #endif /* OID_H_ */

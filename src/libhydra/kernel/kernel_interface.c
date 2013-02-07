@@ -40,9 +40,9 @@
 #include "kernel_interface.h"
 
 #include <hydra.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 typedef struct private_kernel_interface_t private_kernel_interface_t;
 
@@ -312,23 +312,24 @@ METHOD(kernel_interface_t, create_address_enumerator, enumerator_t*,
 }
 
 METHOD(kernel_interface_t, add_ip, status_t,
-	private_kernel_interface_t *this, host_t *virtual_ip, host_t *iface_ip)
+	private_kernel_interface_t *this, host_t *virtual_ip, int prefix,
+	char *iface)
 {
 	if (!this->net)
 	{
 		return NOT_SUPPORTED;
 	}
-	return this->net->add_ip(this->net, virtual_ip, iface_ip);
+	return this->net->add_ip(this->net, virtual_ip, prefix, iface);
 }
 
 METHOD(kernel_interface_t, del_ip, status_t,
-	private_kernel_interface_t *this, host_t *virtual_ip)
+	private_kernel_interface_t *this, host_t *virtual_ip, int prefix, bool wait)
 {
 	if (!this->net)
 	{
 		return NOT_SUPPORTED;
 	}
-	return this->net->del_ip(this->net, virtual_ip);
+	return this->net->del_ip(this->net, virtual_ip, prefix, wait);
 }
 
 METHOD(kernel_interface_t, add_route, status_t,

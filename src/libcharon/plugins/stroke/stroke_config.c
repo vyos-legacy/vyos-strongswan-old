@@ -225,14 +225,16 @@ static ike_cfg_t *build_ike_cfg(private_stroke_config_t *this, stroke_msg_t *msg
 	ikeport = msg->add_conn.me.ikeport;
 	ikeport = (ikeport == IKEV2_UDP_PORT) ?
 			   charon->socket->get_port(charon->socket, FALSE) : ikeport;
-	ike_cfg = ike_cfg_create(msg->add_conn.other.sendcert != CERT_NEVER_SEND,
+	ike_cfg = ike_cfg_create(msg->add_conn.version,
+							 msg->add_conn.other.sendcert != CERT_NEVER_SEND,
 							 msg->add_conn.force_encap,
 							 msg->add_conn.me.address,
 							 msg->add_conn.me.allow_any,
 							 ikeport,
 							 msg->add_conn.other.address,
 							 msg->add_conn.other.allow_any,
-							 msg->add_conn.other.ikeport);
+							 msg->add_conn.other.ikeport,
+							 msg->add_conn.fragmentation);
 	add_proposals(this, msg->add_conn.algorithms.ike, ike_cfg, NULL);
 	return ike_cfg;
 }
@@ -412,7 +414,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 			ca = other_end->ca2;
 		}
 	}
-	if (id && *id == '%' && !streq(id, "%any"))
+	if (id && *id == '%' && !streq(id, "%any") && !streq(id, "%any6"))
 	{	/* has only an effect on rightid/2 */
 		loose = !local;
 		id++;
@@ -441,7 +443,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 
 	cfg = auth_cfg_create();
 
-	/* add identity and peer certifcate */
+	/* add identity and peer certificate */
 	identity = identification_create_from_string(id);
 	if (cert)
 	{
@@ -707,8 +709,7 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 	/* other.sourceip is managed in stroke_attributes. If it is set, we define
 	 * the pool name as the connection name, which the attribute provider
 	 * uses to serve pool addresses. */
-	peer_cfg = peer_cfg_create(msg->add_conn.name,
-		msg->add_conn.version, ike_cfg,
+	peer_cfg = peer_cfg_create(msg->add_conn.name, ike_cfg,
 		msg->add_conn.me.sendcert, unique,
 		msg->add_conn.rekey.tries, rekey, reauth, jitter, over,
 		msg->add_conn.mobike, msg->add_conn.aggressive,
@@ -881,10 +882,10 @@ static void add_ts(private_stroke_config_t *this,
 	}
 	else
 	{
-		host_t *net;
-
 		if (!end->subnets)
 		{
+			host_t *net;
+
 			net = host_create_from_string(end->address, 0);
 			if (net)
 			{
@@ -895,39 +896,24 @@ static void add_ts(private_stroke_config_t *this,
 		}
 		else
 		{
-			char *del, *start, *bits;
+			enumerator_t *enumerator;
+			char *subnet;
 
-			start = end->subnets;
-			do
+			enumerator = enumerator_create_token(end->subnets, ",", " ");
+			while (enumerator->enumerate(enumerator, &subnet))
 			{
-				int intbits = 0;
-
-				del = strchr(start, ',');
-				if (del)
+				ts = traffic_selector_create_from_cidr(subnet,
+													end->protocol, end->port);
+				if (ts)
 				{
-					*del = '\0';
-				}
-				bits = strchr(start, '/');
-				if (bits)
-				{
-					*bits = '\0';
-					intbits = atoi(bits + 1);
-				}
-
-				net = host_create_from_string(start, 0);
-				if (net)
-				{
-					ts = traffic_selector_create_from_subnet(net, intbits,
-												end->protocol, end->port);
 					child_cfg->add_traffic_selector(child_cfg, local, ts);
 				}
 				else
 				{
-					DBG1(DBG_CFG, "invalid subnet: %s, skipped", start);
+					DBG1(DBG_CFG, "invalid subnet: %s, skipped", subnet);
 				}
-				start = del + 1;
 			}
-			while (del);
+			enumerator->destroy(enumerator);
 		}
 	}
 }
@@ -1326,4 +1312,3 @@ stroke_config_t *stroke_config_create(stroke_ca_t *ca, stroke_cred_t *cred,
 
 	return &this->public;
 }
-

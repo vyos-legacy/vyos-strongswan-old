@@ -22,12 +22,12 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <library.h>
-#include <integrity_checker.h>
-#include <utils/hashtable.h>
-#include <utils/linked_list.h>
+#include <collections/hashtable.h>
+#include <collections/linked_list.h>
 #include <plugins/plugin.h>
+#include <utils/integrity_checker.h>
 
 typedef struct private_plugin_loader_t private_plugin_loader_t;
 typedef struct plugin_entry_t plugin_entry_t;

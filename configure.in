@@ -16,7 +16,7 @@ dnl ===========================
 dnl  initialize & set some vars
 dnl ===========================
 
-AC_INIT(strongSwan,5.0.1)
+AC_INIT(strongSwan,5.0.2)
 AM_INIT_AUTOMAKE(tar-ustar)
 AC_CONFIG_MACRO_DIR([m4/config])
 AC_CONFIG_HEADERS([config.h])
@@ -44,6 +44,7 @@ ARG_WITH_SUBST([routing-table],      [220], [set routing table to use for IPsec 
 ARG_WITH_SUBST([routing-table-prio], [220], [set priority for IPsec routing table])
 ARG_WITH_SUBST([ipsec-script],       [ipsec], [change the name of the ipsec script])
 
+ARG_WITH_SET([tss],                  [no], [set implementation of the Trusted Computing Group's Software Stack (TSS). Currently the only supported value is "trousers"])
 ARG_WITH_SET([capabilities],         [no], [set capability dropping library. Currently supported values are "libcap" and "native"])
 ARG_WITH_SET([mpz_powm_sec],         [yes], [use the more side-channel resistant mpz_powm_sec in libgmp, if available])
 ARG_WITH_SET([dev-headers],          [no], [install strongSwan development headers to directory.])
@@ -111,6 +112,7 @@ ARG_DISBL_SET([sha1],           [disable SHA1 software implementation plugin.])
 ARG_DISBL_SET([sha2],           [disable SHA256/SHA384/SHA512 software implementation plugin.])
 ARG_DISBL_SET([fips-prf],       [disable FIPS PRF software implementation plugin.])
 ARG_DISBL_SET([gmp],            [disable GNU MP (libgmp) based crypto implementation plugin.])
+ARG_ENABL_SET([rdrand],         [enable Intel RDRAND random generator plugin.])
 ARG_DISBL_SET([random],         [disable RNG implementation on top of /dev/(u)random.])
 ARG_DISBL_SET([nonce],          [disable nonce generation plugin.])
 ARG_DISBL_SET([x509],           [disable X509 certificate implementation plugin.])
@@ -118,6 +120,7 @@ ARG_DISBL_SET([revocation],     [disable X509 CRL/OCSP revocation check plugin.]
 ARG_DISBL_SET([constraints],    [disable advanced X509 constraint checking plugin.])
 ARG_DISBL_SET([pubkey],         [disable RAW public key support plugin.])
 ARG_DISBL_SET([pkcs1],          [disable PKCS1 key decoding plugin.])
+ARG_DISBL_SET([pkcs7],          [disable PKCS7 container support plugin.])
 ARG_DISBL_SET([pkcs8],          [disable PKCS8 private key decoding plugin.])
 ARG_DISBL_SET([pgp],            [disable PGP key decoding plugin.])
 ARG_DISBL_SET([dnskey],         [disable DNS RR key decoding plugin.])
@@ -170,6 +173,8 @@ ARG_ENABL_SET([imc-test],       [enable IMC test module.])
 ARG_ENABL_SET([imv-test],       [enable IMV test module.])
 ARG_ENABL_SET([imc-scanner],    [enable IMC port scanner module.])
 ARG_ENABL_SET([imv-scanner],    [enable IMV port scanner module.])
+ARG_ENABL_SET([imc-os],         [enable IMC operating system module.])
+ARG_ENABL_SET([imv-os],         [enable IMV operating system module.])
 ARG_ENABL_SET([imc-attestation],[enable IMC attestation module.])
 ARG_ENABL_SET([imv-attestation],[enable IMV attestation module.])
 ARG_DISBL_SET([kernel-netlink], [disable the netlink kernel interface.])
@@ -214,6 +219,8 @@ ARG_ENABL_SET([maemo],          [enable Maemo specific plugin.])
 ARG_ENABL_SET([nm],             [enable NetworkManager backend.])
 ARG_ENABL_SET([ha],             [enable high availability cluster plugin.])
 ARG_ENABL_SET([whitelist],      [enable peer identity whitelisting plugin.])
+ARG_ENABL_SET([lookip],         [enable fast virtual IP lookup and notification plugin.])
+ARG_ENABL_SET([error-notify],   [enable error notification plugin.])
 ARG_ENABL_SET([certexpire],     [enable CSV export of expiration dates of used certificates.])
 ARG_ENABL_SET([led],            [enable plugin to control LEDs on IKEv2 activity using the Linux kernel LED subsystem.])
 ARG_ENABL_SET([duplicheck],     [advanced duplicate checking plugin using liveness checks.])
@@ -293,7 +300,7 @@ if test x$tnc_imc = xtrue -o x$tnc_imv = xtrue -o x$tnccs_11 = xtrue -o x$tnccs_
 	tnc_tnccs=true;
 fi
 
-if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue; then
+if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_os = xtrue -o x$imv_os = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue; then
 	imcv=true;
 fi
 
@@ -410,6 +417,8 @@ dnl check if we can cancel threads
 AC_CHECK_FUNCS(pthread_cancel)
 dnl check if native rwlocks are available
 AC_CHECK_FUNCS(pthread_rwlock_init)
+dnl check if pthread spinlocks are available
+AC_CHECK_FUNCS(pthread_spin_init)
 dnl check if we have POSIX semaphore functions, including timed-wait
 AC_CHECK_FUNCS(sem_timedwait)
 LIBS=$saved_LIBS
@@ -627,9 +636,10 @@ if test x$axis2c = xtrue; then
 	AC_SUBST(axis2c_LIBS)
 fi
 
-if test x$imc_attestation = xtrue -o x$imv_attestation = xtrue; then
+if test x$tss = xtrousers; then
 	AC_HAVE_LIBRARY([tspi],[LIBS="$LIBS"],[AC_MSG_ERROR([TrouSerS library libtspi not found])])
 	AC_CHECK_HEADER([trousers/tss.h],,[AC_MSG_ERROR([TrouSerS header trousers/tss.h not found!])])
+	AC_DEFINE([TSS_TROUSERS], [], [use TrouSerS library libtspi as TSS implementation])
 fi
 
 if test x$dumm = xtrue; then
@@ -639,27 +649,37 @@ if test x$dumm = xtrue; then
 	AC_CHECK_PROGS(RUBY, ruby)
 	AC_MSG_CHECKING([for Ruby header files])
 	if test -n "$RUBY"; then
-		RUBYDIR=`($RUBY -rmkmf -e 'print Config::CONFIG[["archdir"]] || $archdir') 2>/dev/null`
-		if test -n "$RUBYDIR"; then
-			dirs="$RUBYDIR"
-			RUBYINCLUDE=none
-			for i in $dirs; do
-				if test -r $i/ruby.h; then
-					AC_MSG_RESULT([$i])
-					RUBYINCLUDE="-I$i"
-					break;
-				fi
-			done
-			if test x"$RUBYINCLUDE" = xnone; then
-				AC_MSG_ERROR([ruby.h not found])
+		RUBYINCLUDE=
+		RUBYDIR=`($RUBY -r rbconfig -e 'print RbConfig::CONFIG[["rubyhdrdir"]] || ""') 2>/dev/null`
+		if test -n "$RUBYDIR" -a -r "$RUBYDIR/ruby.h"; then
+			RUBYARCH=`($RUBY -r rbconfig -e 'print RbConfig::CONFIG[["arch"]] || ""') 2>/dev/null`
+			if test -n "$RUBYARCH"; then
+				AC_MSG_RESULT([$RUBYDIR])
+				RUBYINCLUDE="-I$RUBYDIR -I$RUBYDIR/$RUBYARCH"
 			fi
-			AC_SUBST(RUBYINCLUDE)
 		else
-			AC_MSG_ERROR([unable to determine ruby configuration])
+			RUBYDIR=`($RUBY -r rbconfig -e 'print RbConfig::CONFIG[["archdir"]] || ""') 2>/dev/null`
+			if test -n "$RUBYDIR" -a -r "$RUBYDIR/ruby.h"; then
+				AC_MSG_RESULT([$RUBYDIR])
+				RUBYINCLUDE="-I$RUBYDIR"
+			fi
 		fi
+		if test -z "$RUBYINCLUDE"; then
+			AC_MSG_ERROR([ruby.h not found])
+		fi
+		AC_SUBST(RUBYINCLUDE)
 	else
 		AC_MSG_ERROR([don't know how to run ruby])
 	fi
+	AC_MSG_CHECKING([for libruby])
+	saved_LIBS=$LIBS
+	LIBS=`($RUBY -r rbconfig -e 'print RbConfig::CONFIG[["LIBRUBYARG_SHARED"]] || ""') 2>/dev/null`
+	AC_TRY_LINK_FUNC(ruby_init,
+		[AC_MSG_RESULT([$LIBS]); RUBYLIB=$LIBS],
+		[AC_MSG_ERROR([not found])])
+	AC_SUBST(RUBYLIB)
+	AC_CHECK_FUNCS(rb_errinfo)
+	LIBS=$saved_LIBS
 fi
 
 if test x$fast = xtrue; then
@@ -871,6 +891,7 @@ ADD_PLUGIN([sha1],                 [s charon openac scepclient pki scripts medsr
 ADD_PLUGIN([sha2],                 [s charon openac scepclient pki scripts medsrv attest nm])
 ADD_PLUGIN([md4],                  [s charon openac manager scepclient pki nm])
 ADD_PLUGIN([md5],                  [s charon openac scepclient pki scripts attest nm])
+ADD_PLUGIN([rdrand],               [s charon openac scepclient pki scripts medsrv attest nm])
 ADD_PLUGIN([random],               [s charon openac scepclient pki scripts medsrv attest nm])
 ADD_PLUGIN([nonce],                [s charon nm])
 ADD_PLUGIN([x509],                 [s charon openac scepclient pki scripts attest nm])
@@ -878,6 +899,7 @@ ADD_PLUGIN([revocation],           [s charon nm])
 ADD_PLUGIN([constraints],          [s charon nm])
 ADD_PLUGIN([pubkey],               [s charon])
 ADD_PLUGIN([pkcs1],                [s charon openac scepclient pki scripts manager medsrv attest nm])
+ADD_PLUGIN([pkcs7],                [s scepclient pki])
 ADD_PLUGIN([pkcs8],                [s charon openac scepclient pki scripts manager medsrv attest nm])
 ADD_PLUGIN([pgp],                  [s charon])
 ADD_PLUGIN([dnskey],               [s charon])
@@ -946,6 +968,8 @@ ADD_PLUGIN([android],              [c charon])
 ADD_PLUGIN([android-log],          [c charon])
 ADD_PLUGIN([ha],                   [c charon])
 ADD_PLUGIN([whitelist],            [c charon])
+ADD_PLUGIN([lookip],               [c charon])
+ADD_PLUGIN([error-notify],         [c charon])
 ADD_PLUGIN([certexpire],           [c charon])
 ADD_PLUGIN([led],                  [c charon])
 ADD_PLUGIN([duplicheck],           [c charon])
@@ -993,6 +1017,7 @@ AM_CONDITIONAL(USE_SHA1, test x$sha1 = xtrue)
 AM_CONDITIONAL(USE_SHA2, test x$sha2 = xtrue)
 AM_CONDITIONAL(USE_FIPS_PRF, test x$fips_prf = xtrue)
 AM_CONDITIONAL(USE_GMP, test x$gmp = xtrue)
+AM_CONDITIONAL(USE_RDRAND, test x$rdrand = xtrue)
 AM_CONDITIONAL(USE_RANDOM, test x$random = xtrue)
 AM_CONDITIONAL(USE_NONCE, test x$nonce = xtrue)
 AM_CONDITIONAL(USE_X509, test x$x509 = xtrue)
@@ -1000,6 +1025,7 @@ AM_CONDITIONAL(USE_REVOCATION, test x$revocation = xtrue)
 AM_CONDITIONAL(USE_CONSTRAINTS, test x$constraints = xtrue)
 AM_CONDITIONAL(USE_PUBKEY, test x$pubkey = xtrue)
 AM_CONDITIONAL(USE_PKCS1, test x$pkcs1 = xtrue)
+AM_CONDITIONAL(USE_PKCS7, test x$pkcs7 = xtrue)
 AM_CONDITIONAL(USE_PKCS8, test x$pkcs8 = xtrue)
 AM_CONDITIONAL(USE_PGP, test x$pgp = xtrue)
 AM_CONDITIONAL(USE_DNSKEY, test x$dnskey = xtrue)
@@ -1036,6 +1062,8 @@ AM_CONDITIONAL(USE_UNIT_TESTS, test x$unit_tester = xtrue)
 AM_CONDITIONAL(USE_LOAD_TESTER, test x$load_tester = xtrue)
 AM_CONDITIONAL(USE_HA, test x$ha = xtrue)
 AM_CONDITIONAL(USE_WHITELIST, test x$whitelist = xtrue)
+AM_CONDITIONAL(USE_LOOKIP, test x$lookip = xtrue)
+AM_CONDITIONAL(USE_ERROR_NOTIFY, test x$error_notify = xtrue)
 AM_CONDITIONAL(USE_CERTEXPIRE, test x$certexpire = xtrue)
 AM_CONDITIONAL(USE_LED, test x$led = xtrue)
 AM_CONDITIONAL(USE_DUPLICHECK, test x$duplicheck = xtrue)
@@ -1074,6 +1102,8 @@ AM_CONDITIONAL(USE_IMC_TEST, test x$imc_test = xtrue)
 AM_CONDITIONAL(USE_IMV_TEST, test x$imv_test = xtrue)
 AM_CONDITIONAL(USE_IMC_SCANNER, test x$imc_scanner = xtrue)
 AM_CONDITIONAL(USE_IMV_SCANNER, test x$imv_scanner = xtrue)
+AM_CONDITIONAL(USE_IMC_OS, test x$imc_os = xtrue)
+AM_CONDITIONAL(USE_IMV_OS, test x$imv_os = xtrue)
 AM_CONDITIONAL(USE_IMC_ATTESTATION, test x$imc_attestation = xtrue)
 AM_CONDITIONAL(USE_IMV_ATTESTATION, test x$imv_attestation = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DEFAULT, test x$socket_default = xtrue)
@@ -1126,6 +1156,7 @@ AM_CONDITIONAL(USE_TLS, test x$tls = xtrue)
 AM_CONDITIONAL(USE_RADIUS, test x$radius = xtrue)
 AM_CONDITIONAL(USE_IMCV, test x$imcv = xtrue)
 AM_CONDITIONAL(USE_PTS, test x$pts = xtrue)
+AM_CONDITIONAL(USE_TROUSERS, test x$tss = xtrousers)
 AM_CONDITIONAL(MONOLITHIC, test x$monolithic = xtrue)
 
 dnl ==============================
@@ -1170,6 +1201,7 @@ AC_OUTPUT(
 	src/libstrongswan/plugins/sha2/Makefile
 	src/libstrongswan/plugins/fips_prf/Makefile
 	src/libstrongswan/plugins/gmp/Makefile
+	src/libstrongswan/plugins/rdrand/Makefile
 	src/libstrongswan/plugins/random/Makefile
 	src/libstrongswan/plugins/nonce/Makefile
 	src/libstrongswan/plugins/hmac/Makefile
@@ -1179,6 +1211,7 @@ AC_OUTPUT(
 	src/libstrongswan/plugins/constraints/Makefile
 	src/libstrongswan/plugins/pubkey/Makefile
 	src/libstrongswan/plugins/pkcs1/Makefile
+	src/libstrongswan/plugins/pkcs7/Makefile
 	src/libstrongswan/plugins/pkcs8/Makefile
 	src/libstrongswan/plugins/pgp/Makefile
 	src/libstrongswan/plugins/dnskey/Makefile
@@ -1220,6 +1253,8 @@ AC_OUTPUT(
 	src/libimcv/plugins/imv_test/Makefile
 	src/libimcv/plugins/imc_scanner/Makefile
 	src/libimcv/plugins/imv_scanner/Makefile
+	src/libimcv/plugins/imc_os/Makefile
+	src/libimcv/plugins/imv_os/Makefile
 	src/charon/Makefile
 	src/charon-nm/Makefile
 	src/libcharon/Makefile
@@ -1264,6 +1299,8 @@ AC_OUTPUT(
 	src/libcharon/plugins/uci/Makefile
 	src/libcharon/plugins/ha/Makefile
 	src/libcharon/plugins/whitelist/Makefile
+	src/libcharon/plugins/lookip/Makefile
+	src/libcharon/plugins/error_notify/Makefile
 	src/libcharon/plugins/certexpire/Makefile
 	src/libcharon/plugins/led/Makefile
 	src/libcharon/plugins/duplicheck/Makefile

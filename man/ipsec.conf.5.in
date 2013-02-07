@@ -369,7 +369,7 @@ for the connection, e.g.
 .BR aes128-sha256 .
 The notation is
 .BR encryption-integrity[-dhgroup][-esnmode] .
-.br
+
 Defaults to
 .BR aes128-sha1,3des-sha1 .
 The daemon adds its extensive default proposal to this default
@@ -377,7 +377,7 @@ or the configured value.  To restrict it to the configured proposal an
 exclamation mark
 .RB ( ! )
 can be added at the end.
-.br
+
 .BR Note :
 As a responder the daemon accepts the first supported proposal received from
 the peer. In order to restrict a responder to only accept specific cipher
@@ -403,15 +403,39 @@ force UDP encapsulation for ESP packets even if no NAT situation is detected.
 This may help to surmount restrictive firewalls. In order to force the peer to
 encapsulate packets, NAT detection payloads are faked.
 .TP
+.BR fragmentation " = yes | force | " no
+whether to use IKE fragmentation (proprietary IKEv1 extension).  Acceptable
+values are
+.BR yes ,
+.B force
+and
+.B no
+(the default). Fragmented messages sent by a peer are always accepted
+irrespective of the value of this option. If set to
+.BR yes ,
+and the peer supports it, larger IKE messages will be sent in fragments.
+If set to
+.B force
+the initial IKE message will already be fragmented if required.
+.TP
 .BR ike " = <cipher suites>"
 comma-separated list of IKE/ISAKMP SA encryption/authentication algorithms
 to be used, e.g.
 .BR aes128-sha1-modp2048 .
 The notation is
-.BR encryption-integrity-dhgroup .
-In IKEv2, multiple algorithms and proposals may be included, such as
-aes128-aes256-sha1-modp1536-modp2048,3des-sha1-md5-modp1024.
+.BR encryption-integrity[-prf]-dhgroup .
+If no PRF is given, the algorithms defined for integrity are used for the PRF.
+The prf keywords are the same as the integrity algorithms, but have a
+.B prf
+prefix (such as
+.BR prfsha1 ,
+.B prfsha256
+or
+.BR prfaesxcbc ).
 .br
+In IKEv2, multiple algorithms and proposals may be included, such as
+.BR aes128-aes256-sha1-modp1536-modp2048,3des-sha1-md5-modp1024 .
+
 Defaults to
 .BR aes128-sha1-modp2048,3des-sha1-modp1536 .
 The daemon adds its extensive default proposal to this
@@ -419,13 +443,14 @@ default or the configured value.  To restrict it to the configured proposal an
 exclamation mark
 .RB ( ! )
 can be added at the end.
-.br
+
 .BR Note :
 As a responder the daemon accepts the first supported proposal received from
 the peer.  In order to restrict a responder to only accept specific cipher
 suites, the strict flag
 .RB ( ! ,
-exclamation mark) can be used, e.g: aes256-sha512-modp4096!
+exclamation mark) can be used, e.g:
+.BR aes256-sha512-modp4096!
 .TP
 .BR ikelifetime " = " 3h " | <time>"
 how long the keying channel of a connection (ISAKMP or IKE SA)
@@ -579,6 +604,15 @@ to the distinguished name of the certificate's subject.
 The left participant's ID can be overridden by specifying a
 .B leftid
 value which must be certified by the certificate, though.
+.br
+A value in the form
+.B %smartcard[<slot nr>[@<module>]]:<keyid>
+defines a specific certificate to load from a PKCS#11 backend for this
+connection. See ipsec.secrets(5) for details about smartcard definitions.
+.B leftcert
+is required only if selecting the certificate with
+.B leftid
+is not sufficient, for example if multiple certificates use the same subject.
 .TP
 .BR leftcert2 " = <path>"
 Same as
@@ -1012,6 +1046,11 @@ currently can have either the value
 .BR cacert " = <path>"
 defines a path to the CA certificate either relative to
 \fI/etc/ipsec.d/cacerts\fP or as an absolute path.
+.br
+A value in the form
+.B %smartcard[<slot nr>[@<module>]]:<keyid>
+defines a specific CA certificate to load from a PKCS#11 backend for this CA.
+See ipsec.secrets(5) for details about smartcard definitions.
 .TP
 .BR crluri " = <uri>"
 defines a CRL distribution point (ldap, http, or file URI)

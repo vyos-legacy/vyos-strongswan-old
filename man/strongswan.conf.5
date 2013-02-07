@@ -1,4 +1,4 @@
-.TH STRONGSWAN.CONF 5 "2012-05-01" "5.0.1" "strongSwan"
+.TH STRONGSWAN.CONF 5 "2013-01-25" "5.0.2" "strongSwan"
 .SH NAME
 strongswan.conf \- strongSwan configuration file
 .SH DESCRIPTION
@@ -164,6 +164,10 @@ are released to free memory once an IKE_SA is established.
 Enabling this might conflict with plugins that later need access to e.g. the
 used certificates.
 .TP
+.BR charon.fragment_size " [512]"
+Maximum size (in bytes) of a sent fragment when using the proprietary IKEv1
+fragmentation extension.
+.TP
 .BR charon.half_open_timeout " [30]"
 Timeout in seconds for connecting IKE_SAs (also see IKE_SA_INIT DROPPING).
 .TP
@@ -177,6 +181,10 @@ openly transmitted hash of the PSK)
 .TP
 .BR charon.ignore_routing_tables
 A space-separated list of routing tables to be excluded from route lookups
+.TP
+.BR charon.ikesa_limit " [0]"
+Maximum number of IKE_SAs that can be established at the same time before new
+connection attempts are blocked
 .TP
 .BR charon.ikesa_table_segments " [1]"
 Number of exclusively locked segments in the hash table
@@ -635,8 +643,14 @@ Passphrase protecting the private key
 .BR charon.plugins.tnc-ifmap.username
 Authentication username of strongSwan MAP client
 .TP
+.BR charon.plugins.tnc-imc.dlclose " [yes]"
+Unload IMC after use
+.TP
 .BR charon.plugins.tnc-imc.preferred_language " [en]"
 Preferred language for TNC recommendations
+.TP
+.BR charon.plugins.tnc-imv.dlclose " [yes]"
+Unload IMV after use
 .TP
 .BR charon.plugins.tnc-pdp.method " [ttls]"
 EAP tunnel method to be used
@@ -696,6 +710,12 @@ strength
 .BR libstrongswan.ecp_x_coordinate_only " [yes]"
 Compliance with the errata for RFC 4753
 .TP
+.BR libstrongswan.host_resolver.max_threads " [3]"
+Maximum number of concurrent resolver threads (they are terminated if unused)
+.TP
+.BR libstrongswan.host_resolver.min_threads " [0]"
+Minimum number of resolver threads to keep around
+.TP
 .BR libstrongswan.integrity_test " [no]"
 Check daemon, libstrongswan and plugin integrity at startup
 .TP
@@ -727,6 +747,12 @@ ENGINE ID to use in the OpenSSL plugin
 .TP
 .BR libstrongswan.plugins.pkcs11.modules
 List of available PKCS#11 modules
+.TP
+.BR libstrongswan.plugins.pkcs11.load_certs " [yes]"
+Whether to load certificates from tokens
+.TP
+.BR libstrongswan.plugins.pkcs11.reload_certs " [no]"
+Reload certificates from all tokens if charon receives a SIGHUP
 .TP
 .BR libstrongswan.plugins.pkcs11.use_dh " [no]"
 Whether the PKCS#11 modules should be used for DH and ECDH (see use_ecc option)
@@ -764,10 +790,13 @@ Debug level for a stand-alone libimcv library
 .TP
 .BR libimcv.stderr_quiet " [no]"
 Disable output to stderr with a stand-alone libimcv library
-.SS libimcv plugins section
 .TP
-.BR libimcv.plugins.imc-attestation.platform_info
-Information on operating system and hardware platform
+.BR libimcv.os_info.name
+Manually set the name of the client OS (e.g. Ubuntu)
+.TP
+.BR libimcv.os_info.version
+Manually set the version of the client OS (e.g. 12.04 i686)
+.SS libimcv plugins section
 .TP
 .BR libimcv.plugins.imc-attestation.aik_blob
 AIK encrypted private key blob file
@@ -799,11 +828,26 @@ Preferred measurement hash algorithm
 .BR libimcv.plugins.imv-attestation.min_nonce_len " [0]"
 DH minimum nonce length
 .TP
-.BR libimcv.plugins.imv-attestation.platform_info
-Information on operating system and hardware platform
+.BR libimcv.plugins.imv-attestation.remediation_uri
+URI pointing to attestation remediation instructions
+.TP
+.BR libimcv.plugins.imc-os.push_info " [yes]"
+Send operating system info without being prompted
+.TP
+.BR libimcv.plugins.imv-os.database
+Database URI for the database that stores operating system information
+.TP
+.BR libimcv.plugins.imv-os.remediation_uri
+URI pointing to operating system remediation instructions
+.TP
+.BR libimcv.plugins.imc-scanner.push_info " [yes]"
+Send open listening ports without being prompted
 .TP
 .BR libimcv.plugins.imv-scanner.closed_port_policy " [yes]"
 By default all ports must be closed (yes) or can be open (no)
+.TP
+.BR libimcv.plugins.imv-scanner.remediation_uri
+URI pointing to scanner remediation instructions
 .TP
 .BR libimcv.plugins.imv-scanner.tcp_ports
 List of TCP ports that can be open or must be closed
@@ -825,6 +869,9 @@ Do a handshake retry
 .TP
 .BR libimcv.plugins.imc-test.retry_command
 Command to be sent to the Test IMV in the handshake retry
+.TP
+.BR libimcv.plugins.imv-test.remediation_uri
+URI pointing to test remediation instructions
 .TP
 .BR libimcv.plugins.imv-test.rounds " [0]"
 Number of IMC-IMV retry rounds
@@ -902,6 +949,10 @@ Session timeout for mediation service
 .TP
 .BR openac.load
 Plugins to load in ipsec openac tool
+.SS pacman section
+.TP
+.BR pacman.database
+Database URI for the database that stores the package information
 .SS pki section
 .TP
 .BR pki.load
@@ -1244,6 +1295,17 @@ Never enable the load-testing plugin on productive systems. It provides
 preconfigured credentials and allows an attacker to authenticate as any user.
 .SS Options
 .TP
+.BR charon.plugins.load-tester.addrs
+Subsection that contains key/value pairs with address pools (in CIDR notation)
+to use for a specific network interface e.g. eth0 = 10.10.0.0/16
+.TP
+.BR charon.plugins.load-tester.addrs_prefix " [16]"
+Network prefix length to use when installing dynamic addresses. If set to -1 the
+full address is used (i.e. 32 or 128)
+.TP
+.BR charon.plugins.load-tester.ca_dir
+Directory to load (intermediate) CA certificates from
+.TP
 .BR charon.plugins.load-tester.child_rekey " [600]"
 Seconds to start CHILD_SA rekeying after setup
 .TP
@@ -1252,6 +1314,9 @@ Delay between initiatons for each thread
 .TP
 .BR charon.plugins.load-tester.delete_after_established " [no]"
 Delete an IKE_SA as soon as it has been established
+.TP
+.BR charon.plugins.load-tester.digest " [sha1]"
+Digest algorithm used when issuing certificates
 .TP
 .BR charon.plugins.load-tester.dpd_delay " [0]"
 DPD delay to use in load test
@@ -1274,6 +1339,9 @@ Seconds to start IKE_SA rekeying after setup
 .BR charon.plugins.load-tester.init_limit " [0]"
 Global limit of concurrently established SAs during load test
 .TP
+.BR charon.plugins.load-tester.initiator " [0.0.0.0]"
+Address to initiate from
+.TP
 .BR charon.plugins.load-tester.initiators " [0]"
 Number of concurrent initiator threads to use in load test
 .TP
@@ -1283,8 +1351,24 @@ Authentication method(s) the intiator uses
 .BR charon.plugins.load-tester.initiator_id
 Initiator ID used in load test
 .TP
+.BR charon.plugins.load-tester.initiator_match
+Initiator ID to to match against as responder
+.TP
+.BR charon.plugins.load-tester.initiator_tsi
+Traffic selector on initiator side, as proposed by initiator
+.TP
+.BR charon.plugins.load-tester.initiator_tsr
+Traffic selector on responder side, as proposed by initiator
+.TP
 .BR charon.plugins.load-tester.iterations " [1]"
-Number of IKE_SAs to initate by each initiator in load test
+Number of IKE_SAs to initiate by each initiator in load test
+.TP
+.BR charon.plugins.load-tester.issuer_cert
+Path to the issuer certificate (if not configured a hard-coded value is used)
+.TP
+.BR charon.plugins.load-tester.issuer_key
+Path to private key that is used to issue certificates (if not configured a
+hard-coded value is used)
 .TP
 .BR charon.plugins.load-tester.pool
 Provide INTERNAL_IPV4_ADDRs from a named pool
@@ -1295,7 +1379,7 @@ Preshared key to use in load test
 .BR charon.plugins.load-tester.proposal " [aes128-sha1-modp768]"
 IKE proposal to use in load test
 .TP
-.BR charon.plugins.load-tester.remote " [127.0.0.1]"
+.BR charon.plugins.load-tester.responder " [127.0.0.1]"
 Address to initiation connections to
 .TP
 .BR charon.plugins.load-tester.responder_auth " [pubkey]"
@@ -1304,11 +1388,21 @@ Authentication method(s) the responder uses
 .BR charon.plugins.load-tester.responder_id
 Responder ID used in load test
 .TP
+.BR charon.plugins.load-tester.responder_tsi " [initiator_tsi]"
+Traffic selector on initiator side, as narrowed by responder
+.TP
+.BR charon.plugins.load-tester.responder_tsr " [initiator_tsr]"
+Traffic selector on responder side, as narrowed by responder
+.TP
 .BR charon.plugins.load-tester.request_virtual_ip " [no]"
 Request an INTERNAL_IPV4_ADDR from the server
 .TP
 .BR charon.plugins.load-tester.shutdown_when_complete " [no]"
 Shutdown the daemon after all IKE_SAs have been established
+.TP
+.BR charon.plugins.load-tester.version " [0]"
+IKE version to use (0 means use IKEv2 as initiator and accept any version as
+responder)
 .SS Configuration details
 For public key authentication, the responder uses the
 .B \(dqCN=srv, OU=load-test, O=strongSwan\(dq

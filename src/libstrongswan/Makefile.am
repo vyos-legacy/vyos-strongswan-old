@@ -1,9 +1,10 @@
 ipseclib_LTLIBRARIES = libstrongswan.la
 
 libstrongswan_la_SOURCES = \
-library.c chunk.c debug.c enum.c settings.c printf_hook.c asn1/asn1.c \
-asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
-crypto/crypters/crypter.c crypto/hashers/hasher.c crypto/pkcs7.c crypto/pkcs9.c \
+library.c \
+asn1/asn1.c asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
+collections/blocking_queue.c collections/enumerator.c collections/hashtable.c \
+collections/linked_list.c crypto/crypters/crypter.c crypto/hashers/hasher.c \
 crypto/proposal/proposal_keywords.c crypto/proposal/proposal_keywords_static.c \
 crypto/prfs/prf.c crypto/prfs/mac_prf.c \
 crypto/rngs/rng.c crypto/prf_plus.c crypto/signers/signer.c \
@@ -14,28 +15,32 @@ credentials/cred_encoding.c credentials/keys/private_key.c \
 credentials/keys/public_key.c credentials/keys/shared_key.c \
 credentials/certificates/certificate.c credentials/certificates/crl.c \
 credentials/certificates/ocsp_response.c \
+credentials/containers/container.c \
 credentials/ietf_attributes/ietf_attributes.c credentials/credential_manager.c \
 credentials/sets/auth_cfg_wrapper.c credentials/sets/ocsp_response_wrapper.c \
 credentials/sets/cert_cache.c credentials/sets/mem_cred.c \
 credentials/sets/callback_cred.c credentials/auth_cfg.c database/database.c \
 database/database_factory.c fetcher/fetcher.c fetcher/fetcher_manager.c eap/eap.c \
 ipsec/ipsec_types.c \
+networking/host.c networking/host_resolver.c networking/packet.c \
+networking/tun_device.c \
 pen/pen.c plugins/plugin_loader.c plugins/plugin_feature.c processing/jobs/job.c \
 processing/jobs/callback_job.c processing/processor.c processing/scheduler.c \
 selectors/traffic_selector.c threading/thread.c threading/thread_value.c \
 threading/mutex.c threading/semaphore.c threading/rwlock.c threading/spinlock.c \
-utils.c utils/host.c utils/packet.c utils/identification.c utils/lexparser.c \
-utils/linked_list.c utils/blocking_queue.c utils/hashtable.c utils/enumerator.c \
-utils/optionsfrom.c utils/capabilities.c utils/backtrace.c utils/tun_device.c
+utils/utils.c utils/chunk.c utils/debug.c utils/enum.c utils/identification.c \
+utils/lexparser.c utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
+utils/printf_hook.c utils/settings.c
 
 if USE_DEV_HEADERS
 strongswan_includedir = ${dev_headers}
 nobase_strongswan_include_HEADERS = \
-library.h chunk.h debug.h enum.h settings.h printf_hook.h \
+library.h \
 asn1/asn1.h asn1/asn1_parser.h asn1/oid.h bio/bio_reader.h bio/bio_writer.h \
+collections/blocking_queue.h collections/enumerator.h collections/hashtable.h \
+collections/linked_list.h \
 crypto/crypters/crypter.h crypto/hashers/hasher.h crypto/mac.h \
-crypto/pkcs7.h crypto/pkcs9.h crypto/proposal/proposal_keywords.h \
-crypto/proposal/proposal_keywords_static.h \
+crypto/proposal/proposal_keywords.h crypto/proposal/proposal_keywords_static.h \
 crypto/prfs/prf.h crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
 crypto/prf_plus.h crypto/signers/signer.h crypto/signers/mac_signer.h \
 crypto/crypto_factory.h crypto/crypto_tester.h crypto/diffie_hellman.h \
@@ -48,6 +53,7 @@ credentials/certificates/ac.h credentials/certificates/crl.h \
 credentials/certificates/pkcs10.h credentials/certificates/ocsp_request.h \
 credentials/certificates/ocsp_response.h \
 credentials/certificates/pgp_certificate.h \
+credentials/containers/container.h credentials/containers/pkcs7.h \
 credentials/ietf_attributes/ietf_attributes.h \
 credentials/credential_manager.h credentials/sets/auth_cfg_wrapper.h \
 credentials/sets/ocsp_response_wrapper.h credentials/sets/cert_cache.h \
@@ -55,16 +61,17 @@ credentials/sets/mem_cred.h credentials/sets/callback_cred.h \
 credentials/auth_cfg.h credentials/credential_set.h credentials/cert_validator.h \
 database/database.h database/database_factory.h fetcher/fetcher.h \
 fetcher/fetcher_manager.h eap/eap.h pen/pen.h ipsec/ipsec_types.h \
+networking/host.h networking/host_resolver.h networking/packet.h \
+networking/tun_device.h \
 plugins/plugin_loader.h plugins/plugin.h plugins/plugin_feature.h \
 processing/jobs/job.h processing/jobs/callback_job.h processing/processor.h \
 processing/scheduler.h selectors/traffic_selector.h \
 threading/thread.h threading/thread_value.h \
 threading/mutex.h threading/condvar.h threading/spinlock.h threading/semaphore.h \
 threading/rwlock.h threading/rwlock_condvar.h threading/lock_profiler.h \
-utils.h utils/host.h utils/packet.h utils/identification.h utils/lexparser.h \
-utils/linked_list.h utils/blocking_queue.h utils/hashtable.h utils/enumerator.h \
-utils/optionsfrom.h utils/capabilities.h utils/backtrace.h utils/tun_device.h \
-utils/leak_detective.h integrity_checker.h
+utils/utils.h utils/chunk.h utils/debug.h utils/enum.h utils/identification.h \
+utils/lexparser.h utils/optionsfrom.h utils/capabilities.h utils/backtrace.h \
+utils/leak_detective.h utils/printf_hook.h utils/settings.h utils/integrity_checker.h
 endif
 
 library.lo :	$(top_builddir)/config.status
@@ -89,7 +96,7 @@ endif
 
 if USE_INTEGRITY_TEST
   AM_CFLAGS += -DINTEGRITY_TEST
-  libstrongswan_la_SOURCES += integrity_checker.c
+  libstrongswan_la_SOURCES += utils/integrity_checker.c
 endif
 
 if USE_VSTR
@@ -197,6 +204,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_RDRAND
+  SUBDIRS += plugins/rdrand
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/rdrand/libstrongswan-rdrand.la
+endif
+endif
+
 if USE_RANDOM
   SUBDIRS += plugins/random
 if MONOLITHIC
@@ -264,6 +278,13 @@ if USE_PKCS1
   SUBDIRS += plugins/pkcs1
 if MONOLITHIC
   libstrongswan_la_LIBADD += plugins/pkcs1/libstrongswan-pkcs1.la
+endif
+endif
+
+if USE_PKCS7
+  SUBDIRS += plugins/pkcs7
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/pkcs7/libstrongswan-pkcs7.la
 endif
 endif
 

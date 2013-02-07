@@ -22,14 +22,8 @@
 #include <daemon.h>
 
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
-
-ENUM(ike_version_names, IKE_ANY, IKEV2,
-	"IKEv1/2",
-	"IKEv1",
-	"IKEv2",
-);
 
 ENUM(cert_policy_names, CERT_ALWAYS_SEND, CERT_NEVER_SEND,
 	"CERT_ALWAYS_SEND",
@@ -64,11 +58,6 @@ struct private_peer_cfg_t {
 	 * Name of the peer_cfg, used to query it
 	 */
 	char *name;
-
-	/**
-	 * IKE version to use for initiation
-	 */
-	ike_version_t ike_version;
 
 	/**
 	 * IKE config associated to this peer config
@@ -188,7 +177,7 @@ METHOD(peer_cfg_t, get_name, char*,
 METHOD(peer_cfg_t, get_ike_version, ike_version_t,
 	private_peer_cfg_t *this)
 {
-	return this->ike_version;
+	return this->ike_cfg->get_version(this->ike_cfg);
 }
 
 METHOD(peer_cfg_t, get_ike_cfg, ike_cfg_t*,
@@ -584,7 +573,7 @@ METHOD(peer_cfg_t, equals, bool,
 	e2->destroy(e2);
 
 	return (
-		this->ike_version == other->ike_version &&
+		get_ike_version(this) == get_ike_version(other) &&
 		this->cert_policy == other->cert_policy &&
 		this->unique == other->unique &&
 		this->keyingtries == other->keyingtries &&
@@ -594,6 +583,7 @@ METHOD(peer_cfg_t, equals, bool,
 		this->jitter_time == other->jitter_time &&
 		this->over_time == other->over_time &&
 		this->dpd == other->dpd &&
+		this->aggressive == other->aggressive &&
 		auth_cfg_equal(this, other)
 #ifdef ME
 		&& this->mediation == other->mediation &&
@@ -639,7 +629,7 @@ METHOD(peer_cfg_t, destroy, void,
 /*
  * Described in header-file
  */
-peer_cfg_t *peer_cfg_create(char *name, ike_version_t ike_version,
+peer_cfg_t *peer_cfg_create(char *name,
 							ike_cfg_t *ike_cfg, cert_policy_t cert_policy,
 							unique_policy_t unique, u_int32_t keyingtries,
 							u_int32_t rekey_time, u_int32_t reauth_time,
@@ -695,7 +685,6 @@ peer_cfg_t *peer_cfg_create(char *name, ike_version_t ike_version,
 #endif /* ME */
 		},
 		.name = strdup(name),
-		.ike_version = ike_version,
 		.ike_cfg = ike_cfg,
 		.child_cfgs = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2007 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -22,14 +23,45 @@
 #ifndef IKE_CFG_H_
 #define IKE_CFG_H_
 
+typedef enum ike_version_t ike_version_t;
+typedef enum fragmentation_t fragmentation_t;
 typedef struct ike_cfg_t ike_cfg_t;
 
 #include <library.h>
-#include <utils/host.h>
-#include <utils/linked_list.h>
+#include <networking/host.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 #include <config/proposal.h>
 #include <crypto/diffie_hellman.h>
+
+/**
+ * IKE version.
+ */
+enum ike_version_t {
+	/** any version */
+	IKE_ANY = 0,
+	/** IKE version 1 */
+	IKEV1 = 1,
+	/** IKE version 2 */
+	IKEV2 = 2,
+};
+
+/**
+ * Proprietary IKEv1 fragmentation
+ */
+enum fragmentation_t {
+	/** disable fragmentation */
+	FRAGMENTATION_NO,
+	/** enable fragmentation if supported by peer */
+	FRAGMENTATION_YES,
+	/** force use of fragmentation (even for the first message) */
+	FRAGMENTATION_FORCE,
+};
+
+/**
+ * enum strings fro ike_version_t
+ */
+extern enum_name_t *ike_version_names;
 
 /**
  * An ike_cfg_t defines the rules to set up an IKE_SA.
@@ -37,6 +69,13 @@ typedef struct ike_cfg_t ike_cfg_t;
  * @see peer_cfg_t to get an overview over the configurations.
  */
 struct ike_cfg_t {
+
+	/**
+	 * Get the IKE version to use with this configuration.
+	 *
+	 * @return				IKE major version
+	 */
+	ike_version_t (*get_version)(ike_cfg_t *this);
 
 	/**
 	 * Get own address.
@@ -109,9 +148,16 @@ struct ike_cfg_t {
 	/**
 	 * Enforce UDP encapsulation by faking NATD notifies?
 	 *
-	 * @return				TRUE to enfoce UDP encapsulation
+	 * @return				TRUE to enforce UDP encapsulation
 	 */
 	bool (*force_encap) (ike_cfg_t *this);
+
+	/**
+	 * Use proprietary IKEv1 fragmentation
+	 *
+	 * @return				TRUE to use fragmentation
+	 */
+	fragmentation_t (*fragmentation) (ike_cfg_t *this);
 
 	/**
 	 * Get the DH group to use for IKE_SA setup.
@@ -149,6 +195,7 @@ struct ike_cfg_t {
  *
  * Supplied hosts become owned by ike_cfg, the name gets cloned.
  *
+ * @param version			IKE major version to use for this config
  * @param certreq			TRUE to send a certificate request
  * @param force_encap		enforce UDP encapsulation by faking NATD notify
  * @param me				address/DNS name of local peer
@@ -157,10 +204,12 @@ struct ike_cfg_t {
  * @param other				address/DNS name of remote peer
  * @param other_allow_any	allow override of remote address by any address
  * @param other_port		IKE port to use as dest, 500 uses IKEv2 port floating
+ * @param fragmentation		use IKEv1 fragmentation
  * @return 					ike_cfg_t object.
  */
-ike_cfg_t *ike_cfg_create(bool certreq, bool force_encap,
+ike_cfg_t *ike_cfg_create(ike_version_t version, bool certreq, bool force_encap,
 						  char *me, bool my_allow_any, u_int16_t my_port,
-						  char *other, bool other_allow_any, u_int16_t other_port);
+						  char *other, bool other_allow_any, u_int16_t other_port,
+						  fragmentation_t fragmentation);
 
 #endif /** IKE_CFG_H_ @}*/

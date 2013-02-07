@@ -49,14 +49,14 @@
 #include "kernel_netlink_shared.h"
 
 #include <hydra.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/thread.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
 #include <threading/rwlock_condvar.h>
 #include <threading/spinlock.h>
-#include <utils/hashtable.h>
-#include <utils/linked_list.h>
+#include <collections/hashtable.h>
+#include <collections/linked_list.h>
 #include <processing/jobs/callback_job.h>
 
 /** delay before firing roam events (ms) */
@@ -64,6 +64,9 @@
 
 /** delay before reinstalling routes (ms) */
 #define ROUTE_DELAY 100
+
+/** maximum recursion when searching for addresses in get_route() */
+#define MAX_ROUTE_RECURSION 2
 
 typedef struct addr_entry_t addr_entry_t;
 
@@ -543,12 +546,7 @@ static void queue_route_reinstall(private_kernel_netlink_net_t *this,
 	time_monotonic(&now);
 	if (timercmp(&now, &this->last_route_reinstall, >))
 	{
-		now.tv_usec += ROUTE_DELAY * 1000;
-		while (now.tv_usec > 1000000)
-		{
-			now.tv_sec++;
-			now.tv_usec -= 1000000;
-		}
+		timeval_add_ms(&now, ROUTE_DELAY);
 		this->last_route_reinstall = now;
 
 		job = (job_t*)callback_job_create((callback_job_cb_t)reinstall_routes,
@@ -704,12 +702,7 @@ static void fire_roam_event(private_kernel_netlink_net_t *this, bool address)
 		this->roam_lock->unlock(this->roam_lock);
 		return;
 	}
-	now.tv_usec += ROAM_DELAY * 1000;
-	while (now.tv_usec > 1000000)
-	{
-		now.tv_sec++;
-		now.tv_usec -= 1000000;
-	}
+	timeval_add_ms(&now, ROAM_DELAY);
 	this->next_roam = now;
 	this->roam_lock->unlock(this->roam_lock);
 
@@ -1236,6 +1229,19 @@ METHOD(kernel_net_t, get_interface_name, bool,
 		this->lock->unlock(this->lock);
 		return TRUE;
 	}
+	/* in a second step, consider virtual IPs installed by us */
+	entry = this->vips->get_match(this->vips, &lookup,
+								  (void*)addr_map_entry_match_up_and_usable);
+	if (entry)
+	{
+		if (name)
+		{
+			*name = strdup(entry->iface->ifname);
+			DBG2(DBG_KNL, "virtual %H is on interface %s", ip, *name);
+		}
+		this->lock->unlock(this->lock);
+		return TRUE;
+	}
 	/* maybe it is installed on an ignored interface */
 	entry = this->addrs->get_match(this->addrs, &lookup,
 								  (void*)addr_map_entry_match_up);
@@ -1400,7 +1406,7 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
  * Get a route: If "nexthop", the nexthop is returned. source addr otherwise.
  */
 static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
-						 bool nexthop, host_t *candidate)
+						 bool nexthop, host_t *candidate, u_int recursion)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *hdr, *out, *current;
@@ -1411,6 +1417,11 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 	rt_entry_t *route = NULL, *best = NULL;
 	enumerator_t *enumerator;
 	host_t *addr = NULL;
+
+	if (recursion > MAX_ROUTE_RECURSION)
+	{
+		return NULL;
+	}
 
 	memset(&request, 0, sizeof(request));
 
@@ -1567,8 +1578,12 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 			host_t *gtw;
 
 			gtw = host_create_from_chunk(msg->rtm_family, route->gtw, 0);
-			route->src_host = get_route(this, gtw, FALSE, candidate);
-			gtw->destroy(gtw);
+			if (gtw && !gtw->ip_equals(gtw, dest))
+			{
+				route->src_host = get_route(this, gtw, FALSE, candidate,
+											recursion + 1);
+			}
+			DESTROY_IF(gtw);
 			if (route->src_host)
 			{	/* more of the same */
 				if (!candidate ||
@@ -1607,7 +1622,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 		DBG2(DBG_KNL, "using %H as %s to reach %H", addr,
 			 nexthop ? "nexthop" : "address", dest);
 	}
-	else
+	else if (!recursion)
 	{
 		DBG2(DBG_KNL, "no %s found to reach %H",
 			 nexthop ? "nexthop" : "address", dest);
@@ -1618,13 +1633,13 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 METHOD(kernel_net_t, get_source_addr, host_t*,
 	private_kernel_netlink_net_t *this, host_t *dest, host_t *src)
 {
-	return get_route(this, dest, FALSE, src);
+	return get_route(this, dest, FALSE, src, 0);
 }
 
 METHOD(kernel_net_t, get_nexthop, host_t*,
 	private_kernel_netlink_net_t *this, host_t *dest, host_t *src)
 {
-	return get_route(this, dest, TRUE, src);
+	return get_route(this, dest, TRUE, src, 0);
 }
 
 /**
@@ -1632,7 +1647,7 @@ METHOD(kernel_net_t, get_nexthop, host_t*,
  * By setting the appropriate nlmsg_type, the ip will be set or unset.
  */
 static status_t manage_ipaddr(private_kernel_netlink_net_t *this, int nlmsg_type,
-							  int flags, int if_index, host_t *ip)
+							  int flags, int if_index, host_t *ip, int prefix)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *hdr;
@@ -1651,7 +1666,7 @@ static status_t manage_ipaddr(private_kernel_netlink_net_t *this, int nlmsg_type
 	msg = (struct ifaddrmsg*)NLMSG_DATA(hdr);
 	msg->ifa_family = ip->get_family(ip);
 	msg->ifa_flags = 0;
-	msg->ifa_prefixlen = 8 * chunk.len;
+	msg->ifa_prefixlen = prefix < 0 ? chunk.len * 8 : prefix;
 	msg->ifa_scope = RT_SCOPE_UNIVERSE;
 	msg->ifa_index = if_index;
 
@@ -1661,7 +1676,8 @@ static status_t manage_ipaddr(private_kernel_netlink_net_t *this, int nlmsg_type
 }
 
 METHOD(kernel_net_t, add_ip, status_t,
-	private_kernel_netlink_net_t *this, host_t *virtual_ip, host_t *iface_ip)
+	private_kernel_netlink_net_t *this, host_t *virtual_ip, int prefix,
+	char *iface_name)
 {
 	addr_map_entry_t *entry, lookup = {
 		.ip = virtual_ip,
@@ -1712,16 +1728,10 @@ METHOD(kernel_net_t, add_ip, status_t,
 		 this->ifaces->find_first(this->ifaces, (void*)iface_entry_by_name,
 						(void**)&iface, this->install_virtual_ip_on) != SUCCESS)
 	{
-		lookup.ip = iface_ip;
-		entry = this->addrs->get_match(this->addrs, &lookup,
-									  (void*)addr_map_entry_match);
-		if (!entry)
+		if (this->ifaces->find_first(this->ifaces, (void*)iface_entry_by_name,
+									 (void**)&iface, iface_name) != SUCCESS)
 		{	/* if we don't find the requested interface we just use the first */
 			this->ifaces->get_first(this->ifaces, (void**)&iface);
-		}
-		else
-		{
-			iface = entry->iface;
 		}
 	}
 	if (iface)
@@ -1736,7 +1746,7 @@ METHOD(kernel_net_t, add_ip, status_t,
 		iface->addrs->insert_last(iface->addrs, addr);
 		addr_map_entry_add(this->vips, addr, iface);
 		if (manage_ipaddr(this, RTM_NEWADDR, NLM_F_CREATE | NLM_F_EXCL,
-						  iface->ifindex, virtual_ip) == SUCCESS)
+						  iface->ifindex, virtual_ip, prefix) == SUCCESS)
 		{
 			while (!is_vip_installed_or_gone(this, virtual_ip, &entry))
 			{	/* wait until address appears */
@@ -1761,7 +1771,8 @@ METHOD(kernel_net_t, add_ip, status_t,
 }
 
 METHOD(kernel_net_t, del_ip, status_t,
-	private_kernel_netlink_net_t *this, host_t *virtual_ip)
+	private_kernel_netlink_net_t *this, host_t *virtual_ip, int prefix,
+	bool wait)
 {
 	addr_map_entry_t *entry, lookup = {
 		.ip = virtual_ip,
@@ -1800,8 +1811,8 @@ METHOD(kernel_net_t, del_ip, status_t,
 		 * until the entry is gone, also so we can wait below */
 		entry->addr->installed = FALSE;
 		status = manage_ipaddr(this, RTM_DELADDR, 0, entry->iface->ifindex,
-							   virtual_ip);
-		if (status == SUCCESS)
+							   virtual_ip, prefix);
+		if (status == SUCCESS && wait)
 		{	/* wait until the address is really gone */
 			while (is_known_vip(this, virtual_ip))
 			{

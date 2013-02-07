@@ -18,7 +18,7 @@
 
 #include <pen/pen.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_ita_attr_dummy_t private_ita_attr_dummy_t;
 
@@ -98,7 +98,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 {
 	this->size = this->value.len;
 
-	return SUCCESS;	
+	return SUCCESS;
 }
 
 METHOD(pa_tnc_attr_t, get_ref, pa_tnc_attr_t*,
@@ -165,6 +165,8 @@ pa_tnc_attr_t *ita_attr_dummy_create_from_data(chunk_t data)
 			.pa_tnc_attribute = {
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,

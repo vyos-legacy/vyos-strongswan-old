@@ -17,7 +17,7 @@
 
 #include <tncif_names.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_imc_scanner_state_t private_imc_scanner_state_t;
 
@@ -109,8 +109,6 @@ METHOD(imc_state_t, set_result, void,
 	private_imc_scanner_state_t *this, TNC_IMCID id,
 	TNC_IMV_Evaluation_Result result)
 {
-	DBG1(DBG_IMC, "set assessment result for IMC %u to '%N'",
-		 id, TNC_IMV_Evaluation_Result_names, result);
 	this->result = result;
 }
 
@@ -157,7 +155,7 @@ imc_state_t *imc_scanner_state_create(TNC_ConnectionID connection_id)
 		.result = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
 		.connection_id = connection_id,
 	);
-	
+
 	return &this->public.interface;
 }
 

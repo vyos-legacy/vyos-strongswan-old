@@ -14,9 +14,12 @@
  */
 
 #include "imv_scanner_state.h"
+#include "imv/imv_lang_string.h"
+#include "imv/imv_reason_string.h"
+#include "imv/imv_remediation_string.h"
 
 #include <utils/lexparser.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_imv_scanner_state_t private_imv_scanner_state_t;
 
@@ -66,34 +69,63 @@ struct private_imv_scanner_state_t {
 	TNC_IMV_Evaluation_Result eval;
 
 	/**
-	 * String with list of ports that should be closed
+	 * List with ports that should be closed
 	 */
-	char *violating_ports;
+	 linked_list_t *violating_ports;
 
 	/**
-	 * Local copy of the reason string
+	 * TNC Reason String
 	 */
-	chunk_t reason_string;
-};
+	imv_reason_string_t *reason_string;
 
-typedef struct entry_t entry_t;
+	/**
+	 * IETF Remediation Instructions String
+	 */
+	imv_remediation_string_t *remediation_string;
 
-/**
- * Define an internal reason string entry
- */
-struct entry_t {
-	char *lang;
-	char *string;
 };
 
 /**
- * Table of multi-lingual reason string entries 
+ * Supported languages
  */
-static entry_t reasons[] = {
-	{ "en", "The following ports are open:" },
-	{ "de", "Die folgenden Ports sind offen" },
-	{ "fr", "Les ports suivants sont ouverts:" },
-	{ "pl", "Następujące porty sa otwarte:" }
+static char* languages[] = { "en", "de", "fr", "pl" };
+
+/**
+ * Reason strings for "Port Filter"
+ */
+static imv_lang_string_t reasons[] = {
+	{ "en", "Open server ports were detected" },
+	{ "de", "Offene Serverports wurden festgestellt" },
+	{ "fr", "Il y a des ports du serveur ouverts" },
+	{ "pl", "Są otwarte porty serwera" },
+	{ NULL, NULL }
+};
+
+/**
+ * Instruction strings for "Port Filters"
+ */
+static imv_lang_string_t instr_ports_title[] = {
+	{ "en", "Open Server Ports" },
+	{ "de", "Offene Server Ports" },
+	{ "fr", "Ports ouverts du serveur" },
+	{ "pl", "Otwarte Porty Serwera" },
+	{ NULL, NULL }
+};
+
+static imv_lang_string_t instr_ports_descr[] = {
+	{ "en", "Open Internet ports have been detected" },
+	{ "de", "Offenen Internet-Ports wurden festgestellt" },
+	{ "fr", "Il y'a des ports Internet ouverts" },
+	{ "pl", "Porty internetowe są otwarte" },
+	{ NULL, NULL }
+};
+
+static imv_lang_string_t instr_ports_header[] = {
+	{ "en", "Please close the following server ports:" },
+	{ "de", "Bitte schliessen Sie die folgenden Serverports:" },
+	{ "fr", "Fermez les ports du serveur suivants s'il vous plait:" },
+	{ "pl", "Proszę zamknąć następujące porty serwera:" },
+	{ NULL, NULL }
 };
 
 METHOD(imv_state_t, get_connection_id, TNC_ConnectionID,
@@ -156,75 +188,66 @@ METHOD(imv_state_t, set_recommendation, void,
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
-	private_imv_scanner_state_t *this, chunk_t preferred_language,
-	chunk_t *reason_string, chunk_t *reason_language)
+	private_imv_scanner_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *reason_string, char **reason_language)
 {
-	chunk_t pref_lang, lang;
-	u_char *pos;
-	int i;
-
 	if (!this->violating_ports)
 	{
 		return FALSE;
 	}
+	*reason_language = imv_lang_string_select_lang(language_enumerator,
+											  languages, countof(languages));
 
-	while (eat_whitespace(&preferred_language))
+	/* Instantiate a TNC Reason String object */
+	DESTROY_IF(this->reason_string);
+	this->reason_string = imv_reason_string_create(*reason_language);
+	this->reason_string->add_reason(this->reason_string, reasons);
+	*reason_string = this->reason_string->get_encoding(this->reason_string);
+
+	return TRUE;
+}
+
+METHOD(imv_state_t, get_remediation_instructions, bool,
+	private_imv_scanner_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *string, char **lang_code, char **uri)
+{
+	if (!this->violating_ports)
 	{
-		if (!extract_token(&pref_lang, ',', &preferred_language))
-		{
-			/* last entry in a comma-separated list or single entry */
-			pref_lang = preferred_language;
-		}
-
-		/* eat trailing whitespace */
-		pos = pref_lang.ptr + pref_lang.len - 1;
-		while (pref_lang.len && *pos-- == ' ')
-		{
-			pref_lang.len--;
-		}
-
-		for (i = 0 ; i < countof(reasons); i++)
-		{
-			lang = chunk_create(reasons[i].lang, strlen(reasons[i].lang));
-			if (chunk_equals(lang, pref_lang))
-			{
-				this->reason_string = chunk_cat("cc",
-									chunk_create(reasons[i].string, 
-												 strlen(reasons[i].string)),
-									chunk_create(this->violating_ports,
-												 strlen(this->violating_ports)));
-				*reason_string = this->reason_string;
-				*reason_language = lang;
-				return TRUE;
-			}
-		}
+		return FALSE;
 	}
+	*lang_code = imv_lang_string_select_lang(language_enumerator,
+										languages, countof(languages));
 
-	/* no preferred language match found - use the default language */
+	/* Instantiate an IETF Remediation Instructions String object */
+	DESTROY_IF(this->remediation_string);
+	this->remediation_string = imv_remediation_string_create(
+									TRUE, *lang_code);	/* TODO get os_type */
 
-	this->reason_string =   chunk_cat("cc",
-									chunk_create(reasons[0].string,
-												 strlen(reasons[0].string)),
-									chunk_create(this->violating_ports,
-												 strlen(this->violating_ports)));
-	*reason_string = this->reason_string;
-	*reason_language = chunk_create(reasons[0].lang, 
-									strlen(reasons[0].lang));
+	this->remediation_string->add_instruction(this->remediation_string,
+									instr_ports_title,
+									instr_ports_descr,
+									instr_ports_header,
+									this->violating_ports);
+	*string = this->remediation_string->get_encoding(this->remediation_string);
+	*uri = lib->settings->get_str(lib->settings,
+				"libimcv.plugins.imv-scanner.remediation_uri", NULL);
+
 	return TRUE;
 }
 
 METHOD(imv_state_t, destroy, void,
 	private_imv_scanner_state_t *this)
 {
-	free(this->violating_ports);
-	free(this->reason_string.ptr);
+	DESTROY_IF(this->reason_string);
+	DESTROY_IF(this->remediation_string);
+	this->violating_ports->destroy_function(this->violating_ports, free);
 	free(this);
 }
 
-METHOD(imv_scanner_state_t, set_violating_ports, void,
-	private_imv_scanner_state_t *this, char *ports)
+METHOD(imv_scanner_state_t, add_violating_port, void,
+	private_imv_scanner_state_t *this, char *port)
 {
-	this->violating_ports = strdup(ports);
+	this->violating_ports->insert_last(this->violating_ports, port);
 }
 
 /**
@@ -247,16 +270,18 @@ imv_state_t *imv_scanner_state_create(TNC_ConnectionID connection_id)
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
 				.get_reason_string = _get_reason_string,
+				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
 			},
-			.set_violating_ports = _set_violating_ports,
+			.add_violating_port = _add_violating_port,
 		},
 		.state = TNC_CONNECTION_STATE_CREATE,
 		.rec = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 		.eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
 		.connection_id = connection_id,
+		.violating_ports = linked_list_create(),
 	);
-	
+
 	return &this->public.interface;
 }
 

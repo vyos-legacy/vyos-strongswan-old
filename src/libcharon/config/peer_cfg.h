@@ -23,36 +23,18 @@
 #ifndef PEER_CFG_H_
 #define PEER_CFG_H_
 
-typedef enum ike_version_t ike_version_t;
 typedef enum cert_policy_t cert_policy_t;
 typedef enum unique_policy_t unique_policy_t;
 typedef struct peer_cfg_t peer_cfg_t;
 
 #include <library.h>
 #include <utils/identification.h>
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
 #include <selectors/traffic_selector.h>
 #include <config/proposal.h>
 #include <config/ike_cfg.h>
 #include <config/child_cfg.h>
 #include <credentials/auth_cfg.h>
-
-/**
- * IKE version.
- */
-enum ike_version_t {
-	/** any version */
-	IKE_ANY = 0,
-	/** IKE version 1 */
-	IKEV1 = 1,
-	/** IKE version 2 */
-	IKEV2 = 2,
-};
-
-/**
- * enum strings fro ike_version_t
- */
-extern enum_name_t *ike_version_names;
 
 /**
  * Certificate sending policy. This is also used for certificate
@@ -374,7 +356,6 @@ struct peer_cfg_t {
  * (rekeylifetime - random(0, jitter)).
  *
  * @param name				name of the peer_cfg
- * @param ike_version		which IKE version we should use for this peer
  * @param ike_cfg			IKE config to use when acting as initiator
  * @param cert_policy		should we send a certificate payload?
  * @param unique			uniqueness of an IKE_SA
@@ -392,7 +373,7 @@ struct peer_cfg_t {
  * @param peer_id			ID that identifies our peer at the mediation server
  * @return					peer_cfg_t object
  */
-peer_cfg_t *peer_cfg_create(char *name, ike_version_t ike_version,
+peer_cfg_t *peer_cfg_create(char *name,
 							ike_cfg_t *ike_cfg, cert_policy_t cert_policy,
 							unique_policy_t unique, u_int32_t keyingtries,
 							u_int32_t rekey_time, u_int32_t reauth_time,

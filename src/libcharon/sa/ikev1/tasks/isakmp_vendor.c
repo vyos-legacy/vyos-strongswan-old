@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012-2013 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -11,6 +12,28 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
+ */
+
+/*
+ * Copyright (C) 2012 Volker Rümelin
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 #include "isakmp_vendor.h"
@@ -39,6 +62,11 @@ struct private_isakmp_vendor_t {
 	 * Are we the inititator of this task
 	 */
 	bool initiator;
+
+	/**
+	 * Index of best nat traversal VID found
+	 */
+	int best_natt_ext;
 };
 
 /**
@@ -65,73 +93,129 @@ static struct {
 	{ "XAuth", EXT_XAUTH, TRUE, 8,
 	  "\x09\x00\x26\x89\xdf\xd6\xb7\x12"},
 
-	/* NAT-Traversal, MD5("RFC 3947") */
-	{ "NAT-T (RFC 3947)", EXT_NATT, TRUE, 16,
-	  "\x4a\x13\x1c\x81\x07\x03\x58\x45\x5c\x57\x28\xf2\x0e\x95\x45\x2f"},
-
 	/* Dead peer detection, RFC 3706 */
 	{ "DPD", EXT_DPD, TRUE, 16,
 	  "\xaf\xca\xd7\x13\x68\xa1\xf1\xc9\x6b\x86\x96\xfc\x77\x57\x01\x00"},
 
-	{ "draft-stenberg-ipsec-nat-traversal-01", 0, FALSE, 16,
-	  "\x27\xba\xb5\xdc\x01\xea\x07\x60\xea\x4e\x31\x90\xac\x27\xc0\xd0"},
+	{ "Cisco Unity", EXT_CISCO_UNITY, FALSE, 16,
+	  "\x12\xf5\xf2\x8c\x45\x71\x68\xa9\x70\x2d\x9f\xe2\x74\xcc\x01\x00"},
 
-	{ "draft-stenberg-ipsec-nat-traversal-02", 0, FALSE, 16,
-	  "\x61\x05\xc4\x22\xe7\x68\x47\xe4\x3f\x96\x84\x80\x12\x92\xae\xcd"},
+	/* Proprietary IKE fragmentation extension. Capabilities are handled
+	 * specially on receipt of this VID. */
+	{ "FRAGMENTATION", EXT_IKE_FRAGMENTATION, FALSE, 20,
+	  "\x40\x48\xb7\xd5\x6e\xbc\xe8\x85\x25\xe7\xde\x7f\x00\xd6\xc2\xd3\x80\x00\x00\x00"},
 
-	{ "draft-ietf-ipsec-nat-t-ike", 0, FALSE, 16,
-	  "\x4d\xf3\x79\x28\xe9\xfc\x4f\xd1\xb3\x26\x21\x70\xd5\x15\xc6\x62"},
+}, vendor_natt_ids[] = {
 
-	{ "draft-ietf-ipsec-nat-t-ike-00", 0, FALSE, 16,
-	  "\x44\x85\x15\x2d\x18\xb6\xbb\xcd\x0b\xe8\xa8\x46\x95\x79\xdd\xcc"},
+	/* NAT-Traversal VIDs ordered by preference */
 
-	{ "draft-ietf-ipsec-nat-t-ike-02", 0, FALSE, 16,
-	  "\xcd\x60\x46\x43\x35\xdf\x21\xf8\x7c\xfd\xb2\xfc\x68\xb6\xa4\x48"},
+	/* NAT-Traversal, MD5("RFC 3947") */
+	{ "NAT-T (RFC 3947)", EXT_NATT, TRUE, 16,
+	  "\x4a\x13\x1c\x81\x07\x03\x58\x45\x5c\x57\x28\xf2\x0e\x95\x45\x2f"},
 
-	{ "draft-ietf-ipsec-nat-t-ike-02\\n", 0, FALSE, 16,
-	  "\x90\xcb\x80\x91\x3e\xbb\x69\x6e\x08\x63\x81\xb5\xec\x42\x7b\x1f"},
-
-	{ "draft-ietf-ipsec-nat-t-ike-03", 0, FALSE, 16,
+	{ "draft-ietf-ipsec-nat-t-ike-03", EXT_NATT | EXT_NATT_DRAFT_02_03,
+	  FALSE, 16,
 	  "\x7d\x94\x19\xa6\x53\x10\xca\x6f\x2c\x17\x9d\x92\x15\x52\x9d\x56"},
 
-	{ "draft-ietf-ipsec-nat-t-ike-04", 0, FALSE, 16,
-	  "\x99\x09\xb6\x4e\xed\x93\x7c\x65\x73\xde\x52\xac\xe9\x52\xfa\x6b"},
+	{ "draft-ietf-ipsec-nat-t-ike-02", EXT_NATT | EXT_NATT_DRAFT_02_03,
+	  FALSE, 16,
+	  "\xcd\x60\x46\x43\x35\xdf\x21\xf8\x7c\xfd\xb2\xfc\x68\xb6\xa4\x48"},
 
-	{ "draft-ietf-ipsec-nat-t-ike-05", 0, FALSE, 16,
-	  "\x80\xd0\xbb\x3d\xef\x54\x56\x5e\xe8\x46\x45\xd4\xc8\x5c\xe3\xee"},
-
-	{ "draft-ietf-ipsec-nat-t-ike-06", 0, FALSE, 16,
-	  "\x4d\x1e\x0e\x13\x6d\xea\xfa\x34\xc4\xf3\xea\x9f\x02\xec\x72\x85"},
-
-	{ "draft-ietf-ipsec-nat-t-ike-07", 0, FALSE, 16,
-	  "\x43\x9b\x59\xf8\xba\x67\x6c\x4c\x77\x37\xae\x22\xea\xb8\xf5\x82"},
+	{ "draft-ietf-ipsec-nat-t-ike-02\\n", EXT_NATT | EXT_NATT_DRAFT_02_03,
+	  TRUE, 16,
+	  "\x90\xcb\x80\x91\x3e\xbb\x69\x6e\x08\x63\x81\xb5\xec\x42\x7b\x1f"},
 
 	{ "draft-ietf-ipsec-nat-t-ike-08", 0, FALSE, 16,
 	  "\x8f\x8d\x83\x82\x6d\x24\x6b\x6f\xc7\xa8\xa6\xa4\x28\xc1\x1d\xe8"},
 
-	{ "Cisco Unity", EXT_CISCO_UNITY, FALSE, 16,
-	  "\x12\xf5\xf2\x8c\x45\x71\x68\xa9\x70\x2d\x9f\xe2\x74\xcc\x01\x00"},
+	{ "draft-ietf-ipsec-nat-t-ike-07", 0, FALSE, 16,
+	  "\x43\x9b\x59\xf8\xba\x67\x6c\x4c\x77\x37\xae\x22\xea\xb8\xf5\x82"},
+
+	{ "draft-ietf-ipsec-nat-t-ike-06", 0, FALSE, 16,
+	  "\x4d\x1e\x0e\x13\x6d\xea\xfa\x34\xc4\xf3\xea\x9f\x02\xec\x72\x85"},
+
+	{ "draft-ietf-ipsec-nat-t-ike-05", 0, FALSE, 16,
+	  "\x80\xd0\xbb\x3d\xef\x54\x56\x5e\xe8\x46\x45\xd4\xc8\x5c\xe3\xee"},
+
+	{ "draft-ietf-ipsec-nat-t-ike-04", 0, FALSE, 16,
+	  "\x99\x09\xb6\x4e\xed\x93\x7c\x65\x73\xde\x52\xac\xe9\x52\xfa\x6b"},
+
+	{ "draft-ietf-ipsec-nat-t-ike-00", 0, FALSE, 16,
+	  "\x44\x85\x15\x2d\x18\xb6\xbb\xcd\x0b\xe8\xa8\x46\x95\x79\xdd\xcc"},
+
+	{ "draft-ietf-ipsec-nat-t-ike", 0, FALSE, 16,
+	  "\x4d\xf3\x79\x28\xe9\xfc\x4f\xd1\xb3\x26\x21\x70\xd5\x15\xc6\x62"},
+
+	{ "draft-stenberg-ipsec-nat-traversal-02", 0, FALSE, 16,
+	  "\x61\x05\xc4\x22\xe7\x68\x47\xe4\x3f\x96\x84\x80\x12\x92\xae\xcd"},
+
+	{ "draft-stenberg-ipsec-nat-traversal-01", 0, FALSE, 16,
+	  "\x27\xba\xb5\xdc\x01\xea\x07\x60\xea\x4e\x31\x90\xac\x27\xc0\xd0"},
+
 };
+
+/**
+ * According to racoon 0x80000000 seems to indicate support for fragmentation
+ * of Aggressive and Main mode messages.  0x40000000 seems to indicate support
+ * for fragmentation of base ISAKMP messages (Cisco adds that and thus sends
+ * 0xc0000000)
+ */
+static const u_int32_t fragmentation_ike = 0x80000000;
+
+/**
+ * Check if the given vendor ID indicate support for fragmentation
+ */
+static bool fragmentation_supported(chunk_t data, int i)
+{
+	if (vendor_ids[i].extension  == EXT_IKE_FRAGMENTATION &&
+		data.len == 20 && memeq(data.ptr, vendor_ids[i].id, 16))
+	{
+		return untoh32(&data.ptr[16]) & fragmentation_ike;
+	}
+	return FALSE;
+}
 
 METHOD(task_t, build, status_t,
 	private_isakmp_vendor_t *this, message_t *message)
 {
 	vendor_id_payload_t *vid_payload;
-	bool strongswan, cisco_unity;
+	bool strongswan, cisco_unity, fragmentation;
+	ike_cfg_t *ike_cfg;
 	int i;
 
 	strongswan = lib->settings->get_bool(lib->settings,
-									"%s.send_vendor_id", FALSE, charon->name);
+								"%s.send_vendor_id", FALSE, charon->name);
 	cisco_unity = lib->settings->get_bool(lib->settings,
-									"%s.cisco_unity", FALSE, charon->name);
+								"%s.cisco_unity", FALSE, charon->name);
+	ike_cfg = this->ike_sa->get_ike_cfg(this->ike_sa);
+	fragmentation = ike_cfg->fragmentation(ike_cfg) != FRAGMENTATION_NO;
+	if (!this->initiator && fragmentation)
+	{
+		fragmentation = this->ike_sa->supports_extension(this->ike_sa,
+														 EXT_IKE_FRAGMENTATION);
+	}
 	for (i = 0; i < countof(vendor_ids); i++)
 	{
 		if (vendor_ids[i].send ||
 		   (vendor_ids[i].extension == EXT_STRONGSWAN && strongswan) ||
-		   (vendor_ids[i].extension == EXT_CISCO_UNITY && cisco_unity))
+		   (vendor_ids[i].extension == EXT_CISCO_UNITY && cisco_unity) ||
+		   (vendor_ids[i].extension == EXT_IKE_FRAGMENTATION && fragmentation))
 		{
+			DBG2(DBG_IKE, "sending %s vendor ID", vendor_ids[i].desc);
 			vid_payload = vendor_id_payload_create_data(VENDOR_ID_V1,
 				chunk_clone(chunk_create(vendor_ids[i].id, vendor_ids[i].len)));
+			message->add_payload(message, &vid_payload->payload_interface);
+		}
+	}
+	for (i = 0; i < countof(vendor_natt_ids); i++)
+	{
+		if ((this->initiator && vendor_natt_ids[i].send) ||
+			this->best_natt_ext == i)
+		{
+			DBG2(DBG_IKE, "sending %s vendor ID", vendor_natt_ids[i].desc);
+			vid_payload = vendor_id_payload_create_data(VENDOR_ID_V1,
+							chunk_clone(chunk_create(vendor_natt_ids[i].id,
+													 vendor_natt_ids[i].len)));
 			message->add_payload(message, &vid_payload->payload_interface);
 		}
 	}
@@ -160,7 +244,8 @@ METHOD(task_t, process, status_t,
 			for (i = 0; i < countof(vendor_ids); i++)
 			{
 				if (chunk_equals(data, chunk_create(vendor_ids[i].id,
-													vendor_ids[i].len)))
+													vendor_ids[i].len)) ||
+					fragmentation_supported(data, i))
 				{
 					DBG1(DBG_IKE, "received %s vendor ID", vendor_ids[i].desc);
 					if (vendor_ids[i].extension)
@@ -169,6 +254,26 @@ METHOD(task_t, process, status_t,
 													   vendor_ids[i].extension);
 					}
 					found = TRUE;
+					break;
+				}
+			}
+			if (!found)
+			{
+				for (i = 0; i < countof(vendor_natt_ids); i++)
+				{
+					if (chunk_equals(data, chunk_create(vendor_natt_ids[i].id,
+													vendor_natt_ids[i].len)))
+					{
+						DBG1(DBG_IKE, "received %s vendor ID",
+							 vendor_natt_ids[i].desc);
+						if (vendor_natt_ids[i].extension &&
+						   (i < this->best_natt_ext || this->best_natt_ext < 0))
+						{
+							this->best_natt_ext = i;
+						}
+						found = TRUE;
+						break;
+					}
 				}
 			}
 			if (!found)
@@ -178,6 +283,12 @@ METHOD(task_t, process, status_t,
 		}
 	}
 	enumerator->destroy(enumerator);
+
+	if (this->best_natt_ext >= 0)
+	{
+		this->ike_sa->enable_extension(this->ike_sa,
+								vendor_natt_ids[this->best_natt_ext].extension);
+	}
 
 	return this->initiator ? SUCCESS : NEED_MORE;
 }
@@ -219,6 +330,7 @@ isakmp_vendor_t *isakmp_vendor_create(ike_sa_t *ike_sa, bool initiator)
 		},
 		.initiator = initiator,
 		.ike_sa = ike_sa,
+		.best_natt_ext = -1,
 	);
 
 	return &this->public;

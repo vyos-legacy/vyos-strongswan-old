@@ -18,7 +18,7 @@
 #include "nm_service.h"
 
 #include <daemon.h>
-#include <utils/host.h>
+#include <networking/host.h>
 #include <utils/identification.h>
 #include <config/peer_cfg.h>
 #include <credentials/certificates/x509.h>
@@ -498,11 +498,12 @@ static gboolean connect_(NMVPNPlugin *plugin, NMConnection *connection,
 	/**
 	 * Set up configurations
 	 */
-	ike_cfg = ike_cfg_create(TRUE, encap, "0.0.0.0", FALSE,
+	ike_cfg = ike_cfg_create(IKEV2, TRUE, encap, "0.0.0.0", FALSE,
 							 charon->socket->get_port(charon->socket, FALSE),
-							(char*)address, FALSE, IKEV2_UDP_PORT);
+							(char*)address, FALSE, IKEV2_UDP_PORT,
+							 FRAGMENTATION_NO);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
-	peer_cfg = peer_cfg_create(priv->name, IKEV2, ike_cfg,
+	peer_cfg = peer_cfg_create(priv->name, ike_cfg,
 					CERT_SEND_IF_ASKED, UNIQUE_REPLACE, 1, /* keyingtries */
 					36000, 0, /* rekey 10h, reauth none */
 					600, 600, /* jitter, over 10min */

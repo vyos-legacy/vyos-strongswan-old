@@ -29,12 +29,12 @@
 #include <tcg/tcg_pts_attr_tpm_version_info.h>
 #include <tcg/tcg_pts_attr_unix_file_meta.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <crypto/hashers/hasher.h>
 
 #include <inttypes.h>
 
-bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
+bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 							 imv_attestation_state_t *attestation_state,
 							 pts_meas_algorithms_t supported_algorithms,
 							 pts_dh_group_t supported_dh_groups,
@@ -43,7 +43,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 {
 	pen_type_t attr_type;
 	pts_t *pts;
-	
+
 	pts = attestation_state->get_pts(attestation_state);
 	attr_type = attr->get_type(attr);
 
@@ -96,7 +96,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 				attr = pts_dh_nonce_error_create(
 									max(PTS_MIN_NONCE_LEN, min_nonce_len),
 										PTS_MAX_NONCE_LEN);
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 				break;
 			}
 
@@ -113,7 +113,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 			if (selected_algorithm == PTS_MEAS_ALGO_NONE)
 			{
 				attr = pts_hash_alg_error_create(supported_algorithms);
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 				break;
 			}
 			pts->set_dh_hash_algorithm(pts, selected_algorithm);
@@ -233,7 +233,8 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 								platform_info, algo, file_id, is_dir);
 				if (!measurements->verify(measurements, e_hash, is_dir))
 				{
-					attestation_state->set_measurement_error(attestation_state);
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_FILE_MEAS_FAIL);
 				}
 				e_hash->destroy(e_hash);
 			}
@@ -299,7 +300,8 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 			if (comp->verify(comp, name->get_qualifier(name), pts,
 							 evidence) != SUCCESS)
 			{
-				attestation_state->set_measurement_error(attestation_state);
+				attestation_state->set_measurement_error(attestation_state,
+									IMV_ATTESTATION_ERROR_COMP_EVID_FAIL);
 				name->log(name, "  measurement mismatch for ");
 			}
 			break;
@@ -335,17 +337,21 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 				{
 					DBG1(DBG_IMV, "received PCR Composite does not match "
 								  "constructed one");
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					free(pcr_composite.ptr);
 					free(quote_info.ptr);
-					return FALSE;
+					break;
 				}
 				DBG2(DBG_IMV, "received PCR Composite matches constructed one");
 				free(pcr_composite.ptr);
 
 				if (!pts->verify_quote_signature(pts, quote_info, tpm_quote_sig))
 				{
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					free(quote_info.ptr);
-					return FALSE;
+					break;
 				}
 				DBG2(DBG_IMV, "TPM Quote Info signature verification successful");
 				free(quote_info.ptr);

@@ -23,7 +23,7 @@
 #include <fcntl.h>
 
 #include <utils/lexparser.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_tnc_t private_tnc_t;
 
@@ -40,6 +40,11 @@ struct private_tnc_t {
 	 * Public members of tnc_t.
 	 */
 	tnc_t public;
+
+	/**
+	 * Number of times we have been initialized
+	 */
+	refcount_t ref;
 };
 
 /**
@@ -54,9 +59,17 @@ void libtnccs_init(void)
 {
 	private_tnc_t *this;
 
+	if (tnc)
+	{	/* already initialized, increase refcount */
+		this = (private_tnc_t*)tnc;
+		ref_get(&this->ref);
+		return;
+	}
+
 	INIT(this,
 		.public = {
 		},
+		.ref = 1,
 	);
 
 	tnc = &this->public;
@@ -68,6 +81,11 @@ void libtnccs_init(void)
 void libtnccs_deinit(void)
 {
 	private_tnc_t *this = (private_tnc_t*)tnc;
+
+	if (!this || !ref_put(&this->ref))
+	{	/* have more users */
+		return;
+	}
 
 	free(this);
 	tnc = NULL;
@@ -145,9 +163,7 @@ static bool load_imcvs_from_config(char *filename, bool is_imc)
 		}
 
 		/* copy the IMC/IMV name */
-		name = malloc(token.len + 1);
-		memcpy(name, token.ptr, token.len);
-		name[token.len] = '\0';
+		name = strndup(token.ptr, token.len);
 
 		/* advance to the IMC/IMV path and extract it */
 		if (!eat_whitespace(&line))
@@ -162,9 +178,7 @@ static bool load_imcvs_from_config(char *filename, bool is_imc)
 		}
 
 		/* copy the IMC/IMV path */
-		path = malloc(token.len + 1);
-		memcpy(path, token.ptr, token.len);
-		path[token.len] = '\0';
+		path = strndup(token.ptr, token.len);
 
 		/* load and register an IMC/IMV instance */
 		if (is_imc)
@@ -175,6 +189,8 @@ static bool load_imcvs_from_config(char *filename, bool is_imc)
 		{
 			success = tnc->imvs->load(tnc->imvs, name, path);
 		}
+		free(name);
+		free(path);
 		if (!success)
 		{
 			break;
@@ -243,24 +259,10 @@ bool tnc_manager_register(plugin_t *plugin, plugin_feature_t *feature,
 
 		if (load_imcvs)
 		{
-			char *tnc_config;
-
-			tnc_config = lib->settings->get_str(lib->settings,
-								"libtnccs.tnc_config", "/etc/tnc_config");
-			if (!load_imcvs_from_config(tnc_config, is_imc))
-			{
-				if (is_imc)
-				{
-					tnc->imcs->destroy(tnc->imcs);
-					tnc->imcs = NULL;
-				}
-				else
-				{
-					tnc->imvs->destroy(tnc->imvs);
-					tnc->imvs = NULL;
-				}
-				return FALSE;
-			}
+			load_imcvs_from_config(
+						lib->settings->get_str(lib->settings,
+									"libtnccs.tnc_config", "/etc/tnc_config"),
+						is_imc);
 		}
 	}
 	return TRUE;

@@ -26,8 +26,8 @@
 typedef struct receiver_t receiver_t;
 
 #include <library.h>
-#include <utils/host.h>
-#include <utils/packet.h>
+#include <networking/host.h>
+#include <networking/packet.h>
 
 /**
  * Callback called for any received UDP encapsulated ESP packet.

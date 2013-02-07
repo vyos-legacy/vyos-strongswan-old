@@ -148,6 +148,12 @@
 /* Define to 1 if you have the `pthread_rwlock_init' function. */
 #undef HAVE_PTHREAD_RWLOCK_INIT
 
+/* Define to 1 if you have the `pthread_spin_init' function. */
+#undef HAVE_PTHREAD_SPIN_INIT
+
+/* Define to 1 if you have the `rb_errinfo' function. */
+#undef HAVE_RB_ERRINFO
+
 /* have netlink RTA_TABLE defined */
 #undef HAVE_RTA_TABLE
 
@@ -254,6 +260,9 @@
 /* Define to 1 if strerror_r returns char *. */
 #undef STRERROR_R_CHAR_P
 
+/* use TrouSerS library libtspi as TSS implementation */
+#undef TSS_TROUSERS
+
 /* support for IKEv1 protocol */
 #undef USE_IKEV1
 
@@ -281,3 +290,6 @@
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
 #undef YYTEXT_POINTER
+
+/* Define to `unsigned int' if <sys/types.h> does not define. */
+#undef size_t

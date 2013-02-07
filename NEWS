@@ -1,3 +1,54 @@
+strongswan-5.0.2
+----------------
+
+- Implemented all IETF Standard PA-TNC attributes and an OS IMC/IMV
+  pair using them to transfer operating system information.
+
+- The new "ipsec listcounters" command prints a list of global counter values
+  about received and sent IKE messages and rekeyings.
+
+- A new lookip plugin can perform fast lookup of tunnel information using a
+  clients virtual IP and can send notifications about established or deleted
+  tunnels. The "ipsec lookip" command can be used to query such information
+  or receive notifications.
+
+- The new error-notify plugin catches some common error conditions and allows
+  an external application to receive notifications for them over a UNIX socket.
+
+- IKE proposals can now use a PRF algorithm different to that defined for
+  integrity protection. If an algorithm with a "prf" prefix is defined
+  explicitly (such as prfsha1 or prfsha256), no implicit PRF algorithm based on
+  the integrity algorithm is added to the proposal.
+
+- The pkcs11 plugin can now load leftcert certificates from a smartcard for a
+  specific ipsec.conf conn section and cacert CA certificates for a specific ca
+  section.
+
+- The load-tester plugin gained additional options for certificate generation
+  and can load keys and multiple CA certificates from external files. It can
+  install a dedicated outer IP address for each tunnel and tunnel initiation
+  batches can be triggered and monitored externally using the
+  "ipsec load-tester" tool.
+
+- PKCS#7 container parsing has been modularized, and the openssl plugin
+  gained an alternative implementation to decrypt and verify such files.
+  In contrast to our own DER parser, OpenSSL can handle BER files, which is
+  required for interoperability of our scepclient with EJBCA.
+
+- Support for the proprietary IKEv1 fragmentation extension has been added.
+  Fragments are always handled on receipt but only sent if supported by the peer
+  and if enabled with the new fragmentation ipsec.conf option.
+
+- IKEv1 in charon can now parse certificates received in PKCS#7 containers and
+  supports NAT traversal as used by Windows clients. Patches courtesy of
+  Volker Rümelin.
+
+- The new rdrand plugin provides a high quality / high performance random
+  source using the Intel rdrand instruction found on Ivy Bridge processors.
+
+- The integration test environment was updated and now uses KVM and reproducible
+  guest images based on Debian.
+
 strongswan-5.0.1
 ----------------
 

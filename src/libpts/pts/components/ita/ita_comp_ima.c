@@ -20,7 +20,7 @@
 #include "pts/pts_pcr.h"
 #include "pts/components/pts_component.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <pen/pen.h>
 
 #include <sys/types.h>
@@ -96,12 +96,12 @@ struct pts_ita_comp_ima_t {
 	int ima_cid;
 
 	/**
-	 * Component is registering IMA BIOS measurements 
+	 * Component is registering IMA BIOS measurements
 	 */
 	bool is_bios_registering;
 
 	/**
-	 * Component is registering IMA boot aggregate measurement 
+	 * Component is registering IMA boot aggregate measurement
 	 */
 	bool is_ima_registering;
 
@@ -184,7 +184,7 @@ struct bios_entry_t {
 
 	/**
 	 * SHA1 measurement hash
-	 */	
+	 */
 	chunk_t measurement;
 };
 
@@ -291,6 +291,7 @@ static bool load_bios_measurements(char *file, linked_list_t *list,
 
 	DBG1(DBG_PTS, "loading bios measurements '%s' failed: %s", file,
 		 strerror(errno));
+	free_bios_entry(entry);
 	close(fd);
 	return FALSE;
 }
@@ -377,6 +378,7 @@ static bool load_runtime_measurements(char *file, linked_list_t *list,
 
 	DBG1(DBG_PTS, "loading ima measurements '%s' failed: %s",
 		 file, strerror(errno));
+	free_ima_entry(entry);
 	close(fd);
 	return FALSE;
 }
@@ -526,7 +528,7 @@ METHOD(pts_component_t, measure, status_t,
 				evid = extend_pcr(this, qualifier, pcrs, bios_entry->pcr,
 								  bios_entry->measurement);
 				free(bios_entry);
-	
+
 				this->state = this->bios_list->get_count(this->bios_list) ?
 										IMA_STATE_BIOS : IMA_STATE_INIT;
 				break;
@@ -821,7 +823,7 @@ METHOD(pts_component_t, finalize, bool,
 	u_int32_t vid, name;
 	enum_name_t *names;
 	bool success = TRUE;
-		
+
 	this->name->set_qualifier(this->name, qualifier);
 	vid = this->name->get_vendor_id(this->name);
 	name = this->name->get_name(this->name);
@@ -915,7 +917,7 @@ METHOD(pts_component_t, destroy, void,
 		}
 		this->bios_list->destroy_function(this->bios_list,
 										 (void *)free_bios_entry);
-		this->ima_list->destroy_function(this->ima_list, 
+		this->ima_list->destroy_function(this->ima_list,
 										 (void *)free_ima_entry);
 		this->name->destroy(this->name);
 		free(this->keyid.ptr);

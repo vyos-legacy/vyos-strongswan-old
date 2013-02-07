@@ -17,9 +17,11 @@
 
 #include <libpts.h>
 
-#include <utils/lexparser.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <imv/imv_lang_string.h>
+#include "imv/imv_reason_string.h"
+
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_imv_attestation_state_t private_imv_attestation_state_t;
 typedef struct file_meas_request_t file_meas_request_t;
@@ -44,7 +46,7 @@ struct private_imv_attestation_state_t {
 	 * TNCCS connection state
 	 */
 	TNC_ConnectionState state;
-	
+
 	/**
 	 * Does the TNCCS connection support long message types?
 	 */
@@ -96,9 +98,14 @@ struct private_imv_attestation_state_t {
 	pts_t *pts;
 
 	/**
-	 * Measurement error
+	 * Measurement error flags
 	 */
-	bool measurement_error;
+	u_int32_t measurement_error;
+
+	/**
+	 * TNC Reason String
+	 */
+	imv_reason_string_t *reason_string;
 
 };
 
@@ -128,26 +135,47 @@ static void free_func_comp(func_comp_t *this)
 	free(this);
 }
 
-typedef struct entry_t entry_t;
+/**
+ * Supported languages
+ */
+static char* languages[] = { "en", "de", "mn" };
 
 /**
- * Define an internal reason string entry
+ * Table of reason strings
  */
-struct entry_t {
-	char *lang;
-	char *string;
+static imv_lang_string_t reason_file_meas_fail[] = {
+	{ "en", "Incorrect file measurement" },
+	{ "de", "Falsche Dateimessung" },
+	{ "mn", "Буруу байгаа файл" },
+	{ NULL, NULL }
 };
 
-/**
- * Table of multi-lingual reason string entries 
- */
-static entry_t reasons[] = {
-	{ "en", "IMV Attestation: Incorrect/pending file measurement/component"
-			" evidence or invalid TPM Quote signature received" },
-	{ "mn", "IMV Attestation:  Буруу/хүлээгдэж байгаа файл/компонент хэмжилт "
-			"эсвэл буруу TPM Quote гарын үсэг" },
-	{ "de", "IMV Attestation: Falsche/Fehlende Dateimessung/Komponenten Beweis "
-			"oder ungültige TPM Quote Unterschrift ist erhalten" },
+static imv_lang_string_t reason_file_meas_pend[] = {
+	{ "en", "Pending file measurement" },
+	{ "de", "Ausstehende Dateimessung" },
+	{ "mn", "Xүлээгдэж байгаа файл" },
+	{ NULL, NULL }
+};
+
+static imv_lang_string_t reason_comp_evid_fail[] = {
+	{ "en", "Incorrect component evidence" },
+	{ "de", "Falsche Komponenten-Evidenz" },
+	{ "mn", "Буруу компонент хэмжилт" },
+	{ NULL, NULL }
+};
+
+static imv_lang_string_t reason_comp_evid_pend[] = {
+	{ "en", "Pending component evidence" },
+	{ "de", "Ausstehende Komponenten-Evidenz" },
+	{ "mn", "Xүлээгдэж компонент хэмжилт" },
+	{ NULL, NULL }
+};
+
+static imv_lang_string_t reason_tpm_quote_fail[] = {
+	{ "en", "Invalid TPM Quote signature received" },
+	{ "de", "Falsche TPM Quote Signature erhalten" },
+	{ "mn", "Буруу TPM Quote гарын үсэг" },
+	{ NULL, NULL }
 };
 
 METHOD(imv_state_t, get_connection_id, TNC_ConnectionID,
@@ -210,52 +238,57 @@ METHOD(imv_state_t, set_recommendation, void,
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
-	private_imv_attestation_state_t *this, chunk_t preferred_language,
-	chunk_t *reason_string, chunk_t *reason_language)
+	private_imv_attestation_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *reason_string, char **reason_language)
 {
-	chunk_t pref_lang, lang;
-	u_char *pos;
-	int i;
+	*reason_language = imv_lang_string_select_lang(language_enumerator,
+											  languages, countof(languages));
 
-	while (eat_whitespace(&preferred_language))
+	/* Instantiate a TNC Reason String object */
+	DESTROY_IF(this->reason_string);
+	this->reason_string = imv_reason_string_create(*reason_language);
+
+	if (this->measurement_error & IMV_ATTESTATION_ERROR_FILE_MEAS_FAIL)
 	{
-		if (!extract_token(&pref_lang, ',', &preferred_language))
-		{
-			/* last entry in a comma-separated list or single entry */
-			pref_lang = preferred_language;
-		}
-
-		/* eat trailing whitespace */
-		pos = pref_lang.ptr + pref_lang.len - 1;
-		while (pref_lang.len && *pos-- == ' ')
-		{
-			pref_lang.len--;
-		}
-
-		for (i = 0 ; i < countof(reasons); i++)
-		{
-			lang = chunk_create(reasons[i].lang, strlen(reasons[i].lang));
-			if (chunk_equals(lang, pref_lang))
-			{
-				*reason_language = lang;
-				*reason_string = chunk_create(reasons[i].string,
-										strlen(reasons[i].string));
-				return TRUE;
-			}
-		}
+		this->reason_string->add_reason(this->reason_string,
+										reason_file_meas_fail);
 	}
+	if (this->measurement_error & IMV_ATTESTATION_ERROR_FILE_MEAS_PEND)
+	{
+		this->reason_string->add_reason(this->reason_string,
+										reason_file_meas_pend);
+	}
+	if (this->measurement_error & IMV_ATTESTATION_ERROR_COMP_EVID_FAIL)
+	{
+		this->reason_string->add_reason(this->reason_string,
+										reason_comp_evid_fail);
+	}
+	if (this->measurement_error & IMV_ATTESTATION_ERROR_COMP_EVID_PEND)
+	{
+		this->reason_string->add_reason(this->reason_string,
+										reason_comp_evid_pend);
+	}
+	if (this->measurement_error & IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL)
+	{
+		this->reason_string->add_reason(this->reason_string,
+										reason_tpm_quote_fail);
+	}
+	*reason_string = this->reason_string->get_encoding(this->reason_string);
 
-	/* no preferred language match found - use the default language */
-	*reason_string =   chunk_create(reasons[0].string,
-									strlen(reasons[0].string));
-	*reason_language = chunk_create(reasons[0].lang,
-									strlen(reasons[0].lang));
 	return TRUE;
+}
+
+METHOD(imv_state_t, get_remediation_instructions, bool,
+	private_imv_attestation_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *string, char **lang_code, char **uri)
+{
+	return FALSE;
 }
 
 METHOD(imv_state_t, destroy, void,
 	private_imv_attestation_state_t *this)
 {
+	DESTROY_IF(this->reason_string);
 	this->file_meas_requests->destroy_function(this->file_meas_requests, free);
 	this->components->destroy_function(this->components, (void *)free_func_comp);
 	this->pts->destroy(this->pts);
@@ -302,7 +335,7 @@ METHOD(imv_attestation_state_t, check_off_file_meas_request, bool,
 	enumerator_t *enumerator;
 	file_meas_request_t *request;
 	bool found = FALSE;
-	
+
 	enumerator = this->file_meas_requests->create_enumerator(this->file_meas_requests);
 	while (enumerator->enumerate(enumerator, &request))
 	{
@@ -396,16 +429,16 @@ METHOD(imv_attestation_state_t, get_component, pts_component_t*,
 	return found;
 }
 
-METHOD(imv_attestation_state_t, get_measurement_error, bool,
+METHOD(imv_attestation_state_t, get_measurement_error, u_int32_t,
 	private_imv_attestation_state_t *this)
 {
 	return this->measurement_error;
 }
 
 METHOD(imv_attestation_state_t, set_measurement_error, void,
-	private_imv_attestation_state_t *this)
+	private_imv_attestation_state_t *this, u_int32_t error)
 {
-	this->measurement_error = TRUE;
+	this->measurement_error |= error;
 }
 
 METHOD(imv_attestation_state_t, finalize_components, void,
@@ -418,7 +451,7 @@ METHOD(imv_attestation_state_t, finalize_components, void,
 	{
 		if (!entry->comp->finalize(entry->comp, entry->qualifier))
 		{
-			_set_measurement_error(this);
+			set_measurement_error(this, IMV_ATTESTATION_ERROR_COMP_EVID_PEND);
 		}
 		free_func_comp(entry);
 	}
@@ -436,7 +469,6 @@ METHOD(imv_attestation_state_t, components_finalized, bool,
 imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 {
 	private_imv_attestation_state_t *this;
-	char *platform_info;
 
 	INIT(this,
 		.public = {
@@ -451,6 +483,7 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
 				.get_reason_string = _get_reason_string,
+				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
 			},
 			.get_handshake_state = _get_handshake_state,
@@ -476,12 +509,5 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 		.pts = pts_create(FALSE),
 	);
 
-	platform_info = lib->settings->get_str(lib->settings,
-						 "libimcv.plugins.imv-attestation.platform_info", NULL);
-	if (platform_info)
-	{
-		this->pts->set_platform_info(this->pts, platform_info);
-	}
-	
 	return &this->public.interface;
 }

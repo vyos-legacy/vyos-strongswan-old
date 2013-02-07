@@ -17,8 +17,8 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 
 typedef struct private_ietf_attr_port_filter_t private_ietf_attr_port_filter_t;
@@ -36,8 +36,8 @@ struct port_entry_t {
 /**
  * PA-TNC Port Filter Type  (see section 4.2.6 of RFC 5792)
  *
- *                        1                   2                   3
- *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *                       1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |   Reserved  |B|    Protocol   |         Port Number           |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -152,7 +152,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 
 	while (reader->remaining(reader))
 	{
-		entry = malloc_thing(port_entry_t);	
+		entry = malloc_thing(port_entry_t);
 		reader->read_uint8 (reader, &blocked);
 		entry->blocked = blocked & 0x01;
 		reader->read_uint8 (reader, &entry->protocol);
@@ -161,7 +161,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	}
 	reader->destroy(reader);
 
-	return SUCCESS;	
+	return SUCCESS;
 }
 
 METHOD(pa_tnc_attr_t, get_ref, pa_tnc_attr_t*,
@@ -192,7 +192,7 @@ METHOD(ietf_attr_port_filter_t, add_port, void,
 	entry->blocked = blocked;
 	entry->protocol = protocol;
 	entry->port = port;
-	this->ports->insert_last(this->ports, entry);	
+	this->ports->insert_last(this->ports, entry);
 }
 
 /**
@@ -257,6 +257,8 @@ pa_tnc_attr_t *ietf_attr_port_filter_create_from_data(chunk_t data)
 			.pa_tnc_attribute = {
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,

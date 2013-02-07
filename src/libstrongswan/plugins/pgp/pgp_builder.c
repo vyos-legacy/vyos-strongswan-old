@@ -17,8 +17,8 @@
 #include "pgp_builder.h"
 #include "pgp_utils.h"
 
-#include <enum.h>
-#include <debug.h>
+#include <utils/enum.h>
+#include <utils/debug.h>
 #include <credentials/keys/private_key.h>
 
 /**

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "hooks/hook.h"
 
+#include <bus/listeners/file_logger.h>
 #include <threading/thread.h>
 #include <credentials/certificates/x509.h>
 
@@ -322,6 +323,7 @@ static bool load_hooks()
  */
 static void cleanup()
 {
+	file_logger_t *logger;
 	hook_t *hook;
 
 	DESTROY_IF(conftest->test);
@@ -344,6 +346,13 @@ static void cleanup()
 		}
 		conftest->config->destroy(conftest->config);
 	}
+	while (conftest->loggers->remove_last(conftest->loggers,
+										  (void**)&logger) == SUCCESS)
+	{
+		charon->bus->remove_logger(charon->bus, &logger->logger);
+		logger->destroy(logger);
+	}
+	conftest->loggers->destroy(conftest->loggers);
 	free(conftest->suite_dir);
 	free(conftest);
 	libcharon_deinit();
@@ -369,32 +378,46 @@ static void load_log_levels(file_logger_t *logger, char *section)
 }
 
 /**
+ * Load logger options for a logger from section
+ */
+static void load_logger_options(file_logger_t *logger, char *section)
+{
+	bool ike_name;
+	char *time_format;
+
+	time_format = conftest->test->get_str(conftest->test,
+					"log.%s.time_format", NULL, section);
+	ike_name = conftest->test->get_bool(conftest->test,
+					"log.%s.ike_name", FALSE, section);
+
+	logger->set_options(logger, time_format, ike_name);
+}
+
+/**
  * Load logger configuration
  */
 static void load_loggers(file_logger_t *logger)
 {
 	enumerator_t *enumerator;
 	char *section;
-	FILE *file;
 
 	load_log_levels(logger, "stdout");
+	load_logger_options(logger, "stdout");
+	/* Re-add the logger to propagate configuration changes to the
+	 * logging system */
+	charon->bus->add_logger(charon->bus, &logger->logger);
 
 	enumerator = conftest->test->create_section_enumerator(conftest->test, "log");
 	while (enumerator->enumerate(enumerator, &section))
 	{
 		if (!streq(section, "stdout"))
 		{
-			file = fopen(section, "w");
-			if (file == NULL)
-			{
-				fprintf(stderr, "opening file %s for logging failed: %s",
-						section, strerror(errno));
-				continue;
-			}
-			logger = file_logger_create(file, NULL, FALSE);
+			logger = file_logger_create(section);
+			load_logger_options(logger, section);
+			logger->open(logger, FALSE, FALSE);
 			load_log_levels(logger, section);
 			charon->bus->add_logger(charon->bus, &logger->logger);
-			charon->file_loggers->insert_last(charon->file_loggers, logger);
+			conftest->loggers->insert_last(conftest->loggers, logger);
 		}
 	}
 	enumerator->destroy(enumerator);
@@ -433,16 +456,18 @@ int main(int argc, char *argv[])
 
 	INIT(conftest,
 		.creds = mem_cred_create(),
+		.config = config_create(),
+		.hooks = linked_list_create(),
+		.loggers = linked_list_create(),
 	);
+	lib->credmgr->add_set(lib->credmgr, &conftest->creds->set);
 
-	logger = file_logger_create(stdout, NULL, FALSE);
+	logger = file_logger_create("stdout");
+	logger->set_options(logger, NULL, FALSE);
+	logger->open(logger, FALSE, FALSE);
 	logger->set_level(logger, DBG_ANY, LEVEL_CTRL);
 	charon->bus->add_logger(charon->bus, &logger->logger);
-	charon->file_loggers->insert_last(charon->file_loggers, logger);
-
-	lib->credmgr->add_set(lib->credmgr, &conftest->creds->set);
-	conftest->hooks = linked_list_create();
-	conftest->config = config_create();
+	conftest->loggers->insert_last(conftest->loggers, logger);
 
 	atexit(cleanup);
 

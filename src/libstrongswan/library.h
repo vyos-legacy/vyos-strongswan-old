@@ -22,6 +22,9 @@
  * @defgroup bio bio
  * @ingroup libstrongswan
  *
+ * @defgroup collections collections
+ * @ingroup libstrongswan
+ *
  * @defgroup credentials credentials
  * @ingroup libstrongswan
  *
@@ -29,6 +32,9 @@
  * @ingroup credentials
  *
  * @defgroup certificates certificates
+ * @ingroup credentials
+ *
+ * @defgroup containers containers
  * @ingroup credentials
  *
  * @defgroup sets sets
@@ -44,6 +50,9 @@
  * @ingroup libstrongswan
  *
  * @defgroup ipsec ipsec
+ * @ingroup libstrongswan
+ *
+ * @defgroup networking networking
  * @ingroup libstrongswan
  *
  * @defgroup plugins plugins
@@ -74,11 +83,10 @@
 # error config.h not included, pass "-include [...]/config.h" to gcc
 #endif
 
-#include "printf_hook.h"
-#include "utils.h"
-#include "chunk.h"
-#include "settings.h"
-#include "integrity_checker.h"
+/* make sure we include printf_hook.h and utils.h first */
+#include "utils/printf_hook.h"
+#include "utils/utils.h"
+#include "networking/host_resolver.h"
 #include "processing/processor.h"
 #include "processing/scheduler.h"
 #include "crypto/crypto_factory.h"
@@ -88,7 +96,10 @@
 #include "credentials/credential_factory.h"
 #include "credentials/credential_manager.h"
 #include "credentials/cred_encoding.h"
+#include "utils/chunk.h"
+#include "utils/integrity_checker.h"
 #include "utils/leak_detective.h"
+#include "utils/settings.h"
 #include "plugins/plugin_loader.h"
 
 typedef struct library_t library_t;
@@ -171,6 +182,11 @@ struct library_t {
 	scheduler_t *scheduler;
 
 	/**
+	 * resolve hosts by DNS name
+	 */
+	host_resolver_t *hosts;
+
+	/**
 	 * various settings loaded from settings file
 	 */
 	settings_t *settings;
@@ -188,6 +204,9 @@ struct library_t {
 
 /**
  * Initialize library, creates "lib" instance.
+ *
+ * library_init() may be called multiple times in a single process, but each
+ * caller should call library_deinit() for each call to library_init().
  *
  * @param settings		file to read settings from, may be NULL for default
  * @return				FALSE if integrity check failed

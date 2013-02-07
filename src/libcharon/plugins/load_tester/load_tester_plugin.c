@@ -18,6 +18,7 @@
 #include "load_tester_creds.h"
 #include "load_tester_ipsec.h"
 #include "load_tester_listener.h"
+#include "load_tester_control.h"
 #include "load_tester_diffie_hellman.h"
 
 #include <unistd.h>
@@ -49,6 +50,11 @@ struct private_load_tester_plugin_t {
 	 * load_tester credential set implementation
 	 */
 	load_tester_creds_t *creds;
+
+	/**
+	 * Unix control socket to initiate load-tests
+	 */
+	load_tester_control_t *control;
 
 	/**
 	 * event handler, listens on bus
@@ -181,6 +187,7 @@ static bool register_load_tester(private_load_tester_plugin_t *this,
 
 		this->config = load_tester_config_create();
 		this->creds = load_tester_creds_create();
+		this->control = load_tester_control_create();
 
 		charon->backends->add_backend(charon->backends, &this->config->backend);
 		lib->credmgr->add_set(lib->credmgr, &this->creds->credential_set);
@@ -190,7 +197,7 @@ static bool register_load_tester(private_load_tester_plugin_t *this,
 		{
 			shutdown_on = this->iterations * this->initiators;
 		}
-		this->listener = load_tester_listener_create(shutdown_on);
+		this->listener = load_tester_listener_create(shutdown_on, this->config);
 		charon->bus->add_listener(charon->bus, &this->listener->listener);
 
 		for (i = 0; i < this->initiators; i++)
@@ -215,6 +222,7 @@ static bool register_load_tester(private_load_tester_plugin_t *this,
 		this->config->destroy(this->config);
 		this->creds->destroy(this->creds);
 		this->listener->destroy(this->listener);
+		this->control->destroy(this->control);
 	}
 	return TRUE;
 }
@@ -228,6 +236,7 @@ METHOD(plugin_t, get_features, int,
 				PLUGIN_DEPENDS(CUSTOM, "load-tester"),
 		PLUGIN_CALLBACK((plugin_feature_callback_t)register_load_tester, NULL),
 			PLUGIN_PROVIDE(CUSTOM, "load-tester"),
+				PLUGIN_DEPENDS(CUSTOM, "kernel-net"),
 				PLUGIN_SDEPEND(PRIVKEY, KEY_RSA),
 				PLUGIN_SDEPEND(CERT_DECODE, CERT_ANY),
 				PLUGIN_SDEPEND(CERT_DECODE, CERT_X509),

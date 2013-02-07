@@ -21,9 +21,9 @@
 #ifndef ATTRIBUTE_PROVIDER_H_
 #define ATTRIBUTE_PROVIDER_H_
 
-#include <utils/host.h>
+#include <networking/host.h>
 #include <utils/identification.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 typedef struct attribute_provider_t attribute_provider_t;
 

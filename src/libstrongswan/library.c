@@ -18,11 +18,11 @@
 
 #include <stdlib.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/thread.h>
 #include <utils/identification.h>
-#include <utils/host.h>
-#include <utils/hashtable.h>
+#include <networking/host.h>
+#include <collections/hashtable.h>
 #include <utils/backtrace.h>
 #include <selectors/traffic_selector.h>
 
@@ -44,12 +44,22 @@ struct private_library_t {
 	 * Hashtable with registered objects (name => object)
 	 */
 	hashtable_t *objects;
+
+	/**
+	 * Integrity check failed?
+	 */
+	bool integrity_failed;
+
+	/**
+	 * Number of times we have been initialized
+	 */
+	refcount_t ref;
 };
 
 /**
  * library instance
  */
-library_t *lib;
+library_t *lib = NULL;
 
 /**
  * Deinitialize library
@@ -58,6 +68,11 @@ void library_deinit()
 {
 	private_library_t *this = (private_library_t*)lib;
 	bool detailed;
+
+	if (!this || !ref_put(&this->ref))
+	{	/* have more users */
+		return;
+	}
 
 	detailed = lib->settings->get_bool(lib->settings,
 								"libstrongswan.leak_detective.detailed", TRUE);
@@ -68,6 +83,7 @@ void library_deinit()
 	this->public.scheduler->destroy(this->public.scheduler);
 	this->public.processor->destroy(this->public.processor);
 	this->public.plugins->destroy(this->public.plugins);
+	this->public.hosts->destroy(this->public.hosts);
 	this->public.settings->destroy(this->public.settings);
 	this->public.credmgr->destroy(this->public.credmgr);
 	this->public.creds->destroy(this->public.creds);
@@ -141,11 +157,19 @@ bool library_init(char *settings)
 	private_library_t *this;
 	printf_hook_t *pfh;
 
+	if (lib)
+	{	/* already initialized, increase refcount */
+		this = (private_library_t*)lib;
+		ref_get(&this->ref);
+		return !this->integrity_failed;
+	}
+
 	INIT(this,
 		.public = {
 			.get = _get,
 			.set = _set,
 		},
+		.ref = 1,
 	);
 	lib = &this->public;
 
@@ -183,6 +207,7 @@ bool library_init(char *settings)
 	this->objects = hashtable_create((hashtable_hash_t)hash,
 									 (hashtable_equals_t)equals, 4);
 	this->public.settings = settings_create(settings);
+	this->public.hosts = host_resolver_create();
 	this->public.proposal = proposal_keywords_create();
 	this->public.crypto = crypto_factory_create();
 	this->public.creds = credential_factory_create();
@@ -202,14 +227,14 @@ bool library_init(char *settings)
 		if (!lib->integrity->check(lib->integrity, "libstrongswan", library_init))
 		{
 			DBG1(DBG_LIB, "integrity check of libstrongswan failed");
-			return FALSE;
+			this->integrity_failed = TRUE;
 		}
 #else /* !INTEGRITY_TEST */
 		DBG1(DBG_LIB, "integrity test enabled, but not supported");
-		return FALSE;
+		this->integrity_failed = TRUE;
 #endif /* INTEGRITY_TEST */
 	}
 
-	return TRUE;
+	return !this->integrity_failed;
 }
 

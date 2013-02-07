@@ -48,7 +48,7 @@
 
 typedef struct kernel_interface_t kernel_interface_t;
 
-#include <utils/host.h>
+#include <networking/host.h>
 #include <crypto/prf_plus.h>
 
 #include <kernel/kernel_listener.h>
@@ -333,14 +333,14 @@ struct kernel_interface_t {
 	 * Virtual IPs are attached to an interface. If an IP is added multiple
 	 * times, the IP is refcounted and not removed until del_ip() was called
 	 * as many times as add_ip().
-	 * The virtual IP is attached to the interface where the iface_ip is found.
 	 *
 	 * @param virtual_ip	virtual ip address to assign
-	 * @param iface_ip		IP of an interface to attach virtual IP
+	 * @param prefix		prefix length to install IP with, -1 for auto
+	 * @param iface			interface to install virtual IP on
 	 * @return				SUCCESS if operation completed
 	 */
-	status_t (*add_ip) (kernel_interface_t *this, host_t *virtual_ip,
-						host_t *iface_ip);
+	status_t (*add_ip) (kernel_interface_t *this, host_t *virtual_ip, int prefix,
+						char *iface);
 
 	/**
 	 * Remove a virtual IP from an interface.
@@ -348,9 +348,12 @@ struct kernel_interface_t {
 	 * The kernel interface uses refcounting, see add_ip().
 	 *
 	 * @param virtual_ip	virtual ip address to assign
+	 * @param prefix		prefix length of the IP to uninstall, -1 for auto
+	 * @param wait			TRUE to wait untily IP is gone
 	 * @return				SUCCESS if operation completed
 	 */
-	status_t (*del_ip) (kernel_interface_t *this, host_t *virtual_ip);
+	status_t (*del_ip) (kernel_interface_t *this, host_t *virtual_ip,
+						int prefix, bool wait);
 
 	/**
 	 * Add a route.

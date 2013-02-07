@@ -28,10 +28,11 @@ typedef enum cert_encoding_t cert_encoding_t;
 
 #include <library.h>
 #include <credentials/certificates/certificate.h>
+#include <credentials/containers/container.h>
 #include <encoding/payloads/payload.h>
 
 /**
- * Certifcate encodings, as in RFC4306
+ * Certificate encodings, as in RFC4306
  */
 enum cert_encoding_t {
 	ENC_PKCS7_WRAPPED_X509 =		 1,
@@ -65,11 +66,18 @@ struct cert_payload_t {
 	payload_t payload_interface;
 
 	/**
-	 * Get the playoads encoded certifcate.
+	 * Get the payloads encoded certificate.
 	 *
-	 * @return				certifcate copy
+	 * @return				certificate copy
 	 */
 	certificate_t *(*get_cert)(cert_payload_t *this);
+
+	/**
+	 * Get the payloads certificate container.
+	 *
+	 * @return				container copy
+	 */
+	container_t *(*get_container)(cert_payload_t *this);
 
 	/**
 	 * Get the encoding of the certificate.

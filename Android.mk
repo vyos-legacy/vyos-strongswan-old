@@ -22,7 +22,7 @@ strongswan_CHARON_PLUGINS := android-log openssl fips-prf random nonce pubkey \
 
 ifneq ($(strongswan_BUILD_SCEPCLIENT),)
 # plugins loaded by scepclient
-strongswan_SCEPCLIENT_PLUGINS := openssl curl fips-prf random pkcs1 pem
+strongswan_SCEPCLIENT_PLUGINS := openssl curl fips-prf random pkcs1 pkcs7 pem
 endif
 
 strongswan_STARTER_PLUGINS := kernel-netlink
@@ -67,6 +67,7 @@ strongswan_CFLAGS := \
 	-DHAVE_STRUCT_SADB_X_POLICY_SADB_X_POLICY_PRIORITY \
 	-DHAVE_IPSEC_MODE_BEET \
 	-DHAVE_IPSEC_DIR_FWD \
+	-DOPENSSL_NO_CMS \
 	-DOPENSSL_NO_EC \
 	-DOPENSSL_NO_ECDSA \
 	-DOPENSSL_NO_ECDH \

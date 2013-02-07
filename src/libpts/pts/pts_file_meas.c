@@ -15,8 +15,8 @@
 
 #include "pts_file_meas.h"
 
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 #include <sys/stat.h>
 #include <libgen.h>
@@ -179,7 +179,7 @@ METHOD(pts_file_meas_t, verify, bool,
 			}
 		}
 		enumerator->destroy(enumerator);
-		
+
 		if (!found)
 		{
 			DBG1(DBG_PTS, "  no measurement found for '%s'", filename);
@@ -200,7 +200,7 @@ METHOD(pts_file_meas_t, verify, bool,
 			break;
 		}
 	}
-	return success;	
+	return success;
 }
 
 METHOD(pts_file_meas_t, destroy, void,

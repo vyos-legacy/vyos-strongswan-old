@@ -20,9 +20,10 @@
 
 #include <tncif_pa_subtypes.h>
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <daemon.h>
 #include <library.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <threading/mutex.h>
 
 typedef struct private_tnc_imv_t private_tnc_imv_t;
@@ -36,11 +37,6 @@ struct private_tnc_imv_t {
 	 * Public members of imv_t.
 	 */
 	imv_t public;
-
-	/**
-	 * Path of loaded IMV
-	 */
-	char *path;
 
 	/**
 	 * Name of loaded IMV
@@ -287,10 +283,10 @@ METHOD(imv_t, type_supported, bool,
 
 	for (i = 0; i < this->type_count; i++)
 	{
-	    vid = this->supported_vids[i];
-	    subtype = this->supported_subtypes[i];
+		vid = this->supported_vids[i];
+		subtype = this->supported_subtypes[i];
 
-	    if ((vid == TNC_VENDORID_ANY && subtype == TNC_SUBTYPE_ANY) ||
+		if ((vid == TNC_VENDORID_ANY && subtype == TNC_SUBTYPE_ANY) ||
 			(vid == msg_vid && (subtype == TNC_SUBTYPE_ANY ||
 			 subtype == msg_subtype)))
 		{
@@ -303,20 +299,23 @@ METHOD(imv_t, type_supported, bool,
 METHOD(imv_t, destroy, void,
 	private_tnc_imv_t *this)
 {
-	dlclose(this->handle);
+	if (this->handle && lib->settings->get_bool(lib->settings,
+		"%s.plugins.tnc-imv.dlclose", TRUE, charon->name))
+	{
+		dlclose(this->handle);
+	}
 	this->mutex->destroy(this->mutex);
 	this->additional_ids->destroy_function(this->additional_ids, free);
 	free(this->supported_vids);
 	free(this->supported_subtypes);
 	free(this->name);
-	free(this->path);
 	free(this);
 }
 
 /**
- * Described in header.
+ * Generic constructor.
  */
-imv_t* tnc_imv_create(char *name, char *path)
+static private_tnc_imv_t* tnc_imv_create_empty(char *name)
 {
 	private_tnc_imv_t *this;
 
@@ -332,17 +331,28 @@ imv_t* tnc_imv_create(char *name, char *path)
 			.type_supported = _type_supported,
 			.destroy = _destroy,
 		},
-		.name = name,
-		.path = path,
+		.name = strdup(name),
 		.additional_ids = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 	);
+
+	return this;
+}
+
+/**
+ * Described in header.
+ */
+imv_t* tnc_imv_create(char *name, char *path)
+{
+	private_tnc_imv_t *this;
+
+	this = tnc_imv_create_empty(name);
 
 	this->handle = dlopen(path, RTLD_LAZY);
 	if (!this->handle)
 	{
 		DBG1(DBG_TNC, "IMV \"%s\" failed to load: %s", name, dlerror());
-		free(this);
+		destroy(this);
 		return NULL;
 	}
 
@@ -351,8 +361,7 @@ imv_t* tnc_imv_create(char *name, char *path)
 	{
 		DBG1(DBG_TNC, "could not resolve TNC_IMV_Initialize in %s: %s\n",
 					   path, dlerror());
-		dlclose(this->handle);
-		free(this);
+		destroy(this);
 		return NULL;
 	}
 	this->public.notify_connection_change =
@@ -363,8 +372,7 @@ imv_t* tnc_imv_create(char *name, char *path)
 	{
 		DBG1(DBG_TNC, "could not resolve TNC_IMV_SolicitRecommendation in %s: %s\n",
 					   path, dlerror());
-		dlclose(this->handle);
-		free(this);
+		destroy(this);
 		return NULL;
 	}
 	this->public.receive_message =
@@ -381,10 +389,38 @@ imv_t* tnc_imv_create(char *name, char *path)
 	{
 		DBG1(DBG_TNC, "could not resolve TNC_IMV_ProvideBindFunction in %s: %s\n",
 					  path, dlerror());
-		dlclose(this->handle);
-		free(this);
+		destroy(this);
 		return NULL;
 	}
+
+	return &this->public;
+}
+
+/**
+ * Described in header.
+ */
+imv_t* tnc_imv_create_from_functions(char *name,
+				TNC_IMV_InitializePointer initialize,
+				TNC_IMV_NotifyConnectionChangePointer notify_connection_change,
+				TNC_IMV_ReceiveMessagePointer receive_message,
+				TNC_IMV_ReceiveMessageLongPointer receive_message_long,
+				TNC_IMV_SolicitRecommendationPointer solicit_recommendation,
+				TNC_IMV_BatchEndingPointer batch_ending,
+				TNC_IMV_TerminatePointer terminate,
+				TNC_IMV_ProvideBindFunctionPointer provide_bind_function)
+{
+	private_tnc_imv_t *this;
+
+	this = tnc_imv_create_empty(name);
+
+	this->public.initialize = initialize;
+	this->public.notify_connection_change = notify_connection_change;
+	this->public.receive_message = receive_message;
+	this->public.receive_message_long = receive_message_long;
+	this->public.solicit_recommendation = solicit_recommendation;
+	this->public.batch_ending = batch_ending;
+	this->public.terminate = terminate;
+	this->public.provide_bind_function = provide_bind_function;
 
 	return &this->public;
 }

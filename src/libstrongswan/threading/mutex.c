@@ -21,7 +21,7 @@
 #include <errno.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "condvar.h"
 #include "mutex.h"
@@ -282,13 +282,7 @@ METHOD(condvar_t, timed_wait, bool,
 	ms = timeout % 1000;
 
 	tv.tv_sec += s;
-	tv.tv_usec += ms * 1000;
-
-	if (tv.tv_usec > 1000000 /* 1s */)
-	{
-		tv.tv_usec -= 1000000;
-		tv.tv_sec++;
-	}
+	timeval_add_ms(&tv, ms);
 	return timed_wait_abs(this, mutex, tv);
 }
 

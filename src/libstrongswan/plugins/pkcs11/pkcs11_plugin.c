@@ -19,8 +19,8 @@
 #include "pkcs11_plugin.h"
 
 #include <library.h>
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
 
@@ -82,13 +82,18 @@ static void token_event_cb(private_pkcs11_plugin_t *this, pkcs11_library_t *p11,
 	this->handle_events_lock->read_lock(this->handle_events_lock);
 	if (add && this->handle_events)
 	{
-		creds = pkcs11_creds_create(p11, slot);
-		if (creds)
+		if (lib->settings->get_bool(lib->settings,
+						"libstrongswan.plugins.pkcs11.modules.%s.load_certs",
+						TRUE, p11->get_name(p11)))
 		{
-			this->mutex->lock(this->mutex);
-			this->creds->insert_last(this->creds, creds);
-			this->mutex->unlock(this->mutex);
-			lib->credmgr->add_set(lib->credmgr, &creds->set);
+			creds = pkcs11_creds_create(p11, slot);
+			if (creds)
+			{
+				this->mutex->lock(this->mutex);
+				this->creds->insert_last(this->creds, creds);
+				this->mutex->unlock(this->mutex);
+				lib->credmgr->add_set(lib->credmgr, &creds->set);
+			}
 		}
 	}
 	else if (this->handle_events)
@@ -147,6 +152,9 @@ static bool handle_certs(private_pkcs11_plugin_t *this,
 			token_event_cb(this, p11, slot, TRUE);
 		}
 		enumerator->destroy(enumerator);
+
+		lib->creds->add_builder(lib->creds, CRED_CERTIFICATE,
+								CERT_X509, FALSE, (void*)pkcs11_creds_load);
 	}
 	else
 	{
@@ -157,9 +165,26 @@ static bool handle_certs(private_pkcs11_plugin_t *this,
 			lib->credmgr->remove_set(lib->credmgr, &creds->set);
 			creds->destroy(creds);
 		}
+
+		lib->creds->remove_builder(lib->creds, (void*)pkcs11_creds_load);
 	}
 	return TRUE;
 }
+
+METHOD(plugin_t, reload, bool,
+	private_pkcs11_plugin_t *this)
+{
+	if (lib->settings->get_bool(lib->settings,
+					"libstrongswan.plugins.pkcs11.reload_certs", FALSE))
+	{
+		DBG1(DBG_CFG, "reloading certificates from PKCS#11 tokens");
+		handle_certs(this, NULL, FALSE, NULL);
+		handle_certs(this, NULL, TRUE, NULL);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 /**
  * Add a set of features
  */
@@ -292,6 +317,7 @@ plugin_t *pkcs11_plugin_create()
 			.plugin = {
 				.get_name = _get_name,
 				.get_features = _get_features,
+				.reload = _reload,
 				.destroy = _destroy,
 			},
 		},

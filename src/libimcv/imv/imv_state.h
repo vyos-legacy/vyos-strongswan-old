@@ -109,13 +109,28 @@ struct imv_state_t {
 	/**
 	 * Get reason string based on the preferred language
 	 *
-	 * @param preferred_language	preferred language
+	 * @param language_enumerator	language enumerator
 	 * @param reason_string			reason string
-	 * @param language code			language of the returned reason string
+	 * @param reason_language		language of the returned reason string
 	 * @return						TRUE if a reason string was found
 	 */
-	bool (*get_reason_string)(imv_state_t *this, chunk_t preferred_language,
-							  chunk_t *reason_string, chunk_t *language_code);
+	bool (*get_reason_string)(imv_state_t *this,
+							  enumerator_t *language_enumerator,
+							  chunk_t *reason_string, char **reason_language);
+
+	/**
+	 * Get remediation instructions based on the preferred language
+	 *
+	 * @param language_enumerator	language enumerator
+	 * @param string				remediation instruction string
+	 * @param lang_code				language of the remediation instructions
+	 * @param uri					remediation URI
+	 * @return						TRUE if remediation instructions were found
+	 */
+	bool (*get_remediation_instructions)(imv_state_t *this,
+										 enumerator_t *language_enumerator,
+										 chunk_t *string, char **lang_code,
+										 char **uri);
 
 	/**
 	 * Destroys an imv_state_t object

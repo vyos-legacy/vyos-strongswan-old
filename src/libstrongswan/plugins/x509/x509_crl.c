@@ -20,14 +20,14 @@ typedef struct revoked_t revoked_t;
 
 #include <time.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <library.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/keys/private_key.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /**
  * entry for a revoked certificate

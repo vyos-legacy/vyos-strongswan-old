@@ -27,7 +27,7 @@
 #include <credentials/auth_cfg.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <stroke_msg.h>
 
@@ -180,6 +180,7 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	}
 	msg.add_conn.mobike = conn->options & SA_OPTION_MOBIKE;
 	msg.add_conn.force_encap = conn->options & SA_OPTION_FORCE_ENCAP;
+	msg.add_conn.fragmentation = conn->fragmentation;
 	msg.add_conn.ipcomp = conn->options & SA_OPTION_COMPRESS;
 	msg.add_conn.install_policy = conn->install_policy;
 	msg.add_conn.aggressive = conn->aggressive;
@@ -265,6 +266,16 @@ int starter_stroke_route_conn(starter_conn_t *conn)
 	stroke_msg_t msg;
 
 	msg.type = STR_ROUTE;
+	msg.length = offsetof(stroke_msg_t, buffer);
+	msg.route.name = push_string(&msg, connection_name(conn));
+	return send_stroke_msg(&msg);
+}
+
+int starter_stroke_unroute_conn(starter_conn_t *conn)
+{
+	stroke_msg_t msg;
+
+	msg.type = STR_UNROUTE;
 	msg.length = offsetof(stroke_msg_t, buffer);
 	msg.route.name = push_string(&msg, connection_name(conn));
 	return send_stroke_msg(&msg);

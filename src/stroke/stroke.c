@@ -144,6 +144,7 @@ static int add_connection(char *name,
 	msg.add_conn.mode = 1;
 	msg.add_conn.mobike = 1;
 	msg.add_conn.dpd.action = 1;
+	msg.add_conn.install_policy = 1;
 
 	msg.add_conn.me.id = push_string(&msg, my_id);
 	msg.add_conn.me.address = push_string(&msg, my_addr);
@@ -265,6 +266,7 @@ static int list_flags[] = {
 	LIST_OCSP,
 	LIST_ALGS,
 	LIST_PLUGINS,
+	LIST_COUNTERS,
 	LIST_ALL
 };
 
@@ -363,7 +365,6 @@ static int user_credentials(char *name, char *user, char *pass)
 	return send_stroke_msg(&msg);
 }
 
-
 static int set_loglevel(char *type, u_int level)
 {
 	stroke_msg_t msg;
@@ -389,7 +390,7 @@ static void exit_usage(char *error)
 	printf("Usage:\n");
 	printf("  Add a connection:\n");
 	printf("    stroke add NAME MY_ID OTHER_ID MY_ADDR OTHER_ADDR\\\n");
-	printf("           MY_NET OTHER_NET MY_NETBITS OTHER_NETBITS\n");
+	printf("           MY_NET OTHER_NET\n");
 	printf("    where: ID is any IKEv2 ID \n");
 	printf("           ADDR is a IPv4 address\n");
 	printf("           NET is a IPv4 subnet in CIDR notation\n");
@@ -418,7 +419,7 @@ static void exit_usage(char *error)
 	printf("  Show list of authority and attribute certificates:\n");
 	printf("    stroke listcacerts|listocspcerts|listaacerts|listacerts\n");
 	printf("  Show list of end entity certificates, ca info records  and crls:\n");
-	printf("    stroke listcerts|listcainfos|listcrls|listall\n");
+	printf("    stroke listcerts|listcainfos|listcrls|listcounters|listall\n");
 	printf("  Show list of supported algorithms:\n");
 	printf("    stroke listalgs\n");
 	printf("  Reload authority and attribute certificates:\n");
@@ -470,7 +471,7 @@ int main(int argc, char *argv[])
 	switch (token->kw)
 	{
 		case STROKE_ADD:
-			if (argc < 11)
+			if (argc < 9)
 			{
 				exit_usage("\"add\" needs more parameters...");
 			}
@@ -552,6 +553,7 @@ int main(int argc, char *argv[])
 		case STROKE_LIST_OCSP:
 		case STROKE_LIST_ALGS:
 		case STROKE_LIST_PLUGINS:
+		case STROKE_LIST_COUNTERS:
 		case STROKE_LIST_ALL:
 			res = list(token->kw, argc > 2 && strcmp(argv[2], "--utc") == 0);
 			break;

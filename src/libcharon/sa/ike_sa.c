@@ -26,7 +26,7 @@
 #include <library.h>
 #include <hydra.h>
 #include <daemon.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/lexparser.h>
 #include <processing/jobs/retransmit_job.h>
 #include <processing/jobs/delete_ike_sa_job.h>
@@ -741,15 +741,26 @@ METHOD(ike_sa_t, add_virtual_ip, void,
 {
 	if (local)
 	{
-		DBG1(DBG_IKE, "installing new virtual IP %H", ip);
-		if (hydra->kernel_interface->add_ip(hydra->kernel_interface, ip,
-											this->my_host) == SUCCESS)
+		char *iface;
+
+		if (hydra->kernel_interface->get_interface(hydra->kernel_interface,
+												   this->my_host, &iface))
 		{
-			this->my_vips->insert_last(this->my_vips, ip->clone(ip));
+			DBG1(DBG_IKE, "installing new virtual IP %H", ip);
+			if (hydra->kernel_interface->add_ip(hydra->kernel_interface,
+												ip, -1, iface) == SUCCESS)
+			{
+				this->my_vips->insert_last(this->my_vips, ip->clone(ip));
+			}
+			else
+			{
+				DBG1(DBG_IKE, "installing virtual IP %H failed", ip);
+			}
+			free(iface);
 		}
 		else
 		{
-			DBG1(DBG_IKE, "installing virtual IP %H failed", ip);
+			DBG1(DBG_IKE, "looking up interface for virtual IP %H failed", ip);
 		}
 	}
 	else
@@ -769,7 +780,8 @@ METHOD(ike_sa_t, clear_virtual_ips, void,
 	{
 		if (local)
 		{
-			hydra->kernel_interface->del_ip(hydra->kernel_interface, vip);
+			hydra->kernel_interface->del_ip(hydra->kernel_interface,
+											vip, -1, TRUE);
 		}
 		vip->destroy(vip);
 	}
@@ -1220,7 +1232,8 @@ METHOD(ike_sa_t, process_message, status_t,
 		case IKE_SA_INIT:
 		case IKE_AUTH:
 			if (this->state != IKE_CREATED &&
-				this->state != IKE_CONNECTING)
+				this->state != IKE_CONNECTING &&
+				message->get_first_payload_type(message) != FRAGMENT_V1)
 			{
 				DBG1(DBG_IKE, "ignoring %N in established IKE_SA state",
 					 exchange_type_names, message->get_exchange_type(message));
@@ -1690,6 +1703,8 @@ METHOD(ike_sa_t, retransmit, status_t,
 			{
 				/* retry IKE_SA_INIT/Main Mode if we have multiple keyingtries */
 				u_int32_t tries = this->peer_cfg->get_keyingtries(this->peer_cfg);
+				charon->bus->alert(charon->bus, ALERT_PEER_INIT_UNREACHABLE,
+								   this->keyingtry);
 				this->keyingtry++;
 				if (tries == 0 || tries > this->keyingtry)
 				{
@@ -1965,14 +1980,14 @@ METHOD(ike_sa_t, inherit, void,
 	this->other_id = other->other_id->clone(other->other_id);
 
 	/* apply assigned virtual IPs... */
-	while (this->my_vips->remove_last(this->my_vips, (void**)&vip) == SUCCESS)
+	while (other->my_vips->remove_last(other->my_vips, (void**)&vip) == SUCCESS)
 	{
-		other->my_vips->insert_first(other->my_vips, vip);
+		this->my_vips->insert_first(this->my_vips, vip);
 	}
-	while (this->other_vips->remove_last(this->other_vips,
-										 (void**)&vip) == SUCCESS)
+	while (other->other_vips->remove_last(other->other_vips,
+										  (void**)&vip) == SUCCESS)
 	{
-		other->other_vips->insert_first(other->other_vips, vip);
+		this->other_vips->insert_first(this->other_vips, vip);
 	}
 
 	/* authentication information */
@@ -2074,7 +2089,7 @@ METHOD(ike_sa_t, destroy, void,
 
 	while (this->my_vips->remove_last(this->my_vips, (void**)&vip) == SUCCESS)
 	{
-		hydra->kernel_interface->del_ip(hydra->kernel_interface, vip);
+		hydra->kernel_interface->del_ip(hydra->kernel_interface, vip, -1, TRUE);
 		vip->destroy(vip);
 	}
 	this->my_vips->destroy(this->my_vips);

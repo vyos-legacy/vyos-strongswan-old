@@ -22,9 +22,9 @@
 
 #include "traffic_selector.h"
 
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #define NON_SUBNET_ADDRESS_RANGE	255
 
@@ -813,6 +813,23 @@ traffic_selector_t *traffic_selector_create_from_string(
 	}
 	calc_netbits(this);
 	return (&this->public);
+}
+
+/*
+ * see header
+ */
+traffic_selector_t *traffic_selector_create_from_cidr(char *string,
+									u_int8_t protocol, u_int16_t port)
+{
+	host_t *net;
+	int bits;
+
+	net = host_create_from_subnet(string, &bits);
+	if (net)
+	{
+		return traffic_selector_create_from_subnet(net, bits, protocol, port);
+	}
+	return NULL;
 }
 
 /*

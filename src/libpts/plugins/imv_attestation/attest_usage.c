@@ -24,16 +24,19 @@ void usage(void)
 {
 	printf("\
 Usage:\n\
-  ipsec attest --files|--products|--keys|--hashes [options]\n\
+  ipsec attest --components|--devices|--files|--hashes|--keys [options]\n\
   \n\
-  ipsec attest --components|-keys|--measurements|--add|--del [options]\n\
+  ipsec attest --measurements|--packages|--products|--add|--del [options]\n\
+  \n\
+  ipsec attest --components [--key <digest>|--kid <id>]\n\
+    Show a list of components with an AIK digest or\n\
+    its primary key as an optional selector.\n\
+  \n\
+  ipsec attest --devices [--utc]\n\
+    Show a list of registered devices and associated collected information\n\
   \n\
   ipsec attest --files [--product <name>|--pid <id>]\n\
     Show a list of files with a software product name or\n\
-    its primary key as an optional selector.\n\
-  \n\
-  ipsec attest --products [--file <path>|--fid <id>]\n\
-    Show a list of supported software products with a file path or\n\
     its primary key as an optional selector.\n\
   \n\
   ipsec attest --hashes [--sha1|--sha256|--sha384] [--product <name>|--pid <id>]\n\
@@ -42,10 +45,6 @@ Usage:\n\
   \n\
   ipsec attest --hashes [--sha1|--sha1-ima|--sha256|--sha384] [--file <path>|--fid <id>]\n\
     Show a list of measurement hashes for a given file or\n\
-    its primary key as an optional selector.\n\
-  \n\
-  ipsec attest --components [--key <digest>|--kid <id>]\n\
-    Show a list of components with an AIK digest or\n\
     its primary key as an optional selector.\n\
   \n\
   ipsec attest --keys [--components <cfn>|--cid <id>]\n\
@@ -58,6 +57,14 @@ Usage:\n\
   \n\
   ipsec attest --measurements --sha1|--sha256|--sha384 [--key <digest>|--kid <id>|--aik <path>]\n\
     Show a list of component measurements for a given AIK or\n\
+    its primary key as an optional selector.\n\
+  \n\
+  ipsec attest --packages [--product <name>|--pid <id>] [--utc]\n\
+    Show a list of software packages for a given product or\n\
+    its primary key as an optional selector.\n\
+  \n\
+  ipsec attest --products [--file <path>|--fid <id>]\n\
+    Show a list of supported software products with a file path or\n\
     its primary key as an optional selector.\n\
   \n\
   ipsec attest --add --file <path>|--dir <path>|--product <name>|--component <cfn>\n\
@@ -73,6 +80,10 @@ Usage:\n\
   \n\
   ipsec attest --add --key <digest|--kid <id> --component <cfn>|--cid <id> --sequence <no>|--seq <no>\n\
     Add an ordered key/component entry\n\
+  \n\
+  ipsec attest --add --package <name> --version <string> [--security|--blacklist]\n\
+              [--product <name>|--pid <id>]\n\
+    Add a package version for a given product optionally with security or blacklist flag\n\
   \n\
   ipsec attest --del --file <path>|--fid <id>|--dir <path>|--did <id>\n\
     Delete a file or directory entry referenced either by value or primary key\n\

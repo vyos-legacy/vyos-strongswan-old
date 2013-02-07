@@ -85,3 +85,54 @@ CREATE TABLE component_hashes (
   hash BLOB NOT NULL,
   PRIMARY KEY(component, key, seq_no, algo)
 );
+
+DROP TABLE IF EXISTS packages;
+CREATE TABLE packages (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL
+);
+DROP INDEX IF EXISTS packages_name;
+CREATE INDEX packages_name ON packages (
+  name
+);
+
+DROP TABLE IF EXISTS versions;
+CREATE TABLE versions (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  package INTEGER NOT NULL,
+  product INTEGER NOT NULL,
+  release TEXT NOT NULL,
+  security INTEGER DEFAULT 0,
+  time INTEGER DEFAULT 0
+);
+DROP INDEX IF EXISTS versions_release;
+CREATE INDEX versions_release ON versions (
+  release
+);
+DROP INDEX IF EXISTS versions_package_product;
+CREATE INDEX versions_package_product ON versions (
+  package, product
+);
+
+DROP TABLE IF EXISTS devices;
+CREATE TABLE devices (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  value BLOB NOT NULL
+);
+DROP INDEX IF EXISTS devices_id;
+CREATE INDEX devices_value ON devices (
+  value
+);
+
+DROP TABLE IF EXISTS device_infos;
+CREATE TABLE device_infos (
+  device INTEGER NOT NULL,
+  time INTEGER NOT NULL,
+  product INTEGER DEFAULT 0,
+  count INTEGER DEFAULT 0,
+  count_update INTEGER DEFAULT 0,
+  count_blacklist INTEGER DEFAULT 0,
+  flags INTEGER DEFAULT 0,
+  PRIMARY KEY (device, time)
+);
+

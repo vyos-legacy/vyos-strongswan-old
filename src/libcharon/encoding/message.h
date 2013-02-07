@@ -31,8 +31,8 @@ typedef struct message_t message_t;
 #include <encoding/payloads/notify_payload.h>
 #include <sa/keymat.h>
 #include <sa/ike_sa_id.h>
-#include <utils/packet.h>
-#include <utils/linked_list.h>
+#include <networking/packet.h>
+#include <collections/linked_list.h>
 
 /**
  * This class is used to represent an IKE-Message.

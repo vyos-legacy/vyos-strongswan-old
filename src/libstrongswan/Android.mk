@@ -3,9 +3,10 @@ include $(CLEAR_VARS)
 
 # copy-n-paste from Makefile.am
 LOCAL_SRC_FILES := \
-library.c chunk.c debug.c enum.c settings.c printf_hook.c asn1/asn1.c \
-asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
-crypto/crypters/crypter.c crypto/hashers/hasher.c crypto/pkcs7.c crypto/pkcs9.c \
+library.c \
+asn1/asn1.c asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
+collections/blocking_queue.c collections/enumerator.c collections/hashtable.c \
+collections/linked_list.c crypto/crypters/crypter.c crypto/hashers/hasher.c \
 crypto/proposal/proposal_keywords.c crypto/proposal/proposal_keywords_static.c \
 crypto/prfs/prf.c crypto/prfs/mac_prf.c \
 crypto/rngs/rng.c crypto/prf_plus.c crypto/signers/signer.c \
@@ -16,19 +17,22 @@ credentials/cred_encoding.c credentials/keys/private_key.c \
 credentials/keys/public_key.c credentials/keys/shared_key.c \
 credentials/certificates/certificate.c credentials/certificates/crl.c \
 credentials/certificates/ocsp_response.c \
+credentials/containers/container.c \
 credentials/ietf_attributes/ietf_attributes.c credentials/credential_manager.c \
 credentials/sets/auth_cfg_wrapper.c credentials/sets/ocsp_response_wrapper.c \
 credentials/sets/cert_cache.c credentials/sets/mem_cred.c \
 credentials/sets/callback_cred.c credentials/auth_cfg.c database/database.c \
 database/database_factory.c fetcher/fetcher.c fetcher/fetcher_manager.c eap/eap.c \
 ipsec/ipsec_types.c \
+networking/host.c networking/host_resolver.c networking/packet.c \
+networking/tun_device.c \
 pen/pen.c plugins/plugin_loader.c plugins/plugin_feature.c processing/jobs/job.c \
 processing/jobs/callback_job.c processing/processor.c processing/scheduler.c \
 selectors/traffic_selector.c threading/thread.c threading/thread_value.c \
 threading/mutex.c threading/semaphore.c threading/rwlock.c threading/spinlock.c \
-utils.c utils/host.c utils/packet.c utils/identification.c utils/lexparser.c \
-utils/linked_list.c utils/blocking_queue.c utils/hashtable.c utils/enumerator.c \
-utils/optionsfrom.c utils/capabilities.c utils/backtrace.c utils/tun_device.c
+utils/utils.c utils/chunk.c utils/debug.c utils/enum.c utils/identification.c \
+utils/lexparser.c utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
+utils/printf_hook.c utils/settings.c
 
 # adding the plugin source files
 
@@ -67,6 +71,8 @@ endif
 LOCAL_SRC_FILES += $(call add_plugin, pem)
 
 LOCAL_SRC_FILES += $(call add_plugin, pkcs1)
+
+LOCAL_SRC_FILES += $(call add_plugin, pkcs7)
 
 LOCAL_SRC_FILES += $(call add_plugin, pkcs8)
 

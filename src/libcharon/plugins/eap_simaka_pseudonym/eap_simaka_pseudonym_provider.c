@@ -15,8 +15,8 @@
 
 #include "eap_simaka_pseudonym_provider.h"
 
-#include <debug.h>
-#include <utils/hashtable.h>
+#include <utils/debug.h>
+#include <collections/hashtable.h>
 
 typedef struct private_eap_simaka_pseudonym_provider_t private_eap_simaka_pseudonym_provider_t;
 

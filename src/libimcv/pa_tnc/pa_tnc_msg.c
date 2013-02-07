@@ -19,9 +19,9 @@
 
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <pen/pen.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 
 typedef struct private_pa_tnc_msg_t private_pa_tnc_msg_t;
@@ -42,7 +42,7 @@ typedef struct private_pa_tnc_msg_t private_pa_tnc_msg_t;
 #define PA_TNC_RESERVED		0x000000
 
 /**
- *  PA-TNC attribute 
+ *  PA-TNC attribute
  *
  *                       1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -207,7 +207,7 @@ METHOD(pa_tnc_msg_t, process, status_t,
 	pa_tnc_attr_t *error;
 	u_int8_t version;
 	u_int32_t reserved, offset, attr_offset;
-	pen_type_t error_code;
+	pen_type_t error_code = { PEN_IETF, PA_ERROR_INVALID_PARAMETER };
 
 	/* process message header */
 	if (this->encoding.len < PA_TNC_HEADER_SIZE)
@@ -224,13 +224,12 @@ METHOD(pa_tnc_msg_t, process, status_t,
 
 	if (version != PA_TNC_VERSION)
 	{
-		pen_type_t error_code = { PEN_IETF, PA_ERROR_VERSION_NOT_SUPPORTED };
-
 		DBG1(DBG_TNC, "PA-TNC version %u not supported", version);
+		error_code = pen_type_create(PEN_IETF, PA_ERROR_VERSION_NOT_SUPPORTED);
 		error = ietf_attr_pa_tnc_error_create(error_code, this->encoding);
 		goto err;
 	}
-	
+
 	/* offset of the first PA-TNC attribute in the PA-TNC message */
 	offset = PA_TNC_HEADER_SIZE;
 
@@ -244,7 +243,6 @@ METHOD(pa_tnc_msg_t, process, status_t,
 		pa_tnc_attr_t *attr;
 		enum_name_t *pa_attr_names;
 		ietf_attr_pa_tnc_error_t *error_attr;
-		pen_type_t error_code;
 
 		attr_info = reader->peek(reader);
 		attr_info.len = PA_TNC_ATTR_INFO_SIZE;
@@ -272,7 +270,6 @@ METHOD(pa_tnc_msg_t, process, status_t,
 		{
 			DBG1(DBG_TNC, "%u bytes too small for PA-TNC attribute length",
 						   length);
-			error_code = pen_type_create(PEN_IETF, PA_ERROR_INVALID_PARAMETER);
 			error = ietf_attr_pa_tnc_error_create_with_offset(error_code,
 						this->encoding, offset + PA_TNC_ATTR_INFO_SIZE);
 			goto err;
@@ -281,11 +278,10 @@ METHOD(pa_tnc_msg_t, process, status_t,
 		if (!reader->read_data(reader, length - PA_TNC_ATTR_HEADER_SIZE, &value))
 		{
 			DBG1(DBG_TNC, "insufficient bytes for PA-TNC attribute value");
-			error_code = pen_type_create(PEN_IETF, PA_ERROR_INVALID_PARAMETER);
 			error = ietf_attr_pa_tnc_error_create_with_offset(error_code,
 						this->encoding, offset + PA_TNC_ATTR_INFO_SIZE);
-			goto err; 
-		} 
+			goto err;
+		}
 		DBG3(DBG_TNC, "%B", &value);
 
 		attr = imcv_pa_tnc_attributes->create(imcv_pa_tnc_attributes,
@@ -314,15 +310,14 @@ METHOD(pa_tnc_msg_t, process, status_t,
 		if (attr->process(attr, &attr_offset) != SUCCESS)
 		{
 			attr->destroy(attr);
-			if (error_code.vendor_id == PEN_IETF &&
-				error_code.type == IETF_ATTR_PA_TNC_ERROR)
+			if (vendor_id == PEN_IETF && type == IETF_ATTR_PA_TNC_ERROR)
 			{
 				/* error while processing a PA-TNC error attribute - abort */
 				reader->destroy(reader);
 				return FAILED;
 			}
 			error_code = pen_type_create(PEN_IETF,
-										 PA_ERROR_ATTR_TYPE_NOT_SUPPORTED);
+										 PA_ERROR_INVALID_PARAMETER);
 			error = ietf_attr_pa_tnc_error_create_with_offset(error_code,
 						this->encoding,
 						offset + PA_TNC_ATTR_HEADER_SIZE + attr_offset);
@@ -338,7 +333,6 @@ METHOD(pa_tnc_msg_t, process, status_t,
 		return SUCCESS;
 	}
 	DBG1(DBG_TNC, "insufficient bytes for PA-TNC attribute header");
-	error_code = pen_type_create(PEN_IETF, PA_ERROR_INVALID_PARAMETER);
 	error = ietf_attr_pa_tnc_error_create_with_offset(error_code,
 						this->encoding, offset);
 
@@ -377,7 +371,7 @@ METHOD(pa_tnc_msg_t, process_ietf_std_errors, bool,
 			{
 				continue;
 			}
-			DBG1(DBG_IMC, "received PA-TNC error '%N' concerning message "
+			DBG1(DBG_TNC, "received PA-TNC error '%N' concerning message "
 				 "0x%08x/0x%08x", pa_tnc_error_code_names, error_code.type,
 				 untoh32(msg_info.ptr), untoh32(msg_info.ptr + 4));
 
@@ -385,19 +379,15 @@ METHOD(pa_tnc_msg_t, process_ietf_std_errors, bool,
 			{
 				case PA_ERROR_INVALID_PARAMETER:
 					offset = error_attr->get_offset(error_attr);
-					DBG1(DBG_IMC, "  occurred at offset of %u bytes", offset);
+					DBG1(DBG_TNC, "  occurred at offset of %u bytes", offset);
 					break;
 				case PA_ERROR_ATTR_TYPE_NOT_SUPPORTED:
 					attr_info = error_attr->get_attr_info(error_attr);
-					DBG1(DBG_IMC, "  unsupported attribute %#B", &attr_info);
+					DBG1(DBG_TNC, "  unsupported attribute %#B", &attr_info);
 					break;
 				default:
 					break;
 			}
-
-			/* remove and delete the processed IETF standard error attribute */
-			this->attributes->remove_at(this->attributes, enumerator);
-			attr->destroy(attr);
 			fatal_error = TRUE;
 		}
 	}
@@ -422,7 +412,7 @@ METHOD(pa_tnc_msg_t, destroy, void,
 	private_pa_tnc_msg_t *this)
 {
 	this->attributes->destroy_offset(this->attributes,
-									 offsetof(pa_tnc_attr_t, destroy)); 
+									 offsetof(pa_tnc_attr_t, destroy));
 	this->errors->destroy_offset(this->errors,
 									 offsetof(pa_tnc_attr_t, destroy));
 	free(this->encoding.ptr);
