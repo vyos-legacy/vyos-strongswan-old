@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: strongswan 4.4.0-1\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
-"POT-Creation-Date: 2010-08-09 12:15+0200\n"
+"POT-Creation-Date: 2013-02-07 13:28+0100\n"
 "PO-Revision-Date: 2010-06-26 18:47+0100\n"
 "Last-Translator: Américo Monteiro <a_monteiro@netcabo.pt>\n"
 "Language-Team: Portuguese <traduz@debianpt.org>\n"
@@ -59,9 +59,8 @@ msgid ""
 "Restarting strongSwan is recommended, since if there is a security fix, it "
 "will not be applied until the daemon restarts. Most people expect the daemon "
 "to restart, so this is generally a good idea. However, this might take down "
-"existing connections and then bring them back up, so if you are using such "
-"a strongSwan tunnel to connect for this update, restarting is not "
-"recommended."
+"existing connections and then bring them back up, so if you are using such a "
+"strongSwan tunnel to connect for this update, restarting is not recommended."
 msgstr ""
 "É recomendado reiniciar o strongSwan, porque se existir uma correcção de "
 "segurança, esta não será aplicada até que o daemon seja reiniciado. A "
@@ -73,44 +72,34 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-msgid "Start strongSwan's IKEv1 daemon?"
+#, fuzzy
+#| msgid "Start strongSwan's IKEv1 daemon?"
+msgid "Start strongSwan's charon daemon?"
 msgstr "Iniciar o daemon IKEv1 do strongSwan?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
+#, fuzzy
+#| msgid ""
+#| "The charon daemon must be running to support version 2 of the Internet "
+#| "Key Exchange protocol."
 msgid ""
-"The pluto daemon must be running to support version 1 of the Internet Key "
-"Exchange protocol."
-msgstr ""
-"O daemon pluto precisa de estar a correr para suportar a versão 1 do "
-"protocolo Internet Key Exchange."
-
-#. Type: boolean
-#. Description
-#: ../strongswan-starter.templates:5001
-msgid "Start strongSwan's IKEv2 daemon?"
-msgstr "Iniciar o daemon IKEv2 do strongSwan?"
-
-#. Type: boolean
-#. Description
-#: ../strongswan-starter.templates:5001
-msgid ""
-"The charon daemon must be running to support version 2 of the Internet Key "
-"Exchange protocol."
+"The charon daemon must be running to support the Internet Key Exchange "
+"protocol."
 msgstr ""
 "O daemon charon precisa de estar a correr para suportar a versão 2 do "
 "protocolo Internet Key Exchange."
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:6001
+#: ../strongswan-starter.templates:5001
 msgid "Use an X.509 certificate for this host?"
 msgstr "Usar um certificado X.509 para esta máquina?"
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:6001
+#: ../strongswan-starter.templates:5001
 msgid ""
 "An X.509 certificate for this host can be automatically created or imported. "
 "It can be used to authenticate IPsec connections to other hosts and is the "
@@ -130,7 +119,7 @@ msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:6001
+#: ../strongswan-starter.templates:5001
 msgid ""
 "Alternatively you can reject this option and later use the command \"dpkg-"
 "reconfigure strongswan\" to come back."
@@ -140,25 +129,25 @@ msgstr ""
 
 #. Type: select
 #. Choices
-#: ../strongswan-starter.templates:7001
+#: ../strongswan-starter.templates:6001
 msgid "create"
 msgstr "criar"
 
 #. Type: select
 #. Choices
-#: ../strongswan-starter.templates:7001
+#: ../strongswan-starter.templates:6001
 msgid "import"
 msgstr "importar"
 
 #. Type: select
 #. Description
-#: ../strongswan-starter.templates:7002
+#: ../strongswan-starter.templates:6002
 msgid "Methods for using a X.509 certificate to authenticate this host:"
 msgstr "Métodos de usar um certificado X.509 para autenticar esta máquina:"
 
 #. Type: select
 #. Description
-#: ../strongswan-starter.templates:7002
+#: ../strongswan-starter.templates:6002
 msgid ""
 "It is possible to create a new X.509 certificate with user-defined settings "
 "or to import an existing public and private key stored in PEM file(s) for "
@@ -170,7 +159,7 @@ msgstr ""
 
 #. Type: select
 #. Description
-#: ../strongswan-starter.templates:7002
+#: ../strongswan-starter.templates:6002
 msgid ""
 "If you choose to create a new X.509 certificate you will first be asked a "
 "number of questions which must be answered before the creation can start. "
@@ -189,7 +178,7 @@ msgstr ""
 
 #. Type: select
 #. Description
-#: ../strongswan-starter.templates:7002
+#: ../strongswan-starter.templates:6002
 msgid ""
 "If you want to import an existing public and private key you will be "
 "prompted for their filenames (which may be identical if both parts are "
@@ -210,13 +199,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:8001
+#: ../strongswan-starter.templates:7001
 msgid "File name of your PEM format X.509 certificate:"
 msgstr "Nome de ficheiro do seu certificado X.509 em formato PEM:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:8001
+#: ../strongswan-starter.templates:7001
 msgid ""
 "Please enter the location of the file containing your X.509 certificate in "
 "PEM format."
@@ -226,13 +215,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:9001
+#: ../strongswan-starter.templates:8001
 msgid "File name of your PEM format X.509 private key:"
 msgstr "Nome do ficheiro da sua chave privada X.509 em formato PEM:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:9001
+#: ../strongswan-starter.templates:8001
 msgid ""
 "Please enter the location of the file containing the private RSA key "
 "matching your X.509 certificate in PEM format. This can be the same file "
@@ -244,13 +233,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:10001
+#: ../strongswan-starter.templates:9001
 msgid "File name of your PEM format X.509 RootCA:"
 msgstr "Nome de ficheiro do seu RootCA X.509 em formato PEM:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:10001
+#: ../strongswan-starter.templates:9001
 msgid ""
 "Optionally you can now enter the location of the file containing the X.509 "
 "Certificate Authority root used to sign your certificate in PEM format. If "
@@ -266,13 +255,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:11001
+#: ../strongswan-starter.templates:10001
 msgid "Please enter which length the created RSA key should have:"
 msgstr "Por favor indique o comprimento que a chave RSA criada deve ter:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:11001
+#: ../strongswan-starter.templates:10001
 msgid ""
 "Please enter the length of the created RSA key. It should not be less than "
 "1024 bits because this should be considered unsecure and you will probably "
@@ -286,13 +275,13 @@ msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:12001
+#: ../strongswan-starter.templates:11001
 msgid "Create a self-signed X.509 certificate?"
 msgstr "Criar um certificado X.509 auto-assinado?"
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:12001
+#: ../strongswan-starter.templates:11001
 msgid ""
 "Only self-signed X.509 certificates can be created automatically, because "
 "otherwise a Certificate Authority is needed to sign the certificate request. "
@@ -313,7 +302,7 @@ msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:12001
+#: ../strongswan-starter.templates:11001
 msgid ""
 "If you do not choose to create a self-signed certificate, only the RSA "
 "private key and the certificate request will be created, and you will have "
@@ -325,13 +314,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:13001
+#: ../strongswan-starter.templates:12001
 msgid "Country code for the X.509 certificate request:"
 msgstr "Código de país para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:13001
+#: ../strongswan-starter.templates:12001
 msgid ""
 "Please enter the two-letter code for the country the server resides in (such "
 "as \"AT\" for Austria)."
@@ -341,7 +330,7 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:13001
+#: ../strongswan-starter.templates:12001
 msgid ""
 "OpenSSL will refuse to generate a certificate unless this is a valid "
 "ISO-3166 country code; an empty field is allowed elsewhere in the X.509 "
@@ -353,13 +342,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:14001
+#: ../strongswan-starter.templates:13001
 msgid "State or province name for the X.509 certificate request:"
 msgstr "Estado ou nome da província para o pedido do certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:14001
+#: ../strongswan-starter.templates:13001
 msgid ""
 "Please enter the full name of the state or province the server resides in "
 "(such as \"Upper Austria\")."
@@ -369,13 +358,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:15001
+#: ../strongswan-starter.templates:14001
 msgid "Locality name for the X.509 certificate request:"
 msgstr "Nome da localidade para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:15001
+#: ../strongswan-starter.templates:14001
 msgid ""
 "Please enter the locality the server resides in (often a city, such as "
 "\"Vienna\")."
@@ -385,13 +374,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:16001
+#: ../strongswan-starter.templates:15001
 msgid "Organization name for the X.509 certificate request:"
 msgstr "Nome da organização para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:16001
+#: ../strongswan-starter.templates:15001
 msgid ""
 "Please enter the organization the server belongs to (such as \"Debian\")."
 msgstr ""
@@ -400,13 +389,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:17001
+#: ../strongswan-starter.templates:16001
 msgid "Organizational unit for the X.509 certificate request:"
 msgstr "Unidade organizativa para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:17001
+#: ../strongswan-starter.templates:16001
 msgid ""
 "Please enter the organizational unit the server belongs to (such as "
 "\"security group\")."
@@ -416,13 +405,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:18001
+#: ../strongswan-starter.templates:17001
 msgid "Common Name for the X.509 certificate request:"
 msgstr "Nome comum para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:18001
+#: ../strongswan-starter.templates:17001
 msgid ""
 "Please enter the Common Name for this host (such as \"gateway.example.org\")."
 msgstr ""
@@ -431,13 +420,13 @@ msgstr ""
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:19001
+#: ../strongswan-starter.templates:18001
 msgid "Email address for the X.509 certificate request:"
 msgstr "Endereço de email para o pedido de certificado X.509:"
 
 #. Type: string
 #. Description
-#: ../strongswan-starter.templates:19001
+#: ../strongswan-starter.templates:18001
 msgid ""
 "Please enter the email address of the person or organization responsible for "
 "the X.509 certificate."
@@ -447,13 +436,13 @@ msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:20001
+#: ../strongswan-starter.templates:19001
 msgid "Enable opportunistic encryption?"
 msgstr "Activar encriptação oportunista?"
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:20001
+#: ../strongswan-starter.templates:19001
 msgid ""
 "This version of strongSwan supports opportunistic encryption (OE), which "
 "stores IPSec authentication information in DNS records. Until this is widely "
@@ -467,12 +456,26 @@ msgstr ""
 
 #. Type: boolean
 #. Description
-#: ../strongswan-starter.templates:20001
+#: ../strongswan-starter.templates:19001
+#, fuzzy
+#| msgid ""
+#| "You should only enable opportunistic encryption if you are sure you want "
+#| "it. It may break the Internet connection (default route) as the pluto "
+#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
-"It may break the Internet connection (default route) as the pluto daemon "
-"starts."
+"It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Você deverá apenas activar a encriptação oportunista se tiver a certeza que "
 "a quer. Pode quebrar a ligação à Internet (rota predefinida) assim que o "
 "daemon pluto arrancar."
+
+#~ msgid ""
+#~ "The pluto daemon must be running to support version 1 of the Internet Key "
+#~ "Exchange protocol."
+#~ msgstr ""
+#~ "O daemon pluto precisa de estar a correr para suportar a versão 1 do "
+#~ "protocolo Internet Key Exchange."
+
+#~ msgid "Start strongSwan's IKEv2 daemon?"
+#~ msgstr "Iniciar o daemon IKEv2 do strongSwan?"

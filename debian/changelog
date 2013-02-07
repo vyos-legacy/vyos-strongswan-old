@@ -28,6 +28,7 @@ strongswan (5.0.2-1) UNRELEASED; urgency=low
   * debian/strongswan.docs: CREDITS file is gone.
   * debian/ipsec.secrets.proto: remove reference to pluto.
   * debian/strongswan-starter.* remove references to pluto.
+  * debian/po: update potfiles for new phrasing.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 07 Feb 2013 13:27:53 +0100
 
