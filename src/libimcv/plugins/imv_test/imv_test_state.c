@@ -14,10 +14,12 @@
  */
 
 #include "imv_test_state.h"
+#include "imv/imv_lang_string.h"
+#include "imv/imv_reason_string.h"
 
 #include <utils/lexparser.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_imv_test_state_t private_imv_test_state_t;
 
@@ -67,6 +69,11 @@ struct private_imv_test_state_t {
 	TNC_IMV_Evaluation_Result eval;
 
 	/**
+	 * TNC Reason String
+	 */
+	imv_reason_string_t *reason_string;
+
+	/**
 	 * List of IMCs
 	 */
 	linked_list_t *imcs;
@@ -83,24 +90,20 @@ struct imc_entry_t {
 	int rounds;
 };
 
-typedef struct entry_t entry_t;
+/**
+ * Supported languages
+ */
+static char* languages[] = { "en", "de", "fr", "pl" };
 
 /**
- * Define an internal reason string entry
+ * Table of reason strings
  */
-struct entry_t {
-	char *lang;
-	char *string;
-};
-
-/**
- * Table of multi-lingual reason string entries 
- */
-static entry_t reasons[] = {
+static imv_lang_string_t reasons[] = {
 	{ "en", "IMC Test was not configured with \"command = allow\"" },
 	{ "de", "IMC Test wurde nicht mit \"command = allow\" konfiguriert" },
 	{ "fr", "IMC Test n'etait pas configuré avec \"command = allow\"" },
-	{ "pl", "IMC Test nie zostało skonfigurowany z \"command = allow\"" }
+	{ "pl", "IMC Test nie zostało skonfigurowany z \"command = allow\"" },
+	{ NULL, NULL }
 };
 
 METHOD(imv_state_t, get_connection_id, TNC_ConnectionID,
@@ -163,52 +166,32 @@ METHOD(imv_state_t, set_recommendation, void,
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
-	private_imv_test_state_t *this, chunk_t preferred_language,
-	chunk_t *reason_string, chunk_t *reason_language)
+	private_imv_test_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *reason_string, char **reason_language)
 {
-	chunk_t pref_lang, lang;
-	u_char *pos;
-	int i;
+	*reason_language = imv_lang_string_select_lang(language_enumerator,
+											  languages, countof(languages));
 
-	while (eat_whitespace(&preferred_language))
-	{
-		if (!extract_token(&pref_lang, ',', &preferred_language))
-		{
-			/* last entry in a comma-separated list or single entry */
-			pref_lang = preferred_language;
-		}
+	/* Instantiate a TNC Reason String object */
+	DESTROY_IF(this->reason_string);
+	this->reason_string = imv_reason_string_create(*reason_language);
+	this->reason_string->add_reason(this->reason_string, reasons);
+	*reason_string = this->reason_string->get_encoding(this->reason_string);
 
-		/* eat trailing whitespace */
-		pos = pref_lang.ptr + pref_lang.len - 1;
-		while (pref_lang.len && *pos-- == ' ')
-		{
-			pref_lang.len--;
-		}
-
-		for (i = 0 ; i < countof(reasons); i++)
-		{
-			lang = chunk_create(reasons[i].lang, strlen(reasons[i].lang));
-			if (chunk_equals(lang, pref_lang))
-			{
-				*reason_language = lang;
-				*reason_string = chunk_create(reasons[i].string, 
-										strlen(reasons[i].string));
-				return TRUE;
-			}
-		}
-	}
-
-	/* no preferred language match found - use the default language */
-	*reason_string =   chunk_create(reasons[0].string,
-									strlen(reasons[0].string));
-	*reason_language = chunk_create(reasons[0].lang, 
-									strlen(reasons[0].lang));
 	return TRUE;
+}
+
+METHOD(imv_state_t, get_remediation_instructions, bool,
+	private_imv_test_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *string, char **lang_code, char **uri)
+{
+	return FALSE;
 }
 
 METHOD(imv_state_t, destroy, void,
 	private_imv_test_state_t *this)
 {
+	DESTROY_IF(this->reason_string);
 	this->imcs->destroy_function(this->imcs, free);
 	free(this);
 }
@@ -274,8 +257,8 @@ METHOD(imv_test_state_t, another_round, bool,
 		}
 	}
 	enumerator->destroy(enumerator);
-	
-	return not_finished;	
+
+	return not_finished;
 }
 
 /**
@@ -298,6 +281,7 @@ imv_state_t *imv_test_state_create(TNC_ConnectionID connection_id)
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
 				.get_reason_string = _get_reason_string,
+				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
 			},
 			.add_imc = _add_imc,
@@ -310,7 +294,7 @@ imv_state_t *imv_test_state_create(TNC_ConnectionID connection_id)
 		.connection_id = connection_id,
 		.imcs = linked_list_create(),
 	);
-	
+
 	return &this->public.interface;
 }
 

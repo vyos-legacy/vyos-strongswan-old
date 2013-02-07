@@ -17,8 +17,9 @@
 #include "ita_attr_command.h"
 
 #include <pen/pen.h>
+#include <utils/debug.h>
 
-#include <debug.h>
+#include <string.h>
 
 typedef struct private_ita_attr_command_t private_ita_attr_command_t;
 
@@ -96,11 +97,9 @@ METHOD(pa_tnc_attr_t, build, void,
 METHOD(pa_tnc_attr_t, process, status_t,
 	private_ita_attr_command_t *this, u_int32_t *offset)
 {
-	this->command = malloc(this->value.len + 1);
-	memcpy(this->command, this->value.ptr, this->value.len);
-	this->command[this->value.len] = '\0';
+	this->command = strndup(this->value.ptr, this->value.len);
 
-	return SUCCESS;	
+	return SUCCESS;
 }
 
 METHOD(pa_tnc_attr_t, get_ref, pa_tnc_attr_t*,
@@ -168,6 +167,8 @@ pa_tnc_attr_t *ita_attr_command_create_from_data(chunk_t data)
 			.pa_tnc_attribute = {
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,

@@ -47,9 +47,9 @@
 #include "openssl_x509.h"
 #include "openssl_util.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 
 typedef struct private_openssl_x509_t private_openssl_x509_t;
@@ -324,6 +324,10 @@ METHOD(certificate_t, has_subject, id_match_t,
 		}
 		if (this->pubkey &&
 			this->pubkey->has_fingerprint(this->pubkey, encoding))
+		{
+			return ID_MATCH_PERFECT;
+		}
+		if (chunk_equals(get_serial(this), encoding))
 		{
 			return ID_MATCH_PERFECT;
 		}

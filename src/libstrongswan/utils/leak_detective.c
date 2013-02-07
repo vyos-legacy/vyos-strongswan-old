@@ -32,9 +32,9 @@
 #include "leak_detective.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <utils/backtrace.h>
-#include <utils/hashtable.h>
+#include <collections/hashtable.h>
 
 typedef struct private_leak_detective_t private_leak_detective_t;
 

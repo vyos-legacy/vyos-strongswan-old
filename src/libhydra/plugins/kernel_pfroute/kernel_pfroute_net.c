@@ -24,13 +24,13 @@
 #include "kernel_pfroute_net.h"
 
 #include <hydra.h>
-#include <debug.h>
-#include <utils/host.h>
+#include <utils/debug.h>
+#include <networking/host.h>
 #include <threading/thread.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
-#include <utils/hashtable.h>
-#include <utils/linked_list.h>
+#include <collections/hashtable.h>
+#include <collections/linked_list.h>
 #include <processing/jobs/callback_job.h>
 
 #ifndef HAVE_STRUCT_SOCKADDR_SA_LEN
@@ -285,12 +285,7 @@ static void fire_roam_event(private_kernel_pfroute_net_t *this, bool address)
 	time_monotonic(&now);
 	if (timercmp(&now, &this->last_roam, >))
 	{
-		now.tv_usec += ROAM_DELAY * 1000;
-		while (now.tv_usec > 1000000)
-		{
-			now.tv_sec++;
-			now.tv_usec -= 1000000;
-		}
+		timeval_add_ms(&now, ROAM_DELAY);
 		this->last_roam = now;
 
 		job = (job_t*)callback_job_create((callback_job_cb_t)roam_event,
@@ -645,13 +640,15 @@ METHOD(kernel_net_t, get_nexthop, host_t*,
 }
 
 METHOD(kernel_net_t, add_ip, status_t,
-	private_kernel_pfroute_net_t *this, host_t *virtual_ip, host_t *iface_ip)
+	private_kernel_pfroute_net_t *this, host_t *virtual_ip, int prefix,
+	char *iface)
 {
 	return FAILED;
 }
 
 METHOD(kernel_net_t, del_ip, status_t,
-	private_kernel_pfroute_net_t *this, host_t *virtual_ip)
+	private_kernel_pfroute_net_t *this, host_t *virtual_ip, int prefix,
+	bool wait)
 {
 	return FAILED;
 }

@@ -21,8 +21,8 @@
 #include <tnc/imv/imv_manager.h>
 #include <tnc/imv/imv_recommendations.h>
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_tnc_imv_recommendations_t private_tnc_imv_recommendations_t;
 typedef struct recommendation_entry_t recommendation_entry_t;

@@ -13,6 +13,28 @@
  * for more details.
  */
 
+/*
+ * Copyright (C) 2013 Volker Rümelin
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include "isakmp_cert_pre.h"
 
 #include <daemon.h>
@@ -21,6 +43,7 @@
 #include <encoding/payloads/sa_payload.h>
 #include <encoding/payloads/certreq_payload.h>
 #include <credentials/certificates/x509.h>
+#include <credentials/containers/pkcs7.h>
 
 
 typedef struct private_isakmp_cert_pre_t private_isakmp_cert_pre_t;
@@ -132,7 +155,106 @@ static void process_certreqs(private_isakmp_cert_pre_t *this, message_t *message
 }
 
 /**
- * Import receuved certificates
+ * Process an X509 certificate payload
+ */
+static void process_x509(cert_payload_t *payload, auth_cfg_t *auth, bool *first)
+{
+	certificate_t *cert;
+
+	cert = payload->get_cert(payload);
+	if (cert)
+	{
+		if (*first)
+		{	/* the first is an end entity certificate */
+			DBG1(DBG_IKE, "received end entity cert \"%Y\"",
+				 cert->get_subject(cert));
+			auth->add(auth, AUTH_HELPER_SUBJECT_CERT, cert);
+			*first = FALSE;
+		}
+		else
+		{
+			DBG1(DBG_IKE, "received issuer cert \"%Y\"",
+				 cert->get_subject(cert));
+			auth->add(auth, AUTH_HELPER_IM_CERT, cert);
+		}
+	}
+}
+
+/**
+ * Process a CRL certificate payload
+ */
+static void process_crl(cert_payload_t *payload, auth_cfg_t *auth)
+{
+	certificate_t *cert;
+
+	cert = payload->get_cert(payload);
+	if (cert)
+	{
+		DBG1(DBG_IKE, "received CRL \"%Y\"", cert->get_subject(cert));
+		auth->add(auth, AUTH_HELPER_REVOCATION_CERT, cert);
+	}
+}
+
+/**
+ * Process a PKCS7 certificate payload
+ */
+static void process_pkcs7(cert_payload_t *payload, auth_cfg_t *auth)
+{
+	enumerator_t *enumerator;
+	container_t *container;
+	certificate_t *cert;
+	pkcs7_t *pkcs7;
+
+	container = payload->get_container(payload);
+	if (!container)
+	{
+		return;
+	}
+	switch (container->get_type(container))
+	{
+		case CONTAINER_PKCS7_DATA:
+		case CONTAINER_PKCS7_SIGNED_DATA:
+		case CONTAINER_PKCS7_ENVELOPED_DATA:
+			break;
+		default:
+			container->destroy(container);
+			return;
+	}
+
+	pkcs7 = (pkcs7_t *)container;
+	enumerator = pkcs7->create_cert_enumerator(pkcs7);
+	while (enumerator->enumerate(enumerator, &cert))
+	{
+		if (cert->get_type(cert) == CERT_X509)
+		{
+			x509_t *x509 = (x509_t*)cert;
+
+			if (x509->get_flags(x509) & X509_CA)
+			{
+				DBG1(DBG_IKE, "received issuer cert \"%Y\"",
+					 cert->get_subject(cert));
+				auth->add(auth, AUTH_HELPER_IM_CERT, cert->get_ref(cert));
+			}
+			else
+			{
+				DBG1(DBG_IKE, "received end entity cert \"%Y\"",
+					 cert->get_subject(cert));
+				auth->add(auth, AUTH_HELPER_SUBJECT_CERT, cert->get_ref(cert));
+			}
+		}
+		else
+		{
+			DBG1(DBG_IKE, "received unsupported cert type %N",
+				 certificate_type_names, cert->get_type(cert));
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	container->destroy(container);
+}
+
+/**
+ * Import received certificates
  */
 static void process_certs(private_isakmp_cert_pre_t *this, message_t *message)
 {
@@ -150,7 +272,6 @@ static void process_certs(private_isakmp_cert_pre_t *this, message_t *message)
 		{
 			cert_payload_t *cert_payload;
 			cert_encoding_t encoding;
-			certificate_t *cert;
 
 			cert_payload = (cert_payload_t*)payload;
 			encoding = cert_payload->get_cert_encoding(cert_payload);
@@ -158,36 +279,14 @@ static void process_certs(private_isakmp_cert_pre_t *this, message_t *message)
 			switch (encoding)
 			{
 				case ENC_X509_SIGNATURE:
-				{
-					cert = cert_payload->get_cert(cert_payload);
-					if (cert)
-					{
-						if (first)
-						{	/* the first is an end entity certificate */
-							DBG1(DBG_IKE, "received end entity cert \"%Y\"",
-								 cert->get_subject(cert));
-							auth->add(auth, AUTH_HELPER_SUBJECT_CERT, cert);
-							first = FALSE;
-						}
-						else
-						{
-							DBG1(DBG_IKE, "received issuer cert \"%Y\"",
-								 cert->get_subject(cert));
-							auth->add(auth, AUTH_HELPER_IM_CERT, cert);
-						}
-					}
+					process_x509(cert_payload, auth, &first);
 					break;
-				}
 				case ENC_CRL:
-					cert = cert_payload->get_cert(cert_payload);
-					if (cert)
-					{
-						DBG1(DBG_IKE, "received CRL \"%Y\"",
-							 cert->get_subject(cert));
-						auth->add(auth, AUTH_HELPER_REVOCATION_CERT, cert);
-					}
+					process_crl(cert_payload, auth);
 					break;
 				case ENC_PKCS7_WRAPPED_X509:
+					process_pkcs7(cert_payload, auth);
+					break;
 				case ENC_PGP:
 				case ENC_DNS_SIGNED_KEY:
 				case ENC_KERBEROS_TOKEN:

@@ -27,8 +27,8 @@ typedef struct proposal_t proposal_t;
 
 #include <library.h>
 #include <utils/identification.h>
-#include <utils/linked_list.h>
-#include <utils/host.h>
+#include <collections/linked_list.h>
+#include <networking/host.h>
 #include <crypto/transform.h>
 #include <crypto/crypters/crypter.h>
 #include <crypto/signers/signer.h>
@@ -111,8 +111,10 @@ struct proposal_t {
 
 	/**
 	 * Strip DH groups from proposal to use it without PFS.
+	 *
+	 * @param keep			group to keep (MODP_NONE to remove all)
 	 */
-	void (*strip_dh)(proposal_t *this);
+	void (*strip_dh)(proposal_t *this, diffie_hellman_group_t keep);
 
 	/**
 	 * Compare two proposal, and select a matching subset.

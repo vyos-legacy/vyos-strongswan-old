@@ -35,7 +35,7 @@ typedef struct pts_t pts_t;
 #include "components/pts_comp_func_name.h"
 
 #include <library.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /**
  * UTF-8 encoding of the character used to delimiter the filename
@@ -171,9 +171,10 @@ struct pts_t {
 	/**
 	 * Set Platform and OS Info
 	 *
-	 * @param info				Platform and OS info
+	 * @param name				OS name
+	 * @param version			OS version
 	 */
-	void (*set_platform_info)(pts_t *this, char *info);
+	void (*set_platform_info)(pts_t *this, chunk_t name, chunk_t version);
 
 	/**
 	 * Get TPM 1.2 Version Info

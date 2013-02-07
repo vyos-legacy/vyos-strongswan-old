@@ -18,12 +18,12 @@
 #include "x509_pkcs10.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <credentials/keys/private_key.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 
 typedef struct private_x509_pkcs10_t private_x509_pkcs10_t;

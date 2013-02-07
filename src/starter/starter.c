@@ -34,7 +34,7 @@
 #include <hydra.h>
 #include <utils/backtrace.h>
 #include <threading/thread.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "confread.h"
 #include "files.h"
@@ -328,7 +328,8 @@ static bool check_pid(char *pid_file)
 static void usage(char *name)
 {
 	fprintf(stderr, "Usage: starter [--nofork] [--auto-update <sec>]\n"
-			"               [--debug|--debug-more|--debug-all|--nolog]\n");
+			"               [--debug|--debug-more|--debug-all|--nolog]\n"
+			"               [--attach-gdb]\n");
 	exit(LSB_RC_INVALID_ARGUMENT);
 }
 
@@ -594,6 +595,10 @@ int main (int argc, char **argv)
 					{
 						if (starter_charon_pid())
 						{
+							if (conn->startup == STARTUP_ROUTE)
+							{
+								starter_stroke_unroute_conn(conn);
+							}
 							starter_stroke_del_conn(conn);
 						}
 						conn->state = STATE_TO_ADD;
@@ -622,7 +627,7 @@ int main (int argc, char **argv)
 			DBG2(DBG_APP, "Reloading config...");
 			new_cfg = confread_load(CONFIG_FILE);
 
-			if (new_cfg && (new_cfg->err + new_cfg->non_fatal_err == 0))
+			if (new_cfg && (new_cfg->err == 0))
 			{
 				/* Switch to new config. New conn will be loaded below */
 
@@ -651,6 +656,10 @@ int main (int argc, char **argv)
 					{
 						if (starter_charon_pid())
 						{
+							if (conn->startup == STARTUP_ROUTE)
+							{
+								starter_stroke_unroute_conn(conn);
+							}
 							starter_stroke_del_conn(conn);
 						}
 					}

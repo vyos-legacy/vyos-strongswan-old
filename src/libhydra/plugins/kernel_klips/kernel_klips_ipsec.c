@@ -29,8 +29,8 @@
 #include "kernel_klips_ipsec.h"
 
 #include <hydra.h>
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 #include <threading/thread.h>
 #include <threading/mutex.h>
 #include <processing/jobs/callback_job.h>

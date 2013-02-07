@@ -19,11 +19,11 @@
 
 #include "mysql_database.h"
 
-#include <debug.h>
-#include <chunk.h>
+#include <utils/debug.h>
+#include <utils/chunk.h>
 #include <threading/thread_value.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /* Older mysql.h headers do not define it, but we need it. It is not returned
  * in in MySQL 4 by default, but by MySQL 5. To avoid this problem, we catch

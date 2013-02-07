@@ -26,7 +26,7 @@
 #include "esp_context.h"
 
 #include <library.h>
-#include <utils/host.h>
+#include <networking/host.h>
 #include <selectors/traffic_selector.h>
 #include <ipsec/ipsec_types.h>
 
@@ -50,6 +50,20 @@ struct ipsec_sa_t {
 	 * @return			destination address of this SA
 	 */
 	host_t *(*get_destination)(ipsec_sa_t *this);
+
+	/**
+	 * Set the source address for this SA
+	 *
+	 * @param addr		source address of this SA (gets cloned)
+	 */
+	void (*set_source)(ipsec_sa_t *this, host_t *addr);
+
+	/**
+	 * Set the destination address for this SA
+	 *
+	 * @param addr		destination address of this SA (gets cloned)
+	 */
+	void (*set_destination)(ipsec_sa_t *this, host_t *addr);
 
 	/**
 	 * Get the SPI for this SA

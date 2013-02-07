@@ -187,6 +187,11 @@ static void process_payloads(private_ike_init_t *this, message_t *message)
 														   EXT_STRONGSWAN);
 				this->proposal = this->config->select_proposal(this->config,
 														proposal_list, private);
+				if (!this->proposal)
+				{
+					charon->bus->alert(charon->bus, ALERT_PROPOSAL_MISMATCH_IKE,
+									   proposal_list);
+				}
 				proposal_list->destroy_offset(proposal_list,
 											  offsetof(proposal_t, destroy));
 				break;
@@ -421,7 +426,7 @@ METHOD(task_t, process_i, status_t,
 	enumerator_t *enumerator;
 	payload_t *payload;
 
-	/* check for erronous notifies */
+	/* check for erroneous notifies */
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{

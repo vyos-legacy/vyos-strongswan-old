@@ -15,13 +15,22 @@
 
 #include "pts.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <crypto/hashers/hasher.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
 
+#ifdef TSS_TROUSERS
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
+#else
+#ifndef TPM_TAG_QUOTE_INFO2
+#define TPM_TAG_QUOTE_INFO2 0x0036
+#endif
+#ifndef TPM_LOC_ZERO
+#define TPM_LOC_ZERO 0x01
+#endif
+#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -280,6 +289,8 @@ METHOD(pts_t, calculate_secret, bool,
 	return TRUE;
 }
 
+#ifdef TSS_TROUSERS
+
 /**
  * Print TPM 1.2 Version Info
  */
@@ -299,13 +310,25 @@ static void print_tpm_version_info(private_pts_t *this)
 	else
 	{
 		DBG2(DBG_PTS, "TPM 1.2 Version Info: Chip Version: %hhu.%hhu.%hhu.%hhu,"
-					  " Spec Level: %hu, Errata Rev: %hhu, Vendor ID: %.4s",
+					  " Spec Level: %hu, Errata Rev: %hhu, Vendor ID: %.4s [%.*s]",
 					  versionInfo.version.major, versionInfo.version.minor,
 					  versionInfo.version.revMajor, versionInfo.version.revMinor,
 					  versionInfo.specLevel, versionInfo.errataRev,
-					  versionInfo.tpmVendorID);
+					  versionInfo.tpmVendorID, versionInfo.vendorSpecificSize,
+					  versionInfo.vendorSpecificSize ?
+					  (char*)versionInfo.vendorSpecific : "");
 	}
+	free(versionInfo.vendorSpecific);
 }
+
+#else
+
+static void print_tpm_version_info(private_pts_t *this)
+{
+	DBG1(DBG_PTS, "unknown TPM version: no TSS implementation available");
+}
+
+#endif /* TSS_TROUSERS */
 
 METHOD(pts_t, get_platform_info, char*,
 	private_pts_t *this)
@@ -314,10 +337,15 @@ METHOD(pts_t, get_platform_info, char*,
 }
 
 METHOD(pts_t, set_platform_info, void,
-	private_pts_t *this, char *info)
+	private_pts_t *this, chunk_t name, chunk_t version)
 {
+	int len = name.len + 1 + version.len + 1;
+
+	/* platform info is a concatenation of OS name and OS version */
 	free(this->platform_info);
-	this->platform_info = strdup(info);
+	this->platform_info = malloc(len);
+	snprintf(this->platform_info, len, "%.*s %.*s", (int)name.len, name.ptr,
+			(int)version.len, version.ptr);
 }
 
 METHOD(pts_t, get_tpm_version_info, bool,
@@ -606,6 +634,9 @@ METHOD(pts_t, get_metadata, pts_file_meta_t*,
 	return metadata;
 }
 
+
+#ifdef TSS_TROUSERS
+
 METHOD(pts_t, read_pcr, bool,
 	private_pts_t *this, u_int32_t pcr_num, chunk_t *pcr_value)
 {
@@ -857,20 +888,34 @@ err2:
 
 err1:
 	Tspi_Context_Close(hContext);
-
 	if (!success)
 	{
 		DBG1(DBG_PTS, "TPM not available: tss error 0x%x", result);
 	}
-
 	return success;
 }
 
-METHOD(pts_t, get_pcrs, pts_pcr_t*,
-	private_pts_t *this)
+#else /* TSS_TROUSERS */
+
+METHOD(pts_t, read_pcr, bool,
+	private_pts_t *this, u_int32_t pcr_num, chunk_t *pcr_value)
 {
-	return this->pcrs;
+	return FALSE;
 }
+
+METHOD(pts_t, extend_pcr, bool,
+	private_pts_t *this, u_int32_t pcr_num, chunk_t input, chunk_t *output)
+{
+	return FALSE;
+}
+
+METHOD(pts_t, quote_tpm, bool,
+	private_pts_t *this, bool use_quote2, chunk_t *pcr_comp, chunk_t *quote_sig)
+{
+	return FALSE;
+}
+
+#endif /* TSS_TROUSERS */
 
 /**
  * TPM_QUOTE_INFO structure:
@@ -1032,6 +1077,12 @@ METHOD(pts_t, verify_quote_signature, bool,
 	return TRUE;
 }
 
+METHOD(pts_t, get_pcrs, pts_pcr_t*,
+	private_pts_t *this)
+{
+	return this->pcrs;
+}
+
 METHOD(pts_t, destroy, void,
 	private_pts_t *this)
 {
@@ -1047,121 +1098,8 @@ METHOD(pts_t, destroy, void,
 	free(this);
 }
 
-#define RELEASE_LSB		0
-#define RELEASE_DEBIAN	1
 
-/**
- * Determine Linux distribution and hardware platform
- */
-static char* extract_platform_info(void)
-{
-	FILE *file;
-	char buf[BUF_LEN], *pos = buf, *value = NULL;
-	int i, len = BUF_LEN - 1;
-	struct utsname uninfo;
-
-	/* Linux/Unix distribution release info (from http://linuxmafia.com) */
-	const char* releases[] = {
-		"/etc/lsb-release",           "/etc/debian_version",
-		"/etc/SuSE-release",          "/etc/novell-release",
-		"/etc/sles-release",          "/etc/redhat-release",
-		"/etc/fedora-release",        "/etc/gentoo-release",
-		"/etc/slackware-version",     "/etc/annvix-release",
-		"/etc/arch-release",          "/etc/arklinux-release",
-		"/etc/aurox-release",         "/etc/blackcat-release",
-		"/etc/cobalt-release",        "/etc/conectiva-release",
-		"/etc/debian_release",        "/etc/immunix-release",
-		"/etc/lfs-release",           "/etc/linuxppc-release",
-		"/etc/mandrake-release",      "/etc/mandriva-release",
-		"/etc/mandrakelinux-release", "/etc/mklinux-release",
-		"/etc/pld-release",           "/etc/redhat_version",
-		"/etc/slackware-release",     "/etc/e-smith-release",
-		"/etc/release",               "/etc/sun-release",
-		"/etc/tinysofa-release",      "/etc/turbolinux-release",
-		"/etc/ultrapenguin-release",  "/etc/UnitedLinux-release",
-		"/etc/va-release",            "/etc/yellowdog-release"
-	};
-
-	const char description[] = "DISTRIB_DESCRIPTION=\"";
-	const char str_debian[] = "Debian ";
-
-	for (i = 0; i < countof(releases); i++)
-	{
-		file = fopen(releases[i], "r");
-		if (!file)
-		{
-			continue;
-		}
-
-		if (i == RELEASE_DEBIAN)
-		{
-			strcpy(buf, str_debian);
-			pos += strlen(str_debian);
-			len -= strlen(str_debian);
-		}
-
-		fseek(file, 0, SEEK_END);
-		len = min(ftell(file), len);
-		rewind(file);
-		pos[len] = '\0';
-		if (fread(pos, 1, len, file) != len)
-		{
-			DBG1(DBG_PTS, "failed to read file '%s'", releases[i]);
-			fclose(file);
-			return NULL;
-		}
-		fclose(file);
-
-		if (i == RELEASE_LSB)
-		{
-			pos = strstr(buf, description);
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find begin of lsb-release "
-							  "DESCRIPTION field");
-				return NULL;
-			}
-			value = pos + strlen(description);
-			pos = strchr(value, '"');
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find end of lsb-release "
-							  "DESCRIPTION field");
-				return NULL;
-			 }
-		}
-		else
-		{
-			value = buf;
-			pos = strchr(pos, '\n');
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find end of release string");
-				return NULL;
-			 }
-		}
-		break;
-	}
-
-	if (!value)
-	{
-		DBG1(DBG_PTS, "no distribution release file found");
-		return NULL;
-	}
-
-	if (uname(&uninfo) < 0)
-	{
-		DBG1(DBG_PTS, "could not retrieve machine architecture");
-		return NULL;
-	}
-
-	*pos++ = ' ';
-	len = sizeof(buf)-1 + (pos - buf);
-	strncpy(pos, uninfo.machine, len);
-
-	DBG1(DBG_PTS, "platform is '%s'", value);
-	return strdup(value);
-}
+#ifdef TSS_TROUSERS
 
 /**
  * Check for a TPM by querying for TPM Version Info
@@ -1210,6 +1148,16 @@ static bool has_tpm(private_pts_t *this)
 	Tspi_Context_Close(hContext);
 	return FALSE;
 }
+
+#else /* TSS_TROUSERS */
+
+static bool has_tpm(private_pts_t *this)
+{
+	return FALSE;
+}
+
+#endif /* TSS_TROUSERS */
+
 
 /**
  * See header
@@ -1264,8 +1212,6 @@ pts_t *pts_create(bool is_imc)
 
 	if (is_imc)
 	{
-		this->platform_info = extract_platform_info();
-
 		if (has_tpm(this))
 		{
 			this->has_tpm = TRUE;

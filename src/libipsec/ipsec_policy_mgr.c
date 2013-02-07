@@ -17,9 +17,9 @@
 
 #include "ipsec_policy_mgr.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/rwlock.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /** Base priority for installed policies */
 #define PRIO_BASE 512

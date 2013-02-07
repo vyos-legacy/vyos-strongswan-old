@@ -22,7 +22,7 @@
 
 #include "gmp_rsa_public_key.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
@@ -360,6 +360,8 @@ METHOD(public_key_t, encrypt_, bool,
 		return FALSE;
 	}
 	rng->destroy(rng);
+
+	pos += padding;
 
 	/* append the padding terminator */
 	*pos++ = 0x00;

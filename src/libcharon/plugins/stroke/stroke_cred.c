@@ -34,7 +34,7 @@
 #include <credentials/certificates/ac.h>
 #include <credentials/sets/mem_cred.h>
 #include <credentials/sets/callback_cred.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/lexparser.h>
 #include <threading/rwlock.h>
 #include <daemon.h>
@@ -82,35 +82,137 @@ struct private_stroke_cred_t {
 	bool cachecrl;
 };
 
+/** Length of smartcard specifier parts (module, keyid) */
+#define SC_PART_LEN 128
+
+/**
+ * Kind of smartcard specifier token
+ */
+typedef enum {
+	SC_FORMAT_SLOT_MODULE_KEYID,
+	SC_FORMAT_SLOT_KEYID,
+	SC_FORMAT_KEYID,
+	SC_FORMAT_INVALID,
+} smartcard_format_t;
+
+/**
+ * Parse a smartcard specifier token
+ */
+static smartcard_format_t parse_smartcard(char *smartcard, u_int *slot,
+										  char *module, char *keyid)
+{
+	/* The token has one of the following three formats:
+	 * - %smartcard<slot>@<module>:<keyid>
+	 * - %smartcard<slot>:<keyid>
+	 * - %smartcard:<keyid>
+	 */
+	char buf[2 * SC_PART_LEN], *pos;
+
+	if (sscanf(smartcard, "%%smartcard%u@%255s", slot, buf) == 2)
+	{
+		pos = strchr(buf, ':');
+		if (!pos)
+		{
+			return SC_FORMAT_INVALID;
+		}
+		*pos++ = '\0';
+		snprintf(module, SC_PART_LEN, "%s", buf);
+		snprintf(keyid, SC_PART_LEN, "%s", pos);
+		return SC_FORMAT_SLOT_MODULE_KEYID;
+	}
+	if (sscanf(smartcard, "%%smartcard%u:%127s", slot, keyid) == 2)
+	{
+		return SC_FORMAT_SLOT_KEYID;
+	}
+	if (sscanf(smartcard, "%%smartcard:%127s", keyid) == 1)
+	{
+		return SC_FORMAT_KEYID;
+	}
+	return SC_FORMAT_INVALID;
+}
+
+/**
+ * Load a credential from a smartcard
+ */
+static certificate_t *load_from_smartcard(smartcard_format_t format,
+										  u_int slot, char *module, char *keyid,
+										  credential_type_t type, int subtype)
+{
+	chunk_t chunk;
+	void *cred;
+
+	chunk = chunk_from_hex(chunk_create(keyid, strlen(keyid)), NULL);
+	switch (format)
+	{
+		case SC_FORMAT_SLOT_MODULE_KEYID:
+			cred = lib->creds->create(lib->creds, type, subtype,
+							BUILD_PKCS11_SLOT, slot,
+							BUILD_PKCS11_MODULE, module,
+							BUILD_PKCS11_KEYID, chunk, BUILD_END);
+			break;
+		case SC_FORMAT_SLOT_KEYID:
+			cred = lib->creds->create(lib->creds, type, subtype,
+							BUILD_PKCS11_SLOT, slot,
+							BUILD_PKCS11_KEYID, chunk, BUILD_END);
+			break;
+		case SC_FORMAT_KEYID:
+			cred = lib->creds->create(lib->creds, type, subtype,
+							BUILD_PKCS11_KEYID, chunk, BUILD_END);
+			break;
+		default:
+			cred = NULL;
+			break;
+	}
+	free(chunk.ptr);
+
+	return cred;
+}
+
 METHOD(stroke_cred_t, load_ca, certificate_t*,
 	private_stroke_cred_t *this, char *filename)
 {
-	certificate_t *cert;
+	certificate_t *cert = NULL;
 	char path[PATH_MAX];
 
-	if (*filename == '/')
+	if (strneq(filename, "%smartcard", strlen("%smartcard")))
 	{
-		snprintf(path, sizeof(path), "%s", filename);
-	}
-	else
-	{
-		snprintf(path, sizeof(path), "%s/%s", CA_CERTIFICATE_DIR, filename);
-	}
+		smartcard_format_t format;
+		char module[SC_PART_LEN], keyid[SC_PART_LEN];
+		u_int slot;
 
-	if (this->force_ca_cert)
-	{	/* we treat this certificate as a CA certificate even if it has no
-		 * CA basic constraint */
-		cert = lib->creds->create(lib->creds,
-							  CRED_CERTIFICATE, CERT_X509,
-							  BUILD_FROM_FILE, path, BUILD_X509_FLAG, X509_CA,
-							  BUILD_END);
+		format = parse_smartcard(filename, &slot, module, keyid);
+		if (format != SC_FORMAT_INVALID)
+		{
+			cert = (certificate_t*)load_from_smartcard(format,
+							slot, module, keyid, CRED_CERTIFICATE, CERT_X509);
+		}
 	}
 	else
 	{
-		cert = lib->creds->create(lib->creds,
-							  CRED_CERTIFICATE, CERT_X509,
-							  BUILD_FROM_FILE, path,
-							  BUILD_END);
+		if (*filename == '/')
+		{
+			snprintf(path, sizeof(path), "%s", filename);
+		}
+		else
+		{
+			snprintf(path, sizeof(path), "%s/%s", CA_CERTIFICATE_DIR, filename);
+		}
+
+		if (this->force_ca_cert)
+		{	/* we treat this certificate as a CA certificate even if it has no
+			 * CA basic constraint */
+			cert = lib->creds->create(lib->creds,
+								  CRED_CERTIFICATE, CERT_X509,
+								  BUILD_FROM_FILE, path, BUILD_X509_FLAG, X509_CA,
+								  BUILD_END);
+		}
+		else
+		{
+			cert = lib->creds->create(lib->creds,
+								  CRED_CERTIFICATE, CERT_X509,
+								  BUILD_FROM_FILE, path,
+								  BUILD_END);
+		}
 	}
 	if (cert)
 	{
@@ -123,6 +225,8 @@ METHOD(stroke_cred_t, load_ca, certificate_t*,
 			cert->destroy(cert);
 			return NULL;
 		}
+		DBG1(DBG_CFG, "  loaded ca certificate \"%Y\" from '%s",
+			 cert->get_subject(cert), filename);
 		return this->creds->add_cert_ref(this->creds, TRUE, cert);
 	}
 	return NULL;
@@ -131,22 +235,38 @@ METHOD(stroke_cred_t, load_ca, certificate_t*,
 METHOD(stroke_cred_t, load_peer, certificate_t*,
 	private_stroke_cred_t *this, char *filename)
 {
-	certificate_t *cert;
+	certificate_t *cert = NULL;
 	char path[PATH_MAX];
 
-	if (*filename == '/')
+	if (strneq(filename, "%smartcard", strlen("%smartcard")))
 	{
-		snprintf(path, sizeof(path), "%s", filename);
+		smartcard_format_t format;
+		char module[SC_PART_LEN], keyid[SC_PART_LEN];
+		u_int slot;
+
+		format = parse_smartcard(filename, &slot, module, keyid);
+		if (format != SC_FORMAT_INVALID)
+		{
+			cert = (certificate_t*)load_from_smartcard(format,
+							slot, module, keyid, CRED_CERTIFICATE, CERT_X509);
+		}
 	}
 	else
 	{
-		snprintf(path, sizeof(path), "%s/%s", CERTIFICATE_DIR, filename);
-	}
+		if (*filename == '/')
+		{
+			snprintf(path, sizeof(path), "%s", filename);
+		}
+		else
+		{
+			snprintf(path, sizeof(path), "%s/%s", CERTIFICATE_DIR, filename);
+		}
 
-	cert = lib->creds->create(lib->creds,
-							  CRED_CERTIFICATE, CERT_ANY,
-							  BUILD_FROM_FILE, path,
-							  BUILD_END);
+		cert = lib->creds->create(lib->creds,
+								  CRED_CERTIFICATE, CERT_ANY,
+								  BUILD_FROM_FILE, path,
+								  BUILD_END);
+	}
 	if (cert)
 	{
 		cert = this->creds->add_cert_ref(this->creds, TRUE, cert);
@@ -585,7 +705,7 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 					 FILE *prompt)
 {
 	chunk_t sc = chunk_empty, secret = chunk_empty;
-	char smartcard[64], keyid[64], module[64], *pos;
+	char smartcard[BUF_LEN], keyid[SC_PART_LEN], module[SC_PART_LEN];
 	private_key_t *key = NULL;
 	u_int slot;
 	chunk_t chunk;
@@ -594,11 +714,7 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 	mem_cred_t *mem = NULL;
 	callback_cred_t *cb = NULL;
 	pin_cb_data_t pin_data;
-	enum {
-		SC_FORMAT_SLOT_MODULE_KEYID,
-		SC_FORMAT_SLOT_KEYID,
-		SC_FORMAT_KEYID,
-	} format;
+	smartcard_format_t format;
 
 	err_t ugh = extract_value(&sc, &line);
 
@@ -615,33 +731,8 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 	snprintf(smartcard, sizeof(smartcard), "%.*s", (int)sc.len, sc.ptr);
 	smartcard[sizeof(smartcard) - 1] = '\0';
 
-	/* parse slot and key id. Three formats are supported:
-	 * - %smartcard<slot>@<module>:<keyid>
-	 * - %smartcard<slot>:<keyid>
-	 * - %smartcard:<keyid>
-	 */
-	if (sscanf(smartcard, "%%smartcard%u@%s", &slot, module) == 2)
-	{
-		pos = strchr(module, ':');
-		if (!pos)
-		{
-			DBG1(DBG_CFG, "line %d: the given %%smartcard specifier is "
-				 "invalid", line_nr);
-			return FALSE;
-		}
-		*pos = '\0';
-		strncpy(keyid, pos + 1, sizeof(keyid));
-		format = SC_FORMAT_SLOT_MODULE_KEYID;
-	}
-	else if (sscanf(smartcard, "%%smartcard%u:%s", &slot, keyid) == 2)
-	{
-		format = SC_FORMAT_SLOT_KEYID;
-	}
-	else if (sscanf(smartcard, "%%smartcard:%s", keyid) == 1)
-	{
-		format = SC_FORMAT_KEYID;
-	}
-	else
+	format = parse_smartcard(smartcard, &slot, module, keyid);
+	if (format == SC_FORMAT_INVALID)
 	{
 		DBG1(DBG_CFG, "line %d: the given %%smartcard specifier is not"
 				" supported or invalid", line_nr);
@@ -666,7 +757,7 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 		free(secret.ptr);
 		if (!prompt)
 		{	/* no IO channel to prompt, skip */
-			free(chunk.ptr);
+			chunk_clear(&chunk);
 			return TRUE;
 		}
 		/* use callback credential set to prompt for the pin */
@@ -688,27 +779,8 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 	}
 
 	/* unlock: smartcard needs the pin and potentially calls public set */
-	switch (format)
-	{
-		case SC_FORMAT_SLOT_MODULE_KEYID:
-			key = lib->creds->create(lib->creds,
-							CRED_PRIVATE_KEY, KEY_ANY,
-							BUILD_PKCS11_SLOT, slot,
-							BUILD_PKCS11_MODULE, module,
-							BUILD_PKCS11_KEYID, chunk, BUILD_END);
-			break;
-		case SC_FORMAT_SLOT_KEYID:
-			key = lib->creds->create(lib->creds,
-							CRED_PRIVATE_KEY, KEY_ANY,
-							BUILD_PKCS11_SLOT, slot,
-							BUILD_PKCS11_KEYID, chunk, BUILD_END);
-			break;
-		case SC_FORMAT_KEYID:
-			key = lib->creds->create(lib->creds,
-							CRED_PRIVATE_KEY, KEY_ANY,
-							BUILD_PKCS11_KEYID, chunk, BUILD_END);
-			break;
-	}
+	key = (private_key_t*)load_from_smartcard(format, slot, module, keyid,
+											  CRED_PRIVATE_KEY, KEY_ANY);
 	if (mem)
 	{
 		lib->credmgr->remove_local_set(lib->credmgr, &mem->set);
@@ -719,6 +791,7 @@ static bool load_pin(private_stroke_cred_t *this, chunk_t line, int line_nr,
 		lib->credmgr->remove_local_set(lib->credmgr, &cb->set);
 		cb->destroy(cb);
 	}
+	chunk_clear(&chunk);
 
 	if (key)
 	{

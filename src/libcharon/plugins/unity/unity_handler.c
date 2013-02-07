@@ -17,7 +17,7 @@
 
 #include <daemon.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <processing/jobs/callback_job.h>
 
 typedef struct private_unity_handler_t private_unity_handler_t;
@@ -115,7 +115,7 @@ static bool add_include(private_unity_handler_t *this, chunk_t subnet)
 }
 
 /**
- * Rempve a subnet from the inclusion list for this IKE_SA
+ * Remove a subnet from the inclusion list for this IKE_SA
  */
 static bool remove_include(private_unity_handler_t *this, chunk_t subnet)
 {
@@ -170,7 +170,7 @@ static job_requeue_t add_exclude_async(entry_t *entry)
 {
 	enumerator_t *enumerator;
 	child_cfg_t *child_cfg;
-	lifetime_cfg_t lft = {};
+	lifetime_cfg_t lft = { .time = { .life = 0 } };
 	ike_sa_t *ike_sa;
 	char name[128];
 	host_t *host;

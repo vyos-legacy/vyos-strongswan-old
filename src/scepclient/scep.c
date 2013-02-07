@@ -18,11 +18,10 @@
 #include <stdlib.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <asn1/oid.h>
-#include <crypto/pkcs9.h>
 #include <crypto/rngs/rng.h>
 #include <crypto/hashers/hasher.h>
 
@@ -68,13 +67,12 @@ const scep_attributes_t empty_scep_attributes = {
 /**
  * Extract X.501 attributes
  */
-void extract_attributes(pkcs7_t *pkcs7, scep_attributes_t *attrs)
+void extract_attributes(pkcs7_t *pkcs7, enumerator_t *enumerator,
+						scep_attributes_t *attrs)
 {
-	pkcs9_t *attributes = pkcs7->get_attributes(pkcs7);
 	chunk_t attr;
 
-	attr = attributes->get_attribute(attributes, OID_PKI_MESSAGE_TYPE);
-	if (attr.ptr)
+	if (pkcs7->get_attribute(pkcs7, OID_PKI_MESSAGE_TYPE, enumerator, &attr))
 	{
 		scep_msg_t m;
 
@@ -86,9 +84,9 @@ void extract_attributes(pkcs7_t *pkcs7, scep_attributes_t *attrs)
 			}
 		}
 		DBG2(DBG_APP, "messageType:  %s", msgType_names[attrs->msgType]);
+		free(attr.ptr);
 	}
-	attr = attributes->get_attribute(attributes, OID_PKI_STATUS);
-	if (attr.ptr)
+	if (pkcs7->get_attribute(pkcs7, OID_PKI_STATUS, enumerator, &attr))
 	{
 		pkiStatus_t s;
 
@@ -100,9 +98,9 @@ void extract_attributes(pkcs7_t *pkcs7, scep_attributes_t *attrs)
 			}
 		}
 		DBG2(DBG_APP, "pkiStatus:    %s", pkiStatus_names[attrs->pkiStatus]);
+		free(attr.ptr);
 	}
-	attr = attributes->get_attribute(attributes, OID_PKI_FAIL_INFO);
-	if (attr.ptr)
+	if (pkcs7->get_attribute(pkcs7, OID_PKI_FAIL_INFO, enumerator, &attr))
 	{
 		if (attr.len == 1 && *attr.ptr >= '0' && *attr.ptr <= '4')
 		{
@@ -112,13 +110,15 @@ void extract_attributes(pkcs7_t *pkcs7, scep_attributes_t *attrs)
 		{
 			DBG1(DBG_APP, "failInfo:     %s", failInfo_reasons[attrs->failInfo]);
 		}
+		free(attr.ptr);
 	}
-	attrs->senderNonce = attributes->get_attribute(attributes,
-											OID_PKI_SENDER_NONCE);
-	attrs->recipientNonce = attributes->get_attribute(attributes,
-											OID_PKI_RECIPIENT_NONCE);
-	attrs->transID = attributes->get_attribute(attributes,
-											OID_PKI_TRANS_ID);
+
+	pkcs7->get_attribute(pkcs7, OID_PKI_SENDER_NONCE, enumerator,
+						 &attrs->senderNonce);
+	pkcs7->get_attribute(pkcs7, OID_PKI_RECIPIENT_NONCE, enumerator,
+						 &attrs->recipientNonce);
+	pkcs7->get_attribute(pkcs7, OID_PKI_TRANS_ID, enumerator,
+						 &attrs->transID);
 }
 
 /**
@@ -188,28 +188,6 @@ void scep_generate_transaction_id(public_key_t *key, chunk_t *transID,
 }
 
 /**
- * Adds a senderNonce attribute to the given pkcs9 attribute list
- */
-static bool add_senderNonce_attribute(pkcs9_t *pkcs9)
-{
-	const size_t nonce_len = 16;
-	u_char nonce_buf[nonce_len];
-	chunk_t senderNonce = { nonce_buf, nonce_len };
-	rng_t *rng;
-
-	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng || !rng->get_bytes(rng, nonce_len, nonce_buf))
-	{
-		DESTROY_IF(rng);
-		return FALSE;
-	}
-	rng->destroy(rng);
-
-	pkcs9->set_attribute(pkcs9, OID_PKI_SENDER_NONCE, senderNonce);
-	return TRUE;
-}
-
-/**
  * Builds a pkcs7 enveloped and signed scep request
  */
 chunk_t scep_build_request(chunk_t data, chunk_t transID, scep_msg_t msg,
@@ -217,39 +195,74 @@ chunk_t scep_build_request(chunk_t data, chunk_t transID, scep_msg_t msg,
 					size_t key_size, certificate_t *signer_cert,
 					hash_algorithm_t digest_alg, private_key_t *private_key)
 {
-	chunk_t request, msgType = {
-		(u_char*)msgType_values[msg],
-		strlen(msgType_values[msg]),
-	};
-	pkcs7_t *pkcs7;
-	pkcs9_t *pkcs9;
+	chunk_t request;
+	container_t *container;
+	char nonce[16];
+	rng_t *rng;
+	chunk_t senderNonce, msgType;
 
-	pkcs7 = pkcs7_create_from_data(data);
-	if (!pkcs7->build_envelopedData(pkcs7, enc_cert, enc_alg, key_size))
+	/* generate senderNonce */
+	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
+	if (!rng || !rng->get_bytes(rng, sizeof(nonce), nonce))
 	{
-		pkcs7->destroy(pkcs7);
+		DESTROY_IF(rng);
 		return chunk_empty;
 	}
+	rng->destroy(rng);
 
-	pkcs9 = pkcs9_create();
-	pkcs9->set_attribute(pkcs9, OID_PKI_TRANS_ID, transID);
-	pkcs9->set_attribute(pkcs9, OID_PKI_MESSAGE_TYPE, msgType);
-	if (!add_senderNonce_attribute(pkcs9))
+	/* encrypt data in enveloped-data PKCS#7 */
+	container = lib->creds->create(lib->creds,
+					CRED_CONTAINER, CONTAINER_PKCS7_ENVELOPED_DATA,
+					BUILD_BLOB, data,
+					BUILD_CERT, enc_cert,
+					BUILD_ENCRYPTION_ALG, enc_alg,
+					BUILD_KEY_SIZE, (int)key_size,
+					BUILD_END);
+	if (!container)
 	{
-		pkcs9->destroy(pkcs9);
-		pkcs7->destroy(pkcs7);
 		return chunk_empty;
 	}
-
-	pkcs7->set_attributes(pkcs7, pkcs9);
-	pkcs7->set_certificate(pkcs7, signer_cert->get_ref(signer_cert));
-	if (!pkcs7->build_signedData(pkcs7, private_key, digest_alg))
+	if (!container->get_encoding(container, &request))
 	{
-		pkcs7->destroy(pkcs7);
+		container->destroy(container);
 		return chunk_empty;
 	}
-	request = pkcs7->get_contentInfo(pkcs7);
-	pkcs7->destroy(pkcs7);
+	container->destroy(container);
+
+	/* sign enveloped-data in a signed-data PKCS#7 */
+	senderNonce = asn1_wrap(ASN1_OCTET_STRING, "c", chunk_from_thing(nonce));
+	transID = asn1_wrap(ASN1_PRINTABLESTRING, "c", transID);
+	msgType = asn1_wrap(ASN1_PRINTABLESTRING, "c",
+						chunk_create((char*)msgType_values[msg],
+									 strlen(msgType_values[msg])));
+
+	container = lib->creds->create(lib->creds,
+					CRED_CONTAINER, CONTAINER_PKCS7_SIGNED_DATA,
+					BUILD_BLOB, request,
+					BUILD_SIGNING_CERT, signer_cert,
+					BUILD_SIGNING_KEY, private_key,
+					BUILD_DIGEST_ALG, digest_alg,
+					BUILD_PKCS7_ATTRIBUTE, OID_PKI_SENDER_NONCE, senderNonce,
+					BUILD_PKCS7_ATTRIBUTE, OID_PKI_TRANS_ID, transID,
+					BUILD_PKCS7_ATTRIBUTE, OID_PKI_MESSAGE_TYPE, msgType,
+					BUILD_END);
+
+	free(request.ptr);
+	free(senderNonce.ptr);
+	free(transID.ptr);
+	free(msgType.ptr);
+
+	if (!container)
+	{
+		return chunk_empty;
+	}
+	if (!container->get_encoding(container, &request))
+	{
+		container->destroy(container);
+		return chunk_empty;
+	}
+	container->destroy(container);
+
 	return request;
 }
 
@@ -319,7 +332,7 @@ static char* escape_http_request(chunk_t req)
 /**
  * Send a SCEP request via HTTP and wait for a response
  */
-bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
+bool scep_http_request(const char *url, chunk_t msg, scep_op_t op,
 					   bool http_get_request, chunk_t *response)
 {
 	int len;
@@ -337,7 +350,7 @@ bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
 
 		if (http_get_request)
 		{
-			char *escaped_req = escape_http_request(pkcs7);
+			char *escaped_req = escape_http_request(msg);
 
 			/* form complete url */
 			len = strlen(url) + 20 + strlen(operation) + strlen(escaped_req) + 1;
@@ -362,7 +375,7 @@ bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
 
 			status = lib->fetcher->fetch(lib->fetcher, complete_url, response,
 										 FETCH_HTTP_VERSION_1_0,
-										 FETCH_REQUEST_DATA, pkcs7,
+										 FETCH_REQUEST_DATA, msg,
 										 FETCH_REQUEST_TYPE, "",
 										 FETCH_REQUEST_HEADER, "Expect:",
 										 FETCH_END);
@@ -371,12 +384,22 @@ bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
 	else  /* SCEP_GET_CA_CERT */
 	{
 		const char operation[] = "GetCACert";
+		int i;
+
+		/* escape spaces, TODO: complete URL escape */
+		for (i = 0; i < msg.len; i++)
+		{
+			if (msg.ptr[i] == ' ')
+			{
+				msg.ptr[i] = '+';
+			}
+		}
 
 		/* form complete url */
-		len = strlen(url) + 32 + strlen(operation) + 1;
+		len = strlen(url) + 32 + strlen(operation) + msg.len + 1;
 		complete_url = malloc(len);
-		snprintf(complete_url, len, "%s?operation=%s&message=CAIdentifier",
-				 url, operation);
+		snprintf(complete_url, len, "%s?operation=%s&message=%.*s",
+				 url, operation, (int)msg.len, msg.ptr);
 
 		status = lib->fetcher->fetch(lib->fetcher, complete_url, response,
 									 FETCH_HTTP_VERSION_1_0,
@@ -387,23 +410,44 @@ bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
 	return (status == SUCCESS);
 }
 
-err_t scep_parse_response(chunk_t response, chunk_t transID, pkcs7_t **data,
-						  scep_attributes_t *attrs, certificate_t *signer_cert)
+err_t scep_parse_response(chunk_t response, chunk_t transID,
+						  container_t **out, scep_attributes_t *attrs)
 {
-	pkcs7_t *pkcs7;
+	enumerator_t *enumerator;
+	bool verified = FALSE;
+	container_t *container;
+	auth_cfg_t *auth;
 
-	pkcs7 = pkcs7_create_from_chunk(response, 0);
-	if (!pkcs7 || !pkcs7->parse_signedData(pkcs7, signer_cert))
+	container = lib->creds->create(lib->creds, CRED_CONTAINER, CONTAINER_PKCS7,
+								   BUILD_BLOB_ASN1_DER, response, BUILD_END);
+	if (!container)
 	{
-		DESTROY_IF(pkcs7);
 		return "error parsing the scep response";
 	}
-	extract_attributes(pkcs7, attrs);
-	if (!chunk_equals(transID, attrs->transID))
+	if (container->get_type(container) != CONTAINER_PKCS7_SIGNED_DATA)
 	{
-		pkcs7->destroy(pkcs7);
-		return "transaction ID of scep response does not match";
+		container->destroy(container);
+		return "scep response is not PKCS#7 signed-data";
 	}
-	*data = pkcs7;
+
+	enumerator = container->create_signature_enumerator(container);
+	while (enumerator->enumerate(enumerator, &auth))
+	{
+		verified = TRUE;
+		extract_attributes((pkcs7_t*)container, enumerator, attrs);
+		if (!chunk_equals(transID, attrs->transID))
+		{
+			enumerator->destroy(enumerator);
+			container->destroy(container);
+			return "transaction ID of scep response does not match";
+		}
+	}
+	enumerator->destroy(enumerator);
+	if (!verified)
+	{
+		container->destroy(container);
+		return "unable to verify PKCS#7 container";
+	}
+	*out = container;
 	return NULL;
 }

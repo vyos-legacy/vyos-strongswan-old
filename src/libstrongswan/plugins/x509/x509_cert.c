@@ -29,13 +29,13 @@
 #include <stdio.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <crypto/hashers/hasher.h>
 #include <credentials/keys/private_key.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 #include <selectors/traffic_selector.h>
 
@@ -1544,6 +1544,10 @@ METHOD(certificate_t, has_subject, id_match_t,
 		}
 		if (this->public_key &&
 			this->public_key->has_fingerprint(this->public_key, encoding))
+		{
+			return ID_MATCH_PERFECT;
+		}
+		if (chunk_equals(this->serialNumber, encoding))
 		{
 			return ID_MATCH_PERFECT;
 		}

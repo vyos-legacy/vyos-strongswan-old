@@ -24,8 +24,8 @@
 #include <errno.h>
 
 #include <library.h>
-#include <chunk.h>
-#include <debug.h>
+#include <utils/chunk.h>
+#include <utils/debug.h>
 
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108

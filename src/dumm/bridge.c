@@ -16,8 +16,8 @@
 #include <sys/types.h>
 #include <libbridge.h>
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 #include "bridge.h"
 

@@ -26,7 +26,7 @@
 #include <threading/condvar.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <crypto/hashers/hasher.h>
 
 /* the default size of the hash table (MUST be a power of 2) */
@@ -397,6 +397,11 @@ struct private_ike_sa_manager_t {
 	 * reuse existing IKE_SAs in checkout_by_config
 	 */
 	bool reuse_ikesa;
+
+	/**
+	 * Configured IKE_SA limit, if any
+	 */
+	u_int ikesa_limit;
 };
 
 /**
@@ -963,14 +968,37 @@ static u_int64_t get_spi(private_ike_sa_manager_t *this)
 static bool get_init_hash(private_ike_sa_manager_t *this, message_t *message,
 						  chunk_t *hash)
 {
+	host_t *src;
+
 	if (!this->hasher)
 	{	/* this might be the case when flush() has been called */
 		return FALSE;
 	}
+	if (message->get_first_payload_type(message) == FRAGMENT_V1)
+	{	/* only hash the source IP, port and SPI for fragmented init messages */
+		u_int16_t port;
+		u_int64_t spi;
+
+		src = message->get_source(message);
+		if (!this->hasher->allocate_hash(this->hasher,
+										 src->get_address(src), NULL))
+		{
+			return FALSE;
+		}
+		port = src->get_port(src);
+		if (!this->hasher->allocate_hash(this->hasher,
+										 chunk_from_thing(port), NULL))
+		{
+			return FALSE;
+		}
+		spi = message->get_initiator_spi(message);
+		return this->hasher->allocate_hash(this->hasher,
+										   chunk_from_thing(spi), hash);
+	}
 	if (message->get_exchange_type(message) == ID_PROT)
 	{	/* include the source for Main Mode as the hash will be the same if
 		 * SPIs are reused by two initiators that use the same proposal */
-		host_t *src = message->get_source(message);
+		src = message->get_source(message);
 
 		if (!this->hasher->allocate_hash(this->hasher,
 										 src->get_address(src), NULL))
@@ -1203,34 +1231,46 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 		{
 			case NOT_FOUND:
 			{	/* we've not seen this packet yet, create a new IKE_SA */
-				id->set_responder_spi(id, our_spi);
-				ike_sa = ike_sa_create(id, FALSE, ike_version);
-				if (ike_sa)
+				if (!this->ikesa_limit ||
+					this->public.get_count(&this->public) < this->ikesa_limit)
 				{
-					entry = entry_create();
-					entry->ike_sa = ike_sa;
-					entry->ike_sa_id = id->clone(id);
+					id->set_responder_spi(id, our_spi);
+					ike_sa = ike_sa_create(id, FALSE, ike_version);
+					if (ike_sa)
+					{
+						entry = entry_create();
+						entry->ike_sa = ike_sa;
+						entry->ike_sa_id = id;
 
-					segment = put_entry(this, entry);
-					entry->checked_out = TRUE;
-					unlock_single_segment(this, segment);
+						segment = put_entry(this, entry);
+						entry->checked_out = TRUE;
+						unlock_single_segment(this, segment);
 
-					entry->message_id = message->get_message_id(message);
-					entry->init_hash = hash;
+						entry->message_id = message->get_message_id(message);
+						entry->init_hash = hash;
 
-					DBG2(DBG_MGR, "created IKE_SA %s[%u]",
-						 ike_sa->get_name(ike_sa),
-						 ike_sa->get_unique_id(ike_sa));
+						DBG2(DBG_MGR, "created IKE_SA %s[%u]",
+							 ike_sa->get_name(ike_sa),
+							 ike_sa->get_unique_id(ike_sa));
+
+						charon->bus->set_sa(charon->bus, ike_sa);
+						return ike_sa;
+					}
+					else
+					{
+						DBG1(DBG_MGR, "creating IKE_SA failed, ignoring message");
+					}
 				}
 				else
 				{
-					remove_init_hash(this, hash);
-					chunk_free(&hash);
-					DBG1(DBG_MGR, "ignoring message, no such IKE_SA");
+					DBG1(DBG_MGR, "ignoring %N, hitting IKE_SA limit (%u)",
+						 exchange_type_names, message->get_exchange_type(message),
+						 this->ikesa_limit);
 				}
+				remove_init_hash(this, hash);
+				chunk_free(&hash);
 				id->destroy(id);
-				charon->bus->set_sa(charon->bus, ike_sa);
-				return ike_sa;
+				return NULL;
 			}
 			case FAILED:
 			{	/* we failed to allocate an SPI */
@@ -1263,7 +1303,10 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 
 			ike_id = entry->ike_sa->get_id(entry->ike_sa);
 			entry->checked_out = TRUE;
-			entry->message_id = message->get_message_id(message);
+			if (message->get_first_payload_type(message) != FRAGMENT_V1)
+			{
+				entry->message_id = message->get_message_id(message);
+			}
 			if (ike_id->get_responder_spi(ike_id) == 0)
 			{
 				ike_id->set_responder_spi(ike_id, id->get_responder_spi(id));
@@ -1273,6 +1316,10 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 					ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
 		}
 		unlock_single_segment(this, segment);
+	}
+	else
+	{
+		charon->bus->alert(charon->bus, ALERT_INVALID_IKE_SPI, message);
 	}
 	id->destroy(id);
 	charon->bus->set_sa(charon->bus, ike_sa);
@@ -1748,6 +1795,7 @@ METHOD(ike_sa_manager_t, check_uniqueness, bool,
 					switch (policy)
 					{
 						case UNIQUE_REPLACE:
+							charon->bus->alert(charon->bus, ALERT_UNIQUE_REPLACE);
 							DBG1(DBG_IKE, "deleting duplicate IKE_SA for peer "
 									"'%Y' due to uniqueness policy", other);
 							status = duplicate->delete(duplicate);
@@ -2044,6 +2092,9 @@ ike_sa_manager_t *ike_sa_manager_create()
 		free(this);
 		return NULL;
 	}
+
+	this->ikesa_limit = lib->settings->get_int(lib->settings,
+									"%s.ikesa_limit", 0, charon->name);
 
 	this->table_size = get_nearest_powerof2(lib->settings->get_int(
 									lib->settings, "%s.ikesa_table_size",

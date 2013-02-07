@@ -257,6 +257,8 @@ METHOD(task_manager_t, retransmit, status_t,
 			{
 				DBG1(DBG_IKE, "giving up after %d retransmits",
 					 this->initiating.retransmitted - 1);
+				charon->bus->alert(charon->bus, ALERT_RETRANSMIT_SEND_TIMEOUT,
+								   this->initiating.packet);
 				return DESTROY_ME;
 			}
 
@@ -264,6 +266,8 @@ METHOD(task_manager_t, retransmit, status_t,
 			{
 				DBG1(DBG_IKE, "retransmit %d of request with message ID %d",
 					 this->initiating.retransmitted, message_id);
+				charon->bus->alert(charon->bus, ALERT_RETRANSMIT_SEND,
+								   this->initiating.packet);
 			}
 			packet = this->initiating.packet->clone(this->initiating.packet);
 			charon->sender->send(charon->sender, packet);
@@ -626,6 +630,8 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 	message_t *message;
 	host_t *me, *other;
 	bool delete = FALSE, hook = FALSE;
+	ike_sa_id_t *id = NULL;
+	u_int64_t responder_spi;
 	status_t status;
 
 	me = request->get_destination(request);
@@ -676,10 +682,15 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 	}
 	enumerator->destroy(enumerator);
 
-	/* remove resonder SPI if IKE_SA_INIT failed */
+	/* RFC 5996, section 2.6 mentions that in the event of a failure during
+	 * IKE_SA_INIT the responder's SPI will be 0 in the response, while it
+	 * actually explicitly allows it to be non-zero.  Since we use the responder
+	 * SPI to create hashes in the IKE_SA manager we can only set the SPI to
+	 * zero temporarily, otherwise checking the SA in would fail. */
 	if (delete && request->get_exchange_type(request) == IKE_SA_INIT)
 	{
-		ike_sa_id_t *id = this->ike_sa->get_id(this->ike_sa);
+		id = this->ike_sa->get_id(this->ike_sa);
+		responder_spi = id->get_responder_spi(id);
 		id->set_responder_spi(id, 0);
 	}
 
@@ -689,6 +700,10 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 	status = this->ike_sa->generate_message(this->ike_sa, message,
 											&this->responding.packet);
 	message->destroy(message);
+	if (id)
+	{
+		id->set_responder_spi(id, responder_spi);
+	}
 	if (status != SUCCESS)
 	{
 		charon->bus->ike_updown(charon->bus, this->ike_sa, FALSE);
@@ -1045,6 +1060,8 @@ static status_t parse_message(private_task_manager_t *this, message_t *msg)
 			 is_request ? "request" : "response",
 			 msg->get_message_id(msg));
 
+		charon->bus->alert(charon->bus, ALERT_PARSE_ERROR_BODY, msg, status);
+
 		if (this->ike_sa->get_state(this->ike_sa) == IKE_CREATED)
 		{	/* invalid initiation attempt, close SA */
 			return DESTROY_ME;
@@ -1077,7 +1094,8 @@ METHOD(task_manager_t, process_message, status_t,
 		ike_sa_id_t *ike_sa_id;
 		ike_cfg_t *ike_cfg;
 		job_t *job;
-		ike_cfg = charon->backends->get_ike_cfg(charon->backends, me, other);
+		ike_cfg = charon->backends->get_ike_cfg(charon->backends,
+												me, other, IKEV2);
 		if (ike_cfg == NULL)
 		{
 			/* no config found for these hosts, destroy */
@@ -1133,6 +1151,7 @@ METHOD(task_manager_t, process_message, status_t,
 
 			DBG1(DBG_IKE, "received retransmit of request with ID %d, "
 				 "retransmitting response", mid);
+			charon->bus->alert(charon->bus, ALERT_RETRANSMIT_RECEIVE, msg);
 			clone = this->responding.packet->clone(this->responding.packet);
 			host = msg->get_destination(msg);
 			clone->set_source(clone, host->clone(host));

@@ -15,9 +15,9 @@
 
 #include "constraints_validator.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/asn1.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <credentials/certificates/x509.h>
 
 typedef struct private_constraints_validator_t private_constraints_validator_t;

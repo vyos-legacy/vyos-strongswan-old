@@ -33,6 +33,10 @@ typedef enum ita_attr_t ita_attr_t;
 enum ita_attr_t {
 	ITA_ATTR_COMMAND =	1,
 	ITA_ATTR_DUMMY = 2,
+	ITA_ATTR_GET_SETTINGS = 3,
+	ITA_ATTR_SETTINGS = 4,
+	ITA_ATTR_START_ANGEL = 5,
+	ITA_ATTR_STOP_ANGEL = 6
 };
 
 /**

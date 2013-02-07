@@ -16,6 +16,10 @@
 #include "load_tester_config.h"
 
 #include <daemon.h>
+#include <hydra.h>
+#include <attributes/mem_pool.h>
+#include <collections/hashtable.h>
+#include <threading/mutex.h>
 
 typedef struct private_load_tester_config_t private_load_tester_config_t;
 
@@ -40,14 +44,14 @@ struct private_load_tester_config_t {
 	host_t *vip;
 
 	/**
-	 * Remote address
+	 * Initiator address
 	 */
-	char *remote;
+	char *initiator;
 
 	/**
-	 * Local address
+	 * Responder address
 	 */
-	char *local;
+	char *responder;
 
 	/**
 	 * IP address pool
@@ -75,9 +79,34 @@ struct private_load_tester_config_t {
 	char *initiator_id;
 
 	/**
+	 * Initiator ID to to match against as responder
+	 */
+	char *initiator_match;
+
+	/**
 	 * Responder ID to enforce
 	 */
 	char *responder_id;
+
+	/**
+	 * Traffic Selector on initiator side, as proposed from initiator
+	 */
+	char *initiator_tsi;
+
+	/**
+	 * Traffic Selector on responder side, as proposed from initiator
+	 */
+	char *initiator_tsr;
+
+	/**
+	 * Traffic Selector on initiator side, as narrowed by responder
+	 */
+	char *responder_tsi;
+
+	/**
+	 * Traffic Selector on responder side, as narrowed by responder
+	 */
+	char *responder_tsr;
 
 	/**
 	 * IKE_SA rekeying delay
@@ -108,7 +137,102 @@ struct private_load_tester_config_t {
 	 * Dynamic source port, if used
 	 */
 	u_int16_t port;
+
+	/**
+	 * IKE version to use for load testing
+	 */
+	ike_version_t version;
+
+	/**
+	 * List of pools to allocate external addresses dynamically, as mem_pool_t
+	 */
+	linked_list_t *pools;
+
+	/**
+	 * Address prefix to use when installing dynamic addresses
+	 */
+	int prefix;
+
+	/**
+	 * Hashtable with leases in "pools", host_t => entry_t
+	 */
+	hashtable_t *leases;
+
+	/**
+	 * Mutex for leases hashtable
+	 */
+	mutex_t *mutex;
 };
+
+/**
+ * Lease entry
+ */
+typedef struct {
+	/** host reference, equal to key */
+	host_t *host;
+	/** associated identity */
+	identification_t *id;
+} entry_t;
+
+/**
+ * Destroy an entry_t
+ */
+static void entry_destroy(entry_t *this)
+{
+	this->host->destroy(this->host);
+	this->id->destroy(this->id);
+	free(this);
+}
+
+/**
+ * Hashtable hash function
+ */
+static u_int hash(host_t *key)
+{
+	return chunk_hash(key->get_address(key));
+}
+
+/**
+ * Hashtable equals function
+ */
+static bool equals(host_t *a, host_t *b)
+{
+	return a->ip_equals(a, b);
+}
+
+/**
+ * Load external addresses to use, if any
+ */
+static void load_addrs(private_load_tester_config_t *this)
+{
+	enumerator_t *enumerator;
+	host_t *net;
+	int bits;
+	char *iface, *cidr;
+	mem_pool_t *pool;
+
+
+	this->prefix = lib->settings->get_int(lib->settings,
+						"%s.plugins.load-tester.addrs_prefix", 16, charon->name);
+	enumerator = lib->settings->create_key_value_enumerator(lib->settings,
+						"%s.plugins.load-tester.addrs", charon->name);
+	while (enumerator->enumerate(enumerator, &iface, &cidr))
+	{
+		net = host_create_from_subnet(cidr, &bits);
+		if (net)
+		{
+			DBG1(DBG_CFG, "loaded load-tester addresses %s", cidr);
+			pool = mem_pool_create(iface, net, bits);
+			net->destroy(net);
+			this->pools->insert_last(this->pools, pool);
+		}
+		else
+		{
+			DBG1(DBG_CFG, "parsing load-tester addresses %s failed", cidr);
+		}
+	}
+	enumerator->destroy(enumerator);
+}
 
 /**
  * Generate auth config from string
@@ -133,8 +257,14 @@ static void generate_auth_cfg(private_load_tester_config_t *this, char *str,
 
 		if (this->initiator_id)
 		{
-			if ((local && num) || (!local && !num))
-			{
+			if (this->initiator_match && (!local && !num))
+			{	/* as responder, use the secified identity that matches
+				 * all used initiator identities, if given. */
+				snprintf(buf, sizeof(buf), this->initiator_match, rnd);
+				id = identification_create_from_string(buf);
+			}
+			else if ((local && num) || (!local && !num))
+			{	/* as initiator, create peer specific identities */
 				snprintf(buf, sizeof(buf), this->initiator_id, num, rnd);
 				id = identification_create_from_string(buf);
 			}
@@ -231,6 +361,88 @@ static void generate_auth_cfg(private_load_tester_config_t *this, char *str,
 }
 
 /**
+ * Add a TS from a string to a child_cfg
+ */
+static void add_ts(char *string, child_cfg_t *cfg, bool local)
+{
+	traffic_selector_t *ts;
+
+	if (string)
+	{
+		ts = traffic_selector_create_from_cidr(string, 0, 0);
+		if (!ts)
+		{
+			DBG1(DBG_CFG, "parsing TS string '%s' failed", string);
+		}
+	}
+	else
+	{
+		ts = traffic_selector_create_dynamic(0, 0, 65535);
+	}
+	if (ts)
+	{
+		cfg->add_traffic_selector(cfg, local, ts);
+	}
+}
+
+/**
+ * Allocate and install a dynamic external address to use
+ */
+static host_t *allocate_addr(private_load_tester_config_t *this, uint num)
+{
+	enumerator_t *enumerator;
+	mem_pool_t *pool;
+	host_t *found = NULL, *requested;
+	identification_t *id;
+	char *iface = NULL, buf[32];
+	entry_t *entry;
+
+	requested = host_create_any(AF_INET);
+	snprintf(buf, sizeof(buf), "ext-%d", num);
+	id = identification_create_from_string(buf);
+	enumerator = this->pools->create_enumerator(this->pools);
+	while (enumerator->enumerate(enumerator, &pool))
+	{
+		found = pool->acquire_address(pool, id, requested, MEM_POOL_NEW);
+		if (found)
+		{
+			iface = (char*)pool->get_name(pool);
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	requested->destroy(requested);
+
+	if (!found)
+	{
+		DBG1(DBG_CFG, "no address found to install as load-tester external IP");
+		id->destroy(id);
+		return NULL;
+	}
+	if (hydra->kernel_interface->add_ip(hydra->kernel_interface,
+										found, this->prefix, iface) != SUCCESS)
+	{
+		DBG1(DBG_CFG, "installing load-tester IP %H on %s failed", found, iface);
+		found->destroy(found);
+		id->destroy(id);
+		return NULL;
+	}
+	DBG1(DBG_CFG, "installed load-tester IP %H on %s", found, iface);
+	INIT(entry,
+		.host = found->clone(found),
+		.id = id,
+	);
+	this->mutex->lock(this->mutex);
+	entry = this->leases->put(this->leases, entry->host, entry);
+	this->mutex->unlock(this->mutex);
+	if (entry)
+	{	/* shouldn't actually happen */
+		entry_destroy(entry);
+	}
+	return found;
+}
+
+/**
  * Generate a new initiator config, num = 0 for responder config
  */
 static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
@@ -238,8 +450,9 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 	ike_cfg_t *ike_cfg;
 	child_cfg_t *child_cfg;
 	peer_cfg_t *peer_cfg;
-	traffic_selector_t *ts;
 	proposal_t *proposal;
+	char local[32], *remote;
+	host_t *addr;
 	lifetime_cfg_t lifetime = {
 		.time = {
 			.life = this->child_rekey * 2,
@@ -248,20 +461,48 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 		}
 	};
 
-	if (this->port && num)
-	{
-		ike_cfg = ike_cfg_create(FALSE, FALSE,
-								 this->local, FALSE, this->port + num - 1,
-								 this->remote, FALSE, IKEV2_NATT_PORT);
+	if (num)
+	{	/* initiator */
+		if (this->pools->get_count(this->pools))
+		{	/* using dynamically installed external addresses */
+			addr = allocate_addr(this, num);
+			if (!addr)
+			{
+				DBG1(DBG_CFG, "allocating external address failed");
+				return NULL;
+			}
+			snprintf(local, sizeof(local), "%H", addr);
+			addr->destroy(addr);
+		}
+		else
+		{
+			snprintf(local, sizeof(local), "%s", this->initiator);
+		}
+		remote = this->responder;
 	}
 	else
 	{
-		ike_cfg = ike_cfg_create(FALSE, FALSE,
-								 this->local, FALSE, charon->socket->get_port(charon->socket, FALSE),
-								 this->remote, FALSE, IKEV2_UDP_PORT);
+		snprintf(local, sizeof(local), "%s", this->responder);
+		remote = this->initiator;
+	}
+
+	if (this->port && num)
+	{
+		ike_cfg = ike_cfg_create(this->version, TRUE, FALSE,
+								 local, FALSE, this->port + num - 1,
+								 remote, FALSE, IKEV2_NATT_PORT,
+								 FRAGMENTATION_NO);
+	}
+	else
+	{
+		ike_cfg = ike_cfg_create(this->version, TRUE, FALSE,
+								 local, FALSE,
+								 charon->socket->get_port(charon->socket, FALSE),
+								 remote, FALSE, IKEV2_UDP_PORT,
+								 FRAGMENTATION_NO);
 	}
 	ike_cfg->add_proposal(ike_cfg, this->proposal->clone(this->proposal));
-	peer_cfg = peer_cfg_create("load-test", IKEV2, ike_cfg,
+	peer_cfg = peer_cfg_create("load-test", ike_cfg,
 							   CERT_SEND_IF_ASKED, UNIQUE_NO, 1, /* keytries */
 							   this->ike_rekey, 0, /* rekey, reauth */
 							   0, this->ike_rekey, /* jitter, overtime */
@@ -293,10 +534,24 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 								 0, 0, NULL, NULL, 0);
 	proposal = proposal_create_from_string(PROTO_ESP, "aes128-sha1");
 	child_cfg->add_proposal(child_cfg, proposal);
-	ts = traffic_selector_create_dynamic(0, 0, 65535);
-	child_cfg->add_traffic_selector(child_cfg, TRUE, ts);
-	ts = traffic_selector_create_dynamic(0, 0, 65535);
-	child_cfg->add_traffic_selector(child_cfg, FALSE, ts);
+
+	if (num)
+	{	/* initiator */
+		if (this->vip)
+		{
+			add_ts(NULL, child_cfg, TRUE);
+		}
+		else
+		{
+			add_ts(this->initiator_tsi, child_cfg, TRUE);
+		}
+		add_ts(this->initiator_tsr, child_cfg, FALSE);
+	}
+	else
+	{	/* responder */
+		add_ts(this->responder_tsr, child_cfg, TRUE);
+		add_ts(this->responder_tsi, child_cfg, FALSE);
+	}
 	peer_cfg->add_child_cfg(peer_cfg, child_cfg);
 	return peer_cfg;
 }
@@ -327,9 +582,40 @@ METHOD(backend_t, get_peer_cfg_by_name, peer_cfg_t*,
 	return NULL;
 }
 
+METHOD(load_tester_config_t, delete_ip, void,
+	private_load_tester_config_t *this, host_t *ip)
+{
+	enumerator_t *enumerator;
+	mem_pool_t *pool;
+	entry_t *entry;
+
+	this->mutex->lock(this->mutex);
+	entry = this->leases->remove(this->leases, ip);
+	this->mutex->unlock(this->mutex);
+
+	if (entry)
+	{
+		enumerator = this->pools->create_enumerator(this->pools);
+		while (enumerator->enumerate(enumerator, &pool))
+		{
+			if (pool->release_address(pool, entry->host, entry->id))
+			{
+				hydra->kernel_interface->del_ip(hydra->kernel_interface,
+											entry->host, this->prefix, FALSE);
+				break;
+			}
+		}
+		enumerator->destroy(enumerator);
+		entry_destroy(entry);
+	}
+}
+
 METHOD(load_tester_config_t, destroy, void,
 	private_load_tester_config_t *this)
 {
+	this->mutex->destroy(this->mutex);
+	this->leases->destroy(this->leases);
+	this->pools->destroy_offset(this->pools, offsetof(mem_pool_t, destroy));
 	this->peer_cfg->destroy(this->peer_cfg);
 	DESTROY_IF(this->proposal);
 	DESTROY_IF(this->vip);
@@ -350,8 +636,13 @@ load_tester_config_t *load_tester_config_create()
 				.create_ike_cfg_enumerator = _create_ike_cfg_enumerator,
 				.get_peer_cfg_by_name = _get_peer_cfg_by_name,
 			},
+			.delete_ip = _delete_ip,
 			.destroy = _destroy,
 		},
+		.pools = linked_list_create(),
+		.leases = hashtable_create((hashtable_hash_t)hash,
+								   (hashtable_equals_t)equals, 256),
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.num = 1,
 	);
 
@@ -362,10 +653,10 @@ load_tester_config_t *load_tester_config_create()
 	}
 	this->pool = lib->settings->get_str(lib->settings,
 			"%s.plugins.load-tester.pool", NULL, charon->name);
-	this->remote = lib->settings->get_str(lib->settings,
-			"%s.plugins.load-tester.remote", "127.0.0.1", charon->name);
-	this->local = lib->settings->get_str(lib->settings,
-			"%s.plugins.load-tester.local", "0.0.0.0", charon->name);
+	this->initiator = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.initiator", "0.0.0.0", charon->name);
+	this->responder = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.responder", "127.0.0.1", charon->name);
 
 	this->proposal = proposal_create_from_string(PROTO_IKE,
 				lib->settings->get_str(lib->settings,
@@ -391,14 +682,30 @@ load_tester_config_t *load_tester_config_create()
 			"%s.plugins.load-tester.responder_auth", "pubkey", charon->name);
 	this->initiator_id = lib->settings->get_str(lib->settings,
 			"%s.plugins.load-tester.initiator_id", NULL, charon->name);
+	this->initiator_match = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.initiator_match", NULL, charon->name);
 	this->responder_id = lib->settings->get_str(lib->settings,
 			"%s.plugins.load-tester.responder_id", NULL, charon->name);
 
+	this->initiator_tsi = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.initiator_tsi", NULL, charon->name);
+	this->responder_tsi =lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.responder_tsi",
+			this->initiator_tsi, charon->name);
+	this->initiator_tsr = lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.initiator_tsr", NULL, charon->name);
+	this->responder_tsr =lib->settings->get_str(lib->settings,
+			"%s.plugins.load-tester.responder_tsr",
+			this->initiator_tsr, charon->name);
+
 	this->port = lib->settings->get_int(lib->settings,
 			"%s.plugins.load-tester.dynamic_port", 0, charon->name);
+	this->version = lib->settings->get_int(lib->settings,
+			"%s.plugins.load-tester.version", IKE_ANY, charon->name);
+
+	load_addrs(this);
 
 	this->peer_cfg = generate_config(this, 0);
 
 	return &this->public;
 }
-

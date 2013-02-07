@@ -43,7 +43,7 @@ typedef struct ike_sa_t ike_sa_t;
 #include <config/peer_cfg.h>
 #include <config/ike_cfg.h>
 #include <credentials/auth_cfg.h>
-#include <utils/packet.h>
+#include <networking/packet.h>
 
 /**
  * Timeout in seconds after that a half open IKE_SA gets deleted.
@@ -72,6 +72,7 @@ enum ike_extension_t {
 
 	/**
 	 * peer supports NAT traversal as specified in RFC4306 or RFC3947
+	 * including some RFC3947 drafts
 	 */
 	EXT_NATT = (1<<0),
 
@@ -119,6 +120,17 @@ enum ike_extension_t {
 	 * peer supports Cisco Unity configuration attributes
 	 */
 	EXT_CISCO_UNITY = (1<<9),
+
+	/**
+	 * peer supports NAT traversal as specified in
+	 * draft-ietf-ipsec-nat-t-ike-02 .. -03
+	 */
+	EXT_NATT_DRAFT_02_03 = (1<<10),
+
+	/**
+	 * peer support proprietary IKE fragmentation
+	 */
+	EXT_IKE_FRAGMENTATION = (1<<11),
 };
 
 /**
@@ -1014,9 +1026,8 @@ struct ike_sa_t {
 	 *
 	 * When rekeying is completed, all CHILD_SAs, the virtual IP and all
 	 * outstanding tasks are moved from other to this.
-	 * As this call may initiate inherited tasks, a status is returned.
 	 *
-	 * @param other			other task to inherit from
+	 * @param other			other IKE SA to inherit from
 	 */
 	void (*inherit) (ike_sa_t *this, ike_sa_t *other);
 

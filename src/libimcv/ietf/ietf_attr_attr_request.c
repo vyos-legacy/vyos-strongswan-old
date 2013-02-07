@@ -19,9 +19,9 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_ietf_attr_attr_request_t private_ietf_attr_attr_request_t;
 
@@ -114,12 +114,12 @@ METHOD(pa_tnc_attr_t, build, void,
 	{
 		return;
 	}
-	writer = bio_writer_create(ATTR_REQUEST_ENTRY_SIZE * 
+	writer = bio_writer_create(ATTR_REQUEST_ENTRY_SIZE *
 							   this->list->get_count(this->list));
 
 	enumerator = this->list->create_enumerator(this->list);
 	while (enumerator->enumerate(enumerator, &entry))
-	{	
+	{
 		writer->write_uint32(writer, entry->vendor_id);
 		writer->write_uint32(writer, entry->type);
 	}
@@ -161,7 +161,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	reader = bio_reader_create(this->value);
 	while (count--)
 	{
-		reader->read_uint8 (reader, &reserved);	
+		reader->read_uint8 (reader, &reserved);
 		reader->read_uint24(reader, &vendor_id);
 		reader->read_uint32(reader, &type);
 
@@ -251,6 +251,8 @@ pa_tnc_attr_t *ietf_attr_attr_request_create_from_data(chunk_t data)
 			.pa_tnc_attribute = {
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,
@@ -259,7 +261,7 @@ pa_tnc_attr_t *ietf_attr_attr_request_create_from_data(chunk_t data)
 			.add = _add,
 			.create_enumerator = _create_enumerator,
 		},
-		.type = { PEN_IETF,IETF_ATTR_ATTRIBUTE_REQUEST },
+		.type = { PEN_IETF, IETF_ATTR_ATTRIBUTE_REQUEST },
 		.value = chunk_clone(data),
 		.list = linked_list_create(),
 		.ref = 1,

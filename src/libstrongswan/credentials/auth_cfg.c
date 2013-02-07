@@ -17,8 +17,8 @@
 #include "auth_cfg.h"
 
 #include <library.h>
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 #include <eap/eap.h>
 #include <credentials/certificates/certificate.h>

@@ -34,10 +34,10 @@
 #include <tnc/imc/imc_manager.h>
 #include <tnc/imv/imv_manager.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <daemon.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <pen/pen.h>
 
 typedef struct private_tnccs_20_t private_tnccs_20_t;
@@ -369,10 +369,9 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			reason_msg = (pb_reason_string_msg_t*)msg;
 			reason_string = reason_msg->get_reason_string(reason_msg);
 			language_code = reason_msg->get_language_code(reason_msg);
-			DBG2(DBG_TNC, "reason string is '%.*s'", (int)reason_string.len,
-													 reason_string.ptr);
-			DBG2(DBG_TNC, "language code is '%.*s'", (int)language_code.len,
-													 language_code.ptr);
+			DBG1(DBG_TNC, "reason string is '%.*s' [%.*s]",
+				 (int)reason_string.len, reason_string.ptr,
+				 (int)language_code.len, language_code.ptr);
 			break;
 		}
 		default:
@@ -647,28 +646,40 @@ METHOD(tls_t, build, status_t,
 
 	if (this->batch_type == PB_BATCH_NONE)
 	{
-		if (this->is_server && state == PB_STATE_SERVER_WORKING)
+		if (this->is_server)
 		{
-			if (this->state_machine->get_empty_cdata(this->state_machine))
+			if (state == PB_STATE_SERVER_WORKING)
 			{
-				check_and_build_recommendation(this);
-			}
-			else
-			{
-				DBG2(DBG_TNC, "no recommendation available yet, "
-							  "sending empty PB-TNC SDATA batch");
-				this->batch_type = PB_BATCH_SDATA;
+				if (this->state_machine->get_empty_cdata(this->state_machine))
+				{
+					check_and_build_recommendation(this);
+				}
+				else
+				{
+					DBG2(DBG_TNC, "no recommendation available yet, "
+								  "sending empty PB-TNC SDATA batch");
+					this->batch_type = PB_BATCH_SDATA;
+				}
 			}
 		}
 		else
-        {
-			/**
-			 * In the DECIDED state and if no CRETRY is under way,
-			 * a PB-TNC client replies with an empty CLOSE batch.
-			 */
-			if (state == PB_STATE_DECIDED)
+		{
+			switch (state)
 			{
-				this->batch_type = PB_BATCH_CLOSE;
+				case PB_STATE_CLIENT_WORKING:
+					DBG2(DBG_TNC, "no client data to send, "
+								  "sending empty PB-TNC CDATA batch");
+					this->batch_type = PB_BATCH_CDATA;
+					break;
+				case PB_STATE_DECIDED:
+					/**
+					 * In the DECIDED state and if no CRETRY is under way,
+					 * a PB-TNC client replies with an empty CLOSE batch.
+					 */
+					this->batch_type = PB_BATCH_CLOSE;
+					break;
+				default:
+					break;
 			}
 		}
 	}

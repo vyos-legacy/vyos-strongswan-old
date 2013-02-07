@@ -19,8 +19,8 @@
 
 #include <tncif_names.h>
 
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_imc_attestation_state_t private_imc_attestation_state_t;
 typedef struct func_comp_t func_comp_t;
@@ -129,8 +129,6 @@ METHOD(imc_state_t, set_result, void,
 	private_imc_attestation_state_t *this, TNC_IMCID id,
 	TNC_IMV_Evaluation_Result result)
 {
-	DBG1(DBG_IMC, "set assessment result for IMC %u to '%N'",
-		 id, TNC_IMV_Evaluation_Result_names, result);
 	this->result = result;
 }
 
@@ -212,7 +210,6 @@ METHOD(imc_attestation_state_t, next_evidence, bool,
 imc_state_t *imc_attestation_state_create(TNC_ConnectionID connection_id)
 {
 	private_imc_attestation_state_t *this;
-	char *platform_info;
 
 	INIT(this,
 		.public = {
@@ -241,13 +238,6 @@ imc_state_t *imc_attestation_state_create(TNC_ConnectionID connection_id)
 		.list = linked_list_create(),
 	);
 
-	platform_info = lib->settings->get_str(lib->settings,
-						 "libimcv.plugins.imc-attestation.platform_info", NULL);
-	if (platform_info)
-	{
-		this->pts->set_platform_info(this->pts, platform_info);
-	}
-	
 	return &this->public.interface;
 }
 

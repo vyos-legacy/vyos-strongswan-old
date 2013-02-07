@@ -16,8 +16,9 @@
 #include "imv_scanner_state.h"
 
 #include <imv/imv_agent.h>
-#include <pa_tnc/pa_tnc_msg.h>
+#include <imv/imv_msg.h>
 #include <ietf/ietf_attr.h>
+#include <ietf/ietf_attr_attr_request.h>
 #include <ietf/ietf_attr_pa_tnc_error.h>
 #include <ietf/ietf_attr_port_filter.h>
 
@@ -25,16 +26,17 @@
 #include <tncif_pa_subtypes.h>
 
 #include <pen/pen.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/lexparser.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 /* IMV definitions */
 
 static const char imv_name[] = "Scanner";
 
-#define IMV_VENDOR_ID	PEN_ITA
-#define IMV_SUBTYPE		PA_SUBTYPE_ITA_SCANNER
+static pen_type_t msg_types[] = {
+	{ PEN_IETF, PA_SUBTYPE_IETF_VPN }
+};
 
 static imv_agent_t *imv_scanner;
 
@@ -46,7 +48,7 @@ struct port_range_t {
 
 
 /**
- * Default port policy 
+ * Default port policy
  *
  * TRUE:  all server ports on the TNC client must be closed
  * FALSE: any server port on the TNC client is allowed to be open
@@ -124,8 +126,8 @@ TNC_Result TNC_IMV_Initialize(TNC_IMVID imv_id,
 		DBG1(DBG_IMV, "IMV \"%s\" has already been initialized", imv_name);
 		return TNC_RESULT_ALREADY_INITIALIZED;
 	}
-	imv_scanner = imv_agent_create(imv_name, IMV_VENDOR_ID, IMV_SUBTYPE,
-								imv_id, actual_version);
+	imv_scanner = imv_agent_create(imv_name, msg_types, countof(msg_types),
+								   imv_id, actual_version);
 	if (!imv_scanner)
 	{
 		return TNC_RESULT_FATAL;
@@ -176,64 +178,39 @@ TNC_Result TNC_IMV_NotifyConnectionChange(TNC_IMVID imv_id,
 	}
 }
 
-static TNC_Result receive_message(TNC_IMVID imv_id,
-								  TNC_ConnectionID connection_id,
-								  TNC_UInt32 msg_flags,
-								  chunk_t msg,
-								  TNC_VendorID msg_vid,
-								  TNC_MessageSubtype msg_subtype,
-								  TNC_UInt32 src_imc_id,
-								  TNC_UInt32 dst_imv_id)
+static TNC_Result receive_message(imv_state_t *state, imv_msg_t *in_msg)
 {
-	pa_tnc_msg_t *pa_tnc_msg;
+	imv_msg_t *out_msg;
+	enumerator_t *enumerator;
 	pa_tnc_attr_t *attr;
 	pen_type_t type;
-	imv_state_t *state;
-	enumerator_t *enumerator;
 	TNC_Result result;
-	bool fatal_error;
+	bool fatal_error = FALSE;
 
-	if (!imv_scanner)
-	{
-		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
-		return TNC_RESULT_NOT_INITIALIZED;
-	}
-
-	/* get current IMV state */
-	if (!imv_scanner->get_state(imv_scanner, connection_id, &state))
-	{
-		return TNC_RESULT_FATAL;
-	}
-
-	/* parse received PA-TNC message and automatically handle any errors */ 
-	result = imv_scanner->receive_message(imv_scanner, state, msg, msg_vid,
-					 		msg_subtype, src_imc_id, dst_imv_id, &pa_tnc_msg);
-
-	/* no parsed PA-TNC attributes available if an error occurred */
-	if (!pa_tnc_msg)
+	/* parse received PA-TNC message and handle local and remote errors */
+	result = in_msg->receive(in_msg, &fatal_error);
+	if (result != TNC_RESULT_SUCCESS)
 	{
 		return result;
 	}
 
-	/* preprocess any IETF standard error attributes */
-	fatal_error = pa_tnc_msg->process_ietf_std_errors(pa_tnc_msg);
-
 	/* analyze PA-TNC attributes */
-	enumerator = pa_tnc_msg->create_attribute_enumerator(pa_tnc_msg);
+	enumerator = in_msg->create_attribute_enumerator(in_msg);
 	while (enumerator->enumerate(enumerator, &attr))
 	{
 		type = attr->get_type(attr);
 
 		if (type.vendor_id == PEN_IETF && type.type == IETF_ATTR_PORT_FILTER)
 		{
+			imv_scanner_state_t *imv_scanner_state;
 			ietf_attr_port_filter_t *attr_port_filter;
 			enumerator_t *enumerator;
 			u_int8_t protocol;
 			u_int16_t port;
-			char buf[BUF_LEN], *pos = buf;
-			size_t len = BUF_LEN;
 			bool blocked, compliant = TRUE;
-	
+
+
+			imv_scanner_state = (imv_scanner_state_t*)state;
 			attr_port_filter = (ietf_attr_port_filter_t*)attr;
 			enumerator = attr_port_filter->create_port_enumerator(attr_port_filter);
 			while (enumerator->enumerate(enumerator, &blocked, &protocol, &port))
@@ -241,7 +218,7 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 				enumerator_t *e;
 				port_range_t *port_range;
 				bool passed, found = FALSE;
-				int written = 0;
+				char buf[20];
 
 				if (blocked)
 				{
@@ -263,54 +240,51 @@ static TNC_Result receive_message(TNC_IMVID imv_id,
 				e->destroy(e);
 
 				passed = (closed_port_policy == found);
-				DBG2(DBG_IMV, "%s port %5u %s: %s", 
+				DBG2(DBG_IMV, "%s port %5u %s: %s",
 					(protocol == IPPROTO_TCP) ? "tcp" : "udp", port,
 					 blocked ? "closed" : "open", passed ? "ok" : "fatal");
 				if (!passed)
 				{
 					compliant = FALSE;
-					written = snprintf(pos, len, " %s/%u",
-									  (protocol == IPPROTO_TCP) ? "tcp" : "udp",
-									   port);
-					if (written < 0 || written >= len)
-					{
-						break;
-					}
-					pos += written;
-					len -= written;
+					snprintf(buf, sizeof(buf), "%s/%u",
+							(protocol == IPPROTO_TCP) ? "tcp" : "udp", port);
+					imv_scanner_state->add_violating_port(imv_scanner_state,
+														  strdup(buf));
 				}
-			} 
+			}
 			enumerator->destroy(enumerator);
 
 			if (compliant)
 			{
 				state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_ALLOW,
-								TNC_IMV_EVALUATION_RESULT_COMPLIANT);	
+								TNC_IMV_EVALUATION_RESULT_COMPLIANT);
 			}
 			else
 			{
-				imv_scanner_state_t *imv_scanner_state;
-
-				imv_scanner_state = (imv_scanner_state_t*)state;
-				imv_scanner_state->set_violating_ports(imv_scanner_state, buf);
 				state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_ACCESS,
-								TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MAJOR);	
-			}		  
-		}		
+								TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MAJOR);
+			}
+		}
 	}
 	enumerator->destroy(enumerator);
-	pa_tnc_msg->destroy(pa_tnc_msg);
 
 	if (fatal_error)
 	{
 		state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
-								TNC_IMV_EVALUATION_RESULT_ERROR);			  
+								TNC_IMV_EVALUATION_RESULT_ERROR);
 	}
-	return imv_scanner->provide_recommendation(imv_scanner, connection_id,
-											   src_imc_id);
+
+	out_msg = imv_msg_create_as_reply(in_msg);
+	result = out_msg->send_assessment(out_msg);
+	out_msg->destroy(out_msg);
+	if (result != TNC_RESULT_SUCCESS)
+	{
+		return result;
+	}  
+	return imv_scanner->provide_recommendation(imv_scanner, state);
  }
 
 /**
@@ -322,14 +296,26 @@ TNC_Result TNC_IMV_ReceiveMessage(TNC_IMVID imv_id,
 								  TNC_UInt32 msg_len,
 								  TNC_MessageType msg_type)
 {
-	TNC_VendorID msg_vid;
-	TNC_MessageSubtype msg_subtype;
+	imv_state_t *state;
+	imv_msg_t *in_msg;
+	TNC_Result result;
 
-	msg_vid = msg_type >> 8;
-	msg_subtype = msg_type & TNC_SUBTYPE_ANY;
+	if (!imv_scanner)
+	{
+		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
+		return TNC_RESULT_NOT_INITIALIZED;
+	}
+	if (!imv_scanner->get_state(imv_scanner, connection_id, &state))
+	{
+		return TNC_RESULT_FATAL;
+	}
 
-	return receive_message(imv_id, connection_id, 0, chunk_create(msg, msg_len),
-						   msg_vid,	msg_subtype, 0, TNC_IMVID_ANY);
+	in_msg = imv_msg_create_from_data(imv_scanner, state, connection_id, msg_type,
+									  chunk_create(msg, msg_len));
+	result = receive_message(state, in_msg);
+	in_msg->destroy(in_msg);
+
+	return result;
 }
 
 /**
@@ -345,9 +331,26 @@ TNC_Result TNC_IMV_ReceiveMessageLong(TNC_IMVID imv_id,
 									  TNC_UInt32 src_imc_id,
 									  TNC_UInt32 dst_imv_id)
 {
-	return receive_message(imv_id, connection_id, msg_flags,
-						   chunk_create(msg, msg_len), msg_vid, msg_subtype,
-						   src_imc_id, dst_imv_id);
+	imv_state_t *state;
+	imv_msg_t *in_msg;
+	TNC_Result result;
+
+	if (!imv_scanner)
+	{
+		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
+		return TNC_RESULT_NOT_INITIALIZED;
+	}
+	if (!imv_scanner->get_state(imv_scanner, connection_id, &state))
+	{
+		return TNC_RESULT_FATAL;
+	}
+	in_msg = imv_msg_create_from_long_data(imv_scanner, state, connection_id,
+								src_imc_id, dst_imv_id, msg_vid, msg_subtype,
+								chunk_create(msg, msg_len));
+	result =receive_message(state, in_msg);
+	in_msg->destroy(in_msg);
+
+	return result;
 }
 
 /**
@@ -356,13 +359,18 @@ TNC_Result TNC_IMV_ReceiveMessageLong(TNC_IMVID imv_id,
 TNC_Result TNC_IMV_SolicitRecommendation(TNC_IMVID imv_id,
 										 TNC_ConnectionID connection_id)
 {
+	imv_state_t *state;
+
 	if (!imv_scanner)
 	{
 		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
 		return TNC_RESULT_NOT_INITIALIZED;
 	}
-	return imv_scanner->provide_recommendation(imv_scanner, connection_id,
-											   TNC_IMCID_ANY);
+	if (!imv_scanner->get_state(imv_scanner, connection_id, &state))
+	{
+		return TNC_RESULT_FATAL;
+	}
+	return imv_scanner->provide_recommendation(imv_scanner, state);
 }
 
 /**
@@ -371,12 +379,36 @@ TNC_Result TNC_IMV_SolicitRecommendation(TNC_IMVID imv_id,
 TNC_Result TNC_IMV_BatchEnding(TNC_IMVID imv_id,
 							   TNC_ConnectionID connection_id)
 {
+	imv_state_t *state;
+	imv_msg_t *out_msg;
+	pa_tnc_attr_t *attr;
+	TNC_IMV_Action_Recommendation rec;
+	TNC_IMV_Evaluation_Result eval;
+	TNC_Result result = TNC_RESULT_SUCCESS;
+
 	if (!imv_scanner)
 	{
 		DBG1(DBG_IMV, "IMV \"%s\" has not been initialized", imv_name);
 		return TNC_RESULT_NOT_INITIALIZED;
 	}
-	return TNC_RESULT_SUCCESS;
+	if (!imv_scanner->get_state(imv_scanner, connection_id, &state))
+	{
+		return TNC_RESULT_FATAL;
+	}
+	state->get_recommendation(state, &rec, &eval);
+	if (rec == TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION)
+	{
+		out_msg = imv_msg_create(imv_scanner, state, connection_id, imv_id,
+								 TNC_IMCID_ANY, msg_types[0]);
+		attr = ietf_attr_attr_request_create(PEN_IETF, IETF_ATTR_PORT_FILTER);
+		out_msg->add_attribute(out_msg, attr);
+
+		/* send PA-TNC message with excl flag not set */
+		result = out_msg->send(out_msg, FALSE);
+		out_msg->destroy(out_msg);
+
+	}
+	return result;
 }
 
 /**

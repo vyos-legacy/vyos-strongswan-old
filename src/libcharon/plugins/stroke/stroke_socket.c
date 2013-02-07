@@ -29,7 +29,7 @@
 #include <threading/mutex.h>
 #include <threading/thread.h>
 #include <threading/condvar.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <processing/jobs/callback_job.h>
 
 #include "stroke_config.h"
@@ -39,6 +39,7 @@
 #include "stroke_attribute.h"
 #include "stroke_handler.h"
 #include "stroke_list.h"
+#include "stroke_counter.h"
 
 /**
  * To avoid clogging the thread pool with (blocking) jobs, we limit the number
@@ -123,6 +124,11 @@ struct private_stroke_socket_t {
 	 * status information logging
 	 */
 	stroke_list_t *list;
+
+	/**
+	 * Counter values for IKE events
+	 */
+	stroke_counter_t *counter;
 };
 
 /**
@@ -389,6 +395,10 @@ static void stroke_list(private_stroke_socket_t *this, stroke_msg_t *msg, FILE *
 		this->ca->list(this->ca, msg, out);
 	}
 	this->list->list(this->list, msg, out);
+	if (msg->list.flags & LIST_COUNTERS)
+	{
+		this->counter->print(this->counter, out);
+	}
 }
 
 /**
@@ -500,9 +510,6 @@ static void stroke_user_creds(private_stroke_socket_t *this,
 static void stroke_loglevel(private_stroke_socket_t *this,
 							stroke_msg_t *msg, FILE *out)
 {
-	enumerator_t *enumerator;
-	sys_logger_t *sys_logger;
-	file_logger_t *file_logger;
 	debug_t group;
 
 	pop_string(msg, &(msg->loglevel.type));
@@ -515,21 +522,7 @@ static void stroke_loglevel(private_stroke_socket_t *this,
 		fprintf(out, "invalid type (%s)!\n", msg->loglevel.type);
 		return;
 	}
-	/* we set the loglevel on ALL sys- and file-loggers */
-	enumerator = charon->sys_loggers->create_enumerator(charon->sys_loggers);
-	while (enumerator->enumerate(enumerator, &sys_logger))
-	{
-		sys_logger->set_level(sys_logger, group, msg->loglevel.level);
-		charon->bus->add_logger(charon->bus, &sys_logger->logger);
-	}
-	enumerator->destroy(enumerator);
-	enumerator = charon->file_loggers->create_enumerator(charon->file_loggers);
-	while (enumerator->enumerate(enumerator, &file_logger))
-	{
-		file_logger->set_level(file_logger, group, msg->loglevel.level);
-		charon->bus->add_logger(charon->bus, &file_logger->logger);
-	}
-	enumerator->destroy(enumerator);
+	charon->set_level(charon, group, msg->loglevel.level);
 }
 
 /**
@@ -798,6 +791,7 @@ METHOD(stroke_socket_t, destroy, void,
 	charon->backends->remove_backend(charon->backends, &this->config->backend);
 	hydra->attributes->remove_provider(hydra->attributes, &this->attribute->provider);
 	hydra->attributes->remove_handler(hydra->attributes, &this->handler->handler);
+	charon->bus->remove_listener(charon->bus, &this->counter->listener);
 	this->cred->destroy(this->cred);
 	this->ca->destroy(this->ca);
 	this->config->destroy(this->config);
@@ -805,6 +799,7 @@ METHOD(stroke_socket_t, destroy, void,
 	this->handler->destroy(this->handler);
 	this->control->destroy(this->control);
 	this->list->destroy(this->list);
+	this->counter->destroy(this->counter);
 	free(this);
 }
 
@@ -834,6 +829,7 @@ stroke_socket_t *stroke_socket_create()
 	this->config = stroke_config_create(this->ca, this->cred, this->attribute);
 	this->control = stroke_control_create();
 	this->list = stroke_list_create(this->attribute);
+	this->counter = stroke_counter_create();
 
 	this->mutex = mutex_create(MUTEX_TYPE_DEFAULT);
 	this->condvar = condvar_create(CONDVAR_TYPE_DEFAULT);
@@ -847,6 +843,7 @@ stroke_socket_t *stroke_socket_create()
 	charon->backends->add_backend(charon->backends, &this->config->backend);
 	hydra->attributes->add_provider(hydra->attributes, &this->attribute->provider);
 	hydra->attributes->add_handler(hydra->attributes, &this->handler->handler);
+	charon->bus->add_listener(charon->bus, &this->counter->listener);
 
 	lib->processor->queue_job(lib->processor,
 		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive, this,

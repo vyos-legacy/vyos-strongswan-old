@@ -258,9 +258,11 @@ static ike_cfg_t *build_ike_cfg(private_sql_config_t *this, enumerator_t *e,
 	{
 		ike_cfg_t *ike_cfg;
 
-		ike_cfg = ike_cfg_create(certreq, force_encap,
-								 local, FALSE, charon->socket->get_port(charon->socket, FALSE),
-								 remote, FALSE, IKEV2_UDP_PORT);
+		ike_cfg = ike_cfg_create(IKEV2, certreq, force_encap,
+								 local, FALSE,
+								 charon->socket->get_port(charon->socket, FALSE),
+								 remote, FALSE, IKEV2_UDP_PORT,
+								 FRAGMENTATION_NO);
 		add_ike_proposals(this, ike_cfg, id);
 		return ike_cfg;
 	}
@@ -370,7 +372,7 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 		if (ike)
 		{
 			peer_cfg = peer_cfg_create(
-					name, IKEV2, ike, cert_policy, uniqueid,
+					name, ike, cert_policy, uniqueid,
 					keyingtries, rekeytime, reauthtime, jitter, overtime,
 					mobike, FALSE, dpd_delay, 0,
 					mediation, mediated_cfg, peer_id);

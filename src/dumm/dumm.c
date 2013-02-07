@@ -23,8 +23,8 @@
 #include <dirent.h>
 #include <errno.h>
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 #include "dumm.h"
 

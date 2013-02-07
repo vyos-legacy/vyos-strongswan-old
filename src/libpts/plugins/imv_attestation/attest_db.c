@@ -21,6 +21,7 @@
 #include "pts/components/pts_comp_func_name.h"
 
 #include <libgen.h>
+#include <time.h>
 
 #define IMA_MAX_NAME_LEN	255
 
@@ -97,6 +98,21 @@ struct private_attest_db_t {
 	bool key_set;
 
 	/**
+	 * Software package to be queried
+	 */
+	char *package;
+
+	/**
+	 * Primary key of software package to be queried
+	 */
+	int gid;
+
+	/**
+	 * TRUE if package has been set
+	 */
+	bool package_set;
+
+	/**
 	 * Software product to be queried
 	 */
 	char *product;
@@ -112,9 +128,29 @@ struct private_attest_db_t {
 	bool product_set;
 
 	/**
+	 * Software package version to be queried
+	 */
+	char *version;
+
+	/**
+	 * TRUE if version has been set
+	 */
+	bool version_set;
+
+	/**
 	 * TRUE if relative filenames are to be used
 	 */
 	bool relative;
+
+	/**
+	 * TRUE if dates are to be displayed in UTC
+	 */
+	bool utc;
+
+	/**
+	 * Package security state
+	 */
+	os_package_state_t security;
 
 	/**
 	 * Sequence number for ordering entries
@@ -588,6 +624,96 @@ METHOD(attest_db_t, set_pid, bool,
 	return this->product_set;
 }
 
+METHOD(attest_db_t, set_package, bool,
+	private_attest_db_t *this, char *package, bool create)
+{
+	enumerator_t *e;
+
+	if (this->package_set)
+	{
+		printf("package has already been set\n");
+		return FALSE;
+	}
+	this->package = strdup(package);
+
+	e = this->db->query(this->db, "SELECT id FROM packages WHERE name = ?",
+						DB_TEXT, package, DB_INT);
+	if (e)
+	{
+		if (e->enumerate(e, &this->gid))
+		{
+			this->package_set = TRUE;
+		}
+		e->destroy(e);
+	}
+	if (this->package_set)
+	{
+		return TRUE;
+	}
+
+	if (!create)
+	{
+		printf("package '%s' not found in database\n", package);
+		return FALSE;
+	}
+
+	/* Add a new database entry */
+	this->package_set = this->db->execute(this->db, &this->gid,
+									"INSERT INTO packages (name) VALUES (?)",
+									DB_TEXT, package) == 1;
+
+	printf("package '%s' %sinserted into database\n", package,
+		   this->package_set ? "" : "could not be ");
+
+	return this->package_set;
+}
+
+METHOD(attest_db_t, set_gid, bool,
+	private_attest_db_t *this, int gid)
+{
+	enumerator_t *e;
+	char *package;
+
+	if (this->package_set)
+	{
+		printf("package has already been set\n");
+		return FALSE;
+	}
+	this->gid = gid;
+
+	e = this->db->query(this->db, "SELECT name FROM packages WHERE id = ?",
+						DB_UINT, gid, DB_TEXT);
+	if (e)
+	{
+		if (e->enumerate(e, &package))
+		{
+			this->package = strdup(package);
+			this->package_set = TRUE;
+		}
+		else
+		{
+			printf("no package found with gid %d in database\n", gid);
+		}
+		e->destroy(e);
+	}
+	return this->package_set;
+}
+
+METHOD(attest_db_t, set_version, bool,
+	private_attest_db_t *this, char *version)
+{
+	if (this->version_set)
+	{
+		printf("version has already been set\n");
+		return FALSE;
+	}
+	this->version = strdup(version);
+	this->version_set = TRUE;
+
+	return TRUE;
+}
+
+
 METHOD(attest_db_t, set_algo, void,
 	private_attest_db_t *this, pts_meas_algorithms_t algo)
 {
@@ -598,6 +724,12 @@ METHOD(attest_db_t, set_relative, void,
 	private_attest_db_t *this)
 {
 	this->relative = TRUE;
+}
+
+METHOD(attest_db_t, set_security, void,
+	private_attest_db_t *this, os_package_state_t security)
+{
+	this->security = security;
 }
 
 METHOD(attest_db_t, set_sequence, void,
@@ -611,6 +743,12 @@ METHOD(attest_db_t, set_owner, void,
 {
 	free(this->owner);
 	this->owner = strdup(owner);
+}
+
+METHOD(attest_db_t, set_utc, void,
+	private_attest_db_t *this)
+{
+	this->utc = TRUE;
 }
 
 METHOD(attest_db_t, list_components, void,
@@ -660,6 +798,46 @@ METHOD(attest_db_t, list_components, void,
 			e->destroy(e);
 			printf("%d component%s found\n", count, (count == 1) ? "" : "s");
 		}
+	}
+}
+
+METHOD(attest_db_t, list_devices, void,
+	private_attest_db_t *this)
+{
+	enumerator_t *e;
+	chunk_t value;
+	char *product;
+	time_t timestamp;
+	int id, last_id = 0, device_count = 0;
+	int count, count_update, count_blacklist;
+	u_int tstamp, flags = 0;
+
+	e = this->db->query(this->db,
+			"SELECT d.id, d.value, i.time, i.count, i.count_update, "
+			"i.count_blacklist, i.flags, p.name FROM devices AS d "
+			"JOIN device_infos AS i ON d.id = i.device "
+			"JOIN products AS p ON p.id = i.product "
+			"ORDER BY d.value, i.time DESC",
+			 DB_INT, DB_BLOB, DB_UINT, DB_INT, DB_INT, DB_INT, DB_UINT, DB_TEXT);
+
+	if (e)
+	{
+		while (e->enumerate(e, &id, &value, &tstamp, &count, &count_update,
+							   &count_blacklist, &flags, &product))
+		{
+			if (id != last_id)
+			{
+				printf("%4d: %.*s\n", id, (int)value.len, value.ptr);
+				device_count++;
+				last_id = id;
+			}
+			timestamp = tstamp;
+			printf("      %T, %4d, %3d, %3d, %1u, '%s'\n", &timestamp, this->utc,
+				   count, count_update, count_blacklist, flags, product);
+		}
+		e->destroy(e);
+		printf("%d device%s found\n", device_count,
+									 (device_count == 1) ? "" : "s");
 	}
 }
 
@@ -765,6 +943,70 @@ METHOD(attest_db_t, list_files, void,
 	printf("\n");
 }
 
+METHOD(attest_db_t, list_packages, void,
+	private_attest_db_t *this)
+{
+	enumerator_t *e;
+	char *package, *version;
+	os_package_state_t security;
+	int gid, gid_old = 0, spaces, count = 0;
+	time_t t;
+
+	if (this->pid)
+	{
+		e = this->db->query(this->db,
+				"SELECT p.id, p.name, v.release, v.security, v.time "
+				"FROM packages AS p JOIN versions AS v ON v.package = p.id "
+				"WHERE v.product = ? ORDER BY p.name, v.release",
+				DB_INT, this->pid, DB_INT, DB_TEXT, DB_TEXT, DB_INT, DB_INT);
+		if (e)
+		{
+			while (e->enumerate(e, &gid, &package, &version, &security, &t))
+			{
+				if (gid != gid_old)
+				{
+					printf("%5d: %s,", gid, package);
+					gid_old = gid;
+				}
+				else
+				{
+					spaces = 8 + strlen(package);
+					while (spaces--)
+					{
+						printf(" ");
+					}
+				}
+				printf(" %T (%s)%N\n", &t, this->utc, version,
+					 os_package_state_names, security);
+				count++;
+			}
+			e->destroy(e);
+		}
+	}
+	else
+	{
+		e = this->db->query(this->db, "SELECT id, name FROM packages "
+				"ORDER BY name",
+				DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &gid, &package))
+			{
+				printf("%4d: %s\n", gid, package);
+				count++;
+			}
+			e->destroy(e);
+		}
+	}
+
+	printf("%d package%s found", count, (count == 1) ? "" : "s");
+	if (this->product_set)
+	{
+		printf(" for product '%s'", this->product);
+	}
+	printf("\n");
+}
+
 METHOD(attest_db_t, list_products, void,
 	private_attest_db_t *this)
 {
@@ -858,7 +1100,7 @@ METHOD(attest_db_t, list_hashes, void,
 
 	dir = strdup("");
 
-	if (this->pid && this->fid)
+	if (this->pid && this->fid & this->did)
 	{
 		e = this->db->query(this->db,
 				"SELECT hash FROM file_hashes "
@@ -883,6 +1125,32 @@ METHOD(attest_db_t, list_hashes, void,
 			printf("%d %N value%s found for product '%s'\n", count,
 				   pts_meas_algorithm_names, this->algo,
 				   (count == 1) ? "" : "s", this->product);
+		}
+	}
+	else if (this->pid && this->fid)
+	{
+		e = this->db->query(this->db,
+				"SELECT f.path, fh.hash FROM file_hashes AS fh "
+				"JOIN files AS f ON f.id = fh.file "
+				"WHERE algo = ? AND file = ? AND product = ?",
+				DB_INT, this->algo, DB_INT, this->fid, DB_INT, this->pid,
+				DB_TEXT, DB_BLOB);
+		if (e)
+		{
+			free(dir);
+			while (e->enumerate(e, &dir, &hash))
+			{
+				printf("%4d: %s%s%s\n", this->fid, dir,
+						   slash(dir, this->file) ? "/" : "", this->file);
+				printf("      %#B\n", &hash);
+				count++;
+			}
+			e->destroy(e);
+
+			printf("%d %N value%s found for product '%s'\n", count,
+				   pts_meas_algorithm_names, this->algo,
+				   (count == 1) ? "" : "s", this->product);
+			dir = NULL;
 		}
 	}
 	else if (this->pid)
@@ -1089,7 +1357,7 @@ METHOD(attest_db_t, list_measurements, void,
 
 bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 					  chunk_t measurement, int fid, int did, bool ima,
-					  int *hashes_added)
+					  int *hashes_added, int *hashes_updated)
 {
 	enumerator_t *e;
 	chunk_t hash;
@@ -1108,8 +1376,22 @@ bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 	}
 	if (e->enumerate(e, &hash))
 	{
-		label = chunk_equals(measurement, hash) ?
-				"exists and equals" : "exists and differs";
+		if (chunk_equals(measurement, hash))
+		{
+			label = "exists and equals";
+		}
+		else
+		{
+			if (this->db->execute(this->db, NULL,
+				"UPDATE file_hashes SET hash = ? WHERE algo = ? "
+				"AND file = ? AND directory = ? AND product = ? and key = 0",
+				DB_BLOB, measurement, DB_INT, algo, DB_UINT, fid, DB_UINT, did,
+				DB_UINT, this->pid) == 1)
+			{
+				label = "updated";
+				(*hashes_updated)++;
+			}
+		}
 	}
 	else
 	{
@@ -1161,7 +1443,8 @@ METHOD(attest_db_t, add, bool,
 		hasher_t *hasher = NULL;
 		bool ima = FALSE;
 		int fid, did;
-		int files_added = 0, hashes_added = 0, ima_hashes_added = 0;
+		int files_added = 0, hashes_added = 0, hashes_updated = 0;
+		int ima_hashes_added = 0, ima_hashes_updated = 0;
 		enumerator_t *enumerator, *e;
 
 		if (this->algo == PTS_MEAS_ALGO_SHA1_IMA)
@@ -1225,7 +1508,8 @@ METHOD(attest_db_t, add, bool,
 
 			/* compute file measurement hash */
 			if (!insert_file_hash(this, this->algo, measurement,
-								  fid, did, FALSE, &hashes_added))
+								  fid, did, FALSE,
+								  &hashes_added, &hashes_updated))
 			{
 				break;
 			}
@@ -1246,24 +1530,48 @@ METHOD(attest_db_t, add, bool,
 				break;
 			}
 			if (!insert_file_hash(this, PTS_MEAS_ALGO_SHA1_IMA, measurement,
-								  fid, did, TRUE, &ima_hashes_added))
+								  fid, did, TRUE,
+								  &ima_hashes_added, &ima_hashes_updated))
 			{
 				break;
 			}
 		}
 		enumerator->destroy(enumerator);
 
-		printf("%d measurements, added %d new files, %d new file hashes",
-			    measurements->get_file_count(measurements),
-			    files_added, hashes_added);
+		printf("%d measurements, added %d new files, %d file hashes",
+			    measurements->get_file_count(measurements), files_added,
+				hashes_added);
 		if (ima)
 		{
-			printf(" , %d new ima hashes", ima_hashes_added);
+			printf(", %d ima hashes", ima_hashes_added);
 			hasher->destroy(hasher);
+		}
+		printf(", updated %d file hashes", hashes_updated);
+		if (ima)
+		{
+			printf(", %d ima hashes", ima_hashes_updated);
 		}
 		printf("\n");
 		measurements->destroy(measurements);
 		success = TRUE;
+	}
+
+	/* insert package version */
+	if (this->version_set && this->gid && this->pid)
+	{
+		time_t t = time(NULL);
+
+		success = this->db->execute(this->db, NULL,
+					"INSERT INTO versions "
+					"(package, product, release, security, time) "
+					"VALUES (?, ?, ?, ?, ?)",
+					DB_UINT, this->gid, DB_UINT, this->pid, DB_TEXT,
+					this->version, DB_UINT, this->security, DB_INT, t) == 1;
+
+		printf("'%s' package %s (%s)%N %sinserted into database\n",
+				this->product, this->package, this->version,
+				os_package_state_names, this->security,
+				success ? "" : "could not be ");
 	}
 	return success;
 }
@@ -1384,7 +1692,9 @@ METHOD(attest_db_t, destroy, void,
 {
 	DESTROY_IF(this->db);
 	DESTROY_IF(this->cfn);
+	free(this->package);
 	free(this->product);
+	free(this->version);
 	free(this->file);
 	free(this->dir);
 	free(this->owner);
@@ -1409,15 +1719,22 @@ attest_db_t *attest_db_create(char *uri)
 			.set_fid = _set_fid,
 			.set_key = _set_key,
 			.set_kid = _set_kid,
+			.set_package = _set_package,
+			.set_gid = _set_gid,
 			.set_product = _set_product,
 			.set_pid = _set_pid,
+			.set_version = _set_version,
 			.set_algo = _set_algo,
 			.set_relative = _set_relative,
+			.set_security = _set_security,
 			.set_sequence = _set_sequence,
 			.set_owner = _set_owner,
+			.set_utc = _set_utc,
+			.list_packages = _list_packages,
 			.list_products = _list_products,
 			.list_files = _list_files,
 			.list_components = _list_components,
+			.list_devices = _list_devices,
 			.list_keys = _list_keys,
 			.list_hashes = _list_hashes,
 			.list_measurements = _list_measurements,

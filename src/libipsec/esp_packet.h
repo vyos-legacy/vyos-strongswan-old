@@ -27,8 +27,8 @@
 #include "esp_context.h"
 
 #include <library.h>
-#include <utils/host.h>
-#include <utils/packet.h>
+#include <networking/host.h>
+#include <networking/packet.h>
 
 typedef struct esp_packet_t esp_packet_t;
 

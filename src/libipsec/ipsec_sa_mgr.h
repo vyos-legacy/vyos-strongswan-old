@@ -28,7 +28,7 @@
 #include <library.h>
 #include <ipsec/ipsec_types.h>
 #include <selectors/traffic_selector.h>
-#include <utils/host.h>
+#include <networking/host.h>
 
 typedef struct ipsec_sa_mgr_t ipsec_sa_mgr_t;
 
@@ -84,6 +84,27 @@ struct ipsec_sa_mgr_t {
 					   chunk_t int_key, ipsec_mode_t mode, u_int16_t ipcomp,
 					   u_int16_t cpi, bool encap, bool esn, bool inbound,
 					   traffic_selector_t *src_ts, traffic_selector_t *dst_ts);
+
+	/**
+	 * Update the hosts on an installed SA.
+	 *
+	 * @param spi			SPI of the SA
+	 * @param protocol		protocol for this SA (ESP/AH)
+	 * @param cpi			CPI for IPComp, 0 if no IPComp is used
+	 * @param src			current source address
+	 * @param dst			current destination address
+	 * @param new_src		new source address
+	 * @param new_dst		new destination address
+	 * @param encap			current use of UDP encapsulation
+	 * @param new_encap		new use of UDP encapsulation
+	 * @param mark			optional mark for this SA
+	 * @return				SUCCESS if operation completed
+	 */
+	status_t (*update_sa)(ipsec_sa_mgr_t *this,
+						  u_int32_t spi, u_int8_t protocol, u_int16_t cpi,
+						  host_t *src, host_t *dst,
+						  host_t *new_src, host_t *new_dst,
+						  bool encap, bool new_encap, mark_t mark);
 
 	/**
 	 * Delete a previously added SA

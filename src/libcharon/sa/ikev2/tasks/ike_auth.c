@@ -12,7 +12,7 @@
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details
+ * for more details.
  */
 
 #include "ike_auth.h"
@@ -457,6 +457,7 @@ METHOD(task_t, build_i, status_t,
 							this->reserved);
 		if (!this->my_auth)
 		{
+			charon->bus->alert(charon->bus, ALERT_LOCAL_AUTH_FAILED);
 			return FAILED;
 		}
 	}
@@ -473,6 +474,7 @@ METHOD(task_t, build_i, status_t,
 		case NEED_MORE:
 			break;
 		default:
+			charon->bus->alert(charon->bus, ALERT_LOCAL_AUTH_FAILED);
 			return FAILED;
 	}
 
@@ -748,7 +750,7 @@ METHOD(task_t, build_r, status_t,
 								this->reserved);
 			if (!this->my_auth)
 			{
-				goto peer_auth_failed;
+				goto local_auth_failed;
 			}
 		}
 	}
@@ -786,9 +788,7 @@ METHOD(task_t, build_r, status_t,
 			case NEED_MORE:
 				break;
 			default:
-				message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-									chunk_empty);
-				return FAILED;
+				goto local_auth_failed;
 		}
 	}
 
@@ -807,6 +807,7 @@ METHOD(task_t, build_r, status_t,
 													 this->ike_sa, FALSE))
 		{
 			DBG1(DBG_IKE, "cancelling IKE_SA setup due to uniqueness policy");
+			charon->bus->alert(charon->bus, ALERT_UNIQUE_KEEP);
 			message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
 								chunk_empty);
 			return FAILED;
@@ -830,10 +831,13 @@ METHOD(task_t, build_r, status_t,
 	return NEED_MORE;
 
 peer_auth_failed:
-	message->add_notify(message, TRUE, AUTHENTICATION_FAILED,
-						chunk_empty);
+	message->add_notify(message, TRUE, AUTHENTICATION_FAILED, chunk_empty);
 peer_auth_failed_no_notify:
 	charon->bus->alert(charon->bus, ALERT_PEER_AUTH_FAILED);
+	return FAILED;
+local_auth_failed:
+	message->add_notify(message, TRUE, AUTHENTICATION_FAILED, chunk_empty);
+	charon->bus->alert(charon->bus, ALERT_LOCAL_AUTH_FAILED);
 	return FAILED;
 }
 
@@ -987,6 +991,7 @@ METHOD(task_t, process_i, status_t,
 			case NEED_MORE:
 				break;
 			default:
+				charon->bus->alert(charon->bus, ALERT_LOCAL_AUTH_FAILED);
 				return FAILED;
 		}
 	}

@@ -17,8 +17,8 @@
 
 #include "simaka_manager.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_simaka_message_t private_simaka_message_t;
 typedef struct hdr_t hdr_t;

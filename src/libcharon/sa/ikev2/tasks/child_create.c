@@ -377,6 +377,8 @@ static status_t select_and_install(private_child_create_t *this,
 	if (this->proposal == NULL)
 	{
 		DBG1(DBG_IKE, "no acceptable proposal found");
+		charon->bus->alert(charon->bus, ALERT_PROPOSAL_MISMATCH_CHILD,
+						   this->proposals);
 		return FAILED;
 	}
 	this->other_spi = this->proposal->get_spi(this->proposal);
@@ -452,6 +454,7 @@ static status_t select_and_install(private_child_create_t *this,
 
 	if (my_ts->get_count(my_ts) == 0 || other_ts->get_count(other_ts) == 0)
 	{
+		charon->bus->alert(charon->bus, ALERT_TS_MISMATCH, this->tsi, this->tsr);
 		my_ts->destroy_offset(my_ts, offsetof(traffic_selector_t, destroy));
 		other_ts->destroy_offset(other_ts, offsetof(traffic_selector_t, destroy));
 		DBG1(DBG_IKE, "no acceptable traffic selectors found");
@@ -549,6 +552,8 @@ static status_t select_and_install(private_child_create_t *this,
 			(status_i != SUCCESS) ? "inbound " : "",
 			(status_i != SUCCESS && status_o != SUCCESS) ? "and ": "",
 			(status_o != SUCCESS) ? "outbound " : "");
+		charon->bus->alert(charon->bus, ALERT_INSTALL_CHILD_SA_FAILED,
+						   this->child_sa);
 		return FAILED;
 	}
 
@@ -581,6 +586,8 @@ static status_t select_and_install(private_child_create_t *this,
 	if (status != SUCCESS)
 	{
 		DBG1(DBG_IKE, "unable to install IPsec policies (SPD) in kernel");
+		charon->bus->alert(charon->bus, ALERT_INSTALL_CHILD_POLICY_FAILED,
+						   this->child_sa);
 		return NOT_FOUND;
 	}
 
@@ -982,6 +989,7 @@ static void handle_child_sa_failure(private_child_create_t *this,
 	else
 	{
 		DBG1(DBG_IKE, "failed to establish CHILD_SA, keeping IKE_SA");
+		charon->bus->alert(charon->bus, ALERT_KEEP_ON_CHILD_SA_FAILURE);
 	}
 }
 
@@ -1040,6 +1048,7 @@ METHOD(task_t, build_r, status_t,
 	{
 		DBG1(DBG_IKE, "traffic selectors %#R=== %#R inacceptable",
 			 this->tsr, this->tsi);
+		charon->bus->alert(charon->bus, ALERT_TS_MISMATCH, this->tsi, this->tsr);
 		message->add_notify(message, FALSE, TS_UNACCEPTABLE, chunk_empty);
 		handle_child_sa_failure(this, message);
 		return SUCCESS;
@@ -1154,7 +1163,7 @@ METHOD(task_t, process_i, status_t,
 			break;
 	}
 
-	/* check for erronous notifies */
+	/* check for erroneous notifies */
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{

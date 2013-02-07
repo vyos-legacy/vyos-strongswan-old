@@ -28,7 +28,7 @@ typedef struct bus_t bus_t;
 
 #include <stdarg.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <sa/ike_sa.h>
 #include <sa/child_sa.h>
 #include <processing/jobs/job.h>
@@ -86,10 +86,50 @@ enum alert_t {
 	ALERT_RADIUS_NOT_RESPONDING,
 	/** a shutdown signal has been received, argument is the signal (int) */
 	ALERT_SHUTDOWN_SIGNAL,
+	/** creating local authentication data failed, no arguments */
+	ALERT_LOCAL_AUTH_FAILED,
 	/** peer authentication failed, no arguments */
 	ALERT_PEER_AUTH_FAILED,
 	/** failed to resolve peer address, no arguments */
 	ALERT_PEER_ADDR_FAILED,
+	/** peer did not respond to initial message, current try (int, 0-based) */
+	ALERT_PEER_INIT_UNREACHABLE,
+	/** received IKE message with invalid SPI, argument is message_t* */
+	ALERT_INVALID_IKE_SPI,
+	/** received IKE message with invalid header, argument is message_t* */
+	ALERT_PARSE_ERROR_HEADER,
+	/** received IKE message with invalid body, argument is message_t*,
+	 *  followed by a status_t result returned by message_t.parse_body(). */
+	ALERT_PARSE_ERROR_BODY,
+	/** sending a retransmit for a message, argument is packet_t */
+	ALERT_RETRANSMIT_SEND,
+	/** sending retransmits timed out, argument is packet_t */
+	ALERT_RETRANSMIT_SEND_TIMEOUT,
+	/** received a retransmit for a message, argument is message_t */
+	ALERT_RETRANSMIT_RECEIVE,
+	/** received half-open timeout before IKE_SA established, no argument */
+	ALERT_HALF_OPEN_TIMEOUT,
+	/** IKE proposals do not match, argument is linked_list_t of proposal_t */
+	ALERT_PROPOSAL_MISMATCH_IKE,
+	/** CHILD proposals do not match, argument is linked_list_t of proposal_t */
+	ALERT_PROPOSAL_MISMATCH_CHILD,
+	/** traffic selectors do not match, arguments are two linked_list_t
+	 *  containing traffic_selector_t for initiator and for responder */
+	ALERT_TS_MISMATCH,
+	/** Installation of IPsec SAs failed, argument is child_sa_t */
+	ALERT_INSTALL_CHILD_SA_FAILED,
+	/** Installation of IPsec Policy failed, argument is child_sa_t */
+	ALERT_INSTALL_CHILD_POLICY_FAILED,
+	/** IKE_SA deleted because of "replace" unique policy, no argument */
+	ALERT_UNIQUE_REPLACE,
+	/** IKE_SA deleted because of "keep" unique policy, no argument */
+	ALERT_UNIQUE_KEEP,
+	/** IKE_SA kept on failed child SA establishment, no argument */
+	ALERT_KEEP_ON_CHILD_SA_FAILURE,
+	/** allocating virtual IP failed, linked_list_t of host_t requested */
+	ALERT_VIP_FAILURE,
+	/** an authorize() hook failed, no argument */
+	ALERT_AUTHORIZATION_FAILED,
 };
 
 /**

@@ -15,7 +15,7 @@
 
 #include "tls_crypto.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 ENUM_BEGIN(tls_cipher_suite_names, TLS_NULL_WITH_NULL_NULL,
 								   TLS_DH_anon_WITH_3DES_EDE_CBC_SHA,
@@ -1110,6 +1110,7 @@ METHOD(tls_crypto_t, get_signature_algorithms, void,
 	}
 	enumerator->destroy(enumerator);
 
+	supported->wrap16(supported);
 	writer->write_data16(writer, supported->get_buf(supported));
 	supported->destroy(supported);
 }
