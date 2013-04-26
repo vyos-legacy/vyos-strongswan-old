@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 # copy-n-paste from Makefile.am
-LOCAL_SRC_FILES := \
+libcharon_la_SOURCES := \
 bus/bus.c bus/bus.h \
 bus/listeners/listener.h \
 bus/listeners/logger.h \
@@ -62,7 +62,7 @@ processing/jobs/start_action_job.c processing/jobs/start_action_job.h \
 processing/jobs/roam_job.c processing/jobs/roam_job.h \
 processing/jobs/update_sa_job.c processing/jobs/update_sa_job.h \
 processing/jobs/inactivity_job.c processing/jobs/inactivity_job.h \
-sa/eap/eap_method.c sa/eap/eap_method.h \
+sa/eap/eap_method.c sa/eap/eap_method.h sa/eap/eap_inner_method.h \
 sa/eap/eap_manager.c sa/eap/eap_manager.h \
 sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
 sa/xauth/xauth_manager.c sa/xauth/xauth_manager.h \
@@ -77,7 +77,7 @@ sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
 sa/task.c sa/task.h
 
-LOCAL_SRC_FILES += \
+libcharon_la_SOURCES += \
 sa/ikev2/keymat_v2.c sa/ikev2/keymat_v2.h \
 sa/ikev2/task_manager_v2.c sa/ikev2/task_manager_v2.h \
 sa/ikev2/authenticators/eap_authenticator.c sa/ikev2/authenticators/eap_authenticator.h \
@@ -100,7 +100,7 @@ sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
 sa/ikev2/tasks/ike_auth_lifetime.c sa/ikev2/tasks/ike_auth_lifetime.h \
 sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h
 
-LOCAL_SRC_FILES += \
+libcharon_la_SOURCES += \
 sa/ikev1/keymat_v1.c sa/ikev1/keymat_v1.h \
 sa/ikev1/task_manager_v1.c sa/ikev1/task_manager_v1.h \
 sa/ikev1/authenticators/psk_v1_authenticator.c sa/ikev1/authenticators/psk_v1_authenticator.h \
@@ -123,11 +123,12 @@ sa/ikev1/tasks/mode_config.c sa/ikev1/tasks/mode_config.h \
 processing/jobs/dpd_timeout_job.c processing/jobs/dpd_timeout_job.h \
 processing/jobs/adopt_children_job.c processing/jobs/adopt_children_job.h
 
+LOCAL_SRC_FILES := $(filter %.c,$(libcharon_la_SOURCES))
+
 # adding the plugin source files
 
-LOCAL_SRC_FILES += $(call add_plugin, android)
-ifneq ($(call plugin_enabled, android),)
-LOCAL_C_INCLUDES += frameworks/base/cmds/keystore
+LOCAL_SRC_FILES += $(call add_plugin, android-dns)
+ifneq ($(call plugin_enabled, android-dns),)
 LOCAL_SHARED_LIBRARIES += libcutils
 endif
 

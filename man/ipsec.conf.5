@@ -1,4 +1,4 @@
-.TH IPSEC.CONF 5 "2012-06-26" "5.0.2" "strongSwan"
+.TH IPSEC.CONF 5 "2012-06-26" "5.0.3rc1" "strongSwan"
 .SH NAME
 ipsec.conf \- IPsec configuration and connections
 .SH DESCRIPTION
@@ -452,6 +452,11 @@ suites, the strict flag
 exclamation mark) can be used, e.g:
 .BR aes256-sha512-modp4096!
 .TP
+.BR ikedscp " = " 000000 " | <DSCP field>"
+Differentiated Services Field Codepoint to set on outgoing IKE packets sent
+from this connection. The value is a six digit binary encoded string defining
+the Codepoint to set, as defined in RFC 2474.
+.TP
 .BR ikelifetime " = " 3h " | <time>"
 how long the keying channel of a connection (ISAKMP or IKE SA)
 should last before being renegotiated. Also see EXPIRY/REKEY below.
@@ -613,6 +618,10 @@ connection. See ipsec.secrets(5) for details about smartcard definitions.
 is required only if selecting the certificate with
 .B leftid
 is not sufficient, for example if multiple certificates use the same subject.
+.br
+Multiple certificate paths or PKCS#11 backends can be specified in a comma
+separated list. The daemon chooses the certificate based on the received
+certificate requests if possible before enforcing the first.
 .TP
 .BR leftcert2 " = <path>"
 Same as
@@ -737,6 +746,14 @@ can be used to the same effect, e.g.
 .B leftprotoport=udp/%any
 or
 .BR leftprotoport=%any/53 .
+
+The port value can alternatively take the value
+.B %opaque
+for RFC 4301 OPAQUE selectors, or a numerical range in the form
+.BR 1024-65535 .
+None of the kernel backends currently supports opaque or port ranges and uses
+.B %any
+for policy installation instead.
 .TP
 .BR leftrsasigkey " = <raw rsa public key> | <path to public key>"
 the left participant's public key for RSA signature authentication, in RFC 2537

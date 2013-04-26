@@ -22,8 +22,10 @@ ENUM_NEXT(pen_names, PEN_IBM, PEN_IBM, PEN_IETF,
 ENUM_NEXT(pen_names, PEN_MICROSOFT, PEN_MICROSOFT, PEN_IBM,
 	"Microsoft");
 ENUM_NEXT(pen_names, PEN_REDHAT, PEN_REDHAT, PEN_MICROSOFT,
-    "Redhat");
-ENUM_NEXT(pen_names, PEN_OSC, PEN_OSC, PEN_REDHAT,
+	"Redhat");
+ENUM_NEXT(pen_names, PEN_ALTIGA, PEN_ALTIGA, PEN_REDHAT,
+	"Altiga");
+ENUM_NEXT(pen_names, PEN_OSC, PEN_OSC, PEN_ALTIGA,
 	"OSC");
 ENUM_NEXT(pen_names, PEN_DEBIAN, PEN_DEBIAN, PEN_OSC,
 	"Debian Project");
@@ -32,7 +34,7 @@ ENUM_NEXT(pen_names, PEN_GOOGLE, PEN_GOOGLE, PEN_DEBIAN,
 ENUM_NEXT(pen_names, PEN_TCG, PEN_TCG, PEN_GOOGLE,
 	"TCG");
 ENUM_NEXT(pen_names, PEN_CANONICAL, PEN_CANONICAL, PEN_TCG,
-    "Canonical");
+	"Canonical");
 ENUM_NEXT(pen_names, PEN_FEDORA, PEN_FEDORA, PEN_CANONICAL,
 	"Fedora Project");
 ENUM_NEXT(pen_names, PEN_FHH, PEN_FHH, PEN_FEDORA,
@@ -41,7 +43,7 @@ ENUM_NEXT(pen_names, PEN_ITA, PEN_ITA, PEN_FHH,
 	"ITA-HSR");
 ENUM_NEXT(pen_names, PEN_OPENPTS, PEN_OPENPTS, PEN_ITA,
 	"OpenPTS");
-ENUM_NEXT(pen_names, PEN_RESERVED, PEN_RESERVED, PEN_OPENPTS,
+ENUM_NEXT(pen_names, PEN_UNASSIGNED, PEN_RESERVED, PEN_OPENPTS,
+	"Unassigned",
 	"Reserved");
 ENUM_END(pen_names, PEN_RESERVED);
-

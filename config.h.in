@@ -76,6 +76,9 @@
 /* Define to 1 if you have the `getpwnam_r' function. */
 #undef HAVE_GETPWNAM_R
 
+/* Define to 1 if you have the `getpwuid_r' function. */
+#undef HAVE_GETPWUID_R
+
 /* have gettid() */
 #undef HAVE_GETTID
 
@@ -224,6 +227,9 @@
 
 /* monolithic build embedding plugins */
 #undef MONOLITHIC
+
+/* Define to 1 if your C compiler doesn't accept -c and -o together. */
+#undef NO_MINUS_C_MINUS_O
 
 /* Name of package */
 #undef PACKAGE

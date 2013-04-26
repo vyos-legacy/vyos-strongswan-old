@@ -205,7 +205,7 @@ static void log_ike_sa(FILE *out, ike_sa_t *ike_sa, bool all)
 static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 {
 	time_t use_in, use_out, rekey, now;
-	u_int64_t bytes_in, bytes_out;
+	u_int64_t bytes_in, bytes_out, packets_in, packets_out;
 	proposal_t *proposal;
 	child_cfg_t *config = child_sa->get_config(child_sa);
 
@@ -273,18 +273,24 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 				}
 			}
 
-			child_sa->get_usestats(child_sa, TRUE, &use_in, &bytes_in);
+			child_sa->get_usestats(child_sa, TRUE,
+								   &use_in, &bytes_in, &packets_in);
 			fprintf(out, ", %" PRIu64 " bytes_i", bytes_in);
 			if (use_in)
 			{
-				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_in));
+				fprintf(out, " (%" PRIu64 " pkt%s, %" PRIu64 "s ago)",
+						packets_in, (packets_in == 1) ? "": "s",
+						(u_int64_t)(now - use_in));
 			}
 
-			child_sa->get_usestats(child_sa, FALSE, &use_out, &bytes_out);
+			child_sa->get_usestats(child_sa, FALSE,
+								   &use_out, &bytes_out, &packets_out);
 			fprintf(out, ", %" PRIu64 " bytes_o", bytes_out);
 			if (use_out)
 			{
-				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_out));
+				fprintf(out, " (%" PRIu64 " pkt%s, %" PRIu64 "s ago)",
+						packets_out, (packets_out == 1) ? "": "s",
+						(u_int64_t)(now - use_out));
 			}
 			fprintf(out, ", rekeying ");
 
@@ -1242,7 +1248,7 @@ static void list_algs(FILE *out)
 	int len;
 
 	fprintf(out, "\n");
-	fprintf(out, "List of registered IKEv2 Algorithms:\n");
+	fprintf(out, "List of registered IKE algorithms:\n");
 	fprintf(out, "\n  encryption:");
 	len = 13;
 	enumerator = lib->crypto->create_crypter_enumerator(lib->crypto);
@@ -1541,4 +1547,3 @@ stroke_list_t *stroke_list_create(stroke_attribute_t *attribute)
 
 	return &this->public;
 }
-

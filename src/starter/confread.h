@@ -115,7 +115,8 @@ struct starter_end {
 		bool            hostaccess;
 		bool            allow_any;
 		char            *updown;
-		u_int16_t       port;
+		u_int16_t       from_port;
+		u_int16_t       to_port;
 		u_int8_t        protocol;
 		char            *sourceip;
 		char            *dns;
@@ -148,6 +149,7 @@ struct starter_conn {
 		ipsec_mode_t    mode;
 		bool            proxy_mode;
 		fragmentation_t fragmentation;
+		u_int           ikedscp;
 		sa_option_t     options;
 		time_t          sa_ike_life_seconds;
 		time_t          sa_ipsec_life_seconds;
@@ -246,4 +248,3 @@ extern starter_config_t *confread_load(const char *file);
 extern void confread_free(starter_config_t *cfg);
 
 #endif /* _IPSEC_CONFREAD_H_ */
-

@@ -515,32 +515,74 @@ static void cache_queue(private_credential_manager_t *this)
 }
 
 /**
+ * Use validators to check the lifetime of certificates
+ */
+static bool check_lifetime(private_credential_manager_t *this,
+						   certificate_t *cert, char *label,
+						   int pathlen, bool trusted, auth_cfg_t *auth)
+{
+	time_t not_before, not_after;
+	cert_validator_t *validator;
+	enumerator_t *enumerator;
+	status_t status = NEED_MORE;
+
+	enumerator = this->validators->create_enumerator(this->validators);
+	while (enumerator->enumerate(enumerator, &validator))
+	{
+		if (!validator->check_lifetime)
+		{
+			continue;
+		}
+		status = validator->check_lifetime(validator, cert,
+										   pathlen, trusted, auth);
+		if (status != NEED_MORE)
+		{
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	switch (status)
+	{
+		case NEED_MORE:
+			if (!cert->get_validity(cert, NULL, &not_before, &not_after))
+			{
+				DBG1(DBG_CFG, "%s certificate invalid (valid from %T to %T)",
+					 label, &not_before, FALSE, &not_after, FALSE);
+				return FALSE;
+			}
+			return TRUE;
+		case SUCCESS:
+			return TRUE;
+		case FAILED:
+		default:
+			return FALSE;
+	}
+}
+
+/**
  * check a certificate for its lifetime
  */
 static bool check_certificate(private_credential_manager_t *this,
 				certificate_t *subject, certificate_t *issuer, bool online,
 				int pathlen, bool trusted, auth_cfg_t *auth)
 {
-	time_t not_before, not_after;
 	cert_validator_t *validator;
 	enumerator_t *enumerator;
 
-	if (!subject->get_validity(subject, NULL, &not_before, &not_after))
+	if (!check_lifetime(this, subject, "subject", pathlen, FALSE, auth) ||
+		!check_lifetime(this, issuer, "issuer", pathlen + 1, trusted, auth))
 	{
-		DBG1(DBG_CFG, "subject certificate invalid (valid from %T to %T)",
-			 &not_before, FALSE, &not_after, FALSE);
-		return FALSE;
-	}
-	if (!issuer->get_validity(issuer, NULL, &not_before, &not_after))
-	{
-		DBG1(DBG_CFG, "issuer certificate invalid (valid from %T to %T)",
-			 &not_before, FALSE, &not_after, FALSE);
 		return FALSE;
 	}
 
 	enumerator = this->validators->create_enumerator(this->validators);
 	while (enumerator->enumerate(enumerator, &validator))
 	{
+		if (!validator->validate)
+		{
+			continue;
+		}
 		if (!validator->validate(validator, subject, issuer,
 								 online, pathlen, trusted, auth))
 		{
@@ -1041,6 +1083,29 @@ static private_key_t *get_private_by_cert(private_credential_manager_t *this,
 	return private;
 }
 
+/**
+ * Move the actually used certificate to front, so it gets returned with get()
+ */
+static void prefer_cert(auth_cfg_t *auth, certificate_t *cert)
+{
+	enumerator_t *enumerator;
+	auth_rule_t rule;
+	certificate_t *current;
+
+	enumerator = auth->create_enumerator(auth);
+	while (enumerator->enumerate(enumerator, &rule, &current))
+	{
+		if (rule == AUTH_RULE_SUBJECT_CERT)
+		{
+			current->get_ref(current);
+			auth->replace(auth, enumerator, AUTH_RULE_SUBJECT_CERT, cert);
+			cert = current;
+		}
+	}
+	enumerator->destroy(enumerator);
+	auth->add(auth, AUTH_RULE_SUBJECT_CERT, cert);
+}
+
 METHOD(credential_manager_t, get_private, private_key_t*,
 	private_credential_manager_t *this, key_type_t type, identification_t *id,
 	auth_cfg_t *auth)
@@ -1049,6 +1114,7 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 	certificate_t *cert;
 	private_key_t *private = NULL;
 	auth_cfg_t *trustchain;
+	auth_rule_t rule;
 
 	/* check if this is a lookup by key ID, and do it if so */
 	if (id && id->get_type(id) == ID_KEY_ID)
@@ -1062,7 +1128,35 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 
 	if (auth)
 	{
-		/* if a specific certificate is preferred, check for a matching key */
+		/* try to find a trustchain with one of the configured subject certs */
+		enumerator = auth->create_enumerator(auth);
+		while (enumerator->enumerate(enumerator, &rule, &cert))
+		{
+			if (rule == AUTH_RULE_SUBJECT_CERT)
+			{
+				private = get_private_by_cert(this, cert, type);
+				if (private)
+				{
+					trustchain = build_trustchain(this, cert, auth);
+					if (trustchain)
+					{
+						auth->merge(auth, trustchain, FALSE);
+						prefer_cert(auth, cert->get_ref(cert));
+						trustchain->destroy(trustchain);
+						break;
+					}
+					private->destroy(private);
+					private = NULL;
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+		if (private)
+		{
+			return private;
+		}
+
+		/* if none yielded a trustchain, enforce the first configured cert */
 		cert = auth->get(auth, AUTH_RULE_SUBJECT_CERT);
 		if (cert)
 		{

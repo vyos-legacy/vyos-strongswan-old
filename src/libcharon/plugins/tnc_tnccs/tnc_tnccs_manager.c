@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 Andreas Steffen
+ * Copyright (C) 2010-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -13,6 +13,8 @@
  * for more details.
  */
 
+#define _GNU_SOURCE /* for asprintf() */
+
 #include "tnc_tnccs_manager.h"
 
 #include <tnc/tnc.h>
@@ -20,9 +22,17 @@
 #include <tnc/imc/imc_manager.h>
 #include <tnc/imv/imv_manager.h>
 
+#include <tncif_identity.h>
+
+#include <tls.h>
+
 #include <utils/debug.h>
+#include <pen/pen.h>
+#include <bio/bio_writer.h>
 #include <collections/linked_list.h>
 #include <threading/rwlock.h>
+
+#include <stdio.h>
 
 typedef struct private_tnc_tnccs_manager_t private_tnc_tnccs_manager_t;
 typedef struct tnccs_entry_t tnccs_entry_t;
@@ -158,7 +168,9 @@ METHOD(tnccs_manager_t, remove_method, void,
 }
 
 METHOD(tnccs_manager_t, create_instance, tnccs_t*,
-	private_tnc_tnccs_manager_t *this, tnccs_type_t type, bool is_server)
+	private_tnc_tnccs_manager_t *this, tnccs_type_t type, bool is_server,
+	identification_t *server, identification_t *peer,
+	tnc_ift_type_t transport)
 {
 	enumerator_t *enumerator;
 	tnccs_entry_t *entry;
@@ -170,7 +182,7 @@ METHOD(tnccs_manager_t, create_instance, tnccs_t*,
 	{
 		if (type == entry->type)
 		{
-			protocol = entry->constructor(is_server);
+			protocol = entry->constructor(is_server, server, peer, transport);
 			if (protocol)
 			{
 				break;
@@ -442,6 +454,44 @@ static TNC_Result str_attribute(TNC_UInt32 buffer_len,
 	}
 }
 
+/**
+ * Write the value of a TNC identity list into the buffer
+ */
+static TNC_Result identity_attribute(TNC_UInt32 buffer_len,
+									 TNC_BufferReference buffer,
+									 TNC_UInt32 *value_len,
+									 linked_list_t *list)
+{
+	bio_writer_t *writer;
+	enumerator_t *enumerator;
+	u_int32_t count;
+	chunk_t value;
+	tncif_identity_t *tnc_id;
+	TNC_Result result = TNC_RESULT_INVALID_PARAMETER;
+
+	count = list->get_count(list);
+	writer = bio_writer_create(4 + TNCIF_IDENTITY_MIN_SIZE * count);
+	writer->write_uint32(writer, count);
+
+	enumerator = list->create_enumerator(list);
+	while (enumerator->enumerate(enumerator, &tnc_id))
+	{
+		tnc_id->build(tnc_id, writer);
+	}
+	enumerator->destroy(enumerator);
+
+	value = writer->get_buf(writer);
+	*value_len = value.len;
+	if (buffer && buffer_len >= value.len)
+	{
+		memcpy(buffer, value.ptr, value.len);
+		result = TNC_RESULT_SUCCESS;
+	}
+	writer->destroy(writer);
+
+	return result;
+}
+
 METHOD(tnccs_manager_t, get_attribute, TNC_Result,
 	private_tnc_tnccs_manager_t *this, bool is_imc,
 									   TNC_UInt32 imcv_id,
@@ -487,6 +537,7 @@ METHOD(tnccs_manager_t, get_attribute, TNC_Result,
 
 			/* these attributes are supported */
 			case TNC_ATTRIBUTEID_PRIMARY_IMV_ID:
+			case TNC_ATTRIBUTEID_AR_IDENTITIES:
 				attribute_match = TRUE;
 				break;
 
@@ -616,15 +667,110 @@ METHOD(tnccs_manager_t, get_attribute, TNC_Result,
 					version = "1.0";
 					break;
 				default:
-				return TNC_RESULT_INVALID_PARAMETER;
+					return TNC_RESULT_INVALID_PARAMETER;
 			}
 			return str_attribute(buffer_len, buffer, value_len, version);
 		}
 		case TNC_ATTRIBUTEID_IFT_PROTOCOL:
-			return str_attribute(buffer_len, buffer, value_len,
-										 "IF-T for Tunneled EAP");
+		{
+			char *protocol;
+
+			switch (entry->tnccs->get_transport(entry->tnccs))
+			{
+				case TNC_IFT_EAP_1_0:
+				case TNC_IFT_EAP_1_1:
+				case TNC_IFT_EAP_2_0:
+					protocol = "IF-T for Tunneled EAP";
+					break;
+				case TNC_IFT_TLS_1_0:
+				case TNC_IFT_TLS_2_0:
+					protocol = "IF-T for TLS";
+					break;
+				default:
+					return TNC_RESULT_INVALID_PARAMETER;
+			}
+			return str_attribute(buffer_len, buffer, value_len, protocol);
+		}
  		case TNC_ATTRIBUTEID_IFT_VERSION:
-			return str_attribute(buffer_len, buffer, value_len, "1.1");
+		{
+			char *version;
+
+			switch (entry->tnccs->get_transport(entry->tnccs))
+			{
+				case TNC_IFT_EAP_1_0:
+				case TNC_IFT_TLS_1_0:
+					version = "1.0";
+					break;
+				case TNC_IFT_EAP_1_1:
+					version = "1.1";
+					break;
+				case TNC_IFT_EAP_2_0:
+				case TNC_IFT_TLS_2_0:
+					version = "2.0";
+					break;
+				default:
+					return TNC_RESULT_INVALID_PARAMETER;
+			}
+			return str_attribute(buffer_len, buffer, value_len, version);
+		}
+		case TNC_ATTRIBUTEID_AR_IDENTITIES:
+		{
+			linked_list_t *list;
+			identification_t *peer;
+			tnccs_t *tnccs;
+			tncif_identity_t *tnc_id;
+			u_int32_t id_type, subject_type;
+			chunk_t id_value;
+			char *id_str;
+			TNC_Result result;
+
+			list = linked_list_create();
+			tnccs = entry->tnccs;
+			peer = tnccs->tls.get_peer_id(&tnccs->tls);
+			if (peer)
+			{
+				switch (peer->get_type(peer))
+				{
+					case ID_IPV4_ADDR:
+						id_type = TNC_ID_IPV4_ADDR;
+						subject_type = TNC_SUBJECT_MACHINE;
+						break;
+					case ID_IPV6_ADDR:
+						id_type = TNC_ID_IPV6_ADDR;
+						subject_type = TNC_SUBJECT_MACHINE;
+						break;
+					case ID_FQDN:
+						id_type = TNC_ID_USERNAME;
+						subject_type = TNC_SUBJECT_USER;
+						break;
+					case ID_RFC822_ADDR:
+						id_type = TNC_ID_RFC822_ADDR;
+						subject_type = TNC_SUBJECT_USER;
+						break;
+					case ID_DER_ASN1_DN:
+						id_type = TNC_ID_ASN1_DN;
+						subject_type = TNC_SUBJECT_USER;
+						break;
+					default:
+						id_type = TNC_ID_UNKNOWN;
+						subject_type = TNC_SUBJECT_UNKNOWN;
+				}
+				if (id_type != TNC_ID_UNKNOWN &&
+					asprintf(&id_str, "%Y", peer) >= 0)
+				{
+					id_value = chunk_from_str(id_str);
+					tnc_id = tncif_identity_create(
+								pen_type_create(PEN_TCG, id_type), id_value,
+								pen_type_create(PEN_TCG, subject_type),
+								pen_type_create(PEN_TCG,
+												tnccs->get_auth_type(tnccs)));
+					list->insert_last(list, tnc_id);
+				}
+			}
+			result = identity_attribute(buffer_len, buffer, value_len, list);
+			list->destroy_offset(list, offsetof(tncif_identity_t, destroy));
+			return result;
+		}
 		default:
 			return TNC_RESULT_INVALID_PARAMETER;
 	 }

@@ -1,31 +1,34 @@
-dnl  configure.in for linux strongSwan
-dnl  Copyright (C) 2006 Martin Willi
-dnl  Hochschule fuer Technik Rapperswil
-dnl
-dnl  This program is free software; you can redistribute it and/or modify it
-dnl  under the terms of the GNU General Public License as published by the
-dnl  Free Software Foundation; either version 2 of the License, or (at your
-dnl  option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
-dnl
-dnl  This program is distributed in the hope that it will be useful, but
-dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-dnl  for more details.
+#
+# Copyright (C) 2007-2013 Tobias Brunner
+# Copyright (C) 2006-2013 Andreas Steffen
+# Copyright (C) 2006-2013 Martin Willi
+# Hochschule fuer Technik Rapperswil
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
+#
 
-dnl ===========================
-dnl  initialize & set some vars
-dnl ===========================
+# ============================
+#  initialize & set some vars
+# ============================
 
-AC_INIT(strongSwan,5.0.2)
+AC_INIT([strongSwan],[5.0.3])
 AM_INIT_AUTOMAKE(tar-ustar)
 AC_CONFIG_MACRO_DIR([m4/config])
 AC_CONFIG_HEADERS([config.h])
 AC_DEFINE([CONFIG_H_INCLUDED], [], [defined if config.h included])
 PKG_PROG_PKG_CONFIG
 
-dnl =================================
-dnl  check --enable-xxx & --with-xxx
-dnl =================================
+# =================================
+#  check --enable-xxx & --with-xxx
+# =================================
 
 m4_include(m4/macros/with.m4)
 
@@ -101,6 +104,7 @@ AC_SUBST(ipsec_script_upper, [`echo -n "$ipsec_script" | tr a-z A-Z`])
 m4_include(m4/macros/enable-disable.m4)
 
 ARG_ENABL_SET([curl],           [enable CURL fetcher plugin to fetch files via libcurl. Requires libcurl.])
+ARG_ENABL_SET([unbound],        [enable UNBOUND resolver plugin to perform DNS queries via libunbound. Requires libldns and libunbound.])
 ARG_ENABL_SET([soup],           [enable soup fetcher plugin to fetch from HTTP via libsoup. Requires libsoup.])
 ARG_ENABL_SET([ldap],           [enable LDAP fetching plugin to fetch files via libldap. Requires openLDAP.])
 ARG_DISBL_SET([aes],            [disable AES software implementation plugin.])
@@ -124,6 +128,7 @@ ARG_DISBL_SET([pkcs7],          [disable PKCS7 container support plugin.])
 ARG_DISBL_SET([pkcs8],          [disable PKCS8 private key decoding plugin.])
 ARG_DISBL_SET([pgp],            [disable PGP key decoding plugin.])
 ARG_DISBL_SET([dnskey],         [disable DNS RR key decoding plugin.])
+ARG_ENABL_SET([ipseckey],       [enable IPSECKEY authentication plugin.])
 ARG_DISBL_SET([pem],            [disable PEM decoding plugin.])
 ARG_DISBL_SET([hmac],           [disable HMAC crypto implementation plugin.])
 ARG_DISBL_SET([cmac],           [disable CMAC crypto implementation plugin.])
@@ -162,11 +167,12 @@ ARG_ENABL_SET([eap-radius],     [enable RADIUS proxy authentication module.])
 ARG_DISBL_SET([xauth-generic],  [disable generic XAuth backend.])
 ARG_ENABL_SET([xauth-eap],      [enable XAuth backend using EAP methods to verify passwords.])
 ARG_ENABL_SET([xauth-pam],      [enable XAuth backend using PAM to verify passwords.])
-ARG_ENABL_SET([tnc-ifmap],      [enable TNC IF-MAP module.])
+ARG_ENABL_SET([xauth-noauth],   [enable XAuth pseudo-backend that does not actually verify or even request any credentials.])
+ARG_ENABL_SET([tnc-ifmap],      [enable TNC IF-MAP module. Requires libxml])
 ARG_ENABL_SET([tnc-pdp],        [enable TNC policy decision point module.])
 ARG_ENABL_SET([tnc-imc],        [enable TNC IMC module.])
 ARG_ENABL_SET([tnc-imv],        [enable TNC IMV module.])
-ARG_ENABL_SET([tnccs-11],       [enable TNCCS 1.1 protocol module.])
+ARG_ENABL_SET([tnccs-11],       [enable TNCCS 1.1 protocol module. Requires libxml])
 ARG_ENABL_SET([tnccs-20],       [enable TNCCS 2.0 protocol module.])
 ARG_ENABL_SET([tnccs-dynamic],  [enable dynamic TNCCS protocol discovery module.])
 ARG_ENABL_SET([imc-test],       [enable IMC test module.])
@@ -213,7 +219,7 @@ ARG_ENABL_SET([gcm],            [enables the GCM AEAD wrapper crypto plugin.])
 ARG_ENABL_SET([addrblock],      [enables RFC 3779 address block constraint support.])
 ARG_ENABL_SET([unity],          [enables Cisco Unity extension plugin.])
 ARG_ENABL_SET([uci],            [enable OpenWRT UCI configuration plugin.])
-ARG_ENABL_SET([android],        [enable Android specific plugin.])
+ARG_ENABL_SET([android-dns],    [enable Android specific DNS handler.])
 ARG_ENABL_SET([android-log],    [enable Android specific logger plugin.])
 ARG_ENABL_SET([maemo],          [enable Maemo specific plugin.])
 ARG_ENABL_SET([nm],             [enable NetworkManager backend.])
@@ -222,6 +228,7 @@ ARG_ENABL_SET([whitelist],      [enable peer identity whitelisting plugin.])
 ARG_ENABL_SET([lookip],         [enable fast virtual IP lookup and notification plugin.])
 ARG_ENABL_SET([error-notify],   [enable error notification plugin.])
 ARG_ENABL_SET([certexpire],     [enable CSV export of expiration dates of used certificates.])
+ARG_ENABL_SET([systime-fix],    [enable plugin to handle cert lifetimes with invalid system time gracefully.])
 ARG_ENABL_SET([led],            [enable plugin to control LEDs on IKEv2 activity using the Linux kernel LED subsystem.])
 ARG_ENABL_SET([duplicheck],     [advanced duplicate checking plugin using liveness checks.])
 ARG_ENABL_SET([coupling],       [enable IKEv2 plugin to couple peer certificates permanently to authentication.])
@@ -229,24 +236,41 @@ ARG_ENABL_SET([radattr],        [enable plugin to inject and process custom RADI
 ARG_ENABL_SET([vstr],           [enforce using the Vstr string library to replace glibc-like printf hooks.])
 ARG_ENABL_SET([monolithic],     [build monolithic version of libstrongswan that includes all enabled plugins. Similarly, the plugins of charon are assembled in libcharon.])
 ARG_ENABL_SET([bfd-backtraces], [use binutils libbfd to resolve backtraces for memory leaks and segfaults.])
+ARG_ENABL_SET([unit-tests],     [enable unit tests using the check test framework.])
+ARG_ENABL_SET([tkm],            [enable Trusted Key Manager support.])
 
-dnl =========================
-dnl  set up compiler and flags
-dnl =========================
+# ===================================
+#  option to disable default options
+# ===================================
+
+ARG_DISBL_SET([defaults],       [disable all default plugins (they can be enabled with their respective --enable options)])
+
+if test x$defaults = xfalse; then
+	for option in $enabled_by_default; do
+		eval test x\${${option}_given} = xtrue && continue
+		let $option=false
+	done
+fi
+
+# ===========================
+#  set up compiler and flags
+# ===========================
 
 if test -z "$CFLAGS"; then
 	CFLAGS="-g -O2 -Wall -Wno-format -Wno-pointer-sign"
 fi
 AC_PROG_CC
+AM_PROG_CC_C_O
+
 AC_LIB_PREFIX
 AC_C_BIGENDIAN
 
-dnl =========================
-dnl  check required programs
-dnl =========================
+# =========================
+#  check required programs
+# =========================
 
+LT_INIT
 AC_PROG_INSTALL
-AC_PROG_LIBTOOL
 AC_PROG_EGREP
 AC_PROG_AWK
 AC_PROG_LEX
@@ -254,7 +278,7 @@ AC_PROG_YACC
 AC_PATH_PROG([PERL], [perl], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 AC_PATH_PROG([GPERF], [gperf], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 
-dnl because gperf is not needed by end-users we just report it but do not abort on failure
+# because gperf is not needed by end-users we just report it but do not abort on failure
 AC_MSG_CHECKING([gperf version >= 3.0.0])
 if test -x "$GPERF"; then
 	if test "`$GPERF --version | $AWK -F' ' '/^GNU gperf/ { print $3 }' | $AWK -F. '{ print $1 }'`" -ge "3"; then
@@ -266,9 +290,9 @@ else
 	AC_MSG_RESULT([not found])
 fi
 
-dnl =========================
-dnl  dependency calculation
-dnl =========================
+# ========================
+#  dependency calculation
+# ========================
 
 if test x$xauth_generic_given = xfalse -a x$ikev1 = xfalse; then
 	xauth_generic=false;
@@ -314,12 +338,8 @@ if test x$fips_prf = xtrue; then
 	fi
 fi
 
-if test x$smp = xtrue -o x$tnccs_11 = xtrue; then
+if test x$smp = xtrue -o x$tnccs_11 = xtrue -o x$tnc_ifmap = xtrue; then
 	xml=true
-fi
-
-if test x$tnc_ifmap = xtrue; then
-	axis2c=true
 fi
 
 if test x$manager = xtrue; then
@@ -335,91 +355,93 @@ if test x$medcli = xtrue; then
 	mediation=true
 fi
 
-dnl ===========================================
-dnl  check required libraries and header files
-dnl ===========================================
+# ===========================================
+#  check required libraries and header files
+# ===========================================
 
 AC_HEADER_STDBOOL
 AC_FUNC_ALLOCA
 AC_FUNC_STRERROR_R
 
-dnl libraries needed on some platforms but not on others
-dnl ====================================================
+#  libraries needed on some platforms but not on others
+# ------------------------------------------------------
 saved_LIBS=$LIBS
 
-dnl FreeBSD and Mac OS X have dlopen integrated in libc, Linux needs libdl
+# FreeBSD and Mac OS X have dlopen integrated in libc, Linux needs libdl
 LIBS=""
 AC_SEARCH_LIBS(dlopen, dl, [DLLIB=$LIBS])
 AC_SUBST(DLLIB)
 
-dnl glibc's backtrace() can be replicated on FreeBSD with libexecinfo
+# glibc's backtrace() can be replicated on FreeBSD with libexecinfo
 LIBS=""
 AC_SEARCH_LIBS(backtrace, execinfo, [BTLIB=$LIBS])
 AC_CHECK_FUNCS(backtrace)
 AC_SUBST(BTLIB)
 
-dnl OpenSolaris needs libsocket and libnsl for socket()
+# OpenSolaris needs libsocket and libnsl for socket()
 LIBS=""
 AC_SEARCH_LIBS(socket, socket, [SOCKLIB=$LIBS],
 	[AC_CHECK_LIB(nsl, socket, [SOCKLIB="-lsocket -lnsl"], [], [-lsocket])]
 )
 AC_SUBST(SOCKLIB)
 
-dnl FreeBSD has clock_gettime in libc, Linux needs librt
+# FreeBSD has clock_gettime in libc, Linux needs librt
 LIBS=""
 AC_SEARCH_LIBS(clock_gettime, rt, [RTLIB=$LIBS])
 AC_CHECK_FUNCS(clock_gettime)
 AC_SUBST(RTLIB)
 
-dnl Android has pthread_* functions in bionic (libc), others need libpthread
+# Android has pthread_* functions in bionic (libc), others need libpthread
 LIBS=""
 AC_SEARCH_LIBS(pthread_create, pthread, [PTHREADLIB=$LIBS])
 AC_SUBST(PTHREADLIB)
 
 LIBS=$saved_LIBS
-dnl ======================
+# ------------------------------------------------------
 
 AC_MSG_CHECKING(for dladdr)
-AC_TRY_COMPILE(
-	[#define _GNU_SOURCE
-	 #include <dlfcn.h>],
-	[Dl_info* info = 0;
-	 dladdr(0, info);],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#define _GNU_SOURCE
+		  #include <dlfcn.h>]],
+		[[Dl_info* info = 0;
+		  dladdr(0, info);]])],
 	[AC_MSG_RESULT([yes]); AC_DEFINE([HAVE_DLADDR], [], [have dladdr()])],
 	[AC_MSG_RESULT([no])]
 )
 
-dnl check if pthread_condattr_setclock(CLOCK_MONOTONE) is supported
+# check if pthread_condattr_setclock(CLOCK_MONOTONE) is supported
 saved_LIBS=$LIBS
 LIBS=$PTHREADLIB
 AC_MSG_CHECKING([for pthread_condattr_setclock(CLOCK_MONOTONE)])
-AC_TRY_RUN(
-	[#include <pthread.h>
-	 int main() { pthread_condattr_t attr;
-		pthread_condattr_init(&attr);
-		return pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);}],
+AC_RUN_IFELSE(
+	[AC_LANG_SOURCE(
+		[[#include <pthread.h>
+		  int main() { pthread_condattr_t attr;
+			pthread_condattr_init(&attr);
+			return pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);}]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_CONDATTR_CLOCK_MONOTONIC], [],
 			   [pthread_condattr_setclock supports CLOCK_MONOTONIC])],
 	[AC_MSG_RESULT([no])],
-	dnl Check existence of pthread_condattr_setclock if cross-compiling
+	# Check existence of pthread_condattr_setclock if cross-compiling
 	[AC_MSG_RESULT([unknown]);
 	 AC_CHECK_FUNCS(pthread_condattr_setclock,
 		[AC_DEFINE([HAVE_CONDATTR_CLOCK_MONOTONIC], [],
 				   [have pthread_condattr_setclock()])]
 	)]
 )
-dnl check if we actually are able to configure attributes on cond vars
+# check if we actually are able to configure attributes on cond vars
 AC_CHECK_FUNCS(pthread_condattr_init)
-dnl instead of pthread_condattr_setclock Android has this function
+# instead of pthread_condattr_setclock Android has this function
 AC_CHECK_FUNCS(pthread_cond_timedwait_monotonic)
-dnl check if we can cancel threads
+# check if we can cancel threads
 AC_CHECK_FUNCS(pthread_cancel)
-dnl check if native rwlocks are available
+# check if native rwlocks are available
 AC_CHECK_FUNCS(pthread_rwlock_init)
-dnl check if pthread spinlocks are available
+# check if pthread spinlocks are available
 AC_CHECK_FUNCS(pthread_spin_init)
-dnl check if we have POSIX semaphore functions, including timed-wait
+# check if we have POSIX semaphore functions, including timed-wait
 AC_CHECK_FUNCS(sem_timedwait)
 LIBS=$saved_LIBS
 
@@ -427,12 +449,13 @@ AC_CHECK_FUNC(
 	[gettid],
 	[AC_DEFINE([HAVE_GETTID], [], [have gettid()])],
 	[AC_MSG_CHECKING([for SYS_gettid])
-	 AC_TRY_COMPILE(
-		[#define _GNU_SOURCE
-		 #include <unistd.h>
-		 #include <sys/syscall.h>],
-		[int main() {
-			return syscall(SYS_gettid);}],
+	 AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#define _GNU_SOURCE
+			  #include <unistd.h>
+			  #include <sys/syscall.h>]],
+			[[int main() {
+			  return syscall(SYS_gettid);}]])],
 		[AC_MSG_RESULT([yes]);
 		 AC_DEFINE([HAVE_GETTID], [], [have gettid()])
 		 AC_DEFINE([HAVE_SYS_GETTID], [], [have syscall(SYS_gettid)])],
@@ -440,11 +463,15 @@ AC_CHECK_FUNC(
 	)]
 )
 
-AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r)
+AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r getpwuid_r)
 
 AC_CHECK_HEADERS(sys/sockio.h glob.h)
 AC_CHECK_HEADERS(net/pfkeyv2.h netipsec/ipsec.h netinet6/ipsec.h linux/udp.h)
-AC_CHECK_HEADERS(netinet/ip6.h)
+AC_CHECK_HEADERS(netinet/ip6.h, [], [],
+[
+	#include <sys/types.h>
+	#include <netinet/in.h>
+])
 
 AC_CHECK_MEMBERS([struct sockaddr.sa_len], [], [],
 [
@@ -464,101 +491,107 @@ AC_CHECK_MEMBERS([struct sadb_x_policy.sadb_x_policy_priority], [], [],
 ])
 
 AC_MSG_CHECKING([for in6addr_any])
-AC_TRY_COMPILE(
-	[#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>],
-	[struct in6_addr in6;
-	in6 = in6addr_any;],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <sys/types.h>
+		  #include <sys/socket.h>
+		  #include <netinet/in.h>]],
+		[[struct in6_addr in6;
+		  in6 = in6addr_any;]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_IN6ADDR_ANY], [], [have struct in6_addr in6addr_any])],
 	[AC_MSG_RESULT([no])]
 )
 
 AC_MSG_CHECKING([for in6_pktinfo])
-AC_TRY_COMPILE(
-	[#define _GNU_SOURCE
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>],
-	[struct in6_pktinfo pi;
-	if (pi.ipi6_ifindex)
-	{
-		return 0;
-	}],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#define _GNU_SOURCE
+		  #include <sys/types.h>
+		  #include <sys/socket.h>
+		  #include <netinet/in.h>]],
+		[[struct in6_pktinfo pi;
+		  if (pi.ipi6_ifindex)
+		  {
+		    return 0;
+		  }]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_IN6_PKTINFO], [], [have struct in6_pktinfo.ipi6_ifindex])],
 	[AC_MSG_RESULT([no])]
 )
 
 AC_MSG_CHECKING([for IPSEC_MODE_BEET])
-AC_TRY_COMPILE(
-	[#include <sys/types.h>
-	#ifdef HAVE_NETIPSEC_IPSEC_H
-	#include <netipsec/ipsec.h>
-	#elif defined(HAVE_NETINET6_IPSEC_H)
-	#include <netinet6/ipsec.h>
-	#else
-	#include <stdint.h>
-	#include <linux/ipsec.h>
-	#endif],
-	[int mode = IPSEC_MODE_BEET;
-	 return mode;],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <sys/types.h>
+		  #ifdef HAVE_NETIPSEC_IPSEC_H
+		  #include <netipsec/ipsec.h>
+		  #elif defined(HAVE_NETINET6_IPSEC_H)
+		  #include <netinet6/ipsec.h>
+		  #else
+		  #include <stdint.h>
+		  #include <linux/ipsec.h>
+		  #endif]],
+		[[int mode = IPSEC_MODE_BEET;
+		  return mode;]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_IPSEC_MODE_BEET], [], [have IPSEC_MODE_BEET defined])],
 	[AC_MSG_RESULT([no])]
 )
 
 AC_MSG_CHECKING([for IPSEC_DIR_FWD])
-AC_TRY_COMPILE(
-	[#include <sys/types.h>
-	#ifdef HAVE_NETIPSEC_IPSEC_H
-	#include <netipsec/ipsec.h>
-	#elif defined(HAVE_NETINET6_IPSEC_H)
-	#include <netinet6/ipsec.h>
-	#else
-	#include <stdint.h>
-	#include <linux/ipsec.h>
-	#endif],
-	[int dir = IPSEC_DIR_FWD;
-	 return dir;],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <sys/types.h>
+		  #ifdef HAVE_NETIPSEC_IPSEC_H
+		  #include <netipsec/ipsec.h>
+		  #elif defined(HAVE_NETINET6_IPSEC_H)
+		  #include <netinet6/ipsec.h>
+		  #else
+		  #include <stdint.h>
+		  #include <linux/ipsec.h>
+		  #endif]],
+		[[int dir = IPSEC_DIR_FWD;
+		  return dir;]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_IPSEC_DIR_FWD], [], [have IPSEC_DIR_FWD defined])],
 	[AC_MSG_RESULT([no])]
 )
 
 AC_MSG_CHECKING([for RTA_TABLE])
-AC_TRY_COMPILE(
-	[#include <sys/socket.h>
-	#include <linux/netlink.h>
-	#include <linux/rtnetlink.h>],
-	[int rta_type = RTA_TABLE;
-	 return rta_type;],
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <sys/socket.h>
+		  #include <linux/netlink.h>
+		  #include <linux/rtnetlink.h>]],
+		[[int rta_type = RTA_TABLE;
+		  return rta_type;]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_RTA_TABLE], [], [have netlink RTA_TABLE defined])],
 	[AC_MSG_RESULT([no])]
 )
 
 AC_MSG_CHECKING([for gcc atomic operations])
-AC_TRY_RUN(
-[
-	int main() {
-		volatile int ref = 1;
-		__sync_fetch_and_add (&ref, 1);
-		__sync_sub_and_fetch (&ref, 1);
-		/* Make sure test fails if operations are not supported */
-		__sync_val_compare_and_swap(&ref, 1, 0);
-		return ref;
-	}
-],
-[AC_MSG_RESULT([yes]);
- AC_DEFINE([HAVE_GCC_ATOMIC_OPERATIONS], [],
+AC_RUN_IFELSE([AC_LANG_SOURCE(
+	[[
+			int main() {
+			volatile int ref = 1;
+			__sync_fetch_and_add (&ref, 1);
+			__sync_sub_and_fetch (&ref, 1);
+			/* Make sure test fails if operations are not supported */
+			__sync_val_compare_and_swap(&ref, 1, 0);
+			return ref;
+		}
+	]])],
+	[AC_MSG_RESULT([yes]);
+	 AC_DEFINE([HAVE_GCC_ATOMIC_OPERATIONS], [],
 		   [have GCC __sync_* atomic operations])],
-[AC_MSG_RESULT([no])],
-[AC_MSG_RESULT([no])])
+	[AC_MSG_RESULT([no])],
+	[AC_MSG_RESULT([no])]
+)
 
-dnl check for the new register_printf_specifier function with len argument,
-dnl or the deprecated register_printf_function without
+# check for the new register_printf_specifier function with len argument,
+# or the deprecated register_printf_function without
 AC_CHECK_FUNC(
 	[register_printf_specifier],
 	[AC_DEFINE([HAVE_PRINTF_SPECIFIER], [], [have register_printf_specifier()])],
@@ -573,20 +606,19 @@ AC_CHECK_FUNC(
 )
 
 if test x$vstr = xtrue; then
-	AC_HAVE_LIBRARY([vstr],[LIBS="$LIBS"],[AC_MSG_ERROR([Vstr string library not found])])
+	AC_CHECK_LIB([vstr],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([Vstr string library not found])],[])
 	AC_DEFINE([USE_VSTR], [], [use vstring library for printf hooks])
 fi
 
 if test x$gmp = xtrue; then
 	saved_LIBS=$LIBS
-	AC_HAVE_LIBRARY([gmp],,[AC_MSG_ERROR([GNU Multi Precision library gmp not found])])
+	AC_CHECK_LIB([gmp],[main],[],[AC_MSG_ERROR([GNU Multi Precision library gmp not found])],[])
 	AC_MSG_CHECKING([mpz_powm_sec])
 	if test x$mpz_powm_sec = xyes; then
-		AC_TRY_COMPILE(
-			[#include "gmp.h"],
-			[
-				void *x = mpz_powm_sec;
-			],
+		AC_COMPILE_IFELSE(
+			[AC_LANG_PROGRAM(
+				[[#include "gmp.h"]],
+				[[void *x = mpz_powm_sec;]])],
 			[AC_MSG_RESULT([yes]);
 			 AC_DEFINE([HAVE_MPZ_POWM_SEC], [], [have mpz_mown_sec()])],
 			[AC_MSG_RESULT([no])]
@@ -596,26 +628,34 @@ if test x$gmp = xtrue; then
 	fi
 	LIBS=$saved_LIBS
 	AC_MSG_CHECKING([gmp.h version >= 4.1.4])
-	AC_TRY_COMPILE(
-		[#include "gmp.h"],
-		[
-			#if (__GNU_MP_VERSION*100 +  __GNU_MP_VERSION_MINOR*10 + __GNU_MP_VERSION_PATCHLEVEL) < 414
-				#error bad gmp
-			#endif
-		],
-		[AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no]); AC_MSG_ERROR([No usable gmp.h found!])]
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include "gmp.h"]],
+			[[
+				#if (__GNU_MP_VERSION*100 +  __GNU_MP_VERSION_MINOR*10 + __GNU_MP_VERSION_PATCHLEVEL) < 414
+					#error bad gmp
+				#endif]])],
+		[AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no]); AC_MSG_ERROR([No usable gmp.h found!])]
 	)
 fi
 
 if test x$ldap = xtrue; then
-	AC_HAVE_LIBRARY([ldap],[LIBS="$LIBS"],[AC_MSG_ERROR([LDAP library ldap not found])])
-	AC_HAVE_LIBRARY([lber],[LIBS="$LIBS"],[AC_MSG_ERROR([LDAP library lber not found])])
+	AC_CHECK_LIB([ldap],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([LDAP library ldap not found])],[])
+	AC_CHECK_LIB([lber],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([LDAP library lber not found])],[])
 	AC_CHECK_HEADER([ldap.h],,[AC_MSG_ERROR([LDAP header ldap.h not found!])])
 fi
 
 if test x$curl = xtrue; then
-	AC_HAVE_LIBRARY([curl],[LIBS="$LIBS"],[AC_MSG_ERROR([CURL library curl not found])])
+	AC_CHECK_LIB([curl],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([CURL library curl not found])],[])
 	AC_CHECK_HEADER([curl/curl.h],,[AC_MSG_ERROR([CURL header curl/curl.h not found!])])
+fi
+
+if test x$unbound = xtrue; then
+	AC_HAVE_LIBRARY([ldns],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library ldns not found])])
+	AC_CHECK_HEADER([ldns/ldns.h],,[AC_MSG_ERROR([UNBOUND header ldns/ldns.h not found!])])
+	AC_HAVE_LIBRARY([unbound],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library libunbound not found])])
+	AC_CHECK_HEADER([unbound.h],,[AC_MSG_ERROR([UNBOUND header unbound.h not found!])])
 fi
 
 if test x$soup = xtrue; then
@@ -630,14 +670,8 @@ if test x$xml = xtrue; then
 	AC_SUBST(xml_LIBS)
 fi
 
-if test x$axis2c = xtrue; then
-	PKG_CHECK_MODULES(axis2c, [axis2c])
-	AC_SUBST(axis2c_CFLAGS)
-	AC_SUBST(axis2c_LIBS)
-fi
-
 if test x$tss = xtrousers; then
-	AC_HAVE_LIBRARY([tspi],[LIBS="$LIBS"],[AC_MSG_ERROR([TrouSerS library libtspi not found])])
+	AC_CHECK_LIB([tspi],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([TrouSerS library libtspi not found])],[])
 	AC_CHECK_HEADER([trousers/tss.h],,[AC_MSG_ERROR([TrouSerS header trousers/tss.h not found!])])
 	AC_DEFINE([TSS_TROUSERS], [], [use TrouSerS library libtspi as TSS implementation])
 fi
@@ -683,28 +717,27 @@ if test x$dumm = xtrue; then
 fi
 
 if test x$fast = xtrue; then
-	AC_HAVE_LIBRARY([neo_cgi],[LIBS="$LIBS"],[AC_MSG_ERROR([ClearSilver library neo_cgi not found!])])
-	AC_HAVE_LIBRARY([neo_utl],[LIBS="$LIBS"],[AC_MSG_ERROR([ClearSilver library neo_utl not found!])])
+	AC_CHECK_LIB([neo_cgi],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([ClearSilver library neo_cgi not found!])],[])
+	AC_CHECK_LIB([neo_utl],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([ClearSilver library neo_utl not found!])],[])
 	AC_MSG_CHECKING([ClearSilver requires zlib])
 	saved_CFLAGS=$CFLAGS
 	saved_LIBS=$LIBS
 	LIBS="-lneo_cgi -lneo_cs -lneo_utl"
 	CFLAGS="-I/usr/include/ClearSilver"
-	AC_TRY_LINK(
-		[#include <ClearSilver.h>],
-		[
-			NEOERR *err = cgi_display(NULL, NULL);
-		],
+	AC_LINK_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <ClearSilver.h>]],
+			[[NEOERR *err = cgi_display(NULL, NULL);]])],
 		[AC_MSG_RESULT([no]); clearsilver_LIBS="$LIBS"],
 		[AC_MSG_RESULT([yes]); clearsilver_LIBS="$LIBS -lz"]
 	)
 	AC_SUBST(clearsilver_LIBS)
 	LIBS=$saved_LIBS
 	CFLAGS=$saved_CFLAGS
-dnl autoconf does not like CamelCase!? How to fix this?
-dnl	AC_CHECK_HEADER([ClearSilver/ClearSilver.h],,[AC_MSG_ERROR([ClearSilver header file ClearSilver/ClearSilver.h not found!])])
+# autoconf does not like CamelCase!? How to fix this?
+#	AC_CHECK_HEADER([ClearSilver/ClearSilver.h],,[AC_MSG_ERROR([ClearSilver header file ClearSilver/ClearSilver.h not found!])])
 
-	AC_HAVE_LIBRARY([fcgi],[LIBS="$LIBS"],[AC_MSG_ERROR([FastCGI library fcgi not found!])])
+	AC_CHECK_LIB([fcgi],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([FastCGI library fcgi not found!])],[])
 	AC_CHECK_HEADER([fcgiapp.h],,[AC_MSG_ERROR([FastCGI header file fcgiapp.h not found!])])
 fi
 
@@ -718,40 +751,43 @@ if test x$mysql = xtrue; then
 fi
 
 if test x$sqlite = xtrue; then
-	AC_HAVE_LIBRARY([sqlite3],[LIBS="$LIBS"],[AC_MSG_ERROR([SQLite library sqlite3 not found])])
+	AC_CHECK_LIB([sqlite3],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([SQLite library sqlite3 not found])],[])
 	AC_CHECK_HEADER([sqlite3.h],,[AC_MSG_ERROR([SQLite header sqlite3.h not found!])])
 	AC_MSG_CHECKING([sqlite3_prepare_v2])
-	AC_TRY_COMPILE(
-		[#include <sqlite3.h>],
-		[
-			void *test = sqlite3_prepare_v2;
-		],
-		[AC_MSG_RESULT([yes])];
-		 AC_DEFINE([HAVE_SQLITE3_PREPARE_V2], [], [have sqlite3_prepare_v2()]),
-		[AC_MSG_RESULT([no])])
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <sqlite3.h>]],
+			[[void *test = sqlite3_prepare_v2;]])],
+		[AC_MSG_RESULT([yes]);
+		 AC_DEFINE([HAVE_SQLITE3_PREPARE_V2], [], [have sqlite3_prepare_v2()])],
+		[AC_MSG_RESULT([no])]
+	)
 	AC_MSG_CHECKING([sqlite3.h version >= 3.3.1])
-	AC_TRY_COMPILE(
-		[#include <sqlite3.h>],
-		[
-			#if SQLITE_VERSION_NUMBER < 3003001
-				#error bad sqlite
-			#endif
-		],
-		[AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no]); AC_MSG_ERROR([SQLite version >= 3.3.1 required!])])
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <sqlite3.h>]],
+			[[
+				#if SQLITE_VERSION_NUMBER < 3003001
+					#error bad sqlite
+				#endif]])],
+		[AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no]); AC_MSG_ERROR([SQLite version >= 3.3.1 required!])]
+	)
 fi
 
 if test x$openssl = xtrue; then
-	AC_HAVE_LIBRARY([crypto],[LIBS="$LIBS"],[AC_MSG_ERROR([OpenSSL crypto library not found])])
+	AC_CHECK_LIB([crypto],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([OpenSSL crypto library not found])],[])
 	AC_CHECK_HEADER([openssl/evp.h],,[AC_MSG_ERROR([OpenSSL header openssl/evp.h not found!])])
 fi
 
 if test x$gcrypt = xtrue; then
-	AC_HAVE_LIBRARY([gcrypt],[LIBS="$LIBS"],[AC_MSG_ERROR([gcrypt library not found])],[-lgpg-error])
+	AC_CHECK_LIB([gcrypt],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([gcrypt library not found])],[-lgpg-error])
 	AC_CHECK_HEADER([gcrypt.h],,[AC_MSG_ERROR([gcrypt header gcrypt.h not found!])])
 	AC_MSG_CHECKING([gcrypt CAMELLIA cipher])
-	AC_TRY_COMPILE(
-		[#include <gcrypt.h>],
-		[enum gcry_cipher_algos alg = GCRY_CIPHER_CAMELLIA128;],
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#include <gcrypt.h>]],
+			[[enum gcry_cipher_algos alg = GCRY_CIPHER_CAMELLIA128;]])],
 		[AC_MSG_RESULT([yes]);
 		 AC_DEFINE([HAVE_GCRY_CIPHER_CAMELLIA], [], [have GCRY_CIPHER_CAMELLIA128])],
 		[AC_MSG_RESULT([no])]
@@ -759,15 +795,15 @@ if test x$gcrypt = xtrue; then
 fi
 
 if test x$uci = xtrue; then
-	AC_HAVE_LIBRARY([uci],[LIBS="$LIBS"],[AC_MSG_ERROR([UCI library libuci not found])])
+	AC_CHECK_LIB([uci],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([UCI library libuci not found])],[])
 	AC_CHECK_HEADER([uci.h],,[AC_MSG_ERROR([UCI header uci.h not found!])])
 fi
 
-if test x$android = xtrue; then
-	AC_HAVE_LIBRARY([cutils],[LIBS="$LIBS"],[AC_MSG_ERROR([Android library libcutils not found])])
+if test x$android_dns = xtrue; then
+	AC_CHECK_LIB([cutils],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([Android library libcutils not found])],[])
 	AC_CHECK_HEADER([cutils/properties.h],,[AC_MSG_ERROR([Android header cutils/properties.h not found!])])
-	dnl we have to force the use of libdl here because the autodetection
-	dnl above does not work correctly when cross-compiling for android.
+	# we have to force the use of libdl here because the autodetection
+	# above does not work correctly when cross-compiling for android.
 	DLLIB="-ldl"
 	AC_SUBST(DLLIB)
 fi
@@ -796,21 +832,21 @@ if test x$nm = xtrue; then
 fi
 
 if test x$xauth_pam = xtrue; then
-	AC_HAVE_LIBRARY([pam],[LIBS="$LIBS"],[AC_MSG_ERROR([PAM library not found])])
+	AC_CHECK_LIB([pam],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([PAM library not found])],[])
 	AC_CHECK_HEADER([security/pam_appl.h],,[AC_MSG_ERROR([PAM header security/pam_appl.h not found!])])
 fi
 
 if test x$capabilities = xnative; then
 	AC_MSG_NOTICE([Usage of the native Linux capabilities interface is deprecated, use libcap instead])
-	dnl Linux requires the following for capset(), Android does not have it,
-	dnl but defines capset() in unistd.h instead.
+	# Linux requires the following for capset(), Android does not have it,
+	# but defines capset() in unistd.h instead.
 	AC_CHECK_HEADERS([sys/capability.h])
 	AC_CHECK_FUNC(capset,,[AC_MSG_ERROR([capset() not found!])])
 	AC_DEFINE([CAPABILITIES_NATIVE], [], [have native linux capset()])
 fi
 
 if test x$capabilities = xlibcap; then
-	AC_HAVE_LIBRARY([cap],[LIBS="$LIBS"],[AC_MSG_ERROR([libcap library not found])])
+	AC_CHECK_LIB([cap],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([libcap library not found])],[])
 	AC_CHECK_HEADER([sys/capability.h],
 		[AC_DEFINE([HAVE_SYS_CAPABILITY_H], [], [have sys/capability.h])],
 		[AC_MSG_ERROR([libcap header sys/capability.h not found!])])
@@ -819,25 +855,29 @@ fi
 
 if test x$integrity_test = xtrue; then
 	AC_MSG_CHECKING([for dladdr()])
-	AC_TRY_COMPILE(
-		[#define _GNU_SOURCE
-		 #include <dlfcn.h>],
-		[Dl_info info; dladdr(main, &info);],
-		[AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no]);
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#define _GNU_SOURCE
+			  #include <dlfcn.h>]],
+			[[Dl_info info; dladdr(main, &info);]])],
+		[AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no]);
 		 AC_MSG_ERROR([dladdr() not supported, required by integrity-test!])]
 	)
 	AC_MSG_CHECKING([for dl_iterate_phdr()])
-	AC_TRY_COMPILE(
-		[#define _GNU_SOURCE
-		 #include <link.h>],
-		[dl_iterate_phdr((void*)0, (void*)0);],
-		[AC_MSG_RESULT([yes])], [AC_MSG_RESULT([no]);
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM(
+			[[#define _GNU_SOURCE
+			  #include <link.h>]],
+			[[dl_iterate_phdr((void*)0, (void*)0);]])],
+		[AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no]);
 		 AC_MSG_ERROR([dl_iterate_phdr() not supported, required by integrity-test!])]
 	)
 fi
 
 if test x$bfd_backtraces = xtrue; then
-	AC_HAVE_LIBRARY([bfd],[LIBS="$LIBS"],[AC_MSG_ERROR([binutils libbfd not found!])])
+	AC_CHECK_LIB([bfd],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([binutils libbfd not found!])],[])
 	AC_CHECK_HEADER([bfd.h],[AC_DEFINE([HAVE_BFD_H],,[have binutils bfd.h])],
 		[AC_MSG_ERROR([binutils bfd.h header not found!])])
 	BFDLIB="-lbfd"
@@ -852,9 +892,19 @@ AC_SUBST(dev_headers)
 
 CFLAGS="$CFLAGS -include `pwd`/config.h"
 
-dnl ==============================================
-dnl  collect plugin list for strongSwan components
-dnl ==============================================
+if test x$tkm = xtrue; then
+	AC_PATH_PROG([GPRBUILD], [gprbuild], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
+fi
+
+if test x$unit_tests = xtrue; then
+	PKG_CHECK_MODULES(CHECK, [check >= 0.9.4])
+	AC_SUBST(CHECK_CFLAGS)
+	AC_SUBST(CHECK_LIBS)
+fi
+
+# ===============================================
+#  collect plugin list for strongSwan components
+# ===============================================
 
 m4_include(m4/macros/add-plugin.m4)
 
@@ -880,6 +930,7 @@ s_plugins=
 ADD_PLUGIN([test-vectors],         [s charon openac scepclient pki])
 ADD_PLUGIN([curl],                 [s charon scepclient scripts nm])
 ADD_PLUGIN([soup],                 [s charon scripts nm])
+ADD_PLUGIN([unbound],              [s charon scripts])
 ADD_PLUGIN([ldap],                 [s charon scepclient scripts nm])
 ADD_PLUGIN([mysql],                [s charon pool manager medsrv attest])
 ADD_PLUGIN([sqlite],               [s charon pool manager medsrv attest])
@@ -903,6 +954,7 @@ ADD_PLUGIN([pkcs7],                [s scepclient pki])
 ADD_PLUGIN([pkcs8],                [s charon openac scepclient pki scripts manager medsrv attest nm])
 ADD_PLUGIN([pgp],                  [s charon])
 ADD_PLUGIN([dnskey],               [s charon])
+ADD_PLUGIN([ipseckey],             [c charon])
 ADD_PLUGIN([pem],                  [s charon openac scepclient pki scripts manager medsrv attest nm])
 ADD_PLUGIN([padlock],              [s charon])
 ADD_PLUGIN([openssl],              [s charon openac scepclient pki scripts manager medsrv attest nm])
@@ -953,6 +1005,7 @@ ADD_PLUGIN([eap-tnc],              [c charon])
 ADD_PLUGIN([xauth-generic],        [c charon])
 ADD_PLUGIN([xauth-eap],            [c charon])
 ADD_PLUGIN([xauth-pam],            [c charon])
+ADD_PLUGIN([xauth-noauth],         [c charon])
 ADD_PLUGIN([tnc-ifmap],            [c charon])
 ADD_PLUGIN([tnc-pdp],              [c charon])
 ADD_PLUGIN([tnc-imc],              [c charon])
@@ -964,13 +1017,14 @@ ADD_PLUGIN([tnccs-dynamic],        [c charon])
 ADD_PLUGIN([medsrv],               [c charon])
 ADD_PLUGIN([medcli],               [c charon])
 ADD_PLUGIN([dhcp],                 [c charon])
-ADD_PLUGIN([android],              [c charon])
+ADD_PLUGIN([android-dns],          [c charon])
 ADD_PLUGIN([android-log],          [c charon])
 ADD_PLUGIN([ha],                   [c charon])
 ADD_PLUGIN([whitelist],            [c charon])
 ADD_PLUGIN([lookip],               [c charon])
 ADD_PLUGIN([error-notify],         [c charon])
 ADD_PLUGIN([certexpire],           [c charon])
+ADD_PLUGIN([systime-fix],          [c charon])
 ADD_PLUGIN([led],                  [c charon])
 ADD_PLUGIN([duplicheck],           [c charon])
 ADD_PLUGIN([coupling],             [c charon])
@@ -994,18 +1048,18 @@ AC_SUBST(medsrv_plugins)
 AC_SUBST(nm_plugins)
 
 AC_SUBST(c_plugins)
-AC_SUBST(p_plugins)
 AC_SUBST(h_plugins)
 AC_SUBST(s_plugins)
 
-dnl =========================
-dnl  set Makefile.am vars
-dnl =========================
+# ======================
+#  set Makefile.am vars
+# ======================
 
-dnl libstrongswan plugins
-dnl =====================
+#  libstrongswan plugins
+# -----------------------
 AM_CONDITIONAL(USE_TEST_VECTORS, test x$test_vectors = xtrue)
 AM_CONDITIONAL(USE_CURL, test x$curl = xtrue)
+AM_CONDITIONAL(USE_UNBOUND, test x$unbound = xtrue)
 AM_CONDITIONAL(USE_SOUP, test x$soup = xtrue)
 AM_CONDITIONAL(USE_LDAP, test x$ldap = xtrue)
 AM_CONDITIONAL(USE_AES, test x$aes = xtrue)
@@ -1045,17 +1099,18 @@ AM_CONDITIONAL(USE_CCM, test x$ccm = xtrue)
 AM_CONDITIONAL(USE_GCM, test x$gcm = xtrue)
 AM_CONDITIONAL(USE_AF_ALG, test x$af_alg = xtrue)
 
-dnl charon plugins
-dnl ==============
+#  charon plugins
+# ----------------
 AM_CONDITIONAL(USE_STROKE, test x$stroke = xtrue)
 AM_CONDITIONAL(USE_MEDSRV, test x$medsrv = xtrue)
 AM_CONDITIONAL(USE_MEDCLI, test x$medcli = xtrue)
 AM_CONDITIONAL(USE_UCI, test x$uci = xtrue)
-AM_CONDITIONAL(USE_ANDROID, test x$android = xtrue)
+AM_CONDITIONAL(USE_ANDROID_DNS, test x$android_dns = xtrue)
 AM_CONDITIONAL(USE_ANDROID_LOG, test x$android_log = xtrue)
 AM_CONDITIONAL(USE_MAEMO, test x$maemo = xtrue)
 AM_CONDITIONAL(USE_SMP, test x$smp = xtrue)
 AM_CONDITIONAL(USE_SQL, test x$sql = xtrue)
+AM_CONDITIONAL(USE_IPSECKEY, test x$ipseckey = xtrue)
 AM_CONDITIONAL(USE_UPDOWN, test x$updown = xtrue)
 AM_CONDITIONAL(USE_DHCP, test x$dhcp = xtrue)
 AM_CONDITIONAL(USE_UNIT_TESTS, test x$unit_tester = xtrue)
@@ -1065,6 +1120,7 @@ AM_CONDITIONAL(USE_WHITELIST, test x$whitelist = xtrue)
 AM_CONDITIONAL(USE_LOOKIP, test x$lookip = xtrue)
 AM_CONDITIONAL(USE_ERROR_NOTIFY, test x$error_notify = xtrue)
 AM_CONDITIONAL(USE_CERTEXPIRE, test x$certexpire = xtrue)
+AM_CONDITIONAL(USE_SYSTIME_FIX, test x$systime_fix = xtrue)
 AM_CONDITIONAL(USE_LED, test x$led = xtrue)
 AM_CONDITIONAL(USE_DUPLICHECK, test x$duplicheck = xtrue)
 AM_CONDITIONAL(USE_COUPLING, test x$coupling = xtrue)
@@ -1090,6 +1146,7 @@ AM_CONDITIONAL(USE_EAP_RADIUS, test x$eap_radius = xtrue)
 AM_CONDITIONAL(USE_XAUTH_GENERIC, test x$xauth_generic = xtrue)
 AM_CONDITIONAL(USE_XAUTH_EAP, test x$xauth_eap = xtrue)
 AM_CONDITIONAL(USE_XAUTH_PAM, test x$xauth_pam = xtrue)
+AM_CONDITIONAL(USE_XAUTH_NOAUTH, test x$xauth_noauth = xtrue)
 AM_CONDITIONAL(USE_TNC_IFMAP, test x$tnc_ifmap = xtrue)
 AM_CONDITIONAL(USE_TNC_PDP, test x$tnc_pdp = xtrue)
 AM_CONDITIONAL(USE_TNC_IMC, test x$tnc_imc = xtrue)
@@ -1112,18 +1169,18 @@ AM_CONDITIONAL(USE_FARP, test x$farp = xtrue)
 AM_CONDITIONAL(USE_ADDRBLOCK, test x$addrblock = xtrue)
 AM_CONDITIONAL(USE_UNITY, test x$unity = xtrue)
 
-dnl hydra plugins
-dnl =============
+#  hydra plugins
+# ---------------
 AM_CONDITIONAL(USE_ATTR, test x$attr = xtrue)
-AM_CONDITIONAL(USE_ATTR_SQL, test x$attr_sql = xtrue -o x$sql = xtrue)
+AM_CONDITIONAL(USE_ATTR_SQL, test x$attr_sql = xtrue)
 AM_CONDITIONAL(USE_KERNEL_KLIPS, test x$kernel_klips = xtrue)
 AM_CONDITIONAL(USE_KERNEL_NETLINK, test x$kernel_netlink = xtrue)
 AM_CONDITIONAL(USE_KERNEL_PFKEY, test x$kernel_pfkey = xtrue)
 AM_CONDITIONAL(USE_KERNEL_PFROUTE, test x$kernel_pfroute = xtrue)
 AM_CONDITIONAL(USE_RESOLVE, test x$resolve = xtrue)
 
-dnl other options
-dnl =============
+#  other options
+# ---------------
 AM_CONDITIONAL(USE_LEAK_DETECTIVE, test x$leak_detective = xtrue)
 AM_CONDITIONAL(USE_LOCK_PROFILER, test x$lock_profiler = xtrue)
 AM_CONDITIONAL(USE_DUMM, test x$dumm = xtrue)
@@ -1141,12 +1198,13 @@ AM_CONDITIONAL(USE_NM, test x$nm = xtrue)
 AM_CONDITIONAL(USE_TOOLS, test x$tools = xtrue)
 AM_CONDITIONAL(USE_SCRIPTS, test x$scripts = xtrue)
 AM_CONDITIONAL(USE_CONFTEST, test x$conftest = xtrue)
-AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$tools = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue)
-AM_CONDITIONAL(USE_LIBHYDRA, test x$charon = xtrue -o x$nm = xtrue)
-AM_CONDITIONAL(USE_LIBCHARON, test x$charon = xtrue -o x$conftest = xtrue -o x$nm = xtrue)
+AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$tools = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue)
+AM_CONDITIONAL(USE_LIBHYDRA, test x$charon = xtrue -o x$nm = xtrue -o x$tkm = xtrue)
+AM_CONDITIONAL(USE_LIBCHARON, test x$charon = xtrue -o x$conftest = xtrue -o x$nm = xtrue -o x$tkm = xtrue)
 AM_CONDITIONAL(USE_LIBIPSEC, test x$libipsec = xtrue)
 AM_CONDITIONAL(USE_LIBTNCIF, test x$tnc_tnccs = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_LIBTNCCS, test x$tnc_tnccs = xtrue)
+AM_CONDITIONAL(USE_LIBPTTLS, test x$tnc_tnccs = xtrue)
 AM_CONDITIONAL(USE_FILE_CONFIG, test x$stroke = xtrue)
 AM_CONDITIONAL(USE_IPSEC_SCRIPT, test x$stroke = xtrue -o x$tools = xtrue -o x$conftest = xtrue)
 AM_CONDITIONAL(USE_LIBCAP, test x$capabilities = xlibcap)
@@ -1158,10 +1216,12 @@ AM_CONDITIONAL(USE_IMCV, test x$imcv = xtrue)
 AM_CONDITIONAL(USE_PTS, test x$pts = xtrue)
 AM_CONDITIONAL(USE_TROUSERS, test x$tss = xtrousers)
 AM_CONDITIONAL(MONOLITHIC, test x$monolithic = xtrue)
+AM_CONDITIONAL(UNITTESTS, test x$unit_tests = xtrue)
+AM_CONDITIONAL(USE_TKM, test x$tkm = xtrue)
 
-dnl ==============================
-dnl  set global definitions
-dnl ==============================
+# ========================
+#  set global definitions
+# ========================
 
 if test x$mediation = xtrue; then
 	AC_DEFINE([ME], [], [mediation extension support])
@@ -1179,11 +1239,11 @@ if test x$ikev2 = xtrue; then
 	AC_DEFINE([USE_IKEV2], [], [support for IKEv2 protocol])
 fi
 
-dnl ==============================
-dnl  build Makefiles
-dnl ==============================
+# =================
+#  build Makefiles
+# =================
 
-AC_OUTPUT(
+AC_CONFIG_FILES([
 	Makefile
 	man/Makefile
 	init/Makefile
@@ -1217,6 +1277,7 @@ AC_OUTPUT(
 	src/libstrongswan/plugins/dnskey/Makefile
 	src/libstrongswan/plugins/pem/Makefile
 	src/libstrongswan/plugins/curl/Makefile
+	src/libstrongswan/plugins/unbound/Makefile
 	src/libstrongswan/plugins/soup/Makefile
 	src/libstrongswan/plugins/ldap/Makefile
 	src/libstrongswan/plugins/mysql/Makefile
@@ -1245,6 +1306,7 @@ AC_OUTPUT(
 	src/libradius/Makefile
 	src/libtncif/Makefile
 	src/libtnccs/Makefile
+	src/libpttls/Makefile
 	src/libpts/Makefile
 	src/libpts/plugins/imc_attestation/Makefile
 	src/libpts/plugins/imv_attestation/Makefile
@@ -1257,6 +1319,7 @@ AC_OUTPUT(
 	src/libimcv/plugins/imv_os/Makefile
 	src/charon/Makefile
 	src/charon-nm/Makefile
+	src/charon-tkm/Makefile
 	src/libcharon/Makefile
 	src/libcharon/plugins/eap_aka/Makefile
 	src/libcharon/plugins/eap_aka_3gpp2/Makefile
@@ -1279,6 +1342,7 @@ AC_OUTPUT(
 	src/libcharon/plugins/xauth_generic/Makefile
 	src/libcharon/plugins/xauth_eap/Makefile
 	src/libcharon/plugins/xauth_pam/Makefile
+	src/libcharon/plugins/xauth_noauth/Makefile
 	src/libcharon/plugins/tnc_ifmap/Makefile
 	src/libcharon/plugins/tnc_pdp/Makefile
 	src/libcharon/plugins/tnc_imc/Makefile
@@ -1292,6 +1356,7 @@ AC_OUTPUT(
 	src/libcharon/plugins/farp/Makefile
 	src/libcharon/plugins/smp/Makefile
 	src/libcharon/plugins/sql/Makefile
+	src/libcharon/plugins/ipseckey/Makefile
 	src/libcharon/plugins/medsrv/Makefile
 	src/libcharon/plugins/medcli/Makefile
 	src/libcharon/plugins/addrblock/Makefile
@@ -1302,11 +1367,12 @@ AC_OUTPUT(
 	src/libcharon/plugins/lookip/Makefile
 	src/libcharon/plugins/error_notify/Makefile
 	src/libcharon/plugins/certexpire/Makefile
+	src/libcharon/plugins/systime_fix/Makefile
 	src/libcharon/plugins/led/Makefile
 	src/libcharon/plugins/duplicheck/Makefile
 	src/libcharon/plugins/coupling/Makefile
 	src/libcharon/plugins/radattr/Makefile
-	src/libcharon/plugins/android/Makefile
+	src/libcharon/plugins/android_dns/Makefile
 	src/libcharon/plugins/android_log/Makefile
 	src/libcharon/plugins/maemo/Makefile
 	src/libcharon/plugins/stroke/Makefile
@@ -1332,4 +1398,18 @@ AC_OUTPUT(
 	src/conftest/Makefile
 	scripts/Makefile
 	testing/Makefile
-)
+])
+AC_OUTPUT
+
+# ========================
+#  report enabled plugins
+# ========================
+
+AC_MSG_RESULT([])
+AC_MSG_RESULT([ strongSwan will be built with the following plugins])
+AC_MSG_RESULT([-----------------------------------------------------])
+
+AC_MSG_RESULT([libstrongswan:$s_plugins])
+AC_MSG_RESULT([libcharon:    $c_plugins])
+AC_MSG_RESULT([libhydra:     $h_plugins])
+AC_MSG_RESULT([])

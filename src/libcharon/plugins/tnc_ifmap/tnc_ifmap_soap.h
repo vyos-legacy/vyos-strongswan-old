@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -38,6 +38,13 @@ struct tnc_ifmap_soap_t {
 	 * @return				TRUE if command was successful
 	 */
 	bool (*newSession)(tnc_ifmap_soap_t *this);
+
+	/**
+	 * Check if the IF-MAP session is still active
+	 *
+	 * @return				TRUE if command was successful
+	 */
+	bool (*renewSession)(tnc_ifmap_soap_t *this);
 
 	/**
 	 * Purges all metadata published by this publisher
@@ -80,6 +87,27 @@ struct tnc_ifmap_soap_t {
 	 * @return				TRUE if command was successful
 	 */
 	bool (*endSession)(tnc_ifmap_soap_t *this);
+
+	/**
+	 * Get ID of IF-MAP session
+	 *
+	 * @return				IF-MAP session ID
+	 */
+	char* (*get_session_id)(tnc_ifmap_soap_t *this);
+
+	/**
+	 * Check for an orphaned IF-MAP session
+	 *
+	 * @return				TRUE if IF-MAP session is orphaned
+	 */
+	bool (*orphaned)(tnc_ifmap_soap_t *this);
+
+	/**
+	 * Get a reference to an IF-MAP session
+	 *
+	 * @return				referenced IF-MAP session
+	 */
+	tnc_ifmap_soap_t* (*get_ref)(tnc_ifmap_soap_t *this);
 
 	/**
 	 * Destroy a tnc_ifmap_soap_t.

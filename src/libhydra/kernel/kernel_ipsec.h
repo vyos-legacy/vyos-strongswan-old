@@ -30,6 +30,7 @@ typedef struct kernel_ipsec_t kernel_ipsec_t;
 #include <ipsec/ipsec_types.h>
 #include <selectors/traffic_selector.h>
 #include <plugins/plugin.h>
+#include <kernel/kernel_interface.h>
 
 /**
  * Interface to the ipsec subsystem of the kernel.
@@ -43,6 +44,13 @@ typedef struct kernel_ipsec_t kernel_ipsec_t;
  * when rekeying. Thats why we do reference counting of policies.
  */
 struct kernel_ipsec_t {
+
+	/**
+	 * Get the feature set supported by this kernel backend.
+	 *
+	 * @return				ORed feature-set of backend
+	 */
+	kernel_feature_t (*get_features)(kernel_ipsec_t *this);
 
 	/**
 	 * Get a SPI from the kernel.
@@ -146,11 +154,12 @@ struct kernel_ipsec_t {
 	 * @param protocol		protocol for this SA (ESP/AH)
 	 * @param mark			optional mark for this SA
 	 * @param[out] bytes	the number of bytes processed by SA
+	 * @param[out] packets	number of packets processed by SA
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*query_sa) (kernel_ipsec_t *this, host_t *src, host_t *dst,
 						  u_int32_t spi, u_int8_t protocol, mark_t mark,
-						  u_int64_t *bytes);
+						  u_int64_t *bytes, u_int64_t *packets);
 
 	/**
 	 * Delete a previusly installed SA from the SAD.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -27,14 +27,35 @@ typedef struct private_tnccs_dynamic_t private_tnccs_dynamic_t;
 struct private_tnccs_dynamic_t {
 
 	/**
-	 * Public tls_t interface.
+	 * Public tnccs_t interface.
 	 */
-	tls_t public;
+	tnccs_t public;
+
+	/**
+	 * Server identity
+	 */
+	identification_t *server;
+
+	/**
+	 * Client identity
+	 */
+	identification_t *peer;
 
 	/**
 	 * Detected TNC IF-TNCCS stack
 	 */
 	tls_t *tls;
+
+	/**
+	 * Underlying TNC IF-T transport protocol
+	 */
+	tnc_ift_type_t transport;
+
+	/**
+	 * Type of TNC client authentication
+	 */
+	u_int32_t auth_type;
+
 };
 
 /**
@@ -66,6 +87,7 @@ METHOD(tls_t, process, status_t,
 	private_tnccs_dynamic_t *this, void *buf, size_t buflen)
 {
 	tnccs_type_t type;
+	tnccs_t *tnccs;
 
 	if (!this->tls)
 	{
@@ -76,12 +98,15 @@ METHOD(tls_t, process, status_t,
 		type = determine_tnccs_protocol(*(char*)buf);
 		DBG1(DBG_TNC, "%N protocol detected dynamically",
 					   tnccs_type_names, type);
-		this->tls = (tls_t*)tnc->tnccs->create_instance(tnc->tnccs, type, TRUE);
-		if (!this->tls)
+		tnccs = tnc->tnccs->create_instance(tnc->tnccs, type, TRUE,
+							this->server, this->peer, this->transport);
+		if (!tnccs)
 		{
 			DBG1(DBG_TNC, "N% protocol not supported", tnccs_type_names, type);
 			return FAILED;
 		}
+		tnccs->set_auth_type(tnccs, this->auth_type);
+		this->tls = &tnccs->tls;
 	}
 	return this->tls->process(this->tls, buf, buflen);
 }
@@ -96,6 +121,18 @@ METHOD(tls_t, is_server, bool,
 	private_tnccs_dynamic_t *this)
 {
 	return TRUE;
+}
+
+METHOD(tls_t, get_server_id, identification_t*,
+	private_tnccs_dynamic_t *this)
+{
+	return this->server;
+}
+
+METHOD(tls_t, get_peer_id, identification_t*,
+	private_tnccs_dynamic_t *this)
+{
+	return this->peer;
 }
 
 METHOD(tls_t, get_purpose, tls_purpose_t,
@@ -120,26 +157,66 @@ METHOD(tls_t, destroy, void,
 	private_tnccs_dynamic_t *this)
 {
 	DESTROY_IF(this->tls);
+	this->server->destroy(this->server);
+	this->peer->destroy(this->peer);
 	free(this);
+}
+
+METHOD(tnccs_t, get_transport, tnc_ift_type_t,
+	private_tnccs_dynamic_t *this)
+{
+	return this->transport;
+}
+
+METHOD(tnccs_t, set_transport, void,
+	private_tnccs_dynamic_t *this, tnc_ift_type_t transport)
+{
+	this->transport = transport;
+}
+
+METHOD(tnccs_t, get_auth_type, u_int32_t,
+	private_tnccs_dynamic_t *this)
+{
+	return this->auth_type;
+}
+
+METHOD(tnccs_t, set_auth_type, void,
+	private_tnccs_dynamic_t *this, u_int32_t auth_type)
+{
+	this->auth_type = auth_type;
 }
 
 /**
  * See header
  */
-tls_t *tnccs_dynamic_create(bool is_server)
+tnccs_t* tnccs_dynamic_create(bool is_server,
+							  identification_t *server,
+							  identification_t *peer,
+							  tnc_ift_type_t transport)
 {
 	private_tnccs_dynamic_t *this;
 
 	INIT(this,
 		.public = {
-			.process = _process,
-			.build = _build,
-			.is_server = _is_server,
-			.get_purpose = _get_purpose,
-			.is_complete = _is_complete,
-			.get_eap_msk = _get_eap_msk,
-			.destroy = _destroy,
+			.tls = {
+				.process = _process,
+				.build = _build,
+				.is_server = _is_server,
+				.get_server_id = _get_server_id,
+				.get_peer_id = _get_peer_id,
+				.get_purpose = _get_purpose,
+				.is_complete = _is_complete,
+				.get_eap_msk = _get_eap_msk,
+				.destroy = _destroy,
+			},
+			.get_transport = _get_transport,
+			.set_transport = _set_transport,
+			.get_auth_type = _get_auth_type,
+			.set_auth_type = _set_auth_type,
 		},
+		.server = server->clone(server),
+		.peer = peer->clone(peer),
+		.transport = transport,
 	);
 
 	return &this->public;

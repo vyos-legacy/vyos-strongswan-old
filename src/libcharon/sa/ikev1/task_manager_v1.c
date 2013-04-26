@@ -411,7 +411,7 @@ static bool send_fragment(private_task_manager_t *this, bool request,
 static bool send_packet(private_task_manager_t *this, bool request,
 						packet_t *packet)
 {
-	fragmentation_t fragmentation = FRAGMENTATION_NO;
+	bool use_frags = FALSE;
 	ike_cfg_t *ike_cfg;
 	host_t *src, *dst;
 	chunk_t data;
@@ -419,12 +419,21 @@ static bool send_packet(private_task_manager_t *this, bool request,
 	ike_cfg = this->ike_sa->get_ike_cfg(this->ike_sa);
 	if (ike_cfg)
 	{
-		fragmentation = ike_cfg->fragmentation(ike_cfg);
+		switch (ike_cfg->fragmentation(ike_cfg))
+		{
+			case FRAGMENTATION_FORCE:
+				use_frags = TRUE;
+				break;
+			case FRAGMENTATION_YES:
+				use_frags = this->ike_sa->supports_extension(this->ike_sa,
+														EXT_IKE_FRAGMENTATION);
+				break;
+			default:
+				break;
+		}
 	}
 	data = packet->get_data(packet);
-	if (data.len > this->frag.size && (fragmentation == FRAGMENTATION_FORCE ||
-	   (this->ike_sa->supports_extension(this->ike_sa, EXT_IKE_FRAGMENTATION) &&
-		fragmentation == FRAGMENTATION_YES)))
+	if (data.len > this->frag.size && use_frags)
 	{
 		fragment_payload_t *fragment;
 		u_int8_t num, count;
@@ -1163,6 +1172,15 @@ static status_t process_response(private_task_manager_t *this,
 
 	if (message->get_exchange_type(message) != this->initiating.type)
 	{
+		/* Windows server sends a fourth quick mode message having an initial
+		 * contact notify. Ignore this message for compatibility. */
+		if (this->initiating.type == EXCHANGE_TYPE_UNDEFINED &&
+			message->get_exchange_type(message) == QUICK_MODE &&
+			message->get_notify(message, INITIAL_CONTACT))
+		{
+			DBG1(DBG_IKE, "ignoring fourth Quick Mode message");
+			return SUCCESS;
+		}
 		DBG1(DBG_IKE, "received %N response, but expected %N",
 			 exchange_type_names, message->get_exchange_type(message),
 			 exchange_type_names, this->initiating.type);
@@ -1471,6 +1489,21 @@ METHOD(task_manager_t, process_message, status_t,
 			charon->bus->alert(charon->bus, ALERT_RETRANSMIT_RECEIVE, msg);
 			return SUCCESS;
 		}
+
+		/* reject Main/Aggressive Modes once established */
+		if (msg->get_exchange_type(msg) == ID_PROT ||
+			msg->get_exchange_type(msg) == AGGRESSIVE)
+		{
+			if (this->ike_sa->get_state(this->ike_sa) != IKE_CREATED &&
+				this->ike_sa->get_state(this->ike_sa) != IKE_CONNECTING &&
+				msg->get_first_payload_type(msg) != FRAGMENT_V1)
+			{
+				DBG1(DBG_IKE, "ignoring %N in established IKE_SA state",
+					 exchange_type_names, msg->get_exchange_type(msg));
+				return FAILED;
+			}
+		}
+
 		if (msg->get_exchange_type(msg) == TRANSACTION &&
 			this->active_tasks->get_count(this->active_tasks))
 		{	/* main mode not yet complete, queue XAuth/Mode config tasks */
@@ -2030,4 +2063,3 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 
 	return &this->public;
 }
-

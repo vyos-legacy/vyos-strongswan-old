@@ -804,26 +804,28 @@ METHOD(attest_db_t, list_components, void,
 METHOD(attest_db_t, list_devices, void,
 	private_attest_db_t *this)
 {
-	enumerator_t *e;
-	chunk_t value;
+	enumerator_t *e, *e_ar;
+	chunk_t value, ar_id_value = chunk_empty;
 	char *product;
 	time_t timestamp;
-	int id, last_id = 0, device_count = 0;
+	int id, last_id = 0, ar_id = 0, last_ar_id = 0, device_count = 0;
 	int count, count_update, count_blacklist;
+	u_int32_t ar_id_type;
 	u_int tstamp, flags = 0;
 
 	e = this->db->query(this->db,
 			"SELECT d.id, d.value, i.time, i.count, i.count_update, "
-			"i.count_blacklist, i.flags, p.name FROM devices AS d "
+			"i.count_blacklist, i.flags, i.ar_id, p.name FROM devices AS d "
 			"JOIN device_infos AS i ON d.id = i.device "
 			"JOIN products AS p ON p.id = i.product "
 			"ORDER BY d.value, i.time DESC",
-			 DB_INT, DB_BLOB, DB_UINT, DB_INT, DB_INT, DB_INT, DB_UINT, DB_TEXT);
+			 DB_INT, DB_BLOB, DB_UINT, DB_INT, DB_INT, DB_INT, DB_UINT,
+			 DB_INT, DB_TEXT);
 
 	if (e)
 	{
 		while (e->enumerate(e, &id, &value, &tstamp, &count, &count_update,
-							   &count_blacklist, &flags, &product))
+							   &count_blacklist, &flags, &ar_id, &product))
 		{
 			if (id != last_id)
 			{
@@ -832,10 +834,32 @@ METHOD(attest_db_t, list_devices, void,
 				last_id = id;
 			}
 			timestamp = tstamp;
-			printf("      %T, %4d, %3d, %3d, %1u, '%s'\n", &timestamp, this->utc,
+			printf("      %T, %4d, %3d, %3d, %1u, '%s'", &timestamp, this->utc,
 				   count, count_update, count_blacklist, flags, product);
+			if (ar_id)
+			{
+				if (ar_id != last_ar_id)
+				{
+					chunk_free(&ar_id_value);
+					e_ar = this->db->query(this->db,
+								"SELECT type, data FROM identities "
+								"WHERE id = ?", DB_INT, ar_id, DB_INT, DB_BLOB);
+					if (e_ar)
+					{
+						e_ar->enumerate(e_ar, &ar_id_type, &ar_id_value);
+						e_ar->destroy(e_ar);
+					}
+				}
+				if (ar_id_value.len)
+				{
+					printf(" %.*s", (int)ar_id_value.len, ar_id_value.ptr);
+				}
+			}
+			printf("\n");
 		}
 		e->destroy(e);
+		free(ar_id_value.ptr);
+
 		printf("%d device%s found\n", device_count,
 									 (device_count == 1) ? "" : "s");
 	}

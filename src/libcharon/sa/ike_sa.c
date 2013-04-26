@@ -285,7 +285,7 @@ static time_t get_use_time(private_ike_sa_t* this, bool inbound)
 	enumerator = this->child_sas->create_enumerator(this->child_sas);
 	while (enumerator->enumerate(enumerator, &child_sa))
 	{
-		child_sa->get_usestats(child_sa, inbound, &current, NULL);
+		child_sa->get_usestats(child_sa, inbound, &current, NULL, NULL);
 		use_time = max(use_time, current);
 	}
 	enumerator->destroy(enumerator);
@@ -900,7 +900,7 @@ METHOD(ike_sa_t, update_hosts, void,
 	else
 	{
 		/* update our address in any case */
-		if (!me->equals(me, this->my_host))
+		if (force && !me->equals(me, this->my_host))
 		{
 			set_my_host(this, me->clone(me));
 			update = TRUE;
@@ -909,7 +909,8 @@ METHOD(ike_sa_t, update_hosts, void,
 		if (!other->equals(other, this->other_host))
 		{
 			/* update others address if we are NOT NATed */
-			if (force || !has_condition(this, COND_NAT_HERE))
+			if ((has_condition(this, COND_NAT_THERE) &&
+				 !has_condition(this, COND_NAT_HERE)) || force )
 			{
 				set_other_host(this, other->clone(other));
 				update = TRUE;
@@ -939,14 +940,38 @@ METHOD(ike_sa_t, update_hosts, void,
 	}
 }
 
+/**
+ * Set configured DSCP value on packet
+ */
+static void set_dscp(private_ike_sa_t *this, packet_t *packet)
+{
+	ike_cfg_t *ike_cfg;
+
+	/* prefer IKE config on peer_cfg, as its selection is more accurate
+	 * then the initial IKE config */
+	if (this->peer_cfg)
+	{
+		ike_cfg = this->peer_cfg->get_ike_cfg(this->peer_cfg);
+	}
+	else
+	{
+		ike_cfg = this->ike_cfg;
+	}
+	if (ike_cfg)
+	{
+		packet->set_dscp(packet, ike_cfg->get_dscp(ike_cfg));
+	}
+}
+
 METHOD(ike_sa_t, generate_message, status_t,
 	private_ike_sa_t *this, message_t *message, packet_t **packet)
 {
 	status_t status;
 
 	if (message->is_encoded(message))
-	{	/* already done */
+	{	/* already encoded in task, but set DSCP value */
 		*packet = message->get_packet(message);
+		set_dscp(this, *packet);
 		return SUCCESS;
 	}
 	this->stats[STAT_OUTBOUND] = time_monotonic(NULL);
@@ -955,6 +980,7 @@ METHOD(ike_sa_t, generate_message, status_t,
 	status = message->generate(message, this->keymat, packet);
 	if (status == SUCCESS)
 	{
+		set_dscp(this, *packet);
 		charon->bus->message(charon->bus, message, FALSE, FALSE);
 	}
 	return status;
@@ -1225,24 +1251,6 @@ METHOD(ike_sa_t, process_message, status_t,
 	{	/* do not handle messages in passive state */
 		return FAILED;
 	}
-	switch (message->get_exchange_type(message))
-	{
-		case ID_PROT:
-		case AGGRESSIVE:
-		case IKE_SA_INIT:
-		case IKE_AUTH:
-			if (this->state != IKE_CREATED &&
-				this->state != IKE_CONNECTING &&
-				message->get_first_payload_type(message) != FRAGMENT_V1)
-			{
-				DBG1(DBG_IKE, "ignoring %N in established IKE_SA state",
-					 exchange_type_names, message->get_exchange_type(message));
-				return FAILED;
-			}
-			break;
-		default:
-			break;
-	}
 	if (message->get_major_version(message) != this->version)
 	{
 		DBG1(DBG_IKE, "ignoring %N IKEv%u exchange on %N SA",
@@ -1437,6 +1445,10 @@ METHOD(ike_sa_t, delete_, status_t,
 			}
 			/* FALL */
 		case IKE_ESTABLISHED:
+			if (time_monotonic(NULL) >= this->stats[STAT_DELETE])
+			{	/* IKE_SA hard lifetime hit */
+				charon->bus->alert(charon->bus, ALERT_IKE_SA_EXPIRED);
+			}
 			this->task_manager->queue_ike_delete(this->task_manager);
 			return this->task_manager->initiate(this->task_manager);
 		case IKE_CREATED:

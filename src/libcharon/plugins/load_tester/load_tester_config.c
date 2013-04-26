@@ -64,6 +64,11 @@ struct private_load_tester_config_t {
 	proposal_t *proposal;
 
 	/**
+	 * ESP proposal
+	 */
+	proposal_t *esp;
+
+	/**
 	 * Authentication method(s) to use/expect from initiator
 	 */
 	char *initiator_auth;
@@ -154,6 +159,11 @@ struct private_load_tester_config_t {
 	int prefix;
 
 	/**
+	 * Keep addresses until shutdown?
+	 */
+	bool keep;
+
+	/**
 	 * Hashtable with leases in "pools", host_t => entry_t
 	 */
 	hashtable_t *leases;
@@ -205,31 +215,77 @@ static bool equals(host_t *a, host_t *b)
  */
 static void load_addrs(private_load_tester_config_t *this)
 {
-	enumerator_t *enumerator;
-	host_t *net;
+	enumerator_t *enumerator, *tokens;
+	host_t *from, *to;
 	int bits;
-	char *iface, *cidr;
+	char *iface, *token, *pos;
 	mem_pool_t *pool;
 
-
+	this->keep = lib->settings->get_bool(lib->settings,
+						"%s.plugins.load-tester.addrs_keep", FALSE, charon->name);
 	this->prefix = lib->settings->get_int(lib->settings,
 						"%s.plugins.load-tester.addrs_prefix", 16, charon->name);
 	enumerator = lib->settings->create_key_value_enumerator(lib->settings,
 						"%s.plugins.load-tester.addrs", charon->name);
-	while (enumerator->enumerate(enumerator, &iface, &cidr))
+	while (enumerator->enumerate(enumerator, &iface, &token))
 	{
-		net = host_create_from_subnet(cidr, &bits);
-		if (net)
+		tokens = enumerator_create_token(token, ",", " ");
+		while (tokens->enumerate(tokens, &token))
 		{
-			DBG1(DBG_CFG, "loaded load-tester addresses %s", cidr);
-			pool = mem_pool_create(iface, net, bits);
-			net->destroy(net);
-			this->pools->insert_last(this->pools, pool);
+			pos = strchr(token, '-');
+			if (pos)
+			{	/* range */
+				*(pos++) = '\0';
+				/* trim whitespace */
+				while (*pos == ' ')
+				{
+					pos++;
+				}
+				while (token[strlen(token) - 1] == ' ')
+				{
+					token[strlen(token) - 1] = '\0';
+				}
+				from = host_create_from_string(token, 0);
+				to = host_create_from_string(pos, 0);
+				if (from && to)
+				{
+					pool = mem_pool_create_range(iface, from, to);
+					if (pool)
+					{
+						DBG1(DBG_CFG, "loaded load-tester address range "
+							 "%H-%H on %s", from, to, iface);
+						this->pools->insert_last(this->pools, pool);
+					}
+					from->destroy(from);
+					to->destroy(to);
+				}
+				else
+				{
+					DBG1(DBG_CFG, "parsing load-tester address range %s-%s "
+						 "failed, skipped", token, pos);
+					DESTROY_IF(from);
+					DESTROY_IF(to);
+				}
+			}
+			else
+			{	/* subnet */
+				from = host_create_from_subnet(token, &bits);
+				if (from)
+				{
+					DBG1(DBG_CFG, "loaded load-tester address pool %H/%d on %s",
+						 from, bits, iface);
+					pool = mem_pool_create(iface, from, bits);
+					from->destroy(from);
+					this->pools->insert_last(this->pools, pool);
+				}
+				else
+				{
+					DBG1(DBG_CFG, "parsing load-tester address %s failed, "
+						 "skipped", token);
+				}
+			}
 		}
-		else
-		{
-			DBG1(DBG_CFG, "parsing load-tester addresses %s failed", cidr);
-		}
+		tokens->destroy(tokens);
 	}
 	enumerator->destroy(enumerator);
 }
@@ -369,7 +425,7 @@ static void add_ts(char *string, child_cfg_t *cfg, bool local)
 
 	if (string)
 	{
-		ts = traffic_selector_create_from_cidr(string, 0, 0);
+		ts = traffic_selector_create_from_cidr(string, 0, 0, 65535);
 		if (!ts)
 		{
 			DBG1(DBG_CFG, "parsing TS string '%s' failed", string);
@@ -450,7 +506,6 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 	ike_cfg_t *ike_cfg;
 	child_cfg_t *child_cfg;
 	peer_cfg_t *peer_cfg;
-	proposal_t *proposal;
 	char local[32], *remote;
 	host_t *addr;
 	lifetime_cfg_t lifetime = {
@@ -491,7 +546,7 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 		ike_cfg = ike_cfg_create(this->version, TRUE, FALSE,
 								 local, FALSE, this->port + num - 1,
 								 remote, FALSE, IKEV2_NATT_PORT,
-								 FRAGMENTATION_NO);
+								 FRAGMENTATION_NO, 0);
 	}
 	else
 	{
@@ -499,7 +554,7 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 								 local, FALSE,
 								 charon->socket->get_port(charon->socket, FALSE),
 								 remote, FALSE, IKEV2_UDP_PORT,
-								 FRAGMENTATION_NO);
+								 FRAGMENTATION_NO, 0);
 	}
 	ike_cfg->add_proposal(ike_cfg, this->proposal->clone(this->proposal));
 	peer_cfg = peer_cfg_create("load-test", ike_cfg,
@@ -532,8 +587,7 @@ static peer_cfg_t* generate_config(private_load_tester_config_t *this, uint num)
 	child_cfg = child_cfg_create("load-test", &lifetime, NULL, TRUE, MODE_TUNNEL,
 								 ACTION_NONE, ACTION_NONE, ACTION_NONE, FALSE,
 								 0, 0, NULL, NULL, 0);
-	proposal = proposal_create_from_string(PROTO_ESP, "aes128-sha1");
-	child_cfg->add_proposal(child_cfg, proposal);
+	child_cfg->add_proposal(child_cfg, this->esp->clone(this->esp));
 
 	if (num)
 	{	/* initiator */
@@ -589,6 +643,11 @@ METHOD(load_tester_config_t, delete_ip, void,
 	mem_pool_t *pool;
 	entry_t *entry;
 
+	if (this->keep)
+	{
+		return;
+	}
+
 	this->mutex->lock(this->mutex);
 	entry = this->leases->remove(this->leases, ip);
 	this->mutex->unlock(this->mutex);
@@ -610,14 +669,53 @@ METHOD(load_tester_config_t, delete_ip, void,
 	}
 }
 
+/**
+ * Clean up leases for allocated external addresses, if have been kept
+ */
+static void cleanup_leases(private_load_tester_config_t *this)
+{
+	enumerator_t *pools, *leases;
+	mem_pool_t *pool;
+	identification_t *id;
+	host_t *addr;
+	entry_t *entry;
+	bool online;
+
+	pools = this->pools->create_enumerator(this->pools);
+	while (pools->enumerate(pools, &pool))
+	{
+		leases = pool->create_lease_enumerator(pool);
+		while (leases->enumerate(leases, &id, &addr, &online))
+		{
+			if (online)
+			{
+				hydra->kernel_interface->del_ip(hydra->kernel_interface,
+												addr, this->prefix, FALSE);
+				entry = this->leases->remove(this->leases, addr);
+				if (entry)
+				{
+					entry_destroy(entry);
+				}
+			}
+		}
+		leases->destroy(leases);
+	}
+	pools->destroy(pools);
+}
+
 METHOD(load_tester_config_t, destroy, void,
 	private_load_tester_config_t *this)
 {
+	if (this->keep)
+	{
+		cleanup_leases(this);
+	}
 	this->mutex->destroy(this->mutex);
 	this->leases->destroy(this->leases);
 	this->pools->destroy_offset(this->pools, offsetof(mem_pool_t, destroy));
 	this->peer_cfg->destroy(this->peer_cfg);
 	DESTROY_IF(this->proposal);
+	DESTROY_IF(this->esp);
 	DESTROY_IF(this->vip);
 	free(this);
 }
@@ -667,6 +765,15 @@ load_tester_config_t *load_tester_config_create()
 		this->proposal = proposal_create_from_string(PROTO_IKE,
 													 "aes128-sha1-modp768");
 	}
+	this->esp = proposal_create_from_string(PROTO_ESP,
+			lib->settings->get_str(lib->settings,
+				"%s.plugins.load-tester.esp", "aes128-sha1",
+				charon->name));
+	if (!this->esp)
+	{	/* fallback */
+		this->esp = proposal_create_from_string(PROTO_ESP, "aes128-sha1");
+	}
+
 	this->ike_rekey = lib->settings->get_int(lib->settings,
 			"%s.plugins.load-tester.ike_rekey", 0, charon->name);
 	this->child_rekey = lib->settings->get_int(lib->settings,

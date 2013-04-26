@@ -107,7 +107,7 @@ static ike_cfg_t *load_ike_config(private_config_t *this,
 		settings->get_int(settings, "configs.%s.lport", 500, config),
 		settings->get_str(settings, "configs.%s.rhost", "%any", config), FALSE,
 		settings->get_int(settings, "configs.%s.rport", 500, config),
-		FRAGMENTATION_NO);
+		FRAGMENTATION_NO, 0);
 	token = settings->get_str(settings, "configs.%s.proposal", NULL, config);
 	if (token)
 	{
@@ -188,7 +188,7 @@ static child_cfg_t *load_child_config(private_config_t *this,
 		enumerator = enumerator_create_token(token, ",", " ");
 		while (enumerator->enumerate(enumerator, &token))
 		{
-			ts = traffic_selector_create_from_cidr(token, 0, 0);
+			ts = traffic_selector_create_from_cidr(token, 0, 0, 65535);
 			if (ts)
 			{
 				child_cfg->add_traffic_selector(child_cfg, TRUE, ts);
@@ -212,7 +212,7 @@ static child_cfg_t *load_child_config(private_config_t *this,
 		enumerator = enumerator_create_token(token, ",", " ");
 		while (enumerator->enumerate(enumerator, &token))
 		{
-			ts = traffic_selector_create_from_cidr(token, 0, 0);
+			ts = traffic_selector_create_from_cidr(token, 0, 0, 65535);
 			if (ts)
 			{
 				child_cfg->add_traffic_selector(child_cfg, FALSE, ts);

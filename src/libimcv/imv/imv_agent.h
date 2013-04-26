@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,7 +16,7 @@
 /**
  *
  * @defgroup imv_agent_t imv_agent
- * @{ @ingroup imv_agent
+ * @{ @ingroup libimcv_imv
  */
 
 #ifndef IMV_AGENT_H_

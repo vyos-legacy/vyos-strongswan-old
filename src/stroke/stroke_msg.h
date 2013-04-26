@@ -67,10 +67,8 @@ enum list_flag_t {
 	LIST_ALGS =			0x0400,
 	/** list plugin information */
 	LIST_PLUGINS =		0x0800,
-	/** list IKE counters */
-	LIST_COUNTERS =		0x1000,
 	/** all list options */
-	LIST_ALL =			0x1FFF,
+	LIST_ALL =			0x0FFF,
 };
 
 typedef enum reread_flag_t reread_flag_t;
@@ -167,7 +165,8 @@ struct stroke_end_t {
 	int tohost;
 	int allow_any;
 	u_int8_t protocol;
-	u_int16_t port;
+	u_int16_t from_port;
+	u_int16_t to_port;
 };
 
 typedef struct stroke_msg_t stroke_msg_t;
@@ -225,6 +224,8 @@ struct stroke_msg_t {
 		STR_MEMUSAGE,
 		/* set username and password for a connection */
 		STR_USER_CREDS,
+		/* print/reset counters */
+		STR_COUNTERS,
 		/* more to come */
 	} type;
 
@@ -262,6 +263,7 @@ struct stroke_msg_t {
 			int close_action;
 			u_int32_t reqid;
 			u_int32_t tfc;
+			u_int8_t ikedscp;
 
 			crl_policy_t crl_policy;
 			int unique;
@@ -354,6 +356,13 @@ struct stroke_msg_t {
 			char *username;
 			char *password;
 		} user_creds;
+
+		/* data for STR_COUNTERS */
+		struct {
+			/* reset or print counters? */
+			int reset;
+			char *name;
+		} counters;
 	};
 	char buffer[STROKE_BUF_LEN];
 };

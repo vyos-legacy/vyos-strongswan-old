@@ -17,7 +17,7 @@ include $(CLEAR_VARS)
 # this is the list of plugins that are built into libstrongswan and charon
 # also these plugins are loaded by default (if not changed in strongswan.conf)
 strongswan_CHARON_PLUGINS := android-log openssl fips-prf random nonce pubkey \
-	pkcs1 pkcs8 pem xcbc hmac kernel-netlink socket-default android \
+	pkcs1 pkcs8 pem xcbc hmac kernel-netlink socket-default android-dns \
 	stroke eap-identity eap-mschapv2 eap-md5 eap-gtc
 
 ifneq ($(strongswan_BUILD_SCEPCLIENT),)
@@ -67,7 +67,6 @@ strongswan_CFLAGS := \
 	-DHAVE_STRUCT_SADB_X_POLICY_SADB_X_POLICY_PRIORITY \
 	-DHAVE_IPSEC_MODE_BEET \
 	-DHAVE_IPSEC_DIR_FWD \
-	-DOPENSSL_NO_CMS \
 	-DOPENSSL_NO_EC \
 	-DOPENSSL_NO_ECDSA \
 	-DOPENSSL_NO_ECDH \

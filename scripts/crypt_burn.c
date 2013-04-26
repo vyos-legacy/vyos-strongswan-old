@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
+		aead->destroy(aead);
 	}
 	else
 	{
@@ -101,7 +102,7 @@ int main(int argc, char *argv[])
 		}
 		bs = crypter->get_block_size(crypter);
 
-		while (i--)
+		while (TRUE)
 		{
 			if (!crypter->encrypt(crypter,
 					chunk_create(buffer, sizeof(buffer) / bs * bs),
@@ -120,6 +121,7 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
+		crypter->destroy(crypter);
 	}
 	return 0;
 }

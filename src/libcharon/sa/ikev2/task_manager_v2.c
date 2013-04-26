@@ -475,6 +475,7 @@ METHOD(task_manager_t, initiate, status_t,
 				break;
 			case FAILED:
 			default:
+				this->initiating.type = EXCHANGE_TYPE_UNDEFINED;
 				if (this->ike_sa->get_state(this->ike_sa) != IKE_CONNECTING)
 				{
 					charon->bus->ike_updown(charon->bus, this->ike_sa, FALSE);
@@ -1123,6 +1124,18 @@ METHOD(task_manager_t, process_message, status_t,
 	{
 		if (mid == this->responding.mid)
 		{
+			/* reject initial messages once established */
+			if (msg->get_exchange_type(msg) == IKE_SA_INIT ||
+				msg->get_exchange_type(msg) == IKE_AUTH)
+			{
+				if (this->ike_sa->get_state(this->ike_sa) != IKE_CREATED &&
+					this->ike_sa->get_state(this->ike_sa) != IKE_CONNECTING)
+				{
+					DBG1(DBG_IKE, "ignoring %N in established IKE_SA state",
+						 exchange_type_names, msg->get_exchange_type(msg));
+					return FAILED;
+				}
+			}
 			if (this->ike_sa->get_state(this->ike_sa) == IKE_CREATED ||
 				this->ike_sa->get_state(this->ike_sa) == IKE_CONNECTING ||
 				msg->get_exchange_type(msg) != IKE_SA_INIT)
@@ -1163,6 +1176,10 @@ METHOD(task_manager_t, process_message, status_t,
 		{
 			DBG1(DBG_IKE, "received message ID %d, expected %d. Ignored",
 				 mid, this->responding.mid);
+			if (msg->get_exchange_type(msg) == IKE_SA_INIT)
+			{	/* clean up IKE_SA state if IKE_SA_INIT has invalid msg ID */
+				return DESTROY_ME;
+			}
 		}
 	}
 	else

@@ -5,7 +5,7 @@
   <currentMemory unit='KiB'>131072</currentMemory>
   <vcpu placement='static'>1</vcpu>
   <os>
-    <type arch='x86_64' machine='pc-1.1'>hvm</type>
+    <type arch='x86_64' machine='pc'>hvm</type>
 	<kernel>/var/run/kvm-swan-kernel</kernel>
     <cmdline>root=/dev/vda1 loglevel=1</cmdline>
     <boot dev='hd'/>
@@ -38,6 +38,7 @@
     <interface type='network'>
       <mac address='52:54:00:ae:f1:f8'/>
       <source network='vnet1'/>
+      <target dev='carol-eth0'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>

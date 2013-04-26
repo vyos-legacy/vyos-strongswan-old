@@ -60,7 +60,7 @@ processing/jobs/start_action_job.c processing/jobs/start_action_job.h \
 processing/jobs/roam_job.c processing/jobs/roam_job.h \
 processing/jobs/update_sa_job.c processing/jobs/update_sa_job.h \
 processing/jobs/inactivity_job.c processing/jobs/inactivity_job.h \
-sa/eap/eap_method.c sa/eap/eap_method.h \
+sa/eap/eap_method.c sa/eap/eap_method.h sa/eap/eap_inner_method.h \
 sa/eap/eap_manager.c sa/eap/eap_manager.h \
 sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
 sa/xauth/xauth_manager.c sa/xauth/xauth_manager.h \
@@ -209,6 +209,13 @@ if USE_SQL
   SUBDIRS += plugins/sql
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/sql/libstrongswan-sql.la
+endif
+endif
+
+if USE_IPSECKEY
+  SUBDIRS += plugins/ipseckey
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/ipseckey/libstrongswan-ipseckey.la
 endif
 endif
 
@@ -450,10 +457,10 @@ if MONOLITHIC
 endif
 endif
 
-if USE_ANDROID
-  SUBDIRS += plugins/android
+if USE_ANDROID_DNS
+  SUBDIRS += plugins/android_dns
 if MONOLITHIC
-  libcharon_la_LIBADD += plugins/android/libstrongswan-android.la
+  libcharon_la_LIBADD += plugins/android_dns/libstrongswan-android-dns.la
 endif
 endif
 
@@ -503,6 +510,13 @@ if USE_CERTEXPIRE
   SUBDIRS += plugins/certexpire
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/certexpire/libstrongswan-certexpire.la
+endif
+endif
+
+if USE_SYSTIME_FIX
+  SUBDIRS += plugins/systime_fix
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/systime_fix/libstrongswan-systime-fix.la
 endif
 endif
 
@@ -580,5 +594,12 @@ if USE_XAUTH_PAM
   SUBDIRS += plugins/xauth_pam
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/xauth_pam/libstrongswan-xauth-pam.la
+endif
+endif
+
+if USE_XAUTH_NOAUTH
+  SUBDIRS += plugins/xauth_noauth
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/xauth_noauth/libstrongswan-xauth-noauth.la
 endif
 endif
