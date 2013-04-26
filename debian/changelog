@@ -28,6 +28,7 @@ strongswan (5.0.3-1) UNRELEASED; urgency=low
     - NetworkManager plugin is now a separate executable.
   * debian/libstrongswan.install:
     - install new pkcs7, xauth-eap, xauth-generic, xauth-pam and nonce plugins.
+    - install libpttls files (experimental implementation of PT-TLS, RFC 6876)
   * debian/strongswan.docs: CREDITS file is gone.
   * debian/ipsec.secrets.proto: remove reference to pluto.
   * debian/strongswan-starter.* remove references to pluto.
