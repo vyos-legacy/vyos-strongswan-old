@@ -1,4 +1,4 @@
-strongswan (5.0.2-1) UNRELEASED; urgency=low
+strongswan (5.0.3-1) UNRELEASED; urgency=low
 
   * New upstream release.
   * debian/patches:
@@ -7,6 +7,8 @@ strongswan (5.0.2-1) UNRELEASED; urgency=low
     - 03_Pass-lo-as-faked-tundev-to-NM-as-it-now-needs-a-vali removed,
       included upstream.
     - 04-Fixed-IPv6-source-address-lookup dropped, included upstream. 
+    - 02_fix-printf-dnssec-script added backported from upstream, fix printf()
+      statements.
   * debian/rules:
     - --enable-smartcard, --with-default-pkcs11 and --enable-nat-transport not
       valid anymore for ./configure, remove them.
@@ -30,7 +32,7 @@ strongswan (5.0.2-1) UNRELEASED; urgency=low
   * debian/strongswan-starter.* remove references to pluto.
   * debian/po: update potfiles for new phrasing.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 07 Feb 2013 13:27:53 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 26 Apr 2013 14:57:54 +0200
 
 strongswan (4.6.4-6) unstable; urgency=low
 
