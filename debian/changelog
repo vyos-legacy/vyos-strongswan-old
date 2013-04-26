@@ -16,6 +16,8 @@ strongswan (5.0.3-1) UNRELEASED; urgency=low
     - remove pluto handling since it's gone
     - don't special-case XAuth on kFreeBSD anymore.
     - add --enable-attr-sql.
+    - build using all hardening flags.
+    - use -Wl,--as-needed -Wl,-O1 for LDFLAGS.
   * debian/control:
     - drop strongswan-ikev1 package
     - rename strongswan-ikev2 package to strongswan-ike for now and makes it
