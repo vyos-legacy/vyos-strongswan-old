@@ -16,6 +16,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors \
 		--enable-xauth-eap --enable-xauth-pam \
+		--enable-attr-sql \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
