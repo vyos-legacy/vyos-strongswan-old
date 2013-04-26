@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,7 +16,7 @@
 /**
  *
  * @defgroup imv_state_t imv_state
- * @{ @ingroup imv_state
+ * @{ @ingroup libimcv_imv
  */
 
 #ifndef IMV_STATE_H_
@@ -66,7 +66,7 @@ struct imv_state_t {
 	/**
 	 * Set the maximum size of a PA-TNC message for this TNCCS connection
 	 *
-	 * @max_msg_len			maximum size of a PA-TNC message
+	 * @param max_msg_len	maximum size of a PA-TNC message
 	 */
 	void (*set_max_msg_len)(imv_state_t *this, u_int32_t max_msg_len);
 
@@ -76,6 +76,23 @@ struct imv_state_t {
 	 * @return				maximum size of a PA-TNC message
 	 */
 	u_int32_t (*get_max_msg_len)(imv_state_t *this);
+
+	/**
+	 * Set Access Requestor ID
+	 *
+	 * @param id_type		Access Requestor TCG Standard ID Type
+	 * @param id_value		Access Requestor TCG Standard ID Value
+	 *
+	 */
+	void (*set_ar_id)(imv_state_t *this, u_int32_t id_type, chunk_t id_value);
+
+	/**
+	 * Get Access Requestor ID
+	 *
+	 * @param id_type		Access Requestor TCG Standard ID Type
+	 * @return				Access Requestor TCG Standard ID Value
+	 */
+	chunk_t (*get_ar_id)(imv_state_t *this, u_int32_t *id_type);
 
 	/**
 	 * Change the connection state

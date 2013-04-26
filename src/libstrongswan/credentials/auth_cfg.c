@@ -76,7 +76,6 @@ static inline bool is_multi_value_rule(auth_rule_t type)
 		case AUTH_RULE_AAA_IDENTITY:
 		case AUTH_RULE_XAUTH_IDENTITY:
 		case AUTH_RULE_XAUTH_BACKEND:
-		case AUTH_RULE_SUBJECT_CERT:
 		case AUTH_HELPER_SUBJECT_CERT:
 		case AUTH_HELPER_SUBJECT_HASH_URL:
 		case AUTH_RULE_MAX:
@@ -84,6 +83,7 @@ static inline bool is_multi_value_rule(auth_rule_t type)
 		case AUTH_RULE_OCSP_VALIDATION:
 		case AUTH_RULE_CRL_VALIDATION:
 		case AUTH_RULE_GROUP:
+		case AUTH_RULE_SUBJECT_CERT:
 		case AUTH_RULE_CA_CERT:
 		case AUTH_RULE_IM_CERT:
 		case AUTH_RULE_CERT_POLICY:
@@ -503,8 +503,9 @@ METHOD(auth_cfg_t, complies, bool,
 	private_auth_cfg_t *this, auth_cfg_t *constraints, bool log_error)
 {
 	enumerator_t *e1, *e2;
-	bool success = TRUE, group_match = FALSE;
+	bool success = TRUE, group_match = FALSE, cert_match = FALSE;
 	identification_t *require_group = NULL;
+	certificate_t *require_cert = NULL;
 	signature_scheme_t scheme = SIGN_UNKNOWN;
 	u_int strength = 0;
 	auth_rule_t t1, t2;
@@ -542,20 +543,21 @@ METHOD(auth_cfg_t, complies, bool,
 			}
 			case AUTH_RULE_SUBJECT_CERT:
 			{
-				certificate_t *c1, *c2;
+				certificate_t *cert;
 
-				c1 = (certificate_t*)value;
-				c2 = get(this, AUTH_RULE_SUBJECT_CERT);
-				if (!c2 || !c1->equals(c1, c2))
+				/* for certs, a match of a single cert is sufficient */
+				require_cert = (certificate_t*)value;
+
+				e2 = create_enumerator(this);
+				while (e2->enumerate(e2, &t2, &cert))
 				{
-					success = FALSE;
-					if (log_error)
+					if (t2 == AUTH_RULE_SUBJECT_CERT &&
+						cert->equals(cert, require_cert))
 					{
-						DBG1(DBG_CFG, "constraint check failed: peer not "
-							 "authenticated with peer cert '%Y'.",
-							 c1->get_subject(c1));
+						cert_match = TRUE;
 					}
 				}
+				e2->destroy(e2);
 				break;
 			}
 			case AUTH_RULE_CRL_VALIDATION:
@@ -828,6 +830,17 @@ METHOD(auth_cfg_t, complies, bool,
 		}
 		return FALSE;
 	}
+
+	if (require_cert && !cert_match)
+	{
+		if (log_error)
+		{
+			DBG1(DBG_CFG, "constraint check failed: peer not "
+				 "authenticated with peer cert '%Y'.",
+				 require_cert->get_subject(require_cert));
+		}
+		return FALSE;
+	}
 	return success;
 }
 
@@ -999,14 +1012,15 @@ METHOD(auth_cfg_t, clone_, auth_cfg_t*,
 {
 	enumerator_t *enumerator;
 	auth_cfg_t *clone;
-	entry_t *entry;
+	auth_rule_t type;
+	void *value;
 
 	clone = auth_cfg_create();
 	/* this enumerator skips duplicates for rules we expect only once */
-	enumerator = this->entries->create_enumerator(this->entries);
-	while (enumerator->enumerate(enumerator, &entry))
+	enumerator = create_enumerator(this);
+	while (enumerator->enumerate(enumerator, &type, &value))
 	{
-		switch (entry->type)
+		switch (type)
 		{
 			case AUTH_RULE_IDENTITY:
 			case AUTH_RULE_EAP_IDENTITY:
@@ -1014,8 +1028,8 @@ METHOD(auth_cfg_t, clone_, auth_cfg_t*,
 			case AUTH_RULE_GROUP:
 			case AUTH_RULE_XAUTH_IDENTITY:
 			{
-				identification_t *id = (identification_t*)entry->value;
-				clone->add(clone, entry->type, id->clone(id));
+				identification_t *id = (identification_t*)value;
+				clone->add(clone, type, id->clone(id));
 				break;
 			}
 			case AUTH_RULE_CA_CERT:
@@ -1025,8 +1039,8 @@ METHOD(auth_cfg_t, clone_, auth_cfg_t*,
 			case AUTH_HELPER_SUBJECT_CERT:
 			case AUTH_HELPER_REVOCATION_CERT:
 			{
-				certificate_t *cert = (certificate_t*)entry->value;
-				clone->add(clone, entry->type, cert->get_ref(cert));
+				certificate_t *cert = (certificate_t*)value;
+				clone->add(clone, type, cert->get_ref(cert));
 				break;
 			}
 			case AUTH_RULE_XAUTH_BACKEND:
@@ -1034,7 +1048,7 @@ METHOD(auth_cfg_t, clone_, auth_cfg_t*,
 			case AUTH_HELPER_IM_HASH_URL:
 			case AUTH_HELPER_SUBJECT_HASH_URL:
 			{
-				clone->add(clone, entry->type, strdup(entry->value));
+				clone->add(clone, type, strdup(value));
 				break;
 			}
 			case AUTH_RULE_IDENTITY_LOOSE:
@@ -1046,7 +1060,7 @@ METHOD(auth_cfg_t, clone_, auth_cfg_t*,
 			case AUTH_RULE_RSA_STRENGTH:
 			case AUTH_RULE_ECDSA_STRENGTH:
 			case AUTH_RULE_SIGNATURE_SCHEME:
-				clone->add(clone, entry->type, (uintptr_t)entry->value);
+				clone->add(clone, type, (uintptr_t)value);
 				break;
 			case AUTH_RULE_MAX:
 				break;

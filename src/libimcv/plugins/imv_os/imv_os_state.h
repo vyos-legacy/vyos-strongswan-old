@@ -14,9 +14,11 @@
  */
 
 /**
+ * @defgroup imv_os imv_os
+ * @ingroup libimcv_plugins
  *
  * @defgroup imv_os_state_t imv_os_state
- * @{ @ingroup imv_os_state
+ * @{ @ingroup imv_os
  */
 
 #ifndef IMV_OS_STATE_H_
@@ -61,7 +63,7 @@ struct imv_os_state_t {
 	 * @param type			OS type (enumerated)
 	 * @param name			OS name (string)
 	 * @param version		OS version
-	 * @return				OS name & version as a concatenated string 
+	 * @return				OS name & version as a concatenated string
 	 */
 	char* (*get_info)(imv_os_state_t *this, os_type_t *os_type,
 					  chunk_t *name, chunk_t *version);
@@ -87,6 +89,21 @@ struct imv_os_state_t {
 	 */
 	void (*get_count)(imv_os_state_t *this, int *count, int *count_update,
 					  int *count_blacklist, int *count_ok);
+
+	/**
+	 * Set/reset attribute request status
+	 *
+	 * @param set			TRUE to set, FALSE to clear
+	 */
+	void (*set_attribute_request)(imv_os_state_t *this, bool set);
+
+	/**
+	 * Get attribute request status
+	 *
+	 * @return				TRUE if set, FALSE if unset
+	 */
+	bool (*get_attribute_request)(imv_os_state_t *this);
+
 	/**
 	 * Set/reset OS Installed Packages request status
 	 *

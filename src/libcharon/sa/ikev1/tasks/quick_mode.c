@@ -576,12 +576,12 @@ static bool get_ts(private_quick_mode_t *this, message_t *message)
 	if (!tsi)
 	{
 		tsi = traffic_selector_create_from_subnet(hsi->clone(hsi),
-							hsi->get_family(hsi) == AF_INET ? 32 : 128, 0, 0);
+					hsi->get_family(hsi) == AF_INET ? 32 : 128, 0, 0, 65535);
 	}
 	if (!tsr)
 	{
 		tsr = traffic_selector_create_from_subnet(hsr->clone(hsr),
-							hsr->get_family(hsr) == AF_INET ? 32 : 128, 0, 0);
+					hsr->get_family(hsr) == AF_INET ? 32 : 128, 0, 0, 65535);
 	}
 	if (this->mode == MODE_TRANSPORT && this->udp &&
 	   (!tsi->is_host(tsi, hsi) || !tsr->is_host(tsr, hsr)))
@@ -594,20 +594,27 @@ static bool get_ts(private_quick_mode_t *this, message_t *message)
 
 	if (this->initiator)
 	{
+		traffic_selector_t *tsisub, *tsrsub;
+
 		/* check if peer selection is valid */
-		if (!tsr->is_contained_in(tsr, this->tsr) ||
-			!tsi->is_contained_in(tsi, this->tsi))
+		tsisub = this->tsi->get_subset(this->tsi, tsi);
+		tsrsub = this->tsr->get_subset(this->tsr, tsr);
+		if (!tsisub || !tsrsub)
 		{
 			DBG1(DBG_IKE, "peer selected invalid traffic selectors: "
 				 "%R for %R, %R for %R", tsi, this->tsi, tsr, this->tsr);
+			DESTROY_IF(tsisub);
+			DESTROY_IF(tsrsub);
 			tsi->destroy(tsi);
 			tsr->destroy(tsr);
 			return FALSE;
 		}
+		tsi->destroy(tsi);
+		tsr->destroy(tsr);
 		this->tsi->destroy(this->tsi);
 		this->tsr->destroy(this->tsr);
-		this->tsi = tsi;
-		this->tsr = tsr;
+		this->tsi = tsisub;
+		this->tsr = tsrsub;
 	}
 	else
 	{
@@ -914,30 +921,37 @@ static void check_for_rekeyed_child(private_quick_mode_t *this)
 	enumerator_t *enumerator, *policies;
 	traffic_selector_t *local, *remote;
 	child_sa_t *child_sa;
+	proposal_t *proposal;
+	char *name;
 
+	name = this->config->get_name(this->config);
 	enumerator = this->ike_sa->create_child_sa_enumerator(this->ike_sa);
 	while (this->reqid == 0 && enumerator->enumerate(enumerator, &child_sa))
 	{
-		if (child_sa->get_state(child_sa) == CHILD_INSTALLED &&
-			streq(child_sa->get_name(child_sa),
-				  this->config->get_name(this->config)))
+		if (streq(child_sa->get_name(child_sa), name))
 		{
-			policies = child_sa->create_policy_enumerator(child_sa);
-			if (policies->enumerate(policies, &local, &remote))
+			proposal = child_sa->get_proposal(child_sa);
+			switch (child_sa->get_state(child_sa))
 			{
-				if (local->equals(local, this->tsr) &&
-					remote->equals(remote, this->tsi) &&
-					this->proposal->equals(this->proposal,
-										   child_sa->get_proposal(child_sa)))
-				{
-					this->reqid = child_sa->get_reqid(child_sa);
-					this->rekey = child_sa->get_spi(child_sa, TRUE);
-					child_sa->set_state(child_sa, CHILD_REKEYING);
-					DBG1(DBG_IKE, "detected rekeying of CHILD_SA %s{%u}",
-						 child_sa->get_name(child_sa), this->reqid);
-				}
+				case CHILD_INSTALLED:
+				case CHILD_REKEYING:
+					policies = child_sa->create_policy_enumerator(child_sa);
+					if (policies->enumerate(policies, &local, &remote) &&
+						local->equals(local, this->tsr) &&
+						remote->equals(remote, this->tsi) &&
+						this->proposal->equals(this->proposal, proposal))
+					{
+						this->reqid = child_sa->get_reqid(child_sa);
+						this->rekey = child_sa->get_spi(child_sa, TRUE);
+						child_sa->set_state(child_sa, CHILD_REKEYING);
+						DBG1(DBG_IKE, "detected rekeying of CHILD_SA %s{%u}",
+							 child_sa->get_name(child_sa), this->reqid);
+					}
+					policies->destroy(policies);
+				break;
+			default:
+				break;
 			}
-			policies->destroy(policies);
 		}
 	}
 	enumerator->destroy(enumerator);

@@ -15,10 +15,11 @@ INC=build-essential,gperf,libgmp-dev,libldap2-dev,libcurl4-openssl-dev,ethtool
 INC=$INC,libxml2-dev,libtspi-dev,libsqlite3-dev,openssh-server,tcpdump,psmisc
 INC=$INC,openssl,vim,sqlite3,conntrack,gdb,cmake,libxerces-c2-dev,libltdl-dev
 INC=$INC,liblog4cxx10-dev,libboost-thread-dev,libboost-system-dev,git-core
-INC=$INC,less,acpid,acpi-support-base
-SERVICES="apache2 dbus isc-dhcp-server slapd"
+INC=$INC,less,acpid,acpi-support-base,libldns-dev,libunbound-dev,dnsutils,screen
+INC=$INC,gnat,gprbuild,libahven3-dev,libxmlada4.1-dev,libgmpada3-dev
+INC=$INC,libalog0.4.1-base-dev,hostapd
+SERVICES="apache2 dbus isc-dhcp-server slapd bind9"
 INC=$INC,${SERVICES// /,}
-EXC=iptables
 
 CACHEDIR=$BUILDDIR/cache
 APTCACHE=$LOOPDIR/var/cache/apt/archives
@@ -65,7 +66,10 @@ execute "mount -o bind $CACHEDIR $APTCACHE"
 do_on_exit graceful_umount $APTCACHE
 
 log_action "Running debootstrap ($BASEIMGSUITE, $BASEIMGARCH)"
-execute "debootstrap --arch=$BASEIMGARCH --include=$INC --exclude $EXC $BASEIMGSUITE $LOOPDIR $BASEIMGMIRROR"
+execute "debootstrap --arch=$BASEIMGARCH --include=$INC $BASEIMGSUITE $LOOPDIR $BASEIMGMIRROR"
+
+execute "mount -t proc none $LOOPDIR/proc"
+do_on_exit graceful_umount $LOOPDIR/proc
 
 for service in $SERVICES
 do

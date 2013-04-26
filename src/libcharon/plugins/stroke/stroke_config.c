@@ -234,7 +234,8 @@ static ike_cfg_t *build_ike_cfg(private_stroke_config_t *this, stroke_msg_t *msg
 							 msg->add_conn.other.address,
 							 msg->add_conn.other.allow_any,
 							 msg->add_conn.other.ikeport,
-							 msg->add_conn.fragmentation);
+							 msg->add_conn.fragmentation,
+							 msg->add_conn.ikedscp);
 	add_proposals(this, msg->add_conn.algorithms.ike, ike_cfg, NULL);
 	return ike_cfg;
 }
@@ -447,24 +448,52 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	identity = identification_create_from_string(id);
 	if (cert)
 	{
-		certificate = this->cred->load_peer(this->cred, cert);
+		enumerator_t *enumerator;
+		bool has_subject = FALSE;
+		certificate_t *first = NULL;
+
+		enumerator = enumerator_create_token(cert, ",", " ");
+		while (enumerator->enumerate(enumerator, &cert))
+		{
+			certificate = this->cred->load_peer(this->cred, cert);
+			if (certificate)
+			{
+				if (local)
+				{
+					this->ca->check_for_hash_and_url(this->ca, certificate);
+				}
+				cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
+				if (!first)
+				{
+					first = certificate;
+				}
+				if (identity->get_type(identity) != ID_ANY &&
+					certificate->has_subject(certificate, identity))
+				{
+					has_subject = TRUE;
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+
+		if (first && !has_subject)
+		{
+			DBG1(DBG_CFG, "  id '%Y' not confirmed by certificate, "
+				 "defaulting to '%Y'", identity, first->get_subject(first));
+			identity->destroy(identity);
+			identity = first->get_subject(first);
+			identity = identity->clone(identity);
+		}
+	}
+	/* add raw RSA public key */
+	pubkey = end->rsakey;
+	if (pubkey && !streq(pubkey, "") && !streq(pubkey, "%cert"))
+	{
+		certificate = this->cred->load_pubkey(this->cred, KEY_RSA, pubkey,
+											  identity);
 		if (certificate)
 		{
-			if (local)
-			{
-				this->ca->check_for_hash_and_url(this->ca, certificate);
-			}
 			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
-			if (identity->get_type(identity) == ID_ANY ||
-				!certificate->has_subject(certificate, identity))
-			{
-				DBG1(DBG_CFG, "  id '%Y' not confirmed by certificate, "
-					 "defaulting to '%Y'", identity,
-					 certificate->get_subject(certificate));
-				identity->destroy(identity);
-				identity = certificate->get_subject(certificate);
-				identity = identity->clone(identity);
-			}
 		}
 	}
 	if (identity->get_type(identity) != ID_ANY)
@@ -478,18 +507,6 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	else
 	{
 		identity->destroy(identity);
-	}
-
-	/* add raw RSA public key */
-	pubkey = end->rsakey;
-	if (pubkey && !streq(pubkey, "") && !streq(pubkey, "%cert"))
-	{
-		certificate = this->cred->load_pubkey(this->cred, KEY_RSA, pubkey,
-											  identity);
-		if (certificate)
-		{
-			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
-		}
 	}
 
 	/* CA constraint */
@@ -877,7 +894,7 @@ static void add_ts(private_stroke_config_t *this,
 	if (end->tohost)
 	{
 		ts = traffic_selector_create_dynamic(end->protocol,
-					end->port ? end->port : 0, end->port ? end->port : 65535);
+											 end->from_port, end->to_port);
 		child_cfg->add_traffic_selector(child_cfg, local, ts);
 	}
 	else
@@ -890,7 +907,7 @@ static void add_ts(private_stroke_config_t *this,
 			if (net)
 			{
 				ts = traffic_selector_create_from_subnet(net, 0, end->protocol,
-														 end->port);
+												end->from_port, end->to_port);
 				child_cfg->add_traffic_selector(child_cfg, local, ts);
 			}
 		}
@@ -902,8 +919,8 @@ static void add_ts(private_stroke_config_t *this,
 			enumerator = enumerator_create_token(end->subnets, ",", " ");
 			while (enumerator->enumerate(enumerator, &subnet))
 			{
-				ts = traffic_selector_create_from_cidr(subnet,
-													end->protocol, end->port);
+				ts = traffic_selector_create_from_cidr(subnet, end->protocol,
+												end->from_port, end->to_port);
 				if (ts)
 				{
 					child_cfg->add_traffic_selector(child_cfg, local, ts);

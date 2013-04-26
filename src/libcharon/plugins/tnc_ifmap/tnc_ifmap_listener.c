@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,10 +15,13 @@
 
 #include "tnc_ifmap_listener.h"
 #include "tnc_ifmap_soap.h"
+#include "tnc_ifmap_renew_session_job.h"
 
 #include <daemon.h>
 #include <hydra.h>
 #include <utils/debug.h>
+
+#define IFMAP_RENEW_SESSION_INTERVAL	150
 
 typedef struct private_tnc_ifmap_listener_t private_tnc_ifmap_listener_t;
 
@@ -117,7 +120,14 @@ METHOD(listener_t, alert, bool,
 METHOD(tnc_ifmap_listener_t, destroy, void,
 	private_tnc_ifmap_listener_t *this)
 {
-	DESTROY_IF(this->ifmap);
+	if (this->ifmap)
+	{
+		if (this->ifmap->get_session_id(this->ifmap))
+		{
+			this->ifmap->endSession(this->ifmap);
+		}
+		this->ifmap->destroy(this->ifmap);
+	}
 	free(this);
 }
 
@@ -127,6 +137,8 @@ METHOD(tnc_ifmap_listener_t, destroy, void,
 tnc_ifmap_listener_t *tnc_ifmap_listener_create(bool reload)
 {
 	private_tnc_ifmap_listener_t *this;
+	job_t *job;
+	u_int32_t reschedule;
 
 	INIT(this,
 		.public = {
@@ -167,6 +179,15 @@ tnc_ifmap_listener_t *tnc_ifmap_listener_create(bool reload)
 			return NULL;
 		}
 	}
+
+	/* schedule periodic transmission of IF-MAP renewSession request */
+	reschedule =  lib->settings->get_int(lib->settings,
+						"%s.plugins.tnc-ifmap.renew_session_interval",
+						 IFMAP_RENEW_SESSION_INTERVAL, charon->name);
+
+	job = (job_t*)tnc_ifmap_renew_session_job_create(
+						this->ifmap->get_ref(this->ifmap), reschedule);
+	lib->scheduler->schedule_job(lib->scheduler, job, reschedule);
 
 	return &this->public;
 }

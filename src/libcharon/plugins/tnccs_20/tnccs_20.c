@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Sansar Choinyanbuu
- * Copyright (C) 2010-2012 Andreas Steffen
+ * Copyright (C) 2010-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -48,14 +48,34 @@ typedef struct private_tnccs_20_t private_tnccs_20_t;
 struct private_tnccs_20_t {
 
 	/**
-	 * Public tls_t interface.
+	 * Public tnccs_t interface.
 	 */
-	tls_t public;
+	tnccs_t public;
 
 	/**
 	 * TNCC if TRUE, TNCS if FALSE
 	 */
 	bool is_server;
+
+	/**
+	 * Server identity
+	 */
+	identification_t *server;
+
+	/**
+	 * Client identity
+	 */
+	identification_t *peer;
+
+	/**
+	 * Underlying TNC IF-T transport protocol
+	 */
+	tnc_ift_type_t transport;
+
+	/**
+	 * Type of TNC client authentication
+	 */
+	u_int32_t auth_type;
 
 	/**
 	 * PB-TNC State Machine
@@ -291,7 +311,36 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 		}
 		case PB_MSG_REMEDIATION_PARAMETERS:
 		{
-			/* TODO : Remediation parameters message processing */
+			pb_remediation_parameters_msg_t *rem_msg;
+			pen_type_t parameters_type;
+			chunk_t parameters, string, lang_code;
+
+			rem_msg = (pb_remediation_parameters_msg_t*)msg;
+			parameters_type = rem_msg->get_parameters_type(rem_msg);
+			parameters = rem_msg->get_parameters(rem_msg);
+
+			if (parameters_type.vendor_id == PEN_IETF)
+			{
+				switch (parameters_type.type)
+				{
+					case PB_REMEDIATION_URI:
+						DBG1(DBG_TNC, "remediation uri: %.*s",
+									   parameters.len, parameters.ptr);
+						break;
+					case PB_REMEDIATION_STRING:
+						string = rem_msg->get_string(rem_msg, &lang_code);
+						DBG1(DBG_TNC, "remediation string: [%.*s]\n%.*s",
+									   lang_code.len, lang_code.ptr,
+									   string.len, string.ptr);
+						break;
+					default:
+						DBG1(DBG_TNC, "remediation parameters: %B", &parameters);
+				}
+			}
+			else
+			{
+				DBG1(DBG_TNC, "remediation parameters: %B", &parameters);
+			}
 			break;
 		}
 		case PB_MSG_ERROR:
@@ -356,9 +405,12 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			lang_msg = (pb_language_preference_msg_t*)msg;
 			lang = lang_msg->get_language_preference(lang_msg);
 
-			DBG2(DBG_TNC, "setting language preference to '%.*s'",
-						   (int)lang.len, lang.ptr);
-			this->recs->set_preferred_language(this->recs, lang);
+			if (this->recs)
+			{
+				DBG2(DBG_TNC, "setting language preference to '%.*s'",
+					 (int)lang.len, lang.ptr);
+				this->recs->set_preferred_language(this->recs, lang);
+			}
 			break;
 		}
 		case PB_MSG_REASON_STRING:
@@ -759,6 +811,18 @@ METHOD(tls_t, is_server, bool,
 	return this->is_server;
 }
 
+METHOD(tls_t, get_server_id, identification_t*,
+	private_tnccs_20_t *this)
+{
+	return this->server;
+}
+
+METHOD(tls_t, get_peer_id, identification_t*,
+	private_tnccs_20_t *this)
+{
+	return this->peer;
+}
+
 METHOD(tls_t, get_purpose, tls_purpose_t,
 	private_tnccs_20_t *this)
 {
@@ -792,6 +856,8 @@ METHOD(tls_t, destroy, void,
 {
 	tnc->tnccs->remove_connection(tnc->tnccs, this->connection_id,
 											  this->is_server);
+	this->server->destroy(this->server);
+	this->peer->destroy(this->peer);
 	this->state_machine->destroy(this->state_machine);
 	this->mutex->destroy(this->mutex);
 	this->messages->destroy_offset(this->messages,
@@ -799,24 +865,62 @@ METHOD(tls_t, destroy, void,
 	free(this);
 }
 
+METHOD(tnccs_t, get_transport, tnc_ift_type_t,
+	private_tnccs_20_t *this)
+{
+	return this->transport;
+}
+
+METHOD(tnccs_t, set_transport, void,
+	private_tnccs_20_t *this, tnc_ift_type_t transport)
+{
+	this->transport = transport;
+}
+
+METHOD(tnccs_t, get_auth_type, u_int32_t,
+	private_tnccs_20_t *this)
+{
+	return this->auth_type;
+}
+
+METHOD(tnccs_t, set_auth_type, void,
+	private_tnccs_20_t *this, u_int32_t auth_type)
+{
+	this->auth_type = auth_type;
+}
+
 /**
  * See header
  */
-tls_t *tnccs_20_create(bool is_server)
+tnccs_t* tnccs_20_create(bool is_server,
+						 identification_t *server,
+						 identification_t *peer,
+						 tnc_ift_type_t transport)
 {
 	private_tnccs_20_t *this;
 
 	INIT(this,
 		.public = {
-			.process = _process,
-			.build = _build,
-			.is_server = _is_server,
-			.get_purpose = _get_purpose,
-			.is_complete = _is_complete,
-			.get_eap_msk = _get_eap_msk,
-			.destroy = _destroy,
+			.tls = {
+				.process = _process,
+				.build = _build,
+				.is_server = _is_server,
+				.get_server_id = _get_server_id,
+				.get_peer_id = _get_peer_id,
+				.get_purpose = _get_purpose,
+				.is_complete = _is_complete,
+				.get_eap_msk = _get_eap_msk,
+				.destroy = _destroy,
+			},
+			.get_transport = _get_transport,
+			.set_transport = _set_transport,
+			.get_auth_type = _get_auth_type,
+			.set_auth_type = _set_auth_type,
 		},
 		.is_server = is_server,
+		.server = server->clone(server),
+		.peer = peer->clone(peer),
+		.transport = transport,
 		.state_machine = pb_tnc_state_machine_create(is_server),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.messages = linked_list_create(),

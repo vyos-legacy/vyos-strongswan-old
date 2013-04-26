@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,14 +23,20 @@
 
 #include <library.h>
 
-#include <tls.h>
+#include <tnc/tnccs/tnccs.h>
 
 /**
  * Create an instance of a dynamic TNC IF-TNCCS protocol handler.
  *
- * @param is_server			TRUE to act as TNC Server, FALSE for TNC Client
- * @return					dynamic TNC IF-TNCCS protocol stack
+ * @param is_server		TRUE to act as TNC Server, FALSE for TNC Client
+ * @param server		Server identity
+ * @param peer			Client identity
+ * @param transport		Underlying IF-T transport protocol
+ * @return				dynamic TNC IF-TNCCS protocol stack
  */
-tls_t *tnccs_dynamic_create(bool is_server);
+tnccs_t* tnccs_dynamic_create(bool is_server,
+							  identification_t *server,
+							  identification_t *peer,
+							  tnc_ift_type_t transport);
 
 #endif /** TNCCS_DYNAMIC_H_ @}*/

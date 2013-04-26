@@ -32,6 +32,10 @@ if USE_LIBTNCCS
   SUBDIRS += libtnccs
 endif
 
+if USE_LIBPTTLS
+  SUBDIRS += libpttls
+endif
+
 if USE_IMCV
   SUBDIRS += libimcv
 endif
@@ -94,6 +98,10 @@ endif
 
 if USE_INTEGRITY_TEST
   SUBDIRS += checksum
+endif
+
+if USE_TKM
+  SUBDIRS += charon-tkm
 endif
 
 EXTRA_DIST = strongswan.conf

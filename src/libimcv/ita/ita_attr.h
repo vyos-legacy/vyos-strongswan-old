@@ -14,8 +14,8 @@
  */
 
 /**
- * @defgroup ita_attrt ita_attr
- * @{ @ingroup ita_attr
+ * @defgroup ita_attr ita_attr
+ * @{ @ingroup libimcv
  */
 
 #ifndef ITA_ATTR_H_
@@ -36,7 +36,8 @@ enum ita_attr_t {
 	ITA_ATTR_GET_SETTINGS = 3,
 	ITA_ATTR_SETTINGS = 4,
 	ITA_ATTR_START_ANGEL = 5,
-	ITA_ATTR_STOP_ANGEL = 6
+	ITA_ATTR_STOP_ANGEL = 6,
+	ITA_ATTR_ECHO = 7
 };
 
 /**
