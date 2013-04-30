@@ -386,6 +386,14 @@ struct bus_t {
 	void (*child_rekey)(bus_t *this, child_sa_t *old, child_sa_t *new);
 
 	/**
+	 * Virtual IP assignment hook.
+	 *
+	 * @param ike_sa	IKE_SA the VIPs are assigned to
+	 * @param assign	TRUE if assigned to IKE_SA, FALSE if released
+	 */
+	void (*assign_vips)(bus_t *this, ike_sa_t *ike_sa, bool assign);
+
+	/**
 	 * Destroy the event bus.
 	 */
 	void (*destroy) (bus_t *this);

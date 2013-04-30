@@ -847,6 +847,7 @@ METHOD(attest_db_t, list_devices, void,
 					if (e_ar)
 					{
 						e_ar->enumerate(e_ar, &ar_id_type, &ar_id_value);
+						ar_id_value = chunk_clone(ar_id_value);
 						e_ar->destroy(e_ar);
 					}
 				}
@@ -854,6 +855,7 @@ METHOD(attest_db_t, list_devices, void,
 				{
 					printf(" %.*s", (int)ar_id_value.len, ar_id_value.ptr);
 				}
+				last_ar_id = ar_id;
 			}
 			printf("\n");
 		}
@@ -973,8 +975,8 @@ METHOD(attest_db_t, list_packages, void,
 	enumerator_t *e;
 	char *package, *version;
 	os_package_state_t security;
-	int gid, gid_old = 0, spaces, count = 0;
-	time_t t;
+	int gid, gid_old = 0, spaces, count = 0, t;
+	time_t timestamp;
 
 	if (this->pid)
 	{
@@ -1000,7 +1002,8 @@ METHOD(attest_db_t, list_packages, void,
 						printf(" ");
 					}
 				}
-				printf(" %T (%s)%N\n", &t, this->utc, version,
+				timestamp = t;
+				printf(" %T (%s)%N\n", &timestamp, this->utc, version,
 					 os_package_state_names, security);
 				count++;
 			}

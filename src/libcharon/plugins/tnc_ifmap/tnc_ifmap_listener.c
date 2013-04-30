@@ -71,8 +71,8 @@ static bool publish_device_ip_addresses(private_tnc_ifmap_listener_t *this)
  */
 static bool reload_metadata(private_tnc_ifmap_listener_t *this)
 {
-	enumerator_t *enumerator;
 	ike_sa_t *ike_sa;
+	enumerator_t *enumerator;
 	bool success = TRUE;
 
 	enumerator = charon->controller->create_ike_sa_enumerator(
@@ -83,7 +83,8 @@ static bool reload_metadata(private_tnc_ifmap_listener_t *this)
 		{
 			continue;
 		}
-		if (!this->ifmap->publish_ike_sa(this->ifmap, ike_sa, TRUE))
+		if (!this->ifmap->publish_ike_sa(this->ifmap, ike_sa, TRUE) ||
+			!this->ifmap->publish_virtual_ips(this->ifmap, ike_sa, TRUE))
 		{
 			success = FALSE;
 			break;
@@ -101,6 +102,13 @@ METHOD(listener_t, ike_updown, bool,
 	{
 		this->ifmap->publish_ike_sa(this->ifmap, ike_sa, up);
 	}
+	return TRUE;
+}
+
+METHOD(listener_t, assign_vips, bool,
+	private_tnc_ifmap_listener_t *this, ike_sa_t *ike_sa, bool assign)
+{
+	this->ifmap->publish_virtual_ips(this->ifmap, ike_sa, assign);
 	return TRUE;
 }
 
@@ -144,6 +152,7 @@ tnc_ifmap_listener_t *tnc_ifmap_listener_create(bool reload)
 		.public = {
 			.listener = {
 				.ike_updown = _ike_updown,
+				.assign_vips = _assign_vips,
 				.alert = _alert,
 			},
 			.destroy = _destroy,

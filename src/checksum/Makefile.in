@@ -285,6 +285,7 @@ dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
 h_plugins = @h_plugins@
@@ -373,8 +374,8 @@ INCLUDES = \
 	-I$(top_srcdir)/src/libhydra \
 	-I$(top_srcdir)/src/libcharon
 
-AM_CFLAGS = -DPLUGINDIR=\"${plugindir}\" -rdynamic $(am__append_1) \
-	$(am__append_4) $(am__append_22)
+AM_CFLAGS = -DPLUGINDIR=\"${DESTDIR}${plugindir}\" -rdynamic \
+	$(am__append_1) $(am__append_4) $(am__append_22)
 
 # we keep track of build dependencies in deps and use libs to store the paths
 # to the installed libraries. for executables we use the built files directly

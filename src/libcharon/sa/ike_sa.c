@@ -776,6 +776,10 @@ METHOD(ike_sa_t, clear_virtual_ips, void,
 	linked_list_t *vips = local ? this->my_vips : this->other_vips;
 	host_t *vip;
 
+	if (!local && vips->get_count(vips))
+	{
+		charon->bus->assign_vips(charon->bus, &this->public, FALSE);
+	}
 	while (vips->remove_first(vips, (void**)&vip) == SUCCESS)
 	{
 		if (local)
@@ -2105,6 +2109,10 @@ METHOD(ike_sa_t, destroy, void,
 		vip->destroy(vip);
 	}
 	this->my_vips->destroy(this->my_vips);
+	if (this->other_vips->get_count(this->other_vips))
+	{
+		charon->bus->assign_vips(charon->bus, &this->public, FALSE);
+	}
 	while (this->other_vips->remove_last(this->other_vips,
 										 (void**)&vip) == SUCCESS)
 	{

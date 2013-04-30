@@ -256,6 +256,7 @@ dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
 h_plugins = @h_plugins@
@@ -326,7 +327,7 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 INCLUDES = -I$(top_srcdir)/src/libstrongswan
-AM_CFLAGS = -rdynamic
+AM_CFLAGS = -rdynamic -DFIPS_MODE=${fips_mode}
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-openssl.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-openssl.la
 libstrongswan_openssl_la_SOURCES = \

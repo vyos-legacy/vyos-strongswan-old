@@ -15,5 +15,5 @@ add_plugin = $(if $(call plugin_enabled,$(1)), \
               )
 
 # strongSwan version, replaced by top Makefile
-strongswan_VERSION := "5.0.3"
+strongswan_VERSION := "5.0.4"
 
