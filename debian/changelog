@@ -8,8 +8,6 @@ strongswan (5.0.4-1) UNRELEASED; urgency=low
     - 03_Pass-lo-as-faked-tundev-to-NM-as-it-now-needs-a-vali removed,
       included upstream.
     - 04-Fixed-IPv6-source-address-lookup dropped, included upstream. 
-    - 02_fix-printf-dnssec-script added backported from upstream, fix printf()
-      statements.
   * debian/rules:
     - --enable-smartcard, --with-default-pkcs11 and --enable-nat-transport not
       valid anymore for ./configure, remove them.
