@@ -1,10 +1,10 @@
-strongswan (4.6.4-7) UNRELEASED; urgency=high
+strongswan (4.6.4-7) unstable; urgency=high
 
   * debian/patches:
     - 0001-Check-return-value-of-ECDSA_Verify-correctly added. Fix ECDSA
       signature verification when using openssl plugin (CVE-2013-2944).
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 26 Apr 2013 11:35:38 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 30 Apr 2013 09:47:27 +0200
 
 strongswan (4.6.4-6) unstable; urgency=low
 
