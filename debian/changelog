@@ -14,7 +14,7 @@ strongswan (5.0.4-1) UNRELEASED; urgency=low
     - add --enable-xauth-eap and --enable-xauth-pam.
     - remove pluto handling since it's gone
     - don't special-case XAuth on kFreeBSD anymore.
-    - add --enable-attr-sql.
+    - add --enable-attr-sql and --enable-rdrand.
     - build using all hardening flags.
     - use -Wl,--as-needed -Wl,-O1 for LDFLAGS.
   * debian/control:
@@ -30,6 +30,7 @@ strongswan (5.0.4-1) UNRELEASED; urgency=low
   * debian/libstrongswan.install:
     - install new pkcs7, xauth-eap, xauth-generic, xauth-pam and nonce plugins.
     - install libpttls files (experimental implementation of PT-TLS, RFC 6876)
+    - install rdrand plugin.
   * debian/strongswan.docs: CREDITS file is gone.
   * debian/ipsec.secrets.proto: remove reference to pluto.
   * debian/strongswan-starter.* remove references to pluto.
