@@ -1,4 +1,4 @@
-.TH STRONGSWAN.CONF 5 "2013-04-01" "5.0.3" "strongSwan"
+.TH STRONGSWAN.CONF 5 "2013-04-01" "5.0.4" "strongSwan"
 .SH NAME
 strongswan.conf \- strongSwan configuration file
 .SH DESCRIPTION
@@ -202,6 +202,9 @@ IKE_SA_INIT DROPPING).
 .BR charon.init_limit_job_load " [0]"
 Limit new connections based on the number of jobs currently queued for
 processing (see IKE_SA_INIT DROPPING).
+.TP
+.BR charon.initiator_only " [no]"
+Causes charon daemon to ignore IKE initiation requests.
 .TP
 .BR charon.install_routes " [yes]"
 Install routes into a separate routing table for established IPsec tunnels
@@ -776,6 +779,9 @@ Use faster random numbers in gcrypt; for testing only, produces weak keys!
 .TP
 .BR libstrongswan.plugins.openssl.engine_id " [pkcs11]"
 ENGINE ID to use in the OpenSSL plugin
+.TP
+.BR libstrongswan.plugins.openssl.fips_mode " [0]"
+Set OpenSSL FIPS mode: disabled(0), enabled(1), Suite B enabled(2)
 .TP
 .BR libstrongswan.plugins.pkcs11.modules
 List of available PKCS#11 modules
