@@ -1,6 +1,7 @@
-strongswan (5.0.3-1) UNRELEASED; urgency=low
+strongswan (5.0.4-1) UNRELEASED; urgency=low
 
   * New upstream release.
+    - Fix for ECDSA signature verification vulnerability (CVE-2013-2944).
   * debian/patches:
     - 01_fix-manpages refreshed.
     - 02_add-LICENSE dropped, included upstream.
