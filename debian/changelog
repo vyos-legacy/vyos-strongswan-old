@@ -1,4 +1,4 @@
-strongswan (5.0.4-1) UNRELEASED; urgency=low
+strongswan (5.0.4-1) experimental; urgency=low
 
   * New upstream release.
     - Fix for ECDSA signature verification vulnerability (CVE-2013-2944).
@@ -36,7 +36,7 @@ strongswan (5.0.4-1) UNRELEASED; urgency=low
   * debian/strongswan-starter.* remove references to pluto.
   * debian/po: update potfiles for new phrasing.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 26 Apr 2013 14:57:54 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 05 May 2013 11:06:20 +0200
 
 strongswan (4.6.4-6) unstable; urgency=low
 
