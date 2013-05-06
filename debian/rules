@@ -18,7 +18,6 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-test-vectors \
 		--enable-xauth-eap --enable-xauth-pam \
 		--enable-attr-sql \
-		--enable-rdrand \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -29,10 +28,14 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# sends these Cisco options.
 
 # the padlock plugin only makes sense on i386 
-# but it actually doesn't do much, so maybe we don't need it
+# RdRand only makes sense on i386 and amd64
 DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-  CONFIGUREARGS += --enable-padlock
+  CONFIGUREARGS += --enable-padlock --enable-rdrand
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU),amd64)
+  CONFIGUREARGS += --enable-rdrand
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),linux)

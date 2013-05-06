@@ -1,3 +1,10 @@
+strongswan (5.0.4-2) UNRELEASED; urgency=low
+
+  * debian/rules:
+    - only enable RdRand on i386 and amd64.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 06 May 2013 12:42:53 +0200
+
 strongswan (5.0.4-1) experimental; urgency=low
 
   * New upstream release.
