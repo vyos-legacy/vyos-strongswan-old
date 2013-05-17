@@ -1,10 +1,10 @@
-strongswan (4.6.4-8) UNRELEASED; urgency=low
+strongswan (4.6.4-8) unstable; urgency=low
 
   * debian/control:
     - strongswan-ikev{1,2}: only depends on iproute on Linux arches.
                                                                 closes: #708686
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 17 May 2013 22:56:27 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 17 May 2013 23:04:15 +0200
 
 strongswan (4.6.4-7) unstable; urgency=high
 
