@@ -1,9 +1,9 @@
-strongswan (5.0.4-3) UNRELEASED; urgency=low
+strongswan (5.0.4-3) experimental; urgency=low
 
   * debian/rules, debian/libstrongswan.install:
     - only install rdrand plugin on i386 and amd64.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sat, 18 May 2013 08:30:19 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 18 May 2013 09:26:22 +0200
 
 strongswan (5.0.4-2) experimental; urgency=low
 
