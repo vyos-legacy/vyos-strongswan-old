@@ -94,6 +94,11 @@ endif
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	# special handling for padlock, as it is only built on i386
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-padlock.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 endif
 
 	# then install the rest, ignoring the above
@@ -103,7 +108,8 @@ endif
 		-Xlibstrongswan-kernel \
 		-Xlibstrongswan-dhcp.so \
 		-Xlibstrongswan-farp.so \
-	 	-Xlibstrongswan-padlock.so
+	 	-Xlibstrongswan-padlock.so \
+	 	-Xlibstrongswan-rdrand.so
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
