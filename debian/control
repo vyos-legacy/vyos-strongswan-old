@@ -16,8 +16,8 @@ Build-Depends: debhelper (>= 9), dpkg-dev (>= 1.16.2), libtool, libgmp3-dev,
 Homepage: http://www.strongswan.org
 
 Package: strongswan
-Architecture: all
-Depends: ${misc:Depends}, strongswan-ikev1, strongswan-ikev2
+Architecture: any
+Depends: ${misc:Depends}, strongswan-ikev1 [linux-any], strongswan-ikev2
 Suggests: network-manager-strongswan
 Description: IPsec VPN solution metapackage
  The strongSwan VPN suite is based on the IPsec stack in standard Linux 2.6
@@ -61,7 +61,7 @@ Description: strongSwan library and binaries - debugging symbols
 Package: strongswan-starter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan-ikev1 | strongswan-ikev2, 
+  libstrongswan (= ${binary:Version}), strongswan-ikev1 [linux-any] | strongswan-ikev2, 
   adduser
 Conflicts: strongswan (<< 4.2.12-1)
 Description: strongSwan daemon starter and configuration file parser
