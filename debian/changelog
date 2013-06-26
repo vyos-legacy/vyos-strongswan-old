@@ -1,4 +1,4 @@
-strongswan (4.6.4-9) UNRELEASED; urgency=low
+strongswan (4.6.4-9) unstable; urgency=low
 
   * debian/control:
     - protect strongswan-ikev1 dependencies using linux-any since it's only
@@ -9,7 +9,7 @@ strongswan (4.6.4-9) UNRELEASED; urgency=low
   * debian/rules:
     - use autotools-dev addon to update config.{guess,sub}. 
 
- -- Yves-Alexis Perez <corsac@debian.org>  Wed, 26 Jun 2013 21:05:57 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 26 Jun 2013 21:57:53 +0200
 
 strongswan (4.6.4-8) unstable; urgency=low
 
