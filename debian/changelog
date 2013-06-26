@@ -4,6 +4,7 @@ strongswan (4.6.4-9) UNRELEASED; urgency=low
     - protect strongswan-ikev1 dependencies using linux-any since it's only
       available there.
     - switch strongswan package to arch:any because of that change. 
+    - update standards version to 3.9.4. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 26 Jun 2013 21:05:57 +0200
 
