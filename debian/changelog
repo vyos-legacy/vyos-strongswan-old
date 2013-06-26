@@ -5,6 +5,9 @@ strongswan (4.6.4-9) UNRELEASED; urgency=low
       available there.
     - switch strongswan package to arch:any because of that change. 
     - update standards version to 3.9.4. 
+    - add build-dep on autotools-dev
+  * debian/rules:
+    - use autotools-dev addon to update config.{guess,sub}. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 26 Jun 2013 21:05:57 +0200
 
