@@ -3,6 +3,8 @@ strongswan (5.1.0-1) UNRELEASED; urgency=low
   * New upstream release.
   * debian/libstrongswan.install:
     - install new rc2, pkcs12 and sshkey plugins.
+  * debian/control:
+    - update standards version to 3.9.4.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sun, 25 Aug 2013 15:37:56 +0200
 
