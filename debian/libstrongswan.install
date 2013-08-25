@@ -48,4 +48,7 @@ usr/lib/ipsec/plugins/libstrongswan-nonce.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-eap.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-generic.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-pam.so
+usr/lib/ipsec/plugins/libstrongswan-rc2.so
+usr/lib/ipsec/plugins/libstrongswan-pkcs12.so
+usr/lib/ipsec/plugins/libstrongswan-sshkey.so
 etc/strongswan.conf
