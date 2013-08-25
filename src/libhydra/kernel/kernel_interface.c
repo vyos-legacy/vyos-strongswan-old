@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2013 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
@@ -180,7 +180,7 @@ METHOD(kernel_interface_t, add_sa, status_t,
 	u_int32_t spi, u_int8_t protocol, u_int32_t reqid, mark_t mark,
 	u_int32_t tfc, lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
 	u_int16_t int_alg, chunk_t int_key,	ipsec_mode_t mode, u_int16_t ipcomp,
-	u_int16_t cpi, bool encap, bool esn, bool inbound,
+	u_int16_t cpi, bool initiator, bool encap, bool esn, bool inbound,
 	traffic_selector_t *src_ts, traffic_selector_t *dst_ts)
 {
 	if (!this->ipsec)
@@ -189,7 +189,7 @@ METHOD(kernel_interface_t, add_sa, status_t,
 	}
 	return this->ipsec->add_sa(this->ipsec, src, dst, spi, protocol, reqid,
 			mark, tfc, lifetime, enc_alg, enc_key, int_alg, int_key, mode,
-			ipcomp, cpi, encap, esn, inbound, src_ts, dst_ts);
+			ipcomp, cpi, initiator, encap, esn, inbound, src_ts, dst_ts);
 }
 
 METHOD(kernel_interface_t, update_sa, status_t,
@@ -208,14 +208,14 @@ METHOD(kernel_interface_t, update_sa, status_t,
 METHOD(kernel_interface_t, query_sa, status_t,
 	private_kernel_interface_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets)
+	u_int64_t *bytes, u_int64_t *packets, u_int32_t *time)
 {
 	if (!this->ipsec)
 	{
 		return NOT_SUPPORTED;
 	}
 	return this->ipsec->query_sa(this->ipsec, src, dst, spi, protocol, mark,
-								 bytes, packets);
+								 bytes, packets, time);
 }
 
 METHOD(kernel_interface_t, del_sa, status_t,
@@ -415,7 +415,8 @@ METHOD(kernel_interface_t, all_interfaces_usable, bool,
 }
 
 METHOD(kernel_interface_t, get_address_by_ts, status_t,
-	private_kernel_interface_t *this, traffic_selector_t *ts, host_t **ip)
+	private_kernel_interface_t *this, traffic_selector_t *ts,
+	host_t **ip, bool *vip)
 {
 	enumerator_t *addrs;
 	host_t *host;
@@ -446,17 +447,40 @@ METHOD(kernel_interface_t, get_address_by_ts, status_t,
 	}
 	host->destroy(host);
 
-	addrs = create_address_enumerator(this, ADDR_TYPE_ALL);
+	addrs = create_address_enumerator(this, ADDR_TYPE_VIRTUAL);
 	while (addrs->enumerate(addrs, (void**)&host))
 	{
 		if (ts->includes(ts, host))
 		{
 			found = TRUE;
 			*ip = host->clone(host);
+			if (vip)
+			{
+				*vip = TRUE;
+			}
 			break;
 		}
 	}
 	addrs->destroy(addrs);
+
+	if (!found)
+	{
+		addrs = create_address_enumerator(this, ADDR_TYPE_REGULAR);
+		while (addrs->enumerate(addrs, (void**)&host))
+		{
+			if (ts->includes(ts, host))
+			{
+				found = TRUE;
+				*ip = host->clone(host);
+				if (vip)
+				{
+					*vip = FALSE;
+				}
+				break;
+			}
+		}
+		addrs->destroy(addrs);
+	}
 
 	if (!found)
 	{
@@ -620,6 +644,25 @@ METHOD(kernel_interface_t, roam, void,
 	this->mutex->unlock(this->mutex);
 }
 
+METHOD(kernel_interface_t, tun, void,
+	private_kernel_interface_t *this, tun_device_t *tun, bool created)
+{
+	kernel_listener_t *listener;
+	enumerator_t *enumerator;
+	this->mutex->lock(this->mutex);
+	enumerator = this->listeners->create_enumerator(this->listeners);
+	while (enumerator->enumerate(enumerator, &listener))
+	{
+		if (listener->tun &&
+			!listener->tun(listener, tun, created))
+		{
+			this->listeners->remove_at(this->listeners, enumerator);
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->mutex->unlock(this->mutex);
+}
+
 METHOD(kernel_interface_t, register_algorithm, void,
 	private_kernel_interface_t *this, u_int16_t alg_id, transform_type_t type,
 	u_int16_t kernel_id, char *kernel_name)
@@ -740,6 +783,7 @@ kernel_interface_t *kernel_interface_create()
 			.mapping = _mapping,
 			.migrate = _migrate,
 			.roam = _roam,
+			.tun = _tun,
 			.destroy = _destroy,
 		},
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),

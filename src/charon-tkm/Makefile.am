@@ -1,7 +1,7 @@
 SRC = $(top_builddir)/src
 
 # includes relative to obj directory
-INCLUDES = \
+AM_CPPFLAGS = \
 	-include $(top_builddir)/config.h \
 	-I../$(SRC)/libstrongswan \
 	-I../$(SRC)/libhydra \
@@ -18,7 +18,7 @@ DEFS += -DPLUGINS=\""$(PLUGINS)\"" -DIPSEC_PIDDIR=\"${piddir}\"
 
 BUILD_OPTS = \
 	-XOBJ_DIR=$(CURDIR)/obj \
-	-cargs $(INCLUDES) $(DEFS) \
+	-cargs $(AM_CPPFLAGS) $(DEFS) \
 	-largs $(LIBLD) $(LIBFL)
 
 # plugins to enable

@@ -64,7 +64,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/macros/with.m4 \
 	$(top_srcdir)/m4/macros/enable-disable.m4 \
 	$(top_srcdir)/m4/macros/add-plugin.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -84,19 +84,35 @@ medsrv_fcgi_OBJECTS = $(am_medsrv_fcgi_OBJECTS)
 medsrv_fcgi_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libfast/libfast.la
+AM_V_lt = $(am__v_lt_@AM_V@)
+am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+am__v_lt_0 = --silent
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_@AM_V@)
+am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
+am__v_CC_0 = @echo "  CC    " $@;
+AM_V_at = $(am__v_at_@AM_V@)
+am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
+am__v_at_0 = @
 CCLD = $(CC)
-LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
+LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_@AM_V@)
+am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_@AM_V@)
+am__v_GEN_ = $(am__v_GEN_@AM_DEFAULT_V@)
+am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(medsrv_fcgi_SOURCES)
 DIST_SOURCES = $(medsrv_fcgi_SOURCES)
 am__can_run_installinfo = \
@@ -139,6 +155,7 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -151,6 +168,8 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CHECK_CFLAGS = @CHECK_CFLAGS@
 CHECK_LIBS = @CHECK_LIBS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -166,6 +185,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
@@ -174,6 +194,7 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
@@ -220,6 +241,7 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOCKLIB = @SOCKLIB@
 STRIP = @STRIP@
+UNWINDLIB = @UNWINDLIB@
 VERSION = @VERSION@
 YACC = @YACC@
 YFLAGS = @YFLAGS@
@@ -248,6 +270,7 @@ charon_natt_port = @charon_natt_port@
 charon_plugins = @charon_plugins@
 charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
+cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -332,11 +355,15 @@ controller/user_controller.c controller/user_controller.h \
 controller/peer_controller.c controller/peer_controller.h
 
 medsrv_fcgi_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la $(top_builddir)/src/libfast/libfast.la
-INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libfast
-AM_CFLAGS = -rdynamic \
-  -DIPSECDIR=\"${ipsecdir}\" \
-  -DIPSEC_PIDDIR=\"${piddir}\" \
-  -DPLUGINS=\""${medsrv_plugins}\""
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libfast \
+	-DIPSECDIR=\"${ipsecdir}\" \
+	-DIPSEC_PIDDIR=\"${piddir}\" \
+	-DPLUGINS=\""${medsrv_plugins}\""
+
+AM_CFLAGS = \
+	-rdynamic
 
 
 # Don't forget to add templates to EXTRA_DIST !!! How to automate?
@@ -444,7 +471,7 @@ clean-medsrvPROGRAMS:
 	rm -f $$list
 medsrv.fcgi$(EXEEXT): $(medsrv_fcgi_OBJECTS) $(medsrv_fcgi_DEPENDENCIES) $(EXTRA_medsrv_fcgi_DEPENDENCIES) 
 	@rm -f medsrv.fcgi$(EXEEXT)
-	$(LINK) $(medsrv_fcgi_OBJECTS) $(medsrv_fcgi_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(medsrv_fcgi_OBJECTS) $(medsrv_fcgi_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -459,67 +486,67 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/user_controller.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
 auth_filter.o: filter/auth_filter.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT auth_filter.o -MD -MP -MF $(DEPDIR)/auth_filter.Tpo -c -o auth_filter.o `test -f 'filter/auth_filter.c' || echo '$(srcdir)/'`filter/auth_filter.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/auth_filter.Tpo $(DEPDIR)/auth_filter.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='filter/auth_filter.c' object='auth_filter.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT auth_filter.o -MD -MP -MF $(DEPDIR)/auth_filter.Tpo -c -o auth_filter.o `test -f 'filter/auth_filter.c' || echo '$(srcdir)/'`filter/auth_filter.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/auth_filter.Tpo $(DEPDIR)/auth_filter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='filter/auth_filter.c' object='auth_filter.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o auth_filter.o `test -f 'filter/auth_filter.c' || echo '$(srcdir)/'`filter/auth_filter.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o auth_filter.o `test -f 'filter/auth_filter.c' || echo '$(srcdir)/'`filter/auth_filter.c
 
 auth_filter.obj: filter/auth_filter.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT auth_filter.obj -MD -MP -MF $(DEPDIR)/auth_filter.Tpo -c -o auth_filter.obj `if test -f 'filter/auth_filter.c'; then $(CYGPATH_W) 'filter/auth_filter.c'; else $(CYGPATH_W) '$(srcdir)/filter/auth_filter.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/auth_filter.Tpo $(DEPDIR)/auth_filter.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='filter/auth_filter.c' object='auth_filter.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT auth_filter.obj -MD -MP -MF $(DEPDIR)/auth_filter.Tpo -c -o auth_filter.obj `if test -f 'filter/auth_filter.c'; then $(CYGPATH_W) 'filter/auth_filter.c'; else $(CYGPATH_W) '$(srcdir)/filter/auth_filter.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/auth_filter.Tpo $(DEPDIR)/auth_filter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='filter/auth_filter.c' object='auth_filter.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o auth_filter.obj `if test -f 'filter/auth_filter.c'; then $(CYGPATH_W) 'filter/auth_filter.c'; else $(CYGPATH_W) '$(srcdir)/filter/auth_filter.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o auth_filter.obj `if test -f 'filter/auth_filter.c'; then $(CYGPATH_W) 'filter/auth_filter.c'; else $(CYGPATH_W) '$(srcdir)/filter/auth_filter.c'; fi`
 
 user_controller.o: controller/user_controller.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT user_controller.o -MD -MP -MF $(DEPDIR)/user_controller.Tpo -c -o user_controller.o `test -f 'controller/user_controller.c' || echo '$(srcdir)/'`controller/user_controller.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/user_controller.Tpo $(DEPDIR)/user_controller.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='controller/user_controller.c' object='user_controller.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT user_controller.o -MD -MP -MF $(DEPDIR)/user_controller.Tpo -c -o user_controller.o `test -f 'controller/user_controller.c' || echo '$(srcdir)/'`controller/user_controller.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/user_controller.Tpo $(DEPDIR)/user_controller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='controller/user_controller.c' object='user_controller.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o user_controller.o `test -f 'controller/user_controller.c' || echo '$(srcdir)/'`controller/user_controller.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o user_controller.o `test -f 'controller/user_controller.c' || echo '$(srcdir)/'`controller/user_controller.c
 
 user_controller.obj: controller/user_controller.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT user_controller.obj -MD -MP -MF $(DEPDIR)/user_controller.Tpo -c -o user_controller.obj `if test -f 'controller/user_controller.c'; then $(CYGPATH_W) 'controller/user_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/user_controller.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/user_controller.Tpo $(DEPDIR)/user_controller.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='controller/user_controller.c' object='user_controller.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT user_controller.obj -MD -MP -MF $(DEPDIR)/user_controller.Tpo -c -o user_controller.obj `if test -f 'controller/user_controller.c'; then $(CYGPATH_W) 'controller/user_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/user_controller.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/user_controller.Tpo $(DEPDIR)/user_controller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='controller/user_controller.c' object='user_controller.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o user_controller.obj `if test -f 'controller/user_controller.c'; then $(CYGPATH_W) 'controller/user_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/user_controller.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o user_controller.obj `if test -f 'controller/user_controller.c'; then $(CYGPATH_W) 'controller/user_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/user_controller.c'; fi`
 
 peer_controller.o: controller/peer_controller.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT peer_controller.o -MD -MP -MF $(DEPDIR)/peer_controller.Tpo -c -o peer_controller.o `test -f 'controller/peer_controller.c' || echo '$(srcdir)/'`controller/peer_controller.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/peer_controller.Tpo $(DEPDIR)/peer_controller.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='controller/peer_controller.c' object='peer_controller.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT peer_controller.o -MD -MP -MF $(DEPDIR)/peer_controller.Tpo -c -o peer_controller.o `test -f 'controller/peer_controller.c' || echo '$(srcdir)/'`controller/peer_controller.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/peer_controller.Tpo $(DEPDIR)/peer_controller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='controller/peer_controller.c' object='peer_controller.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o peer_controller.o `test -f 'controller/peer_controller.c' || echo '$(srcdir)/'`controller/peer_controller.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o peer_controller.o `test -f 'controller/peer_controller.c' || echo '$(srcdir)/'`controller/peer_controller.c
 
 peer_controller.obj: controller/peer_controller.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT peer_controller.obj -MD -MP -MF $(DEPDIR)/peer_controller.Tpo -c -o peer_controller.obj `if test -f 'controller/peer_controller.c'; then $(CYGPATH_W) 'controller/peer_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/peer_controller.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/peer_controller.Tpo $(DEPDIR)/peer_controller.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='controller/peer_controller.c' object='peer_controller.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT peer_controller.obj -MD -MP -MF $(DEPDIR)/peer_controller.Tpo -c -o peer_controller.obj `if test -f 'controller/peer_controller.c'; then $(CYGPATH_W) 'controller/peer_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/peer_controller.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/peer_controller.Tpo $(DEPDIR)/peer_controller.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='controller/peer_controller.c' object='peer_controller.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o peer_controller.obj `if test -f 'controller/peer_controller.c'; then $(CYGPATH_W) 'controller/peer_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/peer_controller.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o peer_controller.obj `if test -f 'controller/peer_controller.c'; then $(CYGPATH_W) 'controller/peer_controller.c'; else $(CYGPATH_W) '$(srcdir)/controller/peer_controller.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

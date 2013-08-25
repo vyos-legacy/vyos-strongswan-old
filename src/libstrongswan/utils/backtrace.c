@@ -53,6 +53,11 @@ struct private_backtrace_t {
 };
 
 /**
+ * Forward declaration of method getter
+ */
+static backtrace_t get_methods();
+
+/**
  * Write a format string with arguments to a FILE line, if it is NULL to DBG
  */
 static void println(FILE *file, char *format, ...)
@@ -299,7 +304,7 @@ static bfd_entry_t *get_bfd_entry(char *filename)
 /**
  * Print the source file with line number to file, libbfd variant
  */
-static void print_sourceline(FILE *file, char *filename, void *ptr)
+static void print_sourceline(FILE *file, char *filename, void *ptr, void *base)
 {
 	bfd_entry_t *entry;
 	bfd_find_data_t data = {
@@ -334,13 +339,20 @@ void backtrace_deinit() {}
 /**
  * Print the source file with line number to file, slow addr2line variant
  */
-static void print_sourceline(FILE *file, char *filename, void *ptr)
+static void print_sourceline(FILE *file, char *filename, void *ptr, void* base)
 {
 	char buf[1024];
 	FILE *output;
 	int c, i = 0;
 
+#ifdef __APPLE__
+	snprintf(buf, sizeof(buf), "atos -o %s -l %p %p 2>&1 | tail -n1",
+			 filename, base, ptr);
+#else /* !__APPLE__ */
 	snprintf(buf, sizeof(buf), "addr2line -e %s %p", filename, ptr);
+#endif /* __APPLE__ */
+
+
 	output = popen(buf, "r");
 	if (output)
 	{
@@ -373,11 +385,9 @@ void backtrace_deinit() {}
 METHOD(backtrace_t, log_, void,
 	private_backtrace_t *this, FILE *file, bool detailed)
 {
-#ifdef HAVE_BACKTRACE
+#if defined(HAVE_BACKTRACE) || defined(HAVE_LIBUNWIND_H)
 	size_t i;
-	char **strings;
-
-	strings = backtrace_symbols(this->frames, this->frame_count);
+	char **strings = NULL;
 
 	println(file, " dumping %d stack frame addresses:", this->frame_count);
 	for (i = 0; i < this->frame_count; i++)
@@ -410,19 +420,33 @@ METHOD(backtrace_t, log_, void,
 			}
 			if (detailed && info.dli_fname[0])
 			{
-				print_sourceline(file, (char*)info.dli_fname, ptr);
+				print_sourceline(file, (char*)info.dli_fname,
+								 ptr, info.dli_fbase);
 			}
 		}
 		else
 #endif /* HAVE_DLADDR */
 		{
-			println(file, "    %s", strings[i]);
+#ifdef HAVE_BACKTRACE
+			if (!strings)
+			{
+				strings = backtrace_symbols(this->frames, this->frame_count);
+			}
+			if (strings)
+			{
+				println(file, "    %s", strings[i]);
+			}
+			else
+#endif /* HAVE_BACKTRACE */
+			{
+				println(file, "    %p", this->frames[i]);
+			}
 		}
 	}
-	free (strings);
-#else /* !HAVE_BACKTRACE */
-	println(file, "C library does not support backtrace().");
-#endif /* HAVE_BACKTRACE */
+	free(strings);
+#else /* !HAVE_BACKTRACE && !HAVE_LIBUNWIND_H */
+	println(file, "no support for backtrace()/libunwind");
+#endif /* HAVE_BACKTRACE/HAVE_LIBUNWIND_H */
 }
 
 METHOD(backtrace_t, contains_function, bool,
@@ -512,10 +536,67 @@ METHOD(backtrace_t, create_frame_enumerator, enumerator_t*,
 	return &enumerator->public;
 }
 
+METHOD(backtrace_t, clone, backtrace_t*,
+	private_backtrace_t *this)
+{
+	private_backtrace_t *clone;
+
+	clone = malloc(sizeof(private_backtrace_t) +
+				   this->frame_count * sizeof(void*));
+	memcpy(clone->frames, this->frames, this->frame_count * sizeof(void*));
+	clone->frame_count = this->frame_count;
+
+	clone->public = get_methods();
+
+	return &clone->public;
+}
+
 METHOD(backtrace_t, destroy, void,
 	private_backtrace_t *this)
 {
 	free(this);
+}
+
+#ifdef HAVE_LIBUNWIND_H
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
+/**
+ * libunwind variant for glibc backtrace()
+ */
+static inline int backtrace_unwind(void **frames, int count)
+{
+	unw_context_t context;
+	unw_cursor_t cursor;
+	unw_word_t ip;
+	int depth = 0;
+
+	unw_getcontext(&context);
+	unw_init_local(&cursor, &context);
+	do
+	{
+		unw_get_reg(&cursor, UNW_REG_IP, &ip);
+		frames[depth++] = (void*)ip;
+	}
+	while (depth < count && unw_step(&cursor) > 0);
+
+	return depth;
+}
+#endif /* HAVE_UNWIND */
+
+/**
+ * Get implementation methods of backtrace_t
+ */
+static backtrace_t get_methods()
+{
+	return (backtrace_t) {
+		.log = _log_,
+		.contains_function = _contains_function,
+		.equals = _equals,
+		.clone = _clone,
+		.create_frame_enumerator = _create_frame_enumerator,
+		.destroy = _destroy,
+	};
 }
 
 /**
@@ -527,7 +608,9 @@ backtrace_t *backtrace_create(int skip)
 	void *frames[50];
 	int frame_count = 0;
 
-#ifdef HAVE_BACKTRACE
+#ifdef HAVE_LIBUNWIND_H
+	frame_count = backtrace_unwind(frames, countof(frames));
+#elif defined(HAVE_BACKTRACE)
 	frame_count = backtrace(frames, countof(frames));
 #endif /* HAVE_BACKTRACE */
 	frame_count = max(frame_count - skip, 0);
@@ -535,13 +618,7 @@ backtrace_t *backtrace_create(int skip)
 	memcpy(this->frames, frames + skip, frame_count * sizeof(void*));
 	this->frame_count = frame_count;
 
-	this->public = (backtrace_t) {
-		.log = _log_,
-		.contains_function = _contains_function,
-		.equals = _equals,
-		.create_frame_enumerator = _create_frame_enumerator,
-		.destroy = _destroy,
-	};
+	this->public = get_methods();
 
 	return &this->public;
 }

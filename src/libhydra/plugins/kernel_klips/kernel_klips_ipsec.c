@@ -78,7 +78,7 @@
 /** this is the default number of ipsec devices */
 #define DEFAULT_IPSEC_DEV_COUNT 4
 /** TRUE if the given name matches an ipsec device */
-#define IS_IPSEC_DEV(name) (strneq((name), IPSEC_DEV_PREFIX, sizeof(IPSEC_DEV_PREFIX) - 1))
+#define IS_IPSEC_DEV(name) (strpfx((name), IPSEC_DEV_PREFIX))
 
 /** the following stuff is from ipsec_tunnel.h */
 struct ipsectunnelconf
@@ -1682,8 +1682,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	u_int8_t protocol, u_int32_t reqid, mark_t mark, u_int32_t tfc,
 	lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
 	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode,
-	u_int16_t ipcomp, u_int16_t cpi, bool encap, bool esn, bool inbound,
-	traffic_selector_t *src_ts, traffic_selector_t *dst_ts)
+	u_int16_t ipcomp, u_int16_t cpi, bool initiator, bool encap, bool esn,
+	bool inbound, traffic_selector_t *src_ts, traffic_selector_t *dst_ts)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -1911,7 +1911,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 METHOD(kernel_ipsec_t, query_sa, status_t,
 	private_kernel_klips_ipsec_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets)
+	u_int64_t *bytes, u_int64_t *packets, u_int32_t *time)
 {
 	return NOT_SUPPORTED;  /* TODO */
 }
@@ -2022,7 +2022,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	else
 	{
 		/* apply the new one, if we have no such policy */
-		this->policies->insert_last(this->policies, policy);
+		this->policies->insert_first(this->policies, policy);
 	}
 
 	if (priority == POLICY_PRIORITY_ROUTED)
@@ -2088,7 +2088,8 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	this->mutex->lock(this->mutex);
 
 	/* we try to find the policy again and install the route if needed */
-	if (this->policies->find_last(this->policies, NULL, (void**)&policy) != SUCCESS)
+	if (this->policies->find_first(this->policies, NULL,
+								  (void**)&policy) != SUCCESS)
 	{
 		this->mutex->unlock(this->mutex);
 		DBG2(DBG_KNL, "the policy %R === %R %N is already gone, ignoring",
@@ -2118,7 +2119,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 			this->install_routes)
 		{
 			hydra->kernel_interface->get_address_by_ts(hydra->kernel_interface,
-													   src_ts, &route->src_ip);
+												src_ts, &route->src_ip, NULL);
 		}
 
 		if (!route->src_ip)
@@ -2332,7 +2333,7 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 
 	while (fgets(line, sizeof(line), file))
 	{
-		if (strneq(line, said, strlen(said)))
+		if (strpfx(line, said))
 		{
 			/* fine we found the correct line, now find the idle time */
 			u_int32_t idle_time;

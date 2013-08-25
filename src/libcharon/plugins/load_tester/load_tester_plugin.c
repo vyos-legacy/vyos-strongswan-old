@@ -298,4 +298,3 @@ plugin_t *load_tester_plugin_create()
 	}
 	return &this->public.plugin;
 }
-

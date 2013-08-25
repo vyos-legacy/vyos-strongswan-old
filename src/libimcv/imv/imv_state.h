@@ -22,6 +22,8 @@
 #ifndef IMV_STATE_H_
 #define IMV_STATE_H_
 
+#include "imv_session.h"
+
 #include <tncifimv.h>
 
 #include <library.h>
@@ -34,9 +36,9 @@ typedef struct imv_state_t imv_state_t;
 struct imv_state_t {
 
 	/**
-	 * Get the TNCS connection ID attached to the state
+	 * Get the TNCCS connection ID attached to the state
 	 *
-	 * @return				TNCS connection ID of the state
+	 * @return				TNCCS connection ID of the state
 	 */
 	 TNC_ConnectionID (*get_connection_id)(imv_state_t *this);
 
@@ -78,6 +80,20 @@ struct imv_state_t {
 	u_int32_t (*get_max_msg_len)(imv_state_t *this);
 
 	/**
+	 * Set flags for completed actions
+	 *
+	 * @param flags			Flags to be set
+	 */
+	void (*set_action_flags)(imv_state_t *this, u_int32_t flags);
+
+	/**
+	 * Get flags set for completed actions
+	 *
+	 * @return				Flags set for completed actions
+	 */
+	u_int32_t (*get_action_flags)(imv_state_t *this);
+
+	/**
 	 * Set Access Requestor ID
 	 *
 	 * @param id_type		Access Requestor TCG Standard ID Type
@@ -93,6 +109,20 @@ struct imv_state_t {
 	 * @return				Access Requestor TCG Standard ID Value
 	 */
 	chunk_t (*get_ar_id)(imv_state_t *this, u_int32_t *id_type);
+
+	/**
+	 * Set session associated with TNCCS Connection
+	 *
+	 * @param session		Session associated with TNCCS Connection
+	 */
+	void (*set_session)(imv_state_t *this, imv_session_t *session);
+
+	/**
+	 * Get session associated with TNCCS Connection
+	 *
+	 * @return				Session associated with TNCCS Connection
+	 */
+	imv_session_t* (*get_session)(imv_state_t *this);
 
 	/**
 	 * Change the connection state
@@ -122,6 +152,17 @@ struct imv_state_t {
 	void (*set_recommendation)(imv_state_t *this,
 							   TNC_IMV_Action_Recommendation rec,
 							   TNC_IMV_Evaluation_Result eval);
+
+	/**
+	 * Update IMV action recommendation and evaluation result
+	 *
+	 * @param rec			IMV action recommendation
+	 * @param eval			IMV evaluation result
+	 *
+	 */
+	void (*update_recommendation)(imv_state_t *this,
+								  TNC_IMV_Action_Recommendation rec,
+								  TNC_IMV_Evaluation_Result eval);
 
 	/**
 	 * Get reason string based on the preferred language

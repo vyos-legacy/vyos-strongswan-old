@@ -21,6 +21,8 @@
 #include <threading/mutex.h>
 #include <utils/lexparser.h>
 
+#include <netdb.h>
+
 typedef struct private_stroke_config_t private_stroke_config_t;
 
 /**
@@ -489,8 +491,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	pubkey = end->rsakey;
 	if (pubkey && !streq(pubkey, "") && !streq(pubkey, "%cert"))
 	{
-		certificate = this->cred->load_pubkey(this->cred, KEY_RSA, pubkey,
-											  identity);
+		certificate = this->cred->load_pubkey(this->cred, pubkey, identity);
 		if (certificate)
 		{
 			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
@@ -558,9 +559,9 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	}
 
 	/* authentication metod (class, actually) */
-	if (strneq(auth, "pubkey", strlen("pubkey")) ||
-		strneq(auth, "rsa", strlen("rsa")) ||
-		strneq(auth, "ecdsa", strlen("ecdsa")))
+	if (strpfx(auth, "pubkey") ||
+		strpfx(auth, "rsa") ||
+		strpfx(auth, "ecdsa"))
 	{
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
 		build_crl_policy(cfg, local, msg->add_conn.crl_policy);
@@ -571,7 +572,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	{
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PSK);
 	}
-	else if (strneq(auth, "xauth", 5))
+	else if (strpfx(auth, "xauth"))
 	{
 		char *pos;
 
@@ -587,7 +588,7 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 				identification_create_from_string(msg->add_conn.xauth_identity));
 		}
 	}
-	else if (strneq(auth, "eap", 3))
+	else if (strpfx(auth, "eap"))
 	{
 		eap_vendor_type_t *type;
 
@@ -884,6 +885,96 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 }
 
 /**
+ * Parse a protoport specifier
+ */
+static bool parse_protoport(char *token, u_int16_t *from_port,
+							u_int16_t *to_port, u_int8_t *protocol)
+{
+	char *sep, *port = "", *endptr;
+	struct protoent *proto;
+	struct servent *svc;
+	long int p;
+
+	sep = strrchr(token, ']');
+	if (!sep)
+	{
+		return FALSE;
+	}
+	*sep = '\0';
+
+	sep = strchr(token, '/');
+	if (sep)
+	{	/* protocol/port */
+		*sep = '\0';
+		port = sep + 1;
+	}
+
+	if (streq(token, "%any"))
+	{
+		*protocol = 0;
+	}
+	else
+	{
+		proto = getprotobyname(token);
+		if (proto)
+		{
+			*protocol = proto->p_proto;
+		}
+		else
+		{
+			p = strtol(token, &endptr, 0);
+			if ((*token && *endptr) || p < 0 || p > 0xff)
+			{
+				return FALSE;
+			}
+			*protocol = (u_int8_t)p;
+		}
+	}
+	if (streq(port, "%any"))
+	{
+		*from_port = 0;
+		*to_port = 0xffff;
+	}
+	else if (streq(port, "%opaque"))
+	{
+		*from_port = 0xffff;
+		*to_port = 0;
+	}
+	else if (*port)
+	{
+		svc = getservbyname(port, NULL);
+		if (svc)
+		{
+			*from_port = *to_port = ntohs(svc->s_port);
+		}
+		else
+		{
+			p = strtol(port, &endptr, 0);
+			if (p < 0 || p > 0xffff)
+			{
+				return FALSE;
+			}
+			*from_port = p;
+			if (*endptr == '-')
+			{
+				port = endptr + 1;
+				p = strtol(port, &endptr, 0);
+				if (p < 0 || p > 0xffff)
+				{
+					return FALSE;
+				}
+			}
+			*to_port = p;
+			if (*endptr)
+			{
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
+/**
  * build a traffic selector from a stroke_end
  */
 static void add_ts(private_stroke_config_t *this,
@@ -914,13 +1005,38 @@ static void add_ts(private_stroke_config_t *this,
 		else
 		{
 			enumerator_t *enumerator;
-			char *subnet;
+			char *subnet, *pos;
+			u_int16_t from_port, to_port;
+			u_int8_t proto;
 
 			enumerator = enumerator_create_token(end->subnets, ",", " ");
 			while (enumerator->enumerate(enumerator, &subnet))
 			{
-				ts = traffic_selector_create_from_cidr(subnet, end->protocol,
-												end->from_port, end->to_port);
+				from_port = end->from_port;
+				to_port = end->to_port;
+				proto = end->protocol;
+
+				pos = strchr(subnet, '[');
+				if (pos)
+				{
+					*(pos++) = '\0';
+					if (!parse_protoport(pos, &from_port, &to_port, &proto))
+					{
+						DBG1(DBG_CFG, "invalid proto/port: %s, skipped subnet",
+							 pos);
+						continue;
+					}
+				}
+				if (streq(subnet, "%dynamic"))
+				{
+					ts = traffic_selector_create_dynamic(proto,
+														 from_port, to_port);
+				}
+				else
+				{
+					ts = traffic_selector_create_from_cidr(subnet, proto,
+														   from_port, to_port);
+				}
 				if (ts)
 				{
 					child_cfg->add_traffic_selector(child_cfg, local, ts);

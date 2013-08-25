@@ -1753,21 +1753,22 @@ METHOD(task_manager_t, queue_child, void,
 /**
  * Check if two CHILD_SAs have the same traffic selector
  */
-static bool have_equal_ts(child_sa_t *a, child_sa_t *b, bool local)
+static bool have_equal_ts(child_sa_t *child1, child_sa_t *child2, bool local)
 {
-	linked_list_t *list;
-	traffic_selector_t *ts_a, *ts_b;
+	enumerator_t *e1, *e2;
+	traffic_selector_t *ts1, *ts2;
+	bool equal = FALSE;
 
-	list = a->get_traffic_selectors(a, local);
-	if (list->get_first(list, (void**)&ts_a) == SUCCESS)
+	e1 = child1->create_ts_enumerator(child1, local);
+	e2 = child2->create_ts_enumerator(child2, local);
+	if (e1->enumerate(e1, &ts1) && e2->enumerate(e2, &ts2))
 	{
-		list = b->get_traffic_selectors(b, local);
-		if (list->get_first(list, (void**)&ts_b) == SUCCESS)
-		{
-			return ts_a->equals(ts_a, ts_b);
-		}
+		equal = ts1->equals(ts1, ts2);
 	}
-	return FALSE;
+	e1->destroy(e1);
+	e1->destroy(e1);
+
+	return equal;
 }
 
 /**
@@ -1806,14 +1807,13 @@ static bool is_redundant(private_task_manager_t *this, child_sa_t *child_sa)
 static traffic_selector_t* get_first_ts(child_sa_t *child_sa, bool local)
 {
 	traffic_selector_t *ts = NULL;
-	linked_list_t *list;
+	enumerator_t *enumerator;
 
-	list = child_sa->get_traffic_selectors(child_sa, local);
-	if (list->get_first(list, (void**)&ts) == SUCCESS)
-	{
-		return ts;
-	}
-	return NULL;
+	enumerator = child_sa->create_ts_enumerator(child_sa, local);
+	enumerator->enumerate(enumerator, &ts);
+	enumerator->destroy(enumerator);
+
+	return ts;
 }
 
 METHOD(task_manager_t, queue_child_rekey, void,
@@ -1898,6 +1898,39 @@ METHOD(task_manager_t, adopt_tasks, void,
 		task->migrate(task, this->ike_sa);
 		this->queued_tasks->insert_first(this->queued_tasks, task);
 	}
+}
+
+/**
+ * Migrates child-creating tasks from src to dst
+ */
+static void migrate_child_tasks(private_task_manager_t *this,
+								linked_list_t *src, linked_list_t *dst)
+{
+	enumerator_t *enumerator;
+	task_t *task;
+
+	enumerator = src->create_enumerator(src);
+	while (enumerator->enumerate(enumerator, &task))
+	{
+		if (task->get_type(task) == TASK_QUICK_MODE)
+		{
+			src->remove_at(src, enumerator);
+			task->migrate(task, this->ike_sa);
+			dst->insert_last(dst, task);
+		}
+	}
+	enumerator->destroy(enumerator);
+}
+
+METHOD(task_manager_t, adopt_child_tasks, void,
+	private_task_manager_t *this, task_manager_t *other_public)
+{
+	private_task_manager_t *other = (private_task_manager_t*)other_public;
+
+	/* move active child tasks from other to this */
+	migrate_child_tasks(this, other->active_tasks, this->queued_tasks);
+	/* do the same for queued tasks */
+	migrate_child_tasks(this, other->queued_tasks, this->queued_tasks);
 }
 
 METHOD(task_manager_t, busy, bool,
@@ -2014,6 +2047,7 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 				.incr_mid = _incr_mid,
 				.reset = _reset,
 				.adopt_tasks = _adopt_tasks,
+				.adopt_child_tasks = _adopt_child_tasks,
 				.busy = _busy,
 				.create_task_enumerator = _create_task_enumerator,
 				.flush_queue = _flush_queue,

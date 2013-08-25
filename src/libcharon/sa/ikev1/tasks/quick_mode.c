@@ -259,7 +259,7 @@ static bool install(private_quick_mode_t *this)
 {
 	status_t status, status_i, status_o;
 	chunk_t encr_i, encr_r, integ_i, integ_r;
-	linked_list_t *tsi, *tsr;
+	linked_list_t *tsi, *tsr, *my_ts, *other_ts;
 	child_sa_t *old = NULL;
 
 	this->child_sa->set_proposal(this->child_sa, this->proposal);
@@ -306,17 +306,21 @@ static bool install(private_quick_mode_t *this)
 	{
 		if (this->initiator)
 		{
-			status_i = this->child_sa->install(this->child_sa, encr_r, integ_r,
-							this->spi_i, this->cpi_i, TRUE, FALSE, tsi, tsr);
-			status_o = this->child_sa->install(this->child_sa, encr_i, integ_i,
-							this->spi_r, this->cpi_r, FALSE, FALSE, tsi, tsr);
+			status_i = this->child_sa->install(this->child_sa,
+									encr_r, integ_r, this->spi_i, this->cpi_i,
+									this->initiator, TRUE, FALSE, tsi, tsr);
+			status_o = this->child_sa->install(this->child_sa,
+									encr_i, integ_i, this->spi_r, this->cpi_r,
+									this->initiator, FALSE, FALSE, tsi, tsr);
 		}
 		else
 		{
-			status_i = this->child_sa->install(this->child_sa, encr_i, integ_i,
-							this->spi_r, this->cpi_r, TRUE, FALSE, tsr, tsi);
-			status_o = this->child_sa->install(this->child_sa, encr_r, integ_r,
-							this->spi_i, this->cpi_i, FALSE, FALSE, tsr, tsi);
+			status_i = this->child_sa->install(this->child_sa,
+									encr_i, integ_i, this->spi_r, this->cpi_r,
+									this->initiator, TRUE, FALSE, tsr, tsi);
+			status_o = this->child_sa->install(this->child_sa,
+									encr_r, integ_r, this->spi_i, this->cpi_i,
+									this->initiator, FALSE, FALSE, tsr, tsi);
 		}
 	}
 	chunk_clear(&integ_i);
@@ -358,14 +362,20 @@ static bool install(private_quick_mode_t *this)
 	this->child_sa->set_state(this->child_sa, CHILD_INSTALLED);
 	this->ike_sa->add_child_sa(this->ike_sa, this->child_sa);
 
+	my_ts = linked_list_create_from_enumerator(
+				this->child_sa->create_ts_enumerator(this->child_sa, TRUE));
+	other_ts = linked_list_create_from_enumerator(
+				this->child_sa->create_ts_enumerator(this->child_sa, FALSE));
+
 	DBG0(DBG_IKE, "CHILD_SA %s{%d} established "
 		 "with SPIs %.8x_i %.8x_o and TS %#R=== %#R",
 		 this->child_sa->get_name(this->child_sa),
 		 this->child_sa->get_reqid(this->child_sa),
 		 ntohl(this->child_sa->get_spi(this->child_sa, TRUE)),
-		 ntohl(this->child_sa->get_spi(this->child_sa, FALSE)),
-		 this->child_sa->get_traffic_selectors(this->child_sa, TRUE),
-		 this->child_sa->get_traffic_selectors(this->child_sa, FALSE));
+		 ntohl(this->child_sa->get_spi(this->child_sa, FALSE)), my_ts, other_ts);
+
+	my_ts->destroy(my_ts);
+	other_ts->destroy(other_ts);
 
 	if (this->rekey)
 	{
@@ -500,33 +510,11 @@ static traffic_selector_t* select_ts(private_quick_mode_t *this, bool local,
 static void add_ts(private_quick_mode_t *this, message_t *message)
 {
 	id_payload_t *id_payload;
-	host_t *hsi, *hsr;
 
-	if (this->initiator)
-	{
-		hsi = this->ike_sa->get_my_host(this->ike_sa);
-		hsr = this->ike_sa->get_other_host(this->ike_sa);
-	}
-	else
-	{
-		hsr = this->ike_sa->get_my_host(this->ike_sa);
-		hsi = this->ike_sa->get_other_host(this->ike_sa);
-	}
-	/* add ID payload only if negotiating non host2host tunnels */
-	if (!this->tsi->is_host(this->tsi, hsi) ||
-		!this->tsr->is_host(this->tsr, hsr) ||
-		this->tsi->get_protocol(this->tsi) ||
-		this->tsr->get_protocol(this->tsr) ||
-		this->tsi->get_from_port(this->tsi) ||
-		this->tsr->get_from_port(this->tsr) ||
-		this->tsi->get_to_port(this->tsi) != 65535 ||
-		this->tsr->get_to_port(this->tsr) != 65535)
-	{
-		id_payload = id_payload_create_from_ts(this->tsi);
-		message->add_payload(message, &id_payload->payload_interface);
-		id_payload = id_payload_create_from_ts(this->tsr);
-		message->add_payload(message, &id_payload->payload_interface);
-	}
+	id_payload = id_payload_create_from_ts(this->tsi);
+	message->add_payload(message, &id_payload->payload_interface);
+	id_payload = id_payload_create_from_ts(this->tsr);
+	message->add_payload(message, &id_payload->payload_interface);
 }
 
 /**
@@ -774,19 +762,11 @@ METHOD(task_t, build_i, status_t,
 
 			if (this->config->use_ipcomp(this->config))
 			{
-				if (this->udp)
+				this->cpi_i = this->child_sa->alloc_cpi(this->child_sa);
+				if (!this->cpi_i)
 				{
-					DBG1(DBG_IKE, "IPComp is not supported if either peer is "
-						 "natted, IPComp disabled");
-				}
-				else
-				{
-					this->cpi_i = this->child_sa->alloc_cpi(this->child_sa);
-					if (!this->cpi_i)
-					{
-						DBG1(DBG_IKE, "unable to allocate a CPI from kernel, "
-							 "IPComp disabled");
-					}
+					DBG1(DBG_IKE, "unable to allocate a CPI from kernel, "
+						 "IPComp disabled");
 				}
 			}
 
@@ -1009,21 +989,13 @@ METHOD(task_t, process_r, status_t,
 
 			if (this->config->use_ipcomp(this->config))
 			{
-				if (this->ike_sa->has_condition(this->ike_sa, COND_NAT_ANY))
+				list = sa_payload->get_ipcomp_proposals(sa_payload,
+														&this->cpi_i);
+				if (!list->get_count(list))
 				{
-					DBG1(DBG_IKE, "IPComp is not supported if either peer is "
-						 "natted, IPComp disabled");
-				}
-				else
-				{
-					list = sa_payload->get_ipcomp_proposals(sa_payload,
-															&this->cpi_i);
-					if (!list->get_count(list))
-					{
-						DBG1(DBG_IKE, "expected IPComp proposal but peer did "
-							 "not send one, IPComp disabled");
-						this->cpi_i = 0;
-					}
+					DBG1(DBG_IKE, "expected IPComp proposal but peer did "
+						 "not send one, IPComp disabled");
+					this->cpi_i = 0;
 				}
 			}
 			if (!list || !list->get_count(list))

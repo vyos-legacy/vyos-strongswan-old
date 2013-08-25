@@ -22,12 +22,19 @@
 
 #include <syslog.h>
 
-#define IMCV_DEBUG_LEVEL	1
+#define IMCV_DEBUG_LEVEL			1
+#define IMCV_DEFAULT_POLICY_SCRIPT	"ipsec _imv_policy"
+
 
 /**
  * PA-TNC attribute manager
  */
 pa_tnc_attr_manager_t *imcv_pa_tnc_attributes;
+
+/**
+ * Global IMV database
+ */
+imv_database_t *imcv_db;
 
 /**
  * Reference count for libimcv
@@ -88,7 +95,7 @@ static void imcv_dbg(debug_t group, level_t level, char *fmt, ...)
 /**
  * Described in header.
  */
-bool libimcv_init(void)
+bool libimcv_init(bool is_imv)
 {
 	/* initialize libstrongswan library only once */
 	if (lib)
@@ -117,8 +124,9 @@ bool libimcv_init(void)
 		dbg = imcv_dbg;
 		openlog("imcv", 0, LOG_DAEMON);
 
-		if (!lib->plugins->load(lib->plugins, NULL,
-							"sha1 sha2 random nonce gmp pubkey x509"))
+		if (!lib->plugins->load(lib->plugins,
+				lib->settings->get_str(lib->settings, "libimcv.load",
+					"random nonce gmp pubkey x509")))
 		{
 			library_deinit();
 			return FALSE;
@@ -128,12 +136,27 @@ bool libimcv_init(void)
 
 	if (libimcv_ref == 0)
 	{
+		char *uri, *script;
+
 		/* initialize the PA-TNC attribute manager */
 	 	imcv_pa_tnc_attributes = pa_tnc_attr_manager_create();
 		imcv_pa_tnc_attributes->add_vendor(imcv_pa_tnc_attributes, PEN_IETF,
 							ietf_attr_create_from_data, ietf_attr_names);
 		imcv_pa_tnc_attributes->add_vendor(imcv_pa_tnc_attributes, PEN_ITA,
 							ita_attr_create_from_data, ita_attr_names);
+
+		/* attach global IMV database */
+		if (is_imv)
+		{
+			uri = lib->settings->get_str(lib->settings,
+						"libimcv.database", NULL);
+			script = lib->settings->get_str(lib->settings,
+						"libimcv.policy_script", IMCV_DEFAULT_POLICY_SCRIPT);
+			if (uri)
+			{
+				imcv_db = imv_database_create(uri, script);
+			}
+		}
 		DBG1(DBG_LIB, "libimcv initialized");
 	}
 	ref_get(&libimcv_ref);
@@ -151,6 +174,8 @@ void libimcv_deinit(void)
 		imcv_pa_tnc_attributes->remove_vendor(imcv_pa_tnc_attributes, PEN_IETF);
 		imcv_pa_tnc_attributes->remove_vendor(imcv_pa_tnc_attributes, PEN_ITA);
 		DESTROY_IF(imcv_pa_tnc_attributes);
+		imcv_pa_tnc_attributes = NULL;
+		DESTROY_IF(imcv_db);
 		DBG1(DBG_LIB, "libimcv terminated");
 	}
 	if (ref_put(&libstrongswan_ref))

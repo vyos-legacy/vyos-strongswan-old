@@ -81,9 +81,20 @@ static inline bool streq(const char *x, const char *y)
 }
 
 /**
- * Macro compares two strings for equality, length limited
+ * Helper function that compares two strings for equality, length limited
  */
-#define strneq(x,y,len) (strncmp(x, y, len) == 0)
+static inline bool strneq(const char *x, const char *y, size_t len)
+{
+	return strncmp(x, y, len) == 0;
+}
+
+/**
+ * Helper function that checks if a string starts with a given prefix
+ */
+static inline bool strpfx(const char *x, const char *prefix)
+{
+	return strneq(x, prefix, strlen(prefix));
+}
 
 /**
  * Helper function that compares two strings for equality ignoring case
@@ -94,9 +105,12 @@ static inline bool strcaseeq(const char *x, const char *y)
 }
 
 /**
- * Macro compares two strings for equality ignoring case, length limited
+ * Helper function that compares two strings for equality ignoring case, length limited
  */
-#define strncaseeq(x,y,len) (strncasecmp(x, y, len) == 0)
+static inline bool strncaseeq(const char *x, const char *y, size_t len)
+{
+	return strncasecmp(x, y, len) == 0;
+}
 
 /**
  * NULL-safe strdup variant
@@ -107,9 +121,12 @@ static inline char *strdupnull(const char *s)
 }
 
 /**
- * Macro compares two binary blobs for equality
+ * Helper function that compares two binary blobs for equality
  */
-#define memeq(x,y,len) (memcmp(x, y, len) == 0)
+static inline bool memeq(const void *x, const void *y, size_t len)
+{
+	return memcmp(x, y, len) == 0;
+}
 
 /**
  * Macro gives back larger of two values.
@@ -376,11 +393,6 @@ typedef struct timespec timespec_t;
 typedef struct sockaddr sockaddr_t;
 
 /**
- * Clone a data to a newly allocated buffer
- */
-void *clalloc(void *pointer, size_t size);
-
-/**
  * Same as memcpy, but XORs src into dst instead of copy
  */
 void memxor(u_int8_t dest[], u_int8_t src[], size_t n);
@@ -423,6 +435,10 @@ static inline void memwipe_inline(void *ptr, size_t n)
  */
 static inline void memwipe(void *ptr, size_t n)
 {
+	if (!ptr)
+	{
+		return;
+	}
 	if (__builtin_constant_p(n))
 	{
 		memwipe_inline(ptr, n);
@@ -503,7 +519,7 @@ time_t time_monotonic(timeval_t *tv);
 static inline void timeval_add_ms(timeval_t *tv, u_int ms)
 {
 	tv->tv_usec += ms * 1000;
-	while (tv->tv_usec > 1000000 /* 1s */)
+	while (tv->tv_usec >= 1000000 /* 1s */)
 	{
 		tv->tv_usec -= 1000000;
 		tv->tv_sec++;
@@ -655,14 +671,36 @@ static inline u_int64_t untoh64(void *network)
 }
 
 /**
+ * Round up size to be multiple of alignement
+ */
+static inline size_t round_up(size_t size, int alignement)
+{
+	int remainder;
+
+	remainder = size % alignement;
+	if (remainder)
+	{
+		size += alignement - remainder;
+	}
+	return size;
+}
+
+/**
+ * Round down size to be a multiple of alignement
+ */
+static inline size_t round_down(size_t size, int alignement)
+{
+	return size - (size % alignement);
+}
+
+/**
  * Special type to count references
  */
-typedef volatile u_int refcount_t;
-
+typedef u_int refcount_t;
 
 #ifdef HAVE_GCC_ATOMIC_OPERATIONS
 
-#define ref_get(ref) {__sync_fetch_and_add(ref, 1); }
+#define ref_get(ref) __sync_add_and_fetch(ref, 1)
 #define ref_put(ref) (!__sync_sub_and_fetch(ref, 1))
 
 #define cas_bool(ptr, oldval, newval) \
@@ -678,8 +716,9 @@ typedef volatile u_int refcount_t;
  * Increments the reference counter atomic.
  *
  * @param ref	pointer to ref counter
+ * @return		new value of ref
  */
-void ref_get(refcount_t *ref);
+refcount_t ref_get(refcount_t *ref);
 
 /**
  * Put back a unused reference.

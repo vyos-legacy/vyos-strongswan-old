@@ -13,6 +13,14 @@
  * for more details.
  */
 
+#define _GNU_SOURCE
+
+#include <stdio.h>
+#include <libgen.h>
+#include <time.h>
+
+#include <tncif_names.h>
+
 #include "attest_db.h"
 
 #include "libpts.h"
@@ -20,10 +28,8 @@
 #include "pts/pts_file_meas.h"
 #include "pts/components/pts_comp_func_name.h"
 
-#include <libgen.h>
-#include <time.h>
-
 #define IMA_MAX_NAME_LEN	255
+#define DEVICE_MAX_LEN		 20
 
 typedef struct private_attest_db_t private_attest_db_t;
 
@@ -63,11 +69,6 @@ struct private_attest_db_t {
 	int did;
 
 	/**
-	 * TRUE if directory has been set
-	 */
-	bool dir_set;
-
-	/**
 	 * Measurement file to be queried
 	 */
 	char *file;
@@ -76,11 +77,6 @@ struct private_attest_db_t {
 	 * Primary key of measurement file to be queried
 	 */
 	int fid;
-
-	/**
-	 * TRUE if file has been set
-	 */
-	bool file_set;
 
 	/**
 	 *  AIK to be queried
@@ -148,9 +144,9 @@ struct private_attest_db_t {
 	bool utc;
 
 	/**
-	 * Package security state
+	 * Package security or blacklist state
 	 */
-	os_package_state_t security;
+	os_package_state_t package_state;
 
 	/**
 	 * Sequence number for ordering entries
@@ -304,35 +300,35 @@ METHOD(attest_db_t, set_directory, bool,
 	private_attest_db_t *this, char *dir, bool create)
 {
 	enumerator_t *e;
+	int did;
 	size_t len;
 
-	if (this->dir_set)
+	if (this->did)
 	{
 		printf("directory has already been set\n");
 		return FALSE;
 	}
-	free(this->dir);
 
-	/* remove trailing '/' character */
+	/* remove trailing '/' character if not root directory */
 	len = strlen(dir);
-	if (len && dir[len-1] == '/')
+	if (len > 1 && dir[len-1] == '/')
 	{
 		dir[len-1] = '\0';
 	}
 	this->dir = strdup(dir);
 
 	e = this->db->query(this->db,
-						"SELECT id FROM files WHERE type = 1 AND path = ?",
+						"SELECT id FROM directories WHERE path = ?",
 						DB_TEXT, dir, DB_INT);
 	if (e)
 	{
-		if (e->enumerate(e, &this->did))
+		if (e->enumerate(e, &did))
 		{
-			this->dir_set = TRUE;
+			this->did = did;
 		}
 		e->destroy(e);
 	}
-	if (this->dir_set)
+	if (this->did)
 	{
 		return TRUE;
 	}
@@ -344,14 +340,15 @@ METHOD(attest_db_t, set_directory, bool,
 	}
 
 	/* Add a new database entry */
-	this->dir_set = this->db->execute(this->db, &this->did,
-								"INSERT INTO files (type, path) VALUES (1, ?)",
-								DB_TEXT, dir) == 1;
-
+	if (1 == this->db->execute(this->db, &did,
+				"INSERT INTO directories (path) VALUES (?)", DB_TEXT, dir))
+	{
+		this->did = did;
+	}
 	printf("directory '%s' %sinserted into database\n", dir,
-		   this->dir_set ? "" : "could not be ");
+			this->did ? "" : "could not be ");
 
-	return this->dir_set;
+	return this->did > 0;
 }
 
 METHOD(attest_db_t, set_did, bool,
@@ -360,22 +357,20 @@ METHOD(attest_db_t, set_did, bool,
 	enumerator_t *e;
 	char *dir;
 
-	if (this->dir_set)
+	if (this->did)
 	{
 		printf("directory has already been set\n");
 		return FALSE;
 	}
-	this->did = did;
 
-	e = this->db->query(this->db, "SELECT path FROM files WHERE id = ?",
+	e = this->db->query(this->db, "SELECT path FROM directories WHERE id = ?",
 						DB_UINT, did, DB_TEXT);
 	if (e)
 	{
 		if (e->enumerate(e, &dir))
 		{
-			free(this->dir);
 			this->dir = strdup(dir);
-			this->dir_set = TRUE;
+			this->did = did;
 		}
 		else
 		{
@@ -383,76 +378,88 @@ METHOD(attest_db_t, set_did, bool,
 		}
 		e->destroy(e);
 	}
-	return this->dir_set;
+	return this->did > 0;
 }
 
 METHOD(attest_db_t, set_file, bool,
 	private_attest_db_t *this, char *file, bool create)
 {
+	int fid;
+	char *sep;
 	enumerator_t *e;
-	char *filename;
 
-	if (this->file_set)
+	if (this->file)
 	{
 		printf("file has already been set\n");
 		return FALSE;
 	}
 	this->file = strdup(file);
-	filename = this->relative ? basename(file) : file;
 
-	e = this->db->query(this->db, "SELECT id FROM files WHERE path = ?",
-						DB_TEXT, filename, DB_INT);
+	if (!this->did)
+	{
+		return TRUE;
+	}
+	sep = streq(this->dir, "/") ? "" : "/";
+	e = this->db->query(this->db, "SELECT id FROM files "
+						"WHERE dir = ? AND name = ?",
+						DB_INT, this->did, DB_TEXT, file, DB_INT);
 	if (e)
 	{
-		if (e->enumerate(e, &this->fid))
+		if (e->enumerate(e, &fid))
 		{
-			this->file_set = TRUE;
+			this->fid = fid;
 		}
 		e->destroy(e);
 	}
-	if (this->file_set)
+	if (this->fid)
 	{
 		return TRUE;
 	}
 
 	if (!create)
 	{
-		printf("file '%s' not found in database\n", file);
+		printf("file '%s%s%s' not found in database\n", this->dir, sep, file);
 		return FALSE;
 	}
 
 	/* Add a new database entry */
-	this->file_set = this->db->execute(this->db, &this->fid,
-								"INSERT INTO files (type, path) VALUES (0, ?)",
-								DB_TEXT, filename) == 1;
+	if (1 == this->db->execute(this->db, &fid,
+							   "INSERT INTO files (dir, name) VALUES (?, ?)",
+							   DB_INT, this->did, DB_TEXT, file))
+	{
+		this->fid = fid;
+	}
+	printf("file '%s%s%s' %sinserted into database\n", this->dir, sep, file,
+		   this->fid ? "" : "could not be ");
 
-	printf("file '%s' %sinserted into database\n", filename,
-		   this->file_set ? "" : "could not be ");
-
-	return this->file_set;
+	return this->fid > 0;
 }
 
 METHOD(attest_db_t, set_fid, bool,
 	private_attest_db_t *this, int fid)
 {
 	enumerator_t *e;
+	int did;
 	char *file;
 
-	if (this->file_set)
+	if (this->fid)
 	{
 		printf("file has already been set\n");
 		return FALSE;
 	}
-	this->fid = fid;
 
-	e = this->db->query(this->db, "SELECT path FROM files WHERE id = ?",
-						DB_UINT, fid, DB_TEXT);
+	e = this->db->query(this->db, "SELECT dir, name FROM files WHERE id = ?",
+						DB_UINT, fid, DB_INT, DB_TEXT);
 	if (e)
 	{
-		if (e->enumerate(e, &file))
+		if (e->enumerate(e, &did, &file))
 		{
+			if (did)
+			{
+				set_did(this, did);
+			}
 			this->file = strdup(file);
-			this->file_set = TRUE;
+			this->fid = fid;
 		}
 		else
 		{
@@ -460,7 +467,7 @@ METHOD(attest_db_t, set_fid, bool,
 		}
 		e->destroy(e);
 	}
-	return this->file_set;
+	return this->fid > 0;
 }
 
 METHOD(attest_db_t, set_key, bool,
@@ -726,10 +733,10 @@ METHOD(attest_db_t, set_relative, void,
 	this->relative = TRUE;
 }
 
-METHOD(attest_db_t, set_security, void,
-	private_attest_db_t *this, os_package_state_t security)
+METHOD(attest_db_t, set_package_state, void,
+	private_attest_db_t *this, os_package_state_t package_state)
 {
-	this->security = security;
+	this->package_state = package_state;
 }
 
 METHOD(attest_db_t, set_sequence, void,
@@ -805,44 +812,42 @@ METHOD(attest_db_t, list_devices, void,
 	private_attest_db_t *this)
 {
 	enumerator_t *e, *e_ar;
-	chunk_t value, ar_id_value = chunk_empty;
-	char *product;
+	chunk_t ar_id_value = chunk_empty;
+	char *product, *device;
 	time_t timestamp;
 	int id, last_id = 0, ar_id = 0, last_ar_id = 0, device_count = 0;
-	int count, count_update, count_blacklist;
+	int session_id, rec;
 	u_int32_t ar_id_type;
-	u_int tstamp, flags = 0;
+	u_int tstamp;
 
 	e = this->db->query(this->db,
-			"SELECT d.id, d.value, i.time, i.count, i.count_update, "
-			"i.count_blacklist, i.flags, i.ar_id, p.name FROM devices AS d "
-			"JOIN device_infos AS i ON d.id = i.device "
-			"JOIN products AS p ON p.id = i.product "
-			"ORDER BY d.value, i.time DESC",
-			 DB_INT, DB_BLOB, DB_UINT, DB_INT, DB_INT, DB_INT, DB_UINT,
-			 DB_INT, DB_TEXT);
+			"SELECT d.id, d.value, s.id, s.time, s.identity, s.rec, p.name "
+			"FROM devices AS d "
+			"JOIN sessions AS s ON d.id = s.device "
+			"JOIN products AS p ON p.id = s.product "
+			"ORDER BY d.value, s.time DESC", DB_INT, DB_TEXT, DB_INT, DB_UINT,
+			 DB_INT, DB_INT, DB_TEXT);
 
 	if (e)
 	{
-		while (e->enumerate(e, &id, &value, &tstamp, &count, &count_update,
-							   &count_blacklist, &flags, &ar_id, &product))
+		while (e->enumerate(e, &id, &device, &session_id, &tstamp, &ar_id, &rec,
+							   &product))
 		{
 			if (id != last_id)
 			{
-				printf("%4d: %.*s\n", id, (int)value.len, value.ptr);
+				printf("%4d: %s - %s\n", id, device, product);
 				device_count++;
 				last_id = id;
 			}
 			timestamp = tstamp;
-			printf("      %T, %4d, %3d, %3d, %1u, '%s'", &timestamp, this->utc,
-				   count, count_update, count_blacklist, flags, product);
+			printf("%4d:   %T", session_id, &timestamp, this->utc);
 			if (ar_id)
 			{
 				if (ar_id != last_ar_id)
 				{
 					chunk_free(&ar_id_value);
 					e_ar = this->db->query(this->db,
-								"SELECT type, data FROM identities "
+								"SELECT type, value FROM identities "
 								"WHERE id = ?", DB_INT, ar_id, DB_INT, DB_BLOB);
 					if (e_ar)
 					{
@@ -857,7 +862,7 @@ METHOD(attest_db_t, list_devices, void,
 				}
 				last_ar_id = ar_id;
 			}
-			printf("\n");
+			printf(" - %N\n", TNC_IMV_Action_Recommendation_names, rec);
 		}
 		e->destroy(e);
 		free(ar_id_value.ptr);
@@ -920,53 +925,92 @@ METHOD(attest_db_t, list_files, void,
 	private_attest_db_t *this)
 {
 	enumerator_t *e;
-	char *file, *file_type[] = { " ", "d", "r" };
-	int fid, type, meas, meta, count = 0;
+	char *dir, *file;
+	int did, last_did = 0, fid, count = 0;
 
-	if (this->pid)
+	if (this->did)
 	{
 		e = this->db->query(this->db,
-				"SELECT f.id, f.type, f.path, pf.measurement, pf.metadata "
-				"FROM files AS f "
-				"JOIN product_file AS pf ON f.id = pf.file "
-				"WHERE pf.product = ? ORDER BY f.path",
-				DB_UINT, this->pid, DB_INT, DB_INT, DB_TEXT, DB_INT, DB_INT);
+				"SELECT id, name FROM files WHERE dir = ? ORDER BY name",
+				DB_INT, this->did, DB_INT, DB_TEXT);
 		if (e)
 		{
-			while (e->enumerate(e, &fid, &type, &file, &meas, &meta))
+			while (e->enumerate(e, &fid, &file))
 			{
-				type = (type < 0 || type > 2) ? 0 : type;
-				printf("%4d: |%s%s| %s %s\n", fid, meas ? "M":" ", meta ? "T":" ",
-											  file_type[type], file);
+				printf("%4d: %s\n", fid, file);
 				count++;
 			}
 			e->destroy(e);
 		}
+		printf("%d file%s found in directory '%s'\n", count,
+			  (count == 1) ? "" : "s", this->dir);
 	}
 	else
 	{
 		e = this->db->query(this->db,
-				"SELECT id, type, path FROM files "
-				"ORDER BY path",
-				DB_INT, DB_INT, DB_TEXT);
+				"SELECT d.id, d.path, f.id, f.name FROM files AS f "
+				"JOIN directories AS d ON f.dir = d.id "
+				"ORDER BY d.path, f.name",
+				DB_INT, DB_TEXT, DB_INT, DB_TEXT);
 		if (e)
 		{
-			while (e->enumerate(e, &fid, &type, &file))
+			while (e->enumerate(e, &did, &dir, &fid, &file))
 			{
-				type = (type < 0 || type > 2) ? 0 : type;
-				printf("%4d: %s %s\n", fid, file_type[type], file);
+				if (did != last_did)
+				{
+					printf("%4d: %s\n", did, dir);
+					last_did = did;
+				}
+				printf("%4d:   %s\n", fid, file);
 				count++;
 			}
 			e->destroy(e);
 		}
+		printf("%d file%s found\n", count, (count == 1) ? "" : "s");
 	}
+}
 
-	printf("%d file%s found", count, (count == 1) ? "" : "s");
-	if (this->product_set)
+METHOD(attest_db_t, list_directories, void,
+	private_attest_db_t *this)
+{
+	enumerator_t *e;
+	char *dir;
+	int did, count = 0;
+
+	if (this->file)
 	{
-		printf(" for product '%s'", this->product);
+		e = this->db->query(this->db,
+				"SELECT d.id, d.path FROM directories AS d "
+				"JOIN files AS f ON f.dir = d.id WHERE f.name = ? "
+				"ORDER BY path", DB_TEXT, this->file, DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &did, &dir))
+			{
+				printf("%4d: %s\n", did, dir);
+				count++;
+			}
+			e->destroy(e);
+		}
+		printf("%d director%s found containing file '%s'\n", count,
+			  (count == 1) ? "y" : "ies", this->file);
 	}
-	printf("\n");
+	else
+	{
+		e = this->db->query(this->db,
+				"SELECT id, path FROM directories ORDER BY path",
+				DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &did, &dir))
+			{
+				printf("%4d: %s\n", did, dir);
+				count++;
+			}
+			e->destroy(e);
+		}
+		printf("%d director%s found\n", count, (count == 1) ? "y" : "ies");
+	}
 }
 
 METHOD(attest_db_t, list_packages, void,
@@ -974,20 +1018,23 @@ METHOD(attest_db_t, list_packages, void,
 {
 	enumerator_t *e;
 	char *package, *version;
-	os_package_state_t security;
-	int gid, gid_old = 0, spaces, count = 0, t;
+	os_package_state_t package_state;
+	int blacklist, security, gid, gid_old = 0, spaces, count = 0, t;
 	time_t timestamp;
 
 	if (this->pid)
 	{
 		e = this->db->query(this->db,
-				"SELECT p.id, p.name, v.release, v.security, v.time "
+				"SELECT p.id, p.name, "
+				"v.release, v.security, v.blacklist, v.time "
 				"FROM packages AS p JOIN versions AS v ON v.package = p.id "
 				"WHERE v.product = ? ORDER BY p.name, v.release",
-				DB_INT, this->pid, DB_INT, DB_TEXT, DB_TEXT, DB_INT, DB_INT);
+				DB_INT, this->pid,
+				DB_INT, DB_TEXT, DB_TEXT, DB_INT, DB_INT, DB_INT);
 		if (e)
 		{
-			while (e->enumerate(e, &gid, &package, &version, &security, &t))
+			while (e->enumerate(e, &gid, &package,
+								   &version, &security, &blacklist, &t))
 			{
 				if (gid != gid_old)
 				{
@@ -1003,8 +1050,17 @@ METHOD(attest_db_t, list_packages, void,
 					}
 				}
 				timestamp = t;
+				if (blacklist)
+				{
+					package_state = OS_PACKAGE_STATE_BLACKLIST;
+				}
+				else
+				{
+					package_state = security ? OS_PACKAGE_STATE_SECURITY :
+											   OS_PACKAGE_STATE_UPDATE;
+				}
 				printf(" %T (%s)%N\n", &timestamp, this->utc, version,
-					 os_package_state_names, security);
+					 os_package_state_names, package_state);
 				count++;
 			}
 			e->destroy(e);
@@ -1077,44 +1133,11 @@ METHOD(attest_db_t, list_products, void,
 	}
 
 	printf("%d product%s found", count, (count == 1) ? "" : "s");
-	if (this->file_set)
+	if (this->fid)
 	{
 		printf(" for file '%s'", this->file);
 	}
 	printf("\n");
-}
-
-/**
- * get the directory if there is one from the files tables
- */
-static void get_directory(private_attest_db_t *this, int did, char **directory)
-{
-	enumerator_t *e;
-	char *dir;
-
-	free(*directory);
-	*directory = strdup("");
-
-	if (did)
-	{
-		e = this->db->query(this->db,
-				"SELECT path from files WHERE id = ?",
-				DB_UINT, did, DB_TEXT);
-		if (e)
-		{
-			if (e->enumerate(e, &dir))
-			{
-				free(*directory);
-				*directory = strdup(dir);
-			}
-			e->destroy(e);
-		}
-	}
-}
-
-static bool slash(char *directory, char *file)
-{
-	return *file != '/' && directory[max(0, strlen(directory)-1)] != '/';
 }
 
 METHOD(attest_db_t, list_hashes, void,
@@ -1123,28 +1146,22 @@ METHOD(attest_db_t, list_hashes, void,
 	enumerator_t *e;
 	chunk_t hash;
 	char *file, *dir, *product;
-	int fid, fid_old = 0, did, did_old = 0, count = 0;
+	int id, fid, fid_old = 0, did, did_old = 0, pid, pid_old = 0, count = 0;
 
-	dir = strdup("");
-
-	if (this->pid && this->fid & this->did)
+	if (this->pid && this->fid && this->did)
 	{
+		printf("%4d: %s\n", this->did, this->dir);
+		printf("%4d:   %s\n", this->fid, this->file);
 		e = this->db->query(this->db,
-				"SELECT hash FROM file_hashes "
-				"WHERE algo = ? AND file = ? AND directory = ? AND product = ?",
-				DB_INT, this->algo, DB_INT, this->fid, DB_INT, this->did,
-				DB_INT, this->pid, DB_BLOB);
+				"SELECT id, hash FROM file_hashes "
+				"WHERE algo = ? AND file = ? AND product = ?",
+				DB_INT, this->algo, DB_INT, this->fid, DB_INT, this->pid,
+				DB_INT, DB_BLOB);
 		if (e)
 		{
-			while (e->enumerate(e, &hash))
+			while (e->enumerate(e, &id, &hash))
 			{
-				if (this->fid != fid_old)
-				{
-					printf("%4d: %s%s%s\n", this->fid, this->dir,
-						   slash(this->dir, this->file) ? "/" : "", this->file);
-					fid_old = this->fid;
-				}
-				printf("      %#B\n", &hash);
+				printf("%4d:     %#B\n", id, &hash);
 				count++;
 			}
 			e->destroy(e);
@@ -1154,22 +1171,32 @@ METHOD(attest_db_t, list_hashes, void,
 				   (count == 1) ? "" : "s", this->product);
 		}
 	}
-	else if (this->pid && this->fid)
+	else if (this->pid && this->file)
 	{
 		e = this->db->query(this->db,
-				"SELECT f.path, fh.hash FROM file_hashes AS fh "
-				"JOIN files AS f ON f.id = fh.file "
-				"WHERE algo = ? AND file = ? AND product = ?",
-				DB_INT, this->algo, DB_INT, this->fid, DB_INT, this->pid,
-				DB_TEXT, DB_BLOB);
+				"SELECT h.id, h.hash, f.id, d.id, d.path "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"JOIN directories AS d ON f.dir = d.id "
+				"WHERE h.algo = ? AND h.product = ? AND f.name = ? "
+				"ORDER BY d.path, f.name, h.hash",
+				DB_INT, this->algo, DB_INT, this->pid, DB_TEXT, this->file,
+				DB_INT, DB_BLOB, DB_INT, DB_INT, DB_TEXT);
 		if (e)
 		{
-			free(dir);
-			while (e->enumerate(e, &dir, &hash))
+			while (e->enumerate(e, &id, &hash, &fid, &did, &dir))
 			{
-				printf("%4d: %s%s%s\n", this->fid, dir,
-						   slash(dir, this->file) ? "/" : "", this->file);
-				printf("      %#B\n", &hash);
+				if (did != did_old)
+				{
+					printf("%4d: %s\n", did, dir);
+					did_old = did;
+				}
+				if (fid != fid_old)
+				{
+					printf("%4d:   %s\n", fid, this->file);
+					fid_old = fid;
+				}
+				printf("%4d:     %#B\n", id, &hash);
 				count++;
 			}
 			e->destroy(e);
@@ -1177,35 +1204,64 @@ METHOD(attest_db_t, list_hashes, void,
 			printf("%d %N value%s found for product '%s'\n", count,
 				   pts_meas_algorithm_names, this->algo,
 				   (count == 1) ? "" : "s", this->product);
-			dir = NULL;
+		}
+	}
+	else if (this->pid && this->did)
+	{
+		printf("%4d: %s\n", this->did, this->dir);
+		e = this->db->query(this->db,
+				"SELECT h.id, h.hash, f.id, f.name "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"WHERE h.algo = ? AND h.product = ? AND f.dir = ? "
+				"ORDER BY f.name, h.hash",
+				DB_INT, this->algo, DB_INT, this->pid, DB_INT, this->did,
+				DB_INT, DB_BLOB, DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &id, &hash, &fid, &file))
+			{
+				if (fid != fid_old)
+				{
+					printf("%4d:   %s\n", fid, file);
+					fid_old = fid;
+				}
+				printf("%4d:     %#B\n", id, &hash);
+				count++;
+			}
+			e->destroy(e);
+
+			printf("%d %N value%s found for product '%s'\n", count,
+				   pts_meas_algorithm_names, this->algo,
+				   (count == 1) ? "" : "s", this->product);
 		}
 	}
 	else if (this->pid)
 	{
 		e = this->db->query(this->db,
-				"SELECT f.id, f. f.path, fh.hash, fh.directory "
-				"FROM file_hashes AS fh "
-				"JOIN files AS f ON f.id = fh.file "
-				"WHERE fh.algo = ? AND fh.product = ? "
-				"ORDER BY fh.directory, f.path",
-				DB_INT, this->algo, DB_UINT, this->pid,
-				DB_INT, DB_TEXT, DB_BLOB, DB_INT);
+				"SELECT h.id, h.hash, f.id, f.name, d.id, d.path "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"JOIN directories AS d ON f.dir = d.id "
+				"WHERE h.algo = ? AND h.product = ? "
+				"ORDER BY d.path, f.name, h.hash",
+				DB_INT, this->algo, DB_INT, this->pid,
+				DB_INT, DB_BLOB, DB_INT, DB_TEXT, DB_INT, DB_TEXT);
 		if (e)
 		{
-			while (e->enumerate(e, &fid,  &file, &hash, &did))
+			while (e->enumerate(e, &id, &hash, &fid, &file, &did, &dir))
 			{
-				if (fid != fid_old || did != did_old)
+				if (did != did_old)
 				{
-					if (did != did_old)
-					{
-						get_directory(this, did, &dir);
-					}
-					printf("%4d: %s%s%s\n", fid,
-						   dir, slash(dir, file) ? "/" : "", file);
-					fid_old = fid;
+					printf("%4d: %s\n", did, dir);
 					did_old = did;
 				}
-				printf("      %#B\n", &hash);
+				if (fid != fid_old)
+				{
+					printf("%4d:   %s\n", fid, file);
+					fid_old = fid;
+				}
+				printf("%4d:     %#B\n", id, &hash);
 				count++;
 			}
 			e->destroy(e);
@@ -1215,58 +1271,147 @@ METHOD(attest_db_t, list_hashes, void,
 				   (count == 1) ? "" : "s", this->product);
 		}
 	}
-	else if (this->fid)
+	else if (this->fid && this->did)
 	{
 		e = this->db->query(this->db,
-				"SELECT p.name, fh.hash, fh.directory "
-				"FROM file_hashes AS fh "
-				"JOIN products AS p ON p.id = fh.product "
-				"WHERE fh.algo = ? AND fh.file = ? AND fh.directory = ?"
-				"ORDER BY p.name",
-				DB_INT, this->algo, DB_UINT, this->fid, DB_UINT, this->did,
-				DB_TEXT, DB_BLOB, DB_INT);
+				"SELECT h.id, h.hash, p.id, p.name FROM file_hashes AS h "
+				"JOIN products AS p ON h.product = p.id "
+				"WHERE h.algo = ? AND h.file = ? "
+				"ORDER BY p.name, h.hash",
+				DB_INT, this->algo, DB_INT, this->fid,
+				DB_INT, DB_BLOB, DB_INT, DB_TEXT);
 		if (e)
 		{
-			while (e->enumerate(e, &product, &hash, &did))
+			while (e->enumerate(e, &id, &hash, &pid, &product))
 			{
-				printf("%#B '%s'\n", &hash, product);
+				if (pid != pid_old)
+				{
+					printf("%4d: %s\n", pid, product);
+					pid_old = pid;
+				}
+				printf("%4d:   %#B\n", id, &hash);
 				count++;
 			}
 			e->destroy(e);
 
-			printf("%d %N value%s found for file '%s%s%s'\n",
-				   count, pts_meas_algorithm_names, this->algo,
+			printf("%d %N value%s found for file '%s%s%s'\n", count,
+				   pts_meas_algorithm_names, this->algo,
 				   (count == 1) ? "" : "s", this->dir,
-				   slash(this->dir, this->file) ? "/" : "", this->file);
+				   streq(this->dir, "/") ? "" : "/", this->file);
+		}
+	}
+	else if (this->file)
+	{
+		e = this->db->query(this->db,
+				"SELECT h.id, h.hash, f.id, d.id, d.path, p.id, p.name "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"JOIN directories AS d ON f.dir = d.id "
+				"JOIN products AS p ON h.product = p.id "
+				"WHERE h.algo = ? AND f.name = ? "
+				"ORDER BY d.path, f.name, p.name, h.hash",
+				DB_INT, this->algo, DB_TEXT, this->file,
+				DB_INT, DB_BLOB, DB_INT, DB_INT, DB_TEXT, DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &id, &hash, &fid, &did, &dir, &pid, &product))
+			{
+				if (did != did_old)
+				{
+					printf("%4d: %s\n", did, dir);
+					did_old = did;
+				}
+				if (fid != fid_old)
+				{
+					printf("%4d:   %s\n", fid, this->file);
+					fid_old = fid;
+					pid_old = 0;
+				}
+				if (pid != pid_old)
+				{
+					printf("%4d:     %s\n", pid, product);
+					pid_old = pid;
+				}
+				printf("%4d:     %#B\n", id, &hash);
+				count++;
+			}
+			e->destroy(e);
+
+			printf("%d %N value%s found\n", count, pts_meas_algorithm_names,
+				   this->algo, (count == 1) ? "" : "s");
+		}
+
+	}
+	else if (this->did)
+	{
+		e = this->db->query(this->db,
+				"SELECT h.id, h.hash, f.id, f.name, p.id, p.name "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"JOIN products AS p ON h.product = p.id "
+				"WHERE h.algo = ? AND f.dir = ? "
+				"ORDER BY f.name, p.name, h.hash",
+				DB_INT, this->algo, DB_INT, this->did,
+				DB_INT, DB_BLOB, DB_INT, DB_TEXT, DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &id, &hash, &fid, &file, &pid, &product))
+			{
+				if (fid != fid_old)
+				{
+					printf("%4d: %s\n", fid, file);
+					fid_old = fid;
+					pid_old = 0;
+				}
+				if (pid != pid_old)
+				{
+					printf("%4d:   %s\n", pid, product);
+					pid_old = pid;
+				}
+				printf("%4d:     %#B\n", id, &hash);
+				count++;
+			}
+			e->destroy(e);
+
+			printf("%d %N value%s found for directory '%s'\n", count,
+				   pts_meas_algorithm_names, this->algo,
+				   (count == 1) ? "" : "s", this->dir);
 		}
 	}
 	else
 	{
 		e = this->db->query(this->db,
-				"SELECT f.id, f.path, p.name, fh.hash, fh.directory "
-				"FROM file_hashes AS fh "
-				"JOIN files AS f ON f.id = fh.file "
-				"JOIN products AS p ON p.id = fh.product "
-				"WHERE fh.algo = ? "
-				"ORDER BY fh.directory, f.path, p.name",
-				DB_INT, this->algo,
-				DB_INT, DB_TEXT, DB_TEXT, DB_BLOB, DB_INT);
+				"SELECT h.id, h.hash, f.id, f.name, d.id, d.path, p.id, p.name "
+				"FROM file_hashes AS h "
+				"JOIN files AS f ON h.file = f.id "
+				"JOIN directories AS d ON f.dir = d.id "
+				"JOIN products AS p on h.product = p.id "
+				"WHERE h.algo = ? "
+				"ORDER BY d.path, f.name, p.name, h.hash",
+				DB_INT, this->algo, DB_INT, DB_BLOB, DB_INT, DB_TEXT,
+				DB_INT, DB_TEXT, DB_INT, DB_TEXT);
 		if (e)
 		{
-			while (e->enumerate(e, &fid, &file, &product, &hash, &did))
+			while (e->enumerate(e, &id, &hash, &fid, &file, &did, &dir, &pid,
+								&product))
 			{
-				if (fid != fid_old || did != did_old)
+				if (did != did_old)
 				{
-					if (did != did_old)
-					{
-						get_directory(this, did, &dir);
-						did_old = did;
-					}
-					printf("%4d: %s%s%s\n", fid,
-						   dir, slash(dir, file) ? "/" : "", file);
-					fid_old = fid;
+					printf("%4d: %s\n", did, dir);
+					did_old = did;
 				}
-				printf("      %#B '%s'\n", &hash, product);
+				if (fid != fid_old)
+				{
+					printf("%4d:   %s\n", fid, file);
+					fid_old = fid;
+					pid_old = 0;
+				}
+				if (pid != pid_old)
+				{
+					printf("%4d:     %s\n", pid, product);
+					pid_old = pid;
+				}
+				printf("%4d:       %#B\n", id, &hash);
 				count++;
 			}
 			e->destroy(e);
@@ -1275,7 +1420,6 @@ METHOD(attest_db_t, list_hashes, void,
 				   this->algo, (count == 1) ? "" : "s");
 		}
 	}
-	free(dir);
 }
 
 METHOD(attest_db_t, list_measurements, void,
@@ -1382,9 +1526,50 @@ METHOD(attest_db_t, list_measurements, void,
 	}
 }
 
-bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
-					  chunk_t measurement, int fid, int did, bool ima,
-					  int *hashes_added, int *hashes_updated)
+METHOD(attest_db_t, list_sessions, void,
+	private_attest_db_t *this)
+{
+	enumerator_t *e;
+	chunk_t identity;
+	char *product, *device;
+	int session_id, conn_id, rec, device_len;
+	time_t created;
+	u_int t;
+
+	e = this->db->query(this->db,
+			"SELECT s.id, s.time, s.connection, s.rec, p.name, d.value, i.value "
+			"FROM sessions AS s "
+			"LEFT JOIN products AS p ON s.product = p.id "
+			"LEFT JOIN devices AS d ON s.device = d.id "
+			"LEFT JOIN identities AS i ON s.identity = i.id "
+			"ORDER BY s.time DESC",
+			 DB_INT, DB_UINT, DB_INT, DB_INT, DB_TEXT, DB_TEXT, DB_BLOB);
+	if (e)
+	{
+		while (e->enumerate(e, &session_id, &t, &conn_id, &rec, &product,
+							   &device, &identity))
+		{
+			created = t;
+			product = product ? product : "-";
+			device = strlen(device) ? device : "-";
+			device_len = min(strlen(device), DEVICE_MAX_LEN);
+			identity = identity.len ? identity : chunk_from_str("-");
+			printf("%4d: %T %2d %-20s %.*s%*s%.*s - %N\n", session_id, &created,
+				   FALSE, conn_id, product, device_len, device,
+				   DEVICE_MAX_LEN - device_len + 1, " ", (int)identity.len,
+				   identity.ptr, TNC_IMV_Action_Recommendation_names, rec);
+		}
+		e->destroy(e);
+	}
+}
+
+/**
+ * Insert a file hash into the database
+ */
+static bool insert_file_hash(private_attest_db_t *this,
+							 pts_meas_algorithms_t algo,
+							 chunk_t measurement, int fid, bool ima,
+							 int *hashes_added, int *hashes_updated)
 {
 	enumerator_t *e;
 	chunk_t hash;
@@ -1394,8 +1579,8 @@ bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 
 	e = this->db->query(this->db,
 		"SELECT hash FROM file_hashes WHERE algo = ? "
-		"AND file = ? AND directory = ? AND product = ? and key = 0",
-		DB_INT, algo, DB_UINT, fid, DB_UINT, did, DB_UINT, this->pid, DB_BLOB);
+		"AND file = ? AND product = ? AND device = 0",
+		DB_INT, algo, DB_UINT, fid, DB_UINT, this->pid, DB_BLOB);
 	if (!e)
 	{
 		printf("file_hashes query failed\n");
@@ -1411,8 +1596,8 @@ bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 		{
 			if (this->db->execute(this->db, NULL,
 				"UPDATE file_hashes SET hash = ? WHERE algo = ? "
-				"AND file = ? AND directory = ? AND product = ? and key = 0",
-				DB_BLOB, measurement, DB_INT, algo, DB_UINT, fid, DB_UINT, did,
+				"AND file = ? AND product = ? and device = 0",
+				DB_BLOB, measurement, DB_INT, algo, DB_UINT, fid,
 				DB_UINT, this->pid) == 1)
 			{
 				label = "updated";
@@ -1424,9 +1609,9 @@ bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 	{
 		if (this->db->execute(this->db, NULL,
 			"INSERT INTO file_hashes "
-			"(file, directory, product, key, algo, hash) "
-			"VALUES (?, ?, ?, 0, ?, ?)",
-			DB_UINT, fid, DB_UINT, did, DB_UINT, this->pid,
+			"(file, product, device, algo, hash) "
+			"VALUES (?, ?, 0, ?, ?)",
+			DB_UINT, fid, DB_UINT, this->pid,
 			DB_INT, algo, DB_BLOB, measurement) == 1)
 		{
 			label = "created";
@@ -1436,6 +1621,157 @@ bool insert_file_hash(private_attest_db_t *this, pts_meas_algorithms_t algo,
 	e->destroy(e);
 
 	printf("     %#B - %s%s\n", &measurement, ima ? "ima - " : "", label);
+	return TRUE;
+}
+
+/**
+ * Add hash measurement for a single file or all files in a directory
+ */
+static bool add_hash(private_attest_db_t *this)
+{
+	char *pathname, *filename, *sep, *label, *pos;
+	char ima_buffer[IMA_MAX_NAME_LEN + 1];
+	chunk_t measurement, ima_template;
+	pts_file_meas_t *measurements;
+	hasher_t *hasher = NULL;
+	bool ima = FALSE;
+	int fid, files_added = 0, hashes_added = 0, hashes_updated = 0;
+	int len, ima_hashes_added = 0, ima_hashes_updated = 0;
+	enumerator_t *enumerator, *e;
+
+	if (this->algo == PTS_MEAS_ALGO_SHA1_IMA)
+	{
+		ima = TRUE;
+		this->algo = PTS_MEAS_ALGO_SHA1;
+		hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
+		if (!hasher)
+		{
+			printf("could not create hasher\n");
+			return FALSE;
+		}
+	}
+	sep = streq(this->dir, "/") ? "" : "/";
+
+	if (this->fid)
+	{
+		/* build pathname from directory path and relative filename */
+		if (asprintf(&pathname, "%s%s%s", this->dir, sep, this->file) == -1)
+		{
+			return FALSE;
+		}
+		measurements = pts_file_meas_create_from_path(0, pathname, FALSE,
+													  TRUE, this->algo);
+		free(pathname);
+	}
+	else
+	{
+		measurements = pts_file_meas_create_from_path(0, this->dir, TRUE,
+													  TRUE, this->algo);
+	}
+	if (!measurements)
+	{
+		printf("file measurement failed\n");
+		DESTROY_IF(hasher);
+		return FALSE;
+	}
+
+	enumerator = measurements->create_enumerator(measurements);
+	while (enumerator->enumerate(enumerator, &filename, &measurement))
+	{
+		if (this->fid)
+		{
+			/* a single file already exists */
+			filename = this->file;
+			fid = this->fid;
+			label = "exists";
+		}
+		else
+		{
+			/* retrieve or create filename */
+			label = "could not be created";
+
+			e = this->db->query(this->db,
+				"SELECT id FROM files WHERE name = ? AND dir = ?",
+				DB_TEXT, filename, DB_INT, this->did, DB_INT);
+			if (!e)
+			{
+				printf("files query failed\n");
+				break;
+			}
+			if (e->enumerate(e, &fid))
+			{
+				label = "exists";
+			}
+			else
+			{
+				if (this->db->execute(this->db, &fid,
+					"INSERT INTO files (name, dir) VALUES (?, ?)",
+					DB_TEXT, filename, DB_INT, this->did) == 1)
+				{
+					label = "created";
+					files_added++;
+				}
+			}
+			e->destroy(e);
+		}
+		printf("%4d: %s - %s\n", fid, filename, label);
+
+		/* compute file measurement hash */
+		if (!insert_file_hash(this, this->algo, measurement, fid, FALSE,
+							  &hashes_added, &hashes_updated))
+		{
+			break;
+		}
+		if (!ima)
+		{
+			continue;
+		}
+
+		/* compute IMA template hash */
+		pos = ima_buffer;
+		len = IMA_MAX_NAME_LEN;
+		if (!this->relative)
+		{
+			strncpy(pos, this->dir, len);
+			len = max(0, len - strlen(this->dir));
+			pos = ima_buffer + IMA_MAX_NAME_LEN - len;
+			strncpy(pos, sep, len);
+			len = max(0, len - strlen(sep));
+			pos = ima_buffer + IMA_MAX_NAME_LEN - len;
+		}
+		strncpy(pos, filename, len);
+		ima_buffer[IMA_MAX_NAME_LEN] = '\0';
+		ima_template = chunk_create(ima_buffer, sizeof(ima_buffer));
+		if (!hasher->get_hash(hasher, measurement, NULL) ||
+			!hasher->get_hash(hasher, ima_template, measurement.ptr))
+		{
+			printf("could not compute IMA template hash\n");
+			break;
+		}
+		if (!insert_file_hash(this, PTS_MEAS_ALGO_SHA1_IMA, measurement, fid,
+							  TRUE, &ima_hashes_added, &ima_hashes_updated))
+		{
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	printf("%d measurements, added %d new files, %d file hashes",
+		    measurements->get_file_count(measurements), files_added,
+			hashes_added);
+	if (ima)
+	{
+		printf(", %d ima hashes", ima_hashes_added);
+		hasher->destroy(hasher);
+	}
+	printf(", updated %d file hashes", hashes_updated);
+	if (ima)
+	{
+		printf(", %d ima hashes", ima_hashes_updated);
+	}
+	printf("\n");
+	measurements->destroy(measurements);
+
 	return TRUE;
 }
 
@@ -1460,144 +1796,32 @@ METHOD(attest_db_t, add, bool,
 		return success;
 	}
 
-	/* add directory or file measurement for a given product */
-	if ((this->did || this->fid) && this->pid)
+	/* add directory or file hash measurement for a given product */
+	if (this->did && this->pid)
 	{
-		char *pathname, *filename, *label;
-		char ima_buffer[IMA_MAX_NAME_LEN + 1];
-		chunk_t measurement, ima_template;
-		pts_file_meas_t *measurements;
-		hasher_t *hasher = NULL;
-		bool ima = FALSE;
-		int fid, did;
-		int files_added = 0, hashes_added = 0, hashes_updated = 0;
-		int ima_hashes_added = 0, ima_hashes_updated = 0;
-		enumerator_t *enumerator, *e;
-
-		if (this->algo == PTS_MEAS_ALGO_SHA1_IMA)
-		{
-			ima = TRUE;
-			this->algo = PTS_MEAS_ALGO_SHA1;
-			hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-			if (!hasher)
-			{
-				printf("could not create hasher\n");
-				return FALSE;
-			}
-		}
-
-		pathname = this->did ? this->dir : this->file;
-		measurements = pts_file_meas_create_from_path(0, pathname, this->did,
-												this->relative, this->algo);
-		if (!measurements)
-		{
-			printf("file measurement failed\n");
-			DESTROY_IF(hasher);
-			return FALSE;
-		}
-		if (this->fid && this->relative)
-		{
-			set_directory(this, dirname(pathname), TRUE);
-		}
-		did = this->relative ? this->did : 0;
-
-		enumerator = measurements->create_enumerator(measurements);
-		while (enumerator->enumerate(enumerator, &filename, &measurement))
-		{
-			/* retrieve or create filename */
-			label = "could not be created";
-
-			e = this->db->query(this->db,
-				"SELECT id FROM files WHERE path = ?",
-				DB_TEXT, filename, DB_INT);
-			if (!e)
-			{
-				printf("files query failed\n");
-				break;
-			}
-			if (e->enumerate(e, &fid))
-			{
-				label = "exists";
-			}
-			else
-			{
-				if (this->db->execute(this->db, &fid,
-					"INSERT INTO files (type, path) VALUES (0, ?)",
-					DB_TEXT, filename) == 1)
-				{
-					label = "created";
-					files_added++;
-				}
-			}
-			e->destroy(e);
-
-			printf("%4d: %s - %s\n", fid, filename, label);
-
-			/* compute file measurement hash */
-			if (!insert_file_hash(this, this->algo, measurement,
-								  fid, did, FALSE,
-								  &hashes_added, &hashes_updated))
-			{
-				break;
-			}
-
-			if (!ima)
-			{
-				continue;
-			}
-
-			/* compute IMA template hash */
-			strncpy(ima_buffer, filename, IMA_MAX_NAME_LEN);
-			ima_buffer[IMA_MAX_NAME_LEN] = '\0';
-			ima_template = chunk_create(ima_buffer, sizeof(ima_buffer));
-			if (!hasher->get_hash(hasher, measurement, NULL) ||
-				!hasher->get_hash(hasher, ima_template, measurement.ptr))
-			{
-				printf("could not compute IMA template hash\n");
-				break;
-			}
-			if (!insert_file_hash(this, PTS_MEAS_ALGO_SHA1_IMA, measurement,
-								  fid, did, TRUE,
-								  &ima_hashes_added, &ima_hashes_updated))
-			{
-				break;
-			}
-		}
-		enumerator->destroy(enumerator);
-
-		printf("%d measurements, added %d new files, %d file hashes",
-			    measurements->get_file_count(measurements), files_added,
-				hashes_added);
-		if (ima)
-		{
-			printf(", %d ima hashes", ima_hashes_added);
-			hasher->destroy(hasher);
-		}
-		printf(", updated %d file hashes", hashes_updated);
-		if (ima)
-		{
-			printf(", %d ima hashes", ima_hashes_updated);
-		}
-		printf("\n");
-		measurements->destroy(measurements);
-		success = TRUE;
+		return add_hash(this);
 	}
 
 	/* insert package version */
 	if (this->version_set && this->gid && this->pid)
 	{
 		time_t t = time(NULL);
+		int security, blacklist;
+
+		security =  this->package_state == OS_PACKAGE_STATE_SECURITY;
+		blacklist = this->package_state == OS_PACKAGE_STATE_BLACKLIST;
 
 		success = this->db->execute(this->db, NULL,
 					"INSERT INTO versions "
-					"(package, product, release, security, time) "
-					"VALUES (?, ?, ?, ?, ?)",
-					DB_UINT, this->gid, DB_UINT, this->pid, DB_TEXT,
-					this->version, DB_UINT, this->security, DB_INT, t) == 1;
+					"(package, product, release, security, blacklist, time) "
+					"VALUES (?, ?, ?, ?, ?, ?)",
+					DB_UINT, this->gid, DB_INT, this->pid, DB_TEXT,
+					this->version, DB_INT, security, DB_INT, blacklist,
+					DB_INT, t) == 1;
 
 		printf("'%s' package %s (%s)%N %sinserted into database\n",
 				this->product, this->package, this->version,
-				os_package_state_names, this->security,
+				os_package_state_names, this->package_state,
 				success ? "" : "could not be ");
 	}
 	return success;
@@ -1607,19 +1831,21 @@ METHOD(attest_db_t, delete, bool,
 	private_attest_db_t *this)
 {
 	bool success;
+	int id, count = 0;
+	char *name;
+	enumerator_t *e;
 
 	/* delete a file measurement hash for a given product */
 	if (this->algo && this->pid && this->fid)
 	{
 		success = this->db->execute(this->db, NULL,
 								"DELETE FROM file_hashes "
-								"WHERE algo = ? AND product = ? "
-								"AND file = ? AND directory = ?",
+								"WHERE algo = ? AND product = ? AND file = ?",
 								DB_UINT, this->algo, DB_UINT, this->pid,
-								DB_UINT, this->fid, DB_UINT, this->did) > 0;
+								DB_UINT, this->fid) > 0;
 
-		printf("%4d: %s%s%s\n", this->fid, this->dir, this->did ? "/":"",
-								this->file);
+		printf("%4d: %s%s%s\n", this->fid, this->dir,
+				streq(this->dir, "/") ? "" : "/", this->file);
 		printf("%N value for product '%s' %sdeleted from database\n",
 				pts_meas_algorithm_names, this->algo, this->product,
 				success ? "" : "could not be ");
@@ -1667,24 +1893,44 @@ METHOD(attest_db_t, delete, bool,
 		return success;
 	}
 
-	if (this->did)
-	{
-		success = this->db->execute(this->db, NULL,
-								"DELETE FROM files WHERE type = 1 AND id = ?",
-								DB_UINT, this->did) > 0;
-
-		printf("directory '%s' %sdeleted from database\n", this->dir,
-			   success ? "" : "could not be ");
-		return success;
-	}
-
 	if (this->fid)
 	{
 		success = this->db->execute(this->db, NULL,
 								"DELETE FROM files WHERE id = ?",
 								DB_UINT, this->fid) > 0;
 
-		printf("file '%s' %sdeleted from database\n", this->file,
+		printf("file '%s%s%s' %sdeleted from database\n", this->dir,
+			   streq(this->dir, "/") ? "" : "/", this->file,
+			   success ? "" : "could not be ");
+		return success;
+	}
+
+	if (this->did)
+	{
+		e = this->db->query(this->db,
+				"SELECT id, name FROM files WHERE dir = ? ORDER BY name",
+				DB_INT, this->did, DB_INT, DB_TEXT);
+		if (e)
+		{
+			while (e->enumerate(e, &id, &name))
+			{
+				printf("%4d: %s\n", id, name);
+				count++;
+			}
+			e->destroy(e);
+
+			if (count)
+			{
+				printf("%d dependent file%s found, "
+					   "directory '%s' could not deleted\n",
+					   count, (count == 1) ? "" : "s", this->dir);
+				return FALSE;
+			}
+		}
+		success = this->db->execute(this->db, NULL,
+								"DELETE FROM directories WHERE id = ?",
+								DB_UINT, this->did) > 0;
+		printf("directory '%s' %sdeleted from database\n", this->dir,
 			   success ? "" : "could not be ");
 		return success;
 	}
@@ -1753,23 +1999,24 @@ attest_db_t *attest_db_create(char *uri)
 			.set_version = _set_version,
 			.set_algo = _set_algo,
 			.set_relative = _set_relative,
-			.set_security = _set_security,
+			.set_package_state = _set_package_state,
 			.set_sequence = _set_sequence,
 			.set_owner = _set_owner,
 			.set_utc = _set_utc,
 			.list_packages = _list_packages,
 			.list_products = _list_products,
 			.list_files = _list_files,
+			.list_directories = _list_directories,
 			.list_components = _list_components,
 			.list_devices = _list_devices,
 			.list_keys = _list_keys,
 			.list_hashes = _list_hashes,
 			.list_measurements = _list_measurements,
+			.list_sessions = _list_sessions,
 			.add = _add,
 			.delete = _delete,
 			.destroy = _destroy,
 		},
-		.dir = strdup(""),
 		.db = lib->db->create(lib->db, uri),
 	);
 

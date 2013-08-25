@@ -55,7 +55,8 @@ noinst_PROGRAMS = bin2array$(EXEEXT) bin2sql$(EXEEXT) id2sql$(EXEEXT) \
 	key2keyid$(EXEEXT) keyid2sql$(EXEEXT) oid2der$(EXEEXT) \
 	thread_analysis$(EXEEXT) dh_speed$(EXEEXT) \
 	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) hash_burn$(EXEEXT) \
-	fetch$(EXEEXT) dnssec$(EXEEXT) $(am__EXEEXT_1)
+	fetch$(EXEEXT) dnssec$(EXEEXT) malloc_speed$(EXEEXT) \
+	$(am__EXEEXT_1)
 @USE_TLS_TRUE@am__append_1 = tls_test
 subdir = scripts
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -68,7 +69,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/macros/with.m4 \
 	$(top_srcdir)/m4/macros/enable-disable.m4 \
 	$(top_srcdir)/m4/macros/add-plugin.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -80,6 +81,9 @@ PROGRAMS = $(noinst_PROGRAMS)
 am_bin2array_OBJECTS = bin2array.$(OBJEXT)
 bin2array_OBJECTS = $(am_bin2array_OBJECTS)
 bin2array_LDADD = $(LDADD)
+AM_V_lt = $(am__v_lt_@AM_V@)
+am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+am__v_lt_0 = --silent
 am_bin2sql_OBJECTS = bin2sql.$(OBJEXT)
 bin2sql_OBJECTS = $(am_bin2sql_OBJECTS)
 bin2sql_LDADD = $(LDADD)
@@ -115,6 +119,10 @@ am_keyid2sql_OBJECTS = keyid2sql.$(OBJEXT)
 keyid2sql_OBJECTS = $(am_keyid2sql_OBJECTS)
 keyid2sql_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
+am_malloc_speed_OBJECTS = malloc_speed.$(OBJEXT)
+malloc_speed_OBJECTS = $(am_malloc_speed_OBJECTS)
+malloc_speed_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am_oid2der_OBJECTS = oid2der.$(OBJEXT)
 oid2der_OBJECTS = $(am_oid2der_OBJECTS)
 oid2der_DEPENDENCIES =  \
@@ -137,23 +145,38 @@ am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_@AM_V@)
+am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
+am__v_CC_0 = @echo "  CC    " $@;
+AM_V_at = $(am__v_at_@AM_V@)
+am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
+am__v_at_0 = @
 CCLD = $(CC)
-LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
+LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_@AM_V@)
+am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_@AM_V@)
+am__v_GEN_ = $(am__v_GEN_@AM_DEFAULT_V@)
+am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(dnssec_SOURCES) \
 	$(fetch_SOURCES) $(hash_burn_SOURCES) $(id2sql_SOURCES) \
-	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) $(oid2der_SOURCES) \
+	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
+	$(malloc_speed_SOURCES) $(oid2der_SOURCES) \
 	$(pubkey_speed_SOURCES) $(thread_analysis_SOURCES) \
 	$(tls_test_SOURCES)
 DIST_SOURCES = $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(dnssec_SOURCES) \
 	$(fetch_SOURCES) $(hash_burn_SOURCES) $(id2sql_SOURCES) \
-	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) $(oid2der_SOURCES) \
+	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
+	$(malloc_speed_SOURCES) $(oid2der_SOURCES) \
 	$(pubkey_speed_SOURCES) $(thread_analysis_SOURCES) \
 	$(am__tls_test_SOURCES_DIST)
 am__can_run_installinfo = \
@@ -167,6 +190,7 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -179,6 +203,8 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CHECK_CFLAGS = @CHECK_CFLAGS@
 CHECK_LIBS = @CHECK_LIBS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -194,6 +220,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
@@ -202,6 +229,7 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
@@ -248,6 +276,7 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOCKLIB = @SOCKLIB@
 STRIP = @STRIP@
+UNWINDLIB = @UNWINDLIB@
 VERSION = @VERSION@
 YACC = @YACC@
 YFLAGS = @YFLAGS@
@@ -276,6 +305,7 @@ charon_natt_port = @charon_natt_port@
 charon_plugins = @charon_plugins@
 charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
+cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -353,9 +383,10 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libtls
-AM_CFLAGS = \
--DPLUGINS="\"${scripts_plugins}\""
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libtls \
+	-DPLUGINS="\"${scripts_plugins}\""
 
 @USE_TLS_TRUE@tls_test_SOURCES = tls_test.c
 @USE_TLS_TRUE@tls_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la \
@@ -372,6 +403,7 @@ dh_speed_SOURCES = dh_speed.c
 pubkey_speed_SOURCES = pubkey_speed.c
 crypt_burn_SOURCES = crypt_burn.c
 hash_burn_SOURCES = hash_burn.c
+malloc_speed_SOURCES = malloc_speed.c
 fetch_SOURCES = fetch.c
 dnssec_SOURCES = dnssec.c
 id2sql_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -382,6 +414,7 @@ dh_speed_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la -lrt
 pubkey_speed_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la -lrt
 crypt_burn_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 hash_burn_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
+malloc_speed_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 fetch_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 dnssec_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 all: all-am
@@ -429,46 +462,49 @@ clean-noinstPROGRAMS:
 	rm -f $$list
 bin2array$(EXEEXT): $(bin2array_OBJECTS) $(bin2array_DEPENDENCIES) $(EXTRA_bin2array_DEPENDENCIES) 
 	@rm -f bin2array$(EXEEXT)
-	$(LINK) $(bin2array_OBJECTS) $(bin2array_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(bin2array_OBJECTS) $(bin2array_LDADD) $(LIBS)
 bin2sql$(EXEEXT): $(bin2sql_OBJECTS) $(bin2sql_DEPENDENCIES) $(EXTRA_bin2sql_DEPENDENCIES) 
 	@rm -f bin2sql$(EXEEXT)
-	$(LINK) $(bin2sql_OBJECTS) $(bin2sql_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(bin2sql_OBJECTS) $(bin2sql_LDADD) $(LIBS)
 crypt_burn$(EXEEXT): $(crypt_burn_OBJECTS) $(crypt_burn_DEPENDENCIES) $(EXTRA_crypt_burn_DEPENDENCIES) 
 	@rm -f crypt_burn$(EXEEXT)
-	$(LINK) $(crypt_burn_OBJECTS) $(crypt_burn_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(crypt_burn_OBJECTS) $(crypt_burn_LDADD) $(LIBS)
 dh_speed$(EXEEXT): $(dh_speed_OBJECTS) $(dh_speed_DEPENDENCIES) $(EXTRA_dh_speed_DEPENDENCIES) 
 	@rm -f dh_speed$(EXEEXT)
-	$(LINK) $(dh_speed_OBJECTS) $(dh_speed_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(dh_speed_OBJECTS) $(dh_speed_LDADD) $(LIBS)
 dnssec$(EXEEXT): $(dnssec_OBJECTS) $(dnssec_DEPENDENCIES) $(EXTRA_dnssec_DEPENDENCIES) 
 	@rm -f dnssec$(EXEEXT)
-	$(LINK) $(dnssec_OBJECTS) $(dnssec_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(dnssec_OBJECTS) $(dnssec_LDADD) $(LIBS)
 fetch$(EXEEXT): $(fetch_OBJECTS) $(fetch_DEPENDENCIES) $(EXTRA_fetch_DEPENDENCIES) 
 	@rm -f fetch$(EXEEXT)
-	$(LINK) $(fetch_OBJECTS) $(fetch_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(fetch_OBJECTS) $(fetch_LDADD) $(LIBS)
 hash_burn$(EXEEXT): $(hash_burn_OBJECTS) $(hash_burn_DEPENDENCIES) $(EXTRA_hash_burn_DEPENDENCIES) 
 	@rm -f hash_burn$(EXEEXT)
-	$(LINK) $(hash_burn_OBJECTS) $(hash_burn_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(hash_burn_OBJECTS) $(hash_burn_LDADD) $(LIBS)
 id2sql$(EXEEXT): $(id2sql_OBJECTS) $(id2sql_DEPENDENCIES) $(EXTRA_id2sql_DEPENDENCIES) 
 	@rm -f id2sql$(EXEEXT)
-	$(LINK) $(id2sql_OBJECTS) $(id2sql_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(id2sql_OBJECTS) $(id2sql_LDADD) $(LIBS)
 key2keyid$(EXEEXT): $(key2keyid_OBJECTS) $(key2keyid_DEPENDENCIES) $(EXTRA_key2keyid_DEPENDENCIES) 
 	@rm -f key2keyid$(EXEEXT)
-	$(LINK) $(key2keyid_OBJECTS) $(key2keyid_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(key2keyid_OBJECTS) $(key2keyid_LDADD) $(LIBS)
 keyid2sql$(EXEEXT): $(keyid2sql_OBJECTS) $(keyid2sql_DEPENDENCIES) $(EXTRA_keyid2sql_DEPENDENCIES) 
 	@rm -f keyid2sql$(EXEEXT)
-	$(LINK) $(keyid2sql_OBJECTS) $(keyid2sql_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(keyid2sql_OBJECTS) $(keyid2sql_LDADD) $(LIBS)
+malloc_speed$(EXEEXT): $(malloc_speed_OBJECTS) $(malloc_speed_DEPENDENCIES) $(EXTRA_malloc_speed_DEPENDENCIES) 
+	@rm -f malloc_speed$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(malloc_speed_OBJECTS) $(malloc_speed_LDADD) $(LIBS)
 oid2der$(EXEEXT): $(oid2der_OBJECTS) $(oid2der_DEPENDENCIES) $(EXTRA_oid2der_DEPENDENCIES) 
 	@rm -f oid2der$(EXEEXT)
-	$(LINK) $(oid2der_OBJECTS) $(oid2der_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(oid2der_OBJECTS) $(oid2der_LDADD) $(LIBS)
 pubkey_speed$(EXEEXT): $(pubkey_speed_OBJECTS) $(pubkey_speed_DEPENDENCIES) $(EXTRA_pubkey_speed_DEPENDENCIES) 
 	@rm -f pubkey_speed$(EXEEXT)
-	$(LINK) $(pubkey_speed_OBJECTS) $(pubkey_speed_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(pubkey_speed_OBJECTS) $(pubkey_speed_LDADD) $(LIBS)
 thread_analysis$(EXEEXT): $(thread_analysis_OBJECTS) $(thread_analysis_DEPENDENCIES) $(EXTRA_thread_analysis_DEPENDENCIES) 
 	@rm -f thread_analysis$(EXEEXT)
-	$(LINK) $(thread_analysis_OBJECTS) $(thread_analysis_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(thread_analysis_OBJECTS) $(thread_analysis_LDADD) $(LIBS)
 tls_test$(EXEEXT): $(tls_test_OBJECTS) $(tls_test_DEPENDENCIES) $(EXTRA_tls_test_DEPENDENCIES) 
 	@rm -f tls_test$(EXEEXT)
-	$(LINK) $(tls_test_OBJECTS) $(tls_test_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(tls_test_OBJECTS) $(tls_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -486,31 +522,32 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/id2sql.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/key2keyid.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keyid2sql.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/malloc_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oid2der.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pubkey_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread_analysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls_test.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
 mostlyclean-libtool:
 	-rm -f *.lo

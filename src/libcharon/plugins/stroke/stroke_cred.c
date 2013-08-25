@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2013 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -32,6 +32,7 @@
 #include <credentials/certificates/x509.h>
 #include <credentials/certificates/crl.h>
 #include <credentials/certificates/ac.h>
+#include <credentials/containers/pkcs12.h>
 #include <credentials/sets/mem_cred.h>
 #include <credentials/sets/callback_cred.h>
 #include <collections/linked_list.h>
@@ -72,7 +73,7 @@ struct private_stroke_cred_t {
 
 	/**
 	 * ignore missing CA basic constraint (i.e. treat all certificates in
-	 * ipsec.conf ca sections and ipsec.d/cacert as CA certificates)
+	 * ipsec.conf ca sections and ipsec.d/cacerts as CA certificates)
 	 */
 	bool force_ca_cert;
 
@@ -174,7 +175,7 @@ METHOD(stroke_cred_t, load_ca, certificate_t*,
 	certificate_t *cert = NULL;
 	char path[PATH_MAX];
 
-	if (strneq(filename, "%smartcard", strlen("%smartcard")))
+	if (strpfx(filename, "%smartcard"))
 	{
 		smartcard_format_t format;
 		char module[SC_PART_LEN], keyid[SC_PART_LEN];
@@ -225,7 +226,7 @@ METHOD(stroke_cred_t, load_ca, certificate_t*,
 			cert->destroy(cert);
 			return NULL;
 		}
-		DBG1(DBG_CFG, "  loaded ca certificate \"%Y\" from '%s",
+		DBG1(DBG_CFG, "  loaded ca certificate \"%Y\" from '%s'",
 			 cert->get_subject(cert), filename);
 		return this->creds->add_cert_ref(this->creds, TRUE, cert);
 	}
@@ -238,7 +239,7 @@ METHOD(stroke_cred_t, load_peer, certificate_t*,
 	certificate_t *cert = NULL;
 	char path[PATH_MAX];
 
-	if (strneq(filename, "%smartcard", strlen("%smartcard")))
+	if (strpfx(filename, "%smartcard"))
 	{
 		smartcard_format_t format;
 		char module[SC_PART_LEN], keyid[SC_PART_LEN];
@@ -279,29 +280,45 @@ METHOD(stroke_cred_t, load_peer, certificate_t*,
 }
 
 METHOD(stroke_cred_t, load_pubkey, certificate_t*,
-	private_stroke_cred_t *this, key_type_t type, char *filename,
-	identification_t *identity)
+	private_stroke_cred_t *this, char *filename, identification_t *identity)
 {
 	certificate_t *cert;
+	public_key_t *key;
 	char path[PATH_MAX];
+	builder_part_t build_part;
+	key_type_t type = KEY_ANY;
 
 	if (streq(filename, "%dns"))
 	{
-
+		return NULL;
 	}
-	else if (strncaseeq(filename, "0x", 2) || strncaseeq(filename, "0s", 2))
+	if (strncaseeq(filename, "dns:", 4))
+	{	/* RFC 3110 format */
+		build_part = BUILD_BLOB_DNSKEY;
+		/* not a complete RR, only RSA supported */
+		type = KEY_RSA;
+		filename += 4;
+	}
+	else if (strncaseeq(filename, "ssh:", 4))
+	{	/* SSH key */
+		build_part = BUILD_BLOB_SSHKEY;
+		filename += 4;
+	}
+	else
+	{	/* try PKCS#1 by default */
+		build_part = BUILD_BLOB_ASN1_DER;
+	}
+	if (strncaseeq(filename, "0x", 2) || strncaseeq(filename, "0s", 2))
 	{
-		chunk_t printable_key, rfc3110_key;
-		public_key_t *key;
+		chunk_t printable_key, raw_key;
 
 		printable_key = chunk_create(filename + 2, strlen(filename) - 2);
-		rfc3110_key = strncaseeq(filename, "0x", 2) ?
+		raw_key = strncaseeq(filename, "0x", 2) ?
 								 chunk_from_hex(printable_key, NULL) :
 								 chunk_from_base64(printable_key, NULL);
-		key = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, KEY_RSA,
-								 BUILD_BLOB_DNSKEY, rfc3110_key,
-								 BUILD_END);
-		free(rfc3110_key.ptr);
+		key = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, type,
+								 build_part, raw_key, BUILD_END);
+		chunk_free(&raw_key);
 		if (key)
 		{
 			cert = lib->creds->create(lib->creds, CRED_CERTIFICATE,
@@ -309,6 +326,7 @@ METHOD(stroke_cred_t, load_pubkey, certificate_t*,
 									  BUILD_PUBLIC_KEY, key,
 									  BUILD_SUBJECT, identity,
 									  BUILD_END);
+			type = key->get_type(key);
 			key->destroy(key);
 			if (cert)
 			{
@@ -318,8 +336,7 @@ METHOD(stroke_cred_t, load_pubkey, certificate_t*,
 				return cert;
 			}
 		}
-		DBG1(DBG_CFG, "  loading %N public key for \"%Y\" failed",
-			 key_type_names, type, identity);
+		DBG1(DBG_CFG, "  loading public key for \"%Y\" failed", identity);
 	}
 	else
 	{
@@ -340,12 +357,15 @@ METHOD(stroke_cred_t, load_pubkey, certificate_t*,
 		if (cert)
 		{
 			cert = this->creds->add_cert_ref(this->creds, TRUE, cert);
+			key = cert->get_public_key(cert);
+			type = key->get_type(key);
+			key->destroy(key);
 			DBG1(DBG_CFG, "  loaded %N public key for \"%Y\" from '%s'",
 				 key_type_names, type, identity, filename);
 			return cert;
 		}
-		DBG1(DBG_CFG, "  loading %N public key for \"%Y\" from '%s' failed",
-			 key_type_names, type, identity, filename);
+		DBG1(DBG_CFG, "  loading public key for \"%Y\" from '%s' failed",
+			 identity, filename);
 	}
 	return NULL;
 }
@@ -580,8 +600,12 @@ static err_t extract_secret(chunk_t *secret, chunk_t *line)
  * Data for passphrase callback
  */
 typedef struct {
+	/** cached passphrases */
+	mem_cred_t *cache;
 	/** socket we use for prompting */
 	FILE *prompt;
+	/** type of secret to unlock */
+	int type;
 	/** private key file */
 	char *path;
 	/** number of tries */
@@ -589,13 +613,15 @@ typedef struct {
 } passphrase_cb_data_t;
 
 /**
- * Callback function to receive Passphrases
+ * Callback function to receive passphrases
  */
 static shared_key_t* passphrase_cb(passphrase_cb_data_t *data,
-								shared_key_type_t type,
-								identification_t *me, identification_t *other,
-								id_match_t *match_me, id_match_t *match_other)
+								   shared_key_type_t type, identification_t *me,
+								   identification_t *other, id_match_t *match_me,
+								   id_match_t *match_other)
 {
+	static const int max_tries = 3;
+	shared_key_t *shared;
 	chunk_t secret;
 	char buf[256];
 
@@ -604,17 +630,23 @@ static shared_key_t* passphrase_cb(passphrase_cb_data_t *data,
 		return NULL;
 	}
 
+	data->try++;
+	if (data->try > max_tries + 1)
+	{	/* another builder might call this after we gave up, fail silently */
+		return NULL;
+	}
+	if (data->try > max_tries)
+	{
+		fprintf(data->prompt, "Passphrase invalid, giving up.\n");
+		return NULL;
+	}
 	if (data->try > 1)
 	{
-		if (data->try > 5)
-		{
-			fprintf(data->prompt, "PIN invalid, giving up.\n");
-			return NULL;
-		}
-		fprintf(data->prompt, "PIN invalid!\n");
+		fprintf(data->prompt, "Passphrase invalid!\n");
 	}
-	data->try++;
-	fprintf(data->prompt, "Private key '%s' is encrypted.\n", data->path);
+	fprintf(data->prompt, "%s '%s' is encrypted.\n",
+			data->type == CRED_PRIVATE_KEY ? "Private key" : "PKCS#12 file",
+			data->path);
 	fprintf(data->prompt, "Passphrase:\n");
 	if (fgets(buf, sizeof(buf), data->prompt))
 	{
@@ -630,7 +662,10 @@ static shared_key_t* passphrase_cb(passphrase_cb_data_t *data,
 			{
 				*match_other = ID_MATCH_NONE;
 			}
-			return shared_key_create(SHARED_PRIVATE_KEY_PASS, chunk_clone(secret));
+			shared = shared_key_create(SHARED_PRIVATE_KEY_PASS,
+									   chunk_clone(secret));
+			data->cache->add_shared(data->cache, shared->get_ref(shared), NULL);
+			return shared;
 		}
 	}
 	return NULL;
@@ -670,12 +705,12 @@ static shared_key_t* pin_cb(pin_cb_data_t *data, shared_key_type_t type,
 		return NULL;
 	}
 
+	data->try++;
 	if (data->try > 1)
 	{
 		fprintf(data->prompt, "PIN invalid, aborting.\n");
 		return NULL;
 	}
-	data->try++;
 	fprintf(data->prompt, "Login to '%s' required\n", data->card);
 	fprintf(data->prompt, "PIN:\n");
 	if (fgets(buf, sizeof(buf), data->prompt))
@@ -752,7 +787,7 @@ static bool load_pin(mem_cred_t *secrets, chunk_t line, int line_nr,
 	}
 
 	chunk = chunk_from_hex(chunk_create(keyid, strlen(keyid)), NULL);
-	if (secret.len == 7 && strneq(secret.ptr, "%prompt", 7))
+	if (secret.len == 7 && strpfx(secret.ptr, "%prompt"))
 	{
 		free(secret.ptr);
 		if (!prompt)
@@ -764,7 +799,7 @@ static bool load_pin(mem_cred_t *secrets, chunk_t line, int line_nr,
 		pin_data.prompt = prompt;
 		pin_data.card = smartcard;
 		pin_data.keyid = chunk;
-		pin_data.try = 1;
+		pin_data.try = 0;
 		cb = callback_cred_create_shared((void*)pin_cb, &pin_data);
 		lib->credmgr->add_local_set(lib->credmgr, &cb->set, FALSE);
 	}
@@ -802,15 +837,14 @@ static bool load_pin(mem_cred_t *secrets, chunk_t line, int line_nr,
 }
 
 /**
- * Load a private key
+ * Load a private key or PKCS#12 container from a file
  */
-static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
-						 FILE *prompt, key_type_t key_type)
+static bool load_from_file(chunk_t line, int line_nr, FILE *prompt,
+						   char *path, int type, int subtype,
+						   void **result)
 {
-	char path[PATH_MAX];
 	chunk_t filename;
 	chunk_t secret = chunk_empty;
-	private_key_t *key;
 
 	err_t ugh = extract_value(&filename, &line);
 
@@ -827,12 +861,12 @@ static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
 	if (*filename.ptr == '/')
 	{
 		/* absolute path name */
-		snprintf(path, sizeof(path), "%.*s", (int)filename.len, filename.ptr);
+		snprintf(path, PATH_MAX, "%.*s", (int)filename.len, filename.ptr);
 	}
 	else
 	{
 		/* relative path name */
-		snprintf(path, sizeof(path), "%s/%.*s", PRIVATE_KEY_DIR,
+		snprintf(path, PATH_MAX, "%s/%.*s", PRIVATE_KEY_DIR,
 				 (int)filename.len, filename.ptr);
 	}
 
@@ -846,32 +880,37 @@ static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
 			return FALSE;
 		}
 	}
-	if (secret.len == 7 && strneq(secret.ptr, "%prompt", 7))
+	if (secret.len == 7 && strpfx(secret.ptr, "%prompt"))
 	{
-		callback_cred_t *cb = NULL;
+		callback_cred_t *cb;
 		passphrase_cb_data_t pp_data = {
 			.prompt = prompt,
+			.type = type,
 			.path = path,
-			.try = 1,
+			.try = 0,
 		};
 
 		free(secret.ptr);
 		if (!prompt)
 		{
+			*result = NULL;
 			return TRUE;
 		}
+		/* add cache first so if valid passphrases are needed multiple times
+		 * the callback is not called anymore */
+		pp_data.cache = mem_cred_create();
+		lib->credmgr->add_local_set(lib->credmgr, &pp_data.cache->set, FALSE);
 		/* use callback credential set to prompt for the passphrase */
-		pp_data.prompt = prompt;
-		pp_data.path = path;
-		pp_data.try = 1;
 		cb = callback_cred_create_shared((void*)passphrase_cb, &pp_data);
 		lib->credmgr->add_local_set(lib->credmgr, &cb->set, FALSE);
 
-		key = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, key_type,
-								 BUILD_FROM_FILE, path, BUILD_END);
+		*result = lib->creds->create(lib->creds, type, subtype,
+									 BUILD_FROM_FILE, path, BUILD_END);
 
 		lib->credmgr->remove_local_set(lib->credmgr, &cb->set);
 		cb->destroy(cb);
+		lib->credmgr->remove_local_set(lib->credmgr, &pp_data.cache->set);
+		pp_data.cache->destroy(pp_data.cache);
 	}
 	else
 	{
@@ -882,13 +921,43 @@ static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
 		shared = shared_key_create(SHARED_PRIVATE_KEY_PASS, secret);
 		mem = mem_cred_create();
 		mem->add_shared(mem, shared, NULL);
+		if (eat_whitespace(&line))
+		{	/* if there is a second passphrase add that too, could be needed for
+			 * PKCS#12 files using different passwords for MAC and encryption */
+			ugh = extract_secret(&secret, &line);
+			if (ugh != NULL)
+			{
+				DBG1(DBG_CFG, "line %d: malformed passphrase: %s", line_nr, ugh);
+				mem->destroy(mem);
+				return FALSE;
+			}
+			shared = shared_key_create(SHARED_PRIVATE_KEY_PASS, secret);
+			mem->add_shared(mem, shared, NULL);
+		}
 		lib->credmgr->add_local_set(lib->credmgr, &mem->set, FALSE);
 
-		key = lib->creds->create(lib->creds, CRED_PRIVATE_KEY, key_type,
-								 BUILD_FROM_FILE, path, BUILD_END);
+		*result = lib->creds->create(lib->creds, type, subtype,
+									 BUILD_FROM_FILE, path, BUILD_END);
 
 		lib->credmgr->remove_local_set(lib->credmgr, &mem->set);
 		mem->destroy(mem);
+	}
+	return TRUE;
+}
+
+/**
+ * Load a private key
+ */
+static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
+						 FILE *prompt, key_type_t key_type)
+{
+	char path[PATH_MAX];
+	private_key_t *key;
+
+	if (!load_from_file(line, line_nr, prompt, path, CRED_PRIVATE_KEY,
+						key_type, (void**)&key))
+	{
+		return FALSE;
 	}
 	if (key)
 	{
@@ -900,6 +969,58 @@ static bool load_private(mem_cred_t *secrets, chunk_t line, int line_nr,
 	{
 		DBG1(DBG_CFG, "  loading private key from '%s' failed", path);
 	}
+	return TRUE;
+}
+
+/**
+ * Load a PKCS#12 container
+ */
+static bool load_pkcs12(private_stroke_cred_t *this, mem_cred_t *secrets,
+						chunk_t line, int line_nr, FILE *prompt)
+{
+	enumerator_t *enumerator;
+	char path[PATH_MAX];
+	certificate_t *cert;
+	private_key_t *key;
+	pkcs12_t *pkcs12;
+
+	if (!load_from_file(line, line_nr, prompt, path, CRED_CONTAINER,
+						CONTAINER_PKCS12, (void**)&pkcs12))
+	{
+		return FALSE;
+	}
+	if (!pkcs12)
+	{
+		DBG1(DBG_CFG, "  loading credentials from '%s' failed", path);
+		return TRUE;
+	}
+	enumerator = pkcs12->create_cert_enumerator(pkcs12);
+	while (enumerator->enumerate(enumerator, &cert))
+	{
+		x509_t *x509 = (x509_t*)cert;
+
+		if (x509->get_flags(x509) & X509_CA)
+		{
+			DBG1(DBG_CFG, "  loaded ca certificate \"%Y\" from '%s'",
+				 cert->get_subject(cert), path);
+		}
+		else
+		{
+			DBG1(DBG_CFG, "  loaded certificate \"%Y\" from '%s'",
+				 cert->get_subject(cert), path);
+		}
+		this->creds->add_cert(this->creds, TRUE, cert->get_ref(cert));
+	}
+	enumerator->destroy(enumerator);
+	enumerator = pkcs12->create_key_enumerator(pkcs12);
+	while (enumerator->enumerate(enumerator, &key))
+	{
+		DBG1(DBG_CFG, "  loaded %N private key from '%s'",
+			 key_type_names, key->get_type(key), path);
+		secrets->add_key(secrets, key->get_ref(key));
+	}
+	enumerator->destroy(enumerator);
+	pkcs12->container.destroy(&pkcs12->container);
 	return TRUE;
 }
 
@@ -1021,8 +1142,7 @@ static void load_secrets(private_stroke_cred_t *this, mem_cred_t *secrets,
 		{
 			continue;
 		}
-		if (line.len > strlen("include ") &&
-			strneq(line.ptr, "include ", strlen("include ")))
+		if (line.len > strlen("include ") && strpfx(line.ptr, "include "))
 		{
 			char **expanded, *dir, pattern[PATH_MAX];
 			u_char *pos;
@@ -1090,7 +1210,7 @@ static void load_secrets(private_stroke_cred_t *this, mem_cred_t *secrets,
 			continue;
 		}
 
-		if (line.len > 2 && strneq(": ", line.ptr, 2))
+		if (line.len > 2 && strpfx(line.ptr, ": "))
 		{
 			/* no ids, skip the ':' */
 			ids = chunk_empty;
@@ -1121,6 +1241,13 @@ static void load_secrets(private_stroke_cred_t *this, mem_cred_t *secrets,
 				break;
 			}
 		}
+		else if (match("P12", &token))
+		{
+			if (!load_pkcs12(this, secrets, line, line_nr, prompt))
+			{
+				break;
+			}
+		}
 		else if (match("PIN", &token))
 		{
 			if (!load_pin(secrets, line, line_nr, prompt))
@@ -1141,7 +1268,7 @@ static void load_secrets(private_stroke_cred_t *this, mem_cred_t *secrets,
 		else
 		{
 			DBG1(DBG_CFG, "line %d: token must be either "
-				 "RSA, ECDSA, PSK, EAP, XAUTH or PIN", line_nr);
+				 "RSA, ECDSA, P12, PIN, PSK, EAP, XAUTH or NTLM", line_nr);
 			break;
 		}
 	}

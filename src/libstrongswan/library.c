@@ -80,6 +80,8 @@ void library_deinit()
 	/* make sure the cache is clear before unloading plugins */
 	lib->credmgr->flush_cache(lib->credmgr, CERT_ANY);
 
+	this->public.streams->destroy(this->public.streams);
+	this->public.watcher->destroy(this->public.watcher);
 	this->public.scheduler->destroy(this->public.scheduler);
 	this->public.processor->destroy(this->public.processor);
 	this->public.plugins->destroy(this->public.plugins);
@@ -89,6 +91,7 @@ void library_deinit()
 	this->public.creds->destroy(this->public.creds);
 	this->public.encoding->destroy(this->public.encoding);
 	this->public.crypto->destroy(this->public.crypto);
+	this->public.caps->destroy(this->public.caps);
 	this->public.proposal->destroy(this->public.proposal);
 	this->public.fetcher->destroy(this->public.fetcher);
 	this->public.resolver->destroy(this->public.resolver);
@@ -151,18 +154,22 @@ static bool equals(char *a, char *b)
 }
 
 /**
+ * Number of words we write and memwipe() in memwipe check
+ */
+#define MEMWIPE_WIPE_WORDS 16
+
+/**
  * Write magic to memory, and try to clear it with memwipe()
  */
 __attribute__((noinline))
-static void do_magic(int magic, int **stack)
+static void do_magic(int *magic, int **out)
 {
-	int buf[32], i;
+	int buf[MEMWIPE_WIPE_WORDS], i;
 
-	/* tell caller where callee stack is (but don't point to buf) */
-	*stack = &i;
+	*out = buf;
 	for (i = 0; i < countof(buf); i++)
 	{
-		buf[i] = magic;
+		buf[i] = *magic;
 	}
 	/* passing buf to dbg should make sure the compiler can't optimize out buf.
 	 * we use directly dbg(3), as DBG3() might be stripped with DEBUG_LEVEL. */
@@ -175,20 +182,16 @@ static void do_magic(int magic, int **stack)
  */
 static bool check_memwipe()
 {
-	int magic = 0xCAFEBABE, *ptr, *deeper, i, stackdir = 1;
+	int magic = 0xCAFEBABE, *buf, i;
 
-	do_magic(magic, &deeper);
+	do_magic(&magic, &buf);
 
-	ptr = &magic;
-	if (deeper < ptr)
-	{	/* stack grows down */
-		stackdir = -1;
-	}
-	for (i = 0; i < 128; i++)
+	for (i = 0; i < MEMWIPE_WIPE_WORDS; i++)
 	{
-		ptr = ptr + stackdir;
-		if (*ptr == magic)
+		if (buf[i] == magic)
 		{
+			DBG1(DBG_LIB, "memwipe() check failed: stackdir: %b",
+				 buf, MEMWIPE_WIPE_WORDS * sizeof(int));
 			return FALSE;
 		}
 	}
@@ -255,6 +258,7 @@ bool library_init(char *settings)
 	this->public.settings = settings_create(settings);
 	this->public.hosts = host_resolver_create();
 	this->public.proposal = proposal_keywords_create();
+	this->public.caps = capabilities_create();
 	this->public.crypto = crypto_factory_create();
 	this->public.creds = credential_factory_create();
 	this->public.credmgr = credential_manager_create();
@@ -264,11 +268,12 @@ bool library_init(char *settings)
 	this->public.db = database_factory_create();
 	this->public.processor = processor_create();
 	this->public.scheduler = scheduler_create();
+	this->public.watcher = watcher_create();
+	this->public.streams = stream_manager_create();
 	this->public.plugins = plugin_loader_create();
 
 	if (!check_memwipe())
 	{
-		DBG1(DBG_LIB, "memwipe() check failed");
 		return FALSE;
 	}
 

@@ -1,4 +1,4 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
@@ -102,6 +102,9 @@
 
 /* Define to 1 if you have the `gmp' library (-lgmp). */
 #undef HAVE_LIBGMP
+
+/* have libunwind.h */
+#undef HAVE_LIBUNWIND_H
 
 /* Define to 1 if you have the <linux/udp.h> header file. */
 #undef HAVE_LINUX_UDP_H

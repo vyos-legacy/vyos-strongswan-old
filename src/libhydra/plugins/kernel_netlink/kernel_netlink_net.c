@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2013 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -50,7 +50,6 @@
 
 #include <hydra.h>
 #include <utils/debug.h>
-#include <threading/thread.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
 #include <threading/rwlock_condvar.h>
@@ -67,6 +66,14 @@
 
 /** maximum recursion when searching for addresses in get_route() */
 #define MAX_ROUTE_RECURSION 2
+
+#ifndef ROUTING_TABLE
+#define ROUTING_TABLE 0
+#endif
+
+#ifndef ROUTING_TABLE_PRIO
+#define ROUTING_TABLE_PRIO 0
+#endif
 
 typedef struct addr_entry_t addr_entry_t;
 
@@ -257,7 +264,7 @@ static route_entry_t *route_entry_clone(route_entry_t *this)
 	INIT(route,
 		.if_name = strdup(this->if_name),
 		.src_ip = this->src_ip->clone(this->src_ip),
-		.gateway = this->gateway->clone(this->gateway),
+		.gateway = this->gateway ? this->gateway->clone(this->gateway) : NULL,
 		.dst_net = chunk_clone(this->dst_net),
 		.prefixlen = this->prefixlen,
 	);
@@ -290,10 +297,14 @@ static u_int route_entry_hash(route_entry_t *this)
  */
 static bool route_entry_equals(route_entry_t *a, route_entry_t *b)
 {
-	return a->if_name && b->if_name && streq(a->if_name, b->if_name) &&
-		   a->src_ip->ip_equals(a->src_ip, b->src_ip) &&
-		   a->gateway->ip_equals(a->gateway, b->gateway) &&
-		   chunk_equals(a->dst_net, b->dst_net) && a->prefixlen == b->prefixlen;
+	if (a->if_name && b->if_name && streq(a->if_name, b->if_name) &&
+		a->src_ip->ip_equals(a->src_ip, b->src_ip) &&
+		chunk_equals(a->dst_net, b->dst_net) && a->prefixlen == b->prefixlen)
+	{
+		return (!a->gateway && !b->gateway) || (a->gateway && b->gateway &&
+					a->gateway->ip_equals(a->gateway, b->gateway));
+	}
+	return FALSE;
 }
 
 typedef struct net_change_t net_change_t;
@@ -426,6 +437,11 @@ struct private_kernel_netlink_net_t {
 	 * whether to react to RTM_NEWROUTE or RTM_DELROUTE events
 	 */
 	bool process_route;
+
+	/**
+	 * whether to trigger roam events
+	 */
+	bool roam_events;
 
 	/**
 	 * whether to actually install virtual IPs
@@ -694,6 +710,11 @@ static void fire_roam_event(private_kernel_netlink_net_t *this, bool address)
 {
 	timeval_t now;
 	job_t *job;
+
+	if (!this->roam_events)
+	{
+		return;
+	}
 
 	time_monotonic(&now);
 	this->roam_lock->lock(this->roam_lock);
@@ -1057,40 +1078,37 @@ static void process_route(private_kernel_netlink_net_t *this, struct nlmsghdr *h
 /**
  * Receives events from kernel
  */
-static job_requeue_t receive_events(private_kernel_netlink_net_t *this)
+static bool receive_events(private_kernel_netlink_net_t *this, int fd,
+						   watcher_event_t event)
 {
 	char response[1024];
 	struct nlmsghdr *hdr = (struct nlmsghdr*)response;
 	struct sockaddr_nl addr;
 	socklen_t addr_len = sizeof(addr);
 	int len;
-	bool oldstate;
 
-	oldstate = thread_cancelability(TRUE);
-	len = recvfrom(this->socket_events, response, sizeof(response), 0,
-				   (struct sockaddr*)&addr, &addr_len);
-	thread_cancelability(oldstate);
-
+	len = recvfrom(this->socket_events, response, sizeof(response),
+				   MSG_DONTWAIT, (struct sockaddr*)&addr, &addr_len);
 	if (len < 0)
 	{
 		switch (errno)
 		{
 			case EINTR:
 				/* interrupted, try again */
-				return JOB_REQUEUE_DIRECT;
+				return TRUE;
 			case EAGAIN:
 				/* no data ready, select again */
-				return JOB_REQUEUE_DIRECT;
+				return TRUE;
 			default:
 				DBG1(DBG_KNL, "unable to receive from rt event socket");
 				sleep(1);
-				return JOB_REQUEUE_FAIR;
+				return TRUE;
 		}
 	}
 
 	if (addr.nl_pid != 0)
 	{	/* not from kernel. not interested, try another one */
-		return JOB_REQUEUE_DIRECT;
+		return TRUE;
 	}
 
 	while (NLMSG_OK(hdr, len))
@@ -1118,7 +1136,7 @@ static job_requeue_t receive_events(private_kernel_netlink_net_t *this)
 		}
 		hdr = NLMSG_NEXT(hdr, len);
 	}
-	return JOB_REQUEUE_DIRECT;
+	return TRUE;
 }
 
 /** enumerator over addresses */
@@ -1145,6 +1163,10 @@ static bool filter_addresses(address_enumerator_t *data,
 {
 	if (!(data->which & ADDR_TYPE_VIRTUAL) && (*in)->refcount)
 	{	/* skip virtual interfaces added by us */
+		return FALSE;
+	}
+	if (!(data->which & ADDR_TYPE_REGULAR) && !(*in)->refcount)
+	{	/* address is regular, but not requested */
 		return FALSE;
 	}
 	if ((*in)->scope >= RT_SCOPE_LINK)
@@ -1191,9 +1213,12 @@ static bool filter_interfaces(address_enumerator_t *data, iface_entry_t** in,
 METHOD(kernel_net_t, create_address_enumerator, enumerator_t*,
 	private_kernel_netlink_net_t *this, kernel_address_type_t which)
 {
-	address_enumerator_t *data = malloc_thing(address_enumerator_t);
-	data->this = this;
-	data->which = which;
+	address_enumerator_t *data;
+
+	INIT(data,
+		.this = this,
+		.which = which,
+	);
 
 	this->lock->read_lock(this->lock);
 	return enumerator_create_nested(
@@ -1237,7 +1262,7 @@ METHOD(kernel_net_t, get_interface_name, bool,
 		if (name)
 		{
 			*name = strdup(entry->iface->ifname);
-			DBG2(DBG_KNL, "virtual %H is on interface %s", ip, *name);
+			DBG2(DBG_KNL, "virtual IP %H is on interface %s", ip, *name);
 		}
 		this->lock->unlock(this->lock);
 		return TRUE;
@@ -2146,6 +2171,7 @@ METHOD(kernel_net_t, destroy, void,
 	}
 	if (this->socket_events > 0)
 	{
+		lib->watcher->remove(lib->watcher, this->socket_events);
 		close(this->socket_events);
 	}
 	enumerator = this->routes->create_enumerator(this->routes);
@@ -2227,6 +2253,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 				"%s.install_virtual_ip", TRUE, hydra->daemon),
 		.install_virtual_ip_on = lib->settings->get_str(lib->settings,
 				"%s.install_virtual_ip_on", NULL, hydra->daemon),
+		.roam_events = lib->settings->get_bool(lib->settings,
+				"%s.plugins.kernel-netlink.roam_events", TRUE, hydra->daemon),
 	);
 	timerclear(&this->last_route_reinstall);
 	timerclear(&this->next_roam);
@@ -2283,10 +2311,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 			return NULL;
 		}
 
-		lib->processor->queue_job(lib->processor,
-			(job_t*)callback_job_create_with_prio(
-					(callback_job_cb_t)receive_events, this, NULL,
-					(callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
+		lib->watcher->add(lib->watcher, this->socket_events, WATCHER_READ,
+						  (watcher_cb_t)receive_events, this);
 	}
 
 	if (init_address_list(this) != SUCCESS)

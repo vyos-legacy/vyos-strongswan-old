@@ -17,6 +17,8 @@
 #include "imv/imv_lang_string.h"
 #include "imv/imv_reason_string.h"
 
+#include <tncif_policy.h>
+
 #include <utils/lexparser.h>
 #include <collections/linked_list.h>
 #include <utils/debug.h>
@@ -67,6 +69,11 @@ struct private_imv_test_state_t {
 	 * Access Requestor ID Value
 	 */
 	chunk_t ar_id_value;
+
+	/**
+	 * IMV database session associated with TNCCS connection
+	 */
+	imv_session_t *session;
 
 	/**
 	 * IMV action recommendation
@@ -170,6 +177,18 @@ METHOD(imv_state_t, get_ar_id, chunk_t,
 	return this->ar_id_value;
 }
 
+METHOD(imv_state_t, set_session, void,
+	private_imv_test_state_t *this, imv_session_t *session)
+{
+	this->session = session;
+}
+
+METHOD(imv_state_t, get_session, imv_session_t*,
+	private_imv_test_state_t *this)
+{
+	return this->session;
+}
+
 METHOD(imv_state_t, change_state, void,
 	private_imv_test_state_t *this, TNC_ConnectionState new_state)
 {
@@ -190,6 +209,14 @@ METHOD(imv_state_t, set_recommendation, void,
 {
 	this->rec = rec;
 	this->eval = eval;
+}
+
+METHOD(imv_state_t, update_recommendation, void,
+	private_imv_test_state_t *this, TNC_IMV_Action_Recommendation rec,
+									TNC_IMV_Evaluation_Result eval)
+{
+	this->rec  = tncif_policy_update_recommendation(this->rec, rec);
+	this->eval = tncif_policy_update_evaluation(this->eval, eval);
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
@@ -218,6 +245,7 @@ METHOD(imv_state_t, get_remediation_instructions, bool,
 METHOD(imv_state_t, destroy, void,
 	private_imv_test_state_t *this)
 {
+	DESTROY_IF(this->session);
 	DESTROY_IF(this->reason_string);
 	this->imcs->destroy_function(this->imcs, free);
 	free(this->ar_id_value.ptr);
@@ -307,9 +335,12 @@ imv_state_t *imv_test_state_create(TNC_ConnectionID connection_id)
 				.get_max_msg_len = _get_max_msg_len,
 				.set_ar_id = _set_ar_id,
 				.get_ar_id = _get_ar_id,
+				.set_session = _set_session,
+				.get_session = _get_session,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
+				.update_recommendation = _update_recommendation,
 				.get_reason_string = _get_reason_string,
 				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,

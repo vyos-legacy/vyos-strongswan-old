@@ -128,13 +128,11 @@ endif
 
 daemon.lo :		$(top_builddir)/config.status
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I${linux_headers} \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
-	-I$(top_srcdir)/src/libcharon
-
-AM_CFLAGS = \
+	-I$(top_srcdir)/src/libcharon \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
 	-DIPSEC_PIDDIR=\"${piddir}\"
 
@@ -457,6 +455,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_OSX_ATTR
+  SUBDIRS += plugins/osx_attr
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/osx_attr/libstrongswan-osx-attr.la
+endif
+endif
+
 if USE_ANDROID_DNS
   SUBDIRS += plugins/android_dns
 if MONOLITHIC
@@ -482,6 +487,13 @@ if USE_HA
   SUBDIRS += plugins/ha
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/ha/libstrongswan-ha.la
+endif
+endif
+
+if USE_KERNEL_LIBIPSEC
+  SUBDIRS += plugins/kernel_libipsec
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
 endif
 endif
 
