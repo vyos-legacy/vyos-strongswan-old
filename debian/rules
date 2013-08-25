@@ -155,4 +155,4 @@ override_dh_installlogcheck:
 	dh_installlogcheck --name strongswan
 
 %:
-	dh $@ --parallel
+	dh $@ --parallel --with autoreconf
