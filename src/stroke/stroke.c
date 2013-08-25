@@ -36,6 +36,8 @@ struct stroke_token {
     stroke_keyword_t kw;
 };
 
+static int output_verbosity = 1; /* CONTROL */
+
 static char* push_string(stroke_msg_t *msg, char *string)
 {
 	unsigned long string_start = msg->length;
@@ -61,7 +63,7 @@ static int send_stroke_msg (stroke_msg_t *msg)
 	ctl_addr.sun_family = AF_UNIX;
 	strcpy(ctl_addr.sun_path, STROKE_SOCKET);
 
-	msg->output_verbosity = 1; /* CONTROL */
+	msg->output_verbosity = output_verbosity;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0)
@@ -91,11 +93,11 @@ static int send_stroke_msg (stroke_msg_t *msg)
 
 		/* we prompt if we receive a magic keyword */
 		if ((byte_count >= 12 &&
-			 strcmp(buffer + byte_count - 12, "Passphrase:\n") == 0) ||
+			 streq(buffer + byte_count - 12, "Passphrase:\n")) ||
 			(byte_count >= 10 &&
-			 strcmp(buffer + byte_count - 10, "Password:\n") == 0) ||
+			 streq(buffer + byte_count - 10, "Password:\n")) ||
 			(byte_count >= 5 &&
-			 strcmp(buffer + byte_count - 5, "PIN:\n") == 0))
+			 streq(buffer + byte_count - 5, "PIN:\n")))
 		{
 			/* remove trailing newline */
 			pass = strrchr(buffer, '\n');
@@ -321,6 +323,8 @@ static int purge(stroke_keyword_t kw)
 
 static int export_flags[] = {
 	EXPORT_X509,
+	EXPORT_CONN_CERT,
+	EXPORT_CONN_CHAIN,
 };
 
 static int export(stroke_keyword_t kw, char *selector)
@@ -413,8 +417,14 @@ static void exit_usage(char *error)
 	printf("  Initiate a connection:\n");
 	printf("    stroke up NAME\n");
 	printf("    where: NAME is a connection name added with \"stroke add\"\n");
+	printf("  Initiate a connection without blocking:\n");
+	printf("    stroke up-nb NAME\n");
+	printf("    where: NAME is a connection name added with \"stroke add\"\n");
 	printf("  Terminate a connection:\n");
 	printf("    stroke down NAME\n");
+	printf("    where: NAME is a connection name added with \"stroke add\"\n");
+	printf("  Terminate a connection without blocking:\n");
+	printf("    stroke down-nb NAME\n");
 	printf("    where: NAME is a connection name added with \"stroke add\"\n");
 	printf("  Terminate a connection by remote srcip:\n");
 	printf("    stroke down-srcip START [END]\n");
@@ -428,7 +438,7 @@ static void exit_usage(char *error)
 	printf("  Show extended status information:\n");
 	printf("    stroke statusall\n");
 	printf("  Show extended status information without blocking:\n");
-	printf("    stroke statusallnb\n");
+	printf("    stroke statusall-nb\n");
 	printf("  Show list of authority and attribute certificates:\n");
 	printf("    stroke listcacerts|listocspcerts|listaacerts|listacerts\n");
 	printf("  Show list of end entity certificates, ca info records  and crls:\n");
@@ -449,6 +459,8 @@ static void exit_usage(char *error)
 	printf("    stroke purgeike\n");
 	printf("  Export credentials to the console:\n");
 	printf("    stroke exportx509 DN\n");
+	printf("    stroke exportconncert connname\n");
+	printf("    stroke exportconnchain connname\n");
 	printf("  Show current memory usage:\n");
 	printf("    stroke memusage\n");
 	printf("  Show leases of a pool:\n");
@@ -503,6 +515,9 @@ int main(int argc, char *argv[])
 			}
 			res = del_connection(argv[2]);
 			break;
+		case STROKE_UP_NOBLK:
+			output_verbosity = -1;
+			/* fall-through */
 		case STROKE_UP:
 			if (argc < 3)
 			{
@@ -510,6 +525,9 @@ int main(int argc, char *argv[])
 			}
 			res = initiate_connection(argv[2]);
 			break;
+		case STROKE_DOWN_NOBLK:
+			output_verbosity = -1;
+			/* fall-through */
 		case STROKE_DOWN:
 			if (argc < 3)
 			{
@@ -569,7 +587,7 @@ int main(int argc, char *argv[])
 		case STROKE_LIST_ALGS:
 		case STROKE_LIST_PLUGINS:
 		case STROKE_LIST_ALL:
-			res = list(token->kw, argc > 2 && strcmp(argv[2], "--utc") == 0);
+			res = list(token->kw, argc > 2 && streq(argv[2], "--utc"));
 			break;
 		case STROKE_REREAD_SECRETS:
 		case STROKE_REREAD_CACERTS:
@@ -587,9 +605,11 @@ int main(int argc, char *argv[])
 			res = purge(token->kw);
 			break;
 		case STROKE_EXPORT_X509:
+		case STROKE_EXPORT_CONN_CERT:
+		case STROKE_EXPORT_CONN_CHAIN:
 			if (argc != 3)
 			{
-				exit_usage("\"exportx509\" needs a distinguished name");
+				exit_usage("\"export\" needs a name");
 			}
 			res = export(token->kw, argv[2]);
 			break;

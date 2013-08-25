@@ -51,12 +51,13 @@ static bool register_stroke(private_stroke_plugin_t *this,
 	if (reg)
 	{
 		this->socket = stroke_socket_create();
+		return this->socket != NULL;
 	}
 	else
 	{
 		DESTROY_IF(this->socket);
+		return TRUE;
 	}
-	return TRUE;
 }
 
 METHOD(plugin_t, get_features, int,
@@ -104,4 +105,3 @@ plugin_t *stroke_plugin_create()
 
 	return &this->public.plugin;
 }
-

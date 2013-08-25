@@ -86,7 +86,7 @@ enum alert_t {
 	ALERT_RADIUS_NOT_RESPONDING,
 	/** a shutdown signal has been received, argument is the signal (int) */
 	ALERT_SHUTDOWN_SIGNAL,
-	/** creating local authentication data failed, no arguments */
+	/** local peer authentication failed (by us or by peer), no arguments */
 	ALERT_LOCAL_AUTH_FAILED,
 	/** peer authentication failed, no arguments */
 	ALERT_PEER_AUTH_FAILED,
@@ -116,6 +116,10 @@ enum alert_t {
 	/** traffic selectors do not match, arguments are two linked_list_t
 	 *  containing traffic_selector_t for initiator and for responder */
 	ALERT_TS_MISMATCH,
+	/** traffic selectors have been narrowed by the peer, arguments are
+	 *  an int (TRUE for local TS), a linked_list_t* (final TS list), and the
+	 *  child_cfg_t*. */
+	ALERT_TS_NARROWED,
 	/** Installation of IPsec SAs failed, argument is child_sa_t */
 	ALERT_INSTALL_CHILD_SA_FAILED,
 	/** Installation of IPsec Policy failed, argument is child_sa_t */
@@ -132,6 +136,20 @@ enum alert_t {
 	ALERT_AUTHORIZATION_FAILED,
 	/** IKE_SA hit the hard lifetime limit before it could be rekeyed */
 	ALERT_IKE_SA_EXPIRED,
+	/** Certificate rejected; it has expired, certificate_t */
+	ALERT_CERT_EXPIRED,
+	/** Certificate rejected; it has been revoked, certificate_t */
+	ALERT_CERT_REVOKED,
+	/** Validating certificate status failed, certificate_t */
+	ALERT_CERT_VALIDATION_FAILED,
+	/** Certificate rejected; no trusted issuer found, certificate_t */
+	ALERT_CERT_NO_ISSUER,
+	/** Certificate rejected; root not trusted, certificate_t */
+	ALERT_CERT_UNTRUSTED_ROOT,
+	/** Certificate rejected; trustchain length exceeds limit, certificate_t */
+	ALERT_CERT_EXCEEDED_PATH_LEN,
+	/** Certificate rejected; other policy violation, certificate_t */
+	ALERT_CERT_POLICY_VIOLATION,
 };
 
 /**

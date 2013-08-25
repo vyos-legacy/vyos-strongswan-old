@@ -91,7 +91,7 @@ METHOD(integrity_checker_t, build_file, u_int32_t,
 
 	*len = sb.st_size;
 	contents = chunk_create(addr, sb.st_size);
-	checksum = chunk_hash(contents);
+	checksum = chunk_hash_static(contents);
 
 	munmap(addr, sb.st_size);
 	close(fd);
@@ -153,7 +153,7 @@ METHOD(integrity_checker_t, build_segment, u_int32_t,
 
 	segment = chunk_create(dli.dli_fbase, dli.dli_saddr - dli.dli_fbase);
 	*len = segment.len;
-	return chunk_hash(segment);
+	return chunk_hash_static(segment);
 }
 
 /**

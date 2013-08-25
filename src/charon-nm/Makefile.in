@@ -63,7 +63,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/macros/with.m4 \
 	$(top_srcdir)/m4/macros/enable-disable.m4 \
 	$(top_srcdir)/m4/macros/add-plugin.m4 \
-	$(top_srcdir)/configure.in
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -82,19 +82,35 @@ charon_nm_DEPENDENCIES =  \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
+AM_V_lt = $(am__v_lt_@AM_V@)
+am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
+am__v_lt_0 = --silent
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_@AM_V@)
+am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
+am__v_CC_0 = @echo "  CC    " $@;
+AM_V_at = $(am__v_at_@AM_V@)
+am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
+am__v_at_0 = @
 CCLD = $(CC)
-LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
+LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_@AM_V@)
+am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_@AM_V@)
+am__v_GEN_ = $(am__v_GEN_@AM_DEFAULT_V@)
+am__v_GEN_0 = @echo "  GEN   " $@;
 SOURCES = $(charon_nm_SOURCES)
 DIST_SOURCES = $(charon_nm_SOURCES)
 am__can_run_installinfo = \
@@ -108,6 +124,7 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -120,6 +137,8 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CHECK_CFLAGS = @CHECK_CFLAGS@
 CHECK_LIBS = @CHECK_LIBS@
+COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
+COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -135,6 +154,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
@@ -143,6 +163,7 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LEX = @LEX@
@@ -189,6 +210,7 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SOCKLIB = @SOCKLIB@
 STRIP = @STRIP@
+UNWINDLIB = @UNWINDLIB@
 VERSION = @VERSION@
 YACC = @YACC@
 YFLAGS = @YFLAGS@
@@ -217,6 +239,7 @@ charon_natt_port = @charon_natt_port@
 charon_plugins = @charon_plugins@
 charon_udp_port = @charon_udp_port@
 clearsilver_LIBS = @clearsilver_LIBS@
+cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
 dbusservicedir = @dbusservicedir@
@@ -295,23 +318,23 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 charon_nm_SOURCES = \
-charon-nm.c \
-nm/nm_backend.c nm/nm_backend.h \
-nm/nm_creds.c nm/nm_creds.h \
-nm/nm_handler.c nm/nm_handler.h \
-nm/nm_service.c nm/nm_service.h
+	charon-nm.c \
+	nm/nm_backend.c nm/nm_backend.h \
+	nm/nm_creds.c nm/nm_creds.h \
+	nm/nm_handler.c nm/nm_handler.h \
+	nm/nm_service.c nm/nm_service.h
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
 	-I$(top_srcdir)/src/libcharon \
-	${nm_CFLAGS}
-
-AM_CFLAGS = \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
 	-DIPSEC_PIDDIR=\"${piddir}\" \
 	-DNM_CA_DIR=\"${nm_ca_dir}\" \
 	-DPLUGINS=\""${nm_plugins}\""
+
+AM_CFLAGS = \
+	${nm_CFLAGS}
 
 charon_nm_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
@@ -401,7 +424,7 @@ clean-ipsecPROGRAMS:
 	rm -f $$list
 charon-nm$(EXEEXT): $(charon_nm_OBJECTS) $(charon_nm_DEPENDENCIES) $(EXTRA_charon_nm_DEPENDENCIES) 
 	@rm -f charon-nm$(EXEEXT)
-	$(LINK) $(charon_nm_OBJECTS) $(charon_nm_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(LINK) $(charon_nm_OBJECTS) $(charon_nm_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -416,81 +439,81 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nm_service.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
 nm_backend.o: nm/nm_backend.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_backend.o -MD -MP -MF $(DEPDIR)/nm_backend.Tpo -c -o nm_backend.o `test -f 'nm/nm_backend.c' || echo '$(srcdir)/'`nm/nm_backend.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_backend.Tpo $(DEPDIR)/nm_backend.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_backend.c' object='nm_backend.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_backend.o -MD -MP -MF $(DEPDIR)/nm_backend.Tpo -c -o nm_backend.o `test -f 'nm/nm_backend.c' || echo '$(srcdir)/'`nm/nm_backend.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_backend.Tpo $(DEPDIR)/nm_backend.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_backend.c' object='nm_backend.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_backend.o `test -f 'nm/nm_backend.c' || echo '$(srcdir)/'`nm/nm_backend.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_backend.o `test -f 'nm/nm_backend.c' || echo '$(srcdir)/'`nm/nm_backend.c
 
 nm_backend.obj: nm/nm_backend.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_backend.obj -MD -MP -MF $(DEPDIR)/nm_backend.Tpo -c -o nm_backend.obj `if test -f 'nm/nm_backend.c'; then $(CYGPATH_W) 'nm/nm_backend.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_backend.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_backend.Tpo $(DEPDIR)/nm_backend.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_backend.c' object='nm_backend.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_backend.obj -MD -MP -MF $(DEPDIR)/nm_backend.Tpo -c -o nm_backend.obj `if test -f 'nm/nm_backend.c'; then $(CYGPATH_W) 'nm/nm_backend.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_backend.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_backend.Tpo $(DEPDIR)/nm_backend.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_backend.c' object='nm_backend.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_backend.obj `if test -f 'nm/nm_backend.c'; then $(CYGPATH_W) 'nm/nm_backend.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_backend.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_backend.obj `if test -f 'nm/nm_backend.c'; then $(CYGPATH_W) 'nm/nm_backend.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_backend.c'; fi`
 
 nm_creds.o: nm/nm_creds.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_creds.o -MD -MP -MF $(DEPDIR)/nm_creds.Tpo -c -o nm_creds.o `test -f 'nm/nm_creds.c' || echo '$(srcdir)/'`nm/nm_creds.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_creds.Tpo $(DEPDIR)/nm_creds.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_creds.c' object='nm_creds.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_creds.o -MD -MP -MF $(DEPDIR)/nm_creds.Tpo -c -o nm_creds.o `test -f 'nm/nm_creds.c' || echo '$(srcdir)/'`nm/nm_creds.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_creds.Tpo $(DEPDIR)/nm_creds.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_creds.c' object='nm_creds.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_creds.o `test -f 'nm/nm_creds.c' || echo '$(srcdir)/'`nm/nm_creds.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_creds.o `test -f 'nm/nm_creds.c' || echo '$(srcdir)/'`nm/nm_creds.c
 
 nm_creds.obj: nm/nm_creds.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_creds.obj -MD -MP -MF $(DEPDIR)/nm_creds.Tpo -c -o nm_creds.obj `if test -f 'nm/nm_creds.c'; then $(CYGPATH_W) 'nm/nm_creds.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_creds.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_creds.Tpo $(DEPDIR)/nm_creds.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_creds.c' object='nm_creds.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_creds.obj -MD -MP -MF $(DEPDIR)/nm_creds.Tpo -c -o nm_creds.obj `if test -f 'nm/nm_creds.c'; then $(CYGPATH_W) 'nm/nm_creds.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_creds.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_creds.Tpo $(DEPDIR)/nm_creds.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_creds.c' object='nm_creds.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_creds.obj `if test -f 'nm/nm_creds.c'; then $(CYGPATH_W) 'nm/nm_creds.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_creds.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_creds.obj `if test -f 'nm/nm_creds.c'; then $(CYGPATH_W) 'nm/nm_creds.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_creds.c'; fi`
 
 nm_handler.o: nm/nm_handler.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_handler.o -MD -MP -MF $(DEPDIR)/nm_handler.Tpo -c -o nm_handler.o `test -f 'nm/nm_handler.c' || echo '$(srcdir)/'`nm/nm_handler.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_handler.Tpo $(DEPDIR)/nm_handler.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_handler.c' object='nm_handler.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_handler.o -MD -MP -MF $(DEPDIR)/nm_handler.Tpo -c -o nm_handler.o `test -f 'nm/nm_handler.c' || echo '$(srcdir)/'`nm/nm_handler.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_handler.Tpo $(DEPDIR)/nm_handler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_handler.c' object='nm_handler.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_handler.o `test -f 'nm/nm_handler.c' || echo '$(srcdir)/'`nm/nm_handler.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_handler.o `test -f 'nm/nm_handler.c' || echo '$(srcdir)/'`nm/nm_handler.c
 
 nm_handler.obj: nm/nm_handler.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_handler.obj -MD -MP -MF $(DEPDIR)/nm_handler.Tpo -c -o nm_handler.obj `if test -f 'nm/nm_handler.c'; then $(CYGPATH_W) 'nm/nm_handler.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_handler.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_handler.Tpo $(DEPDIR)/nm_handler.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_handler.c' object='nm_handler.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_handler.obj -MD -MP -MF $(DEPDIR)/nm_handler.Tpo -c -o nm_handler.obj `if test -f 'nm/nm_handler.c'; then $(CYGPATH_W) 'nm/nm_handler.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_handler.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_handler.Tpo $(DEPDIR)/nm_handler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_handler.c' object='nm_handler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_handler.obj `if test -f 'nm/nm_handler.c'; then $(CYGPATH_W) 'nm/nm_handler.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_handler.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_handler.obj `if test -f 'nm/nm_handler.c'; then $(CYGPATH_W) 'nm/nm_handler.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_handler.c'; fi`
 
 nm_service.o: nm/nm_service.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_service.o -MD -MP -MF $(DEPDIR)/nm_service.Tpo -c -o nm_service.o `test -f 'nm/nm_service.c' || echo '$(srcdir)/'`nm/nm_service.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_service.Tpo $(DEPDIR)/nm_service.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_service.c' object='nm_service.o' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_service.o -MD -MP -MF $(DEPDIR)/nm_service.Tpo -c -o nm_service.o `test -f 'nm/nm_service.c' || echo '$(srcdir)/'`nm/nm_service.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_service.Tpo $(DEPDIR)/nm_service.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_service.c' object='nm_service.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_service.o `test -f 'nm/nm_service.c' || echo '$(srcdir)/'`nm/nm_service.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_service.o `test -f 'nm/nm_service.c' || echo '$(srcdir)/'`nm/nm_service.c
 
 nm_service.obj: nm/nm_service.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_service.obj -MD -MP -MF $(DEPDIR)/nm_service.Tpo -c -o nm_service.obj `if test -f 'nm/nm_service.c'; then $(CYGPATH_W) 'nm/nm_service.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_service.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/nm_service.Tpo $(DEPDIR)/nm_service.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='nm/nm_service.c' object='nm_service.obj' libtool=no @AMDEPBACKSLASH@
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT nm_service.obj -MD -MP -MF $(DEPDIR)/nm_service.Tpo -c -o nm_service.obj `if test -f 'nm/nm_service.c'; then $(CYGPATH_W) 'nm/nm_service.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_service.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/nm_service.Tpo $(DEPDIR)/nm_service.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='nm/nm_service.c' object='nm_service.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_service.obj `if test -f 'nm/nm_service.c'; then $(CYGPATH_W) 'nm/nm_service.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_service.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o nm_service.obj `if test -f 'nm/nm_service.c'; then $(CYGPATH_W) 'nm/nm_service.c'; else $(CYGPATH_W) '$(srcdir)/nm/nm_service.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

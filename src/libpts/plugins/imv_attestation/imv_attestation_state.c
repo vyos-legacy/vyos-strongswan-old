@@ -21,6 +21,8 @@
 #include <imv/imv_lang_string.h>
 #include "imv/imv_reason_string.h"
 
+#include <tncif_policy.h>
+
 #include <collections/linked_list.h>
 #include <utils/debug.h>
 
@@ -64,6 +66,11 @@ struct private_imv_attestation_state_t {
 	u_int32_t max_msg_len;
 
 	/**
+	 * Flags set for completed actions
+	 */
+	u_int32_t action_flags;
+
+	/**
 	 * Access Requestor ID Type
 	 */
 	u_int32_t ar_id_type;
@@ -72,6 +79,11 @@ struct private_imv_attestation_state_t {
 	 * Access Requestor ID Value
 	 */
 	chunk_t ar_id_value;
+
+	/**
+	 * IMV database session associated with TNCCS connection
+	 */
+	imv_session_t *session;
 
 	/**
 	 * IMV Attestation handshake state
@@ -87,16 +99,6 @@ struct private_imv_attestation_state_t {
 	 * IMV evaluation result
 	 */
 	TNC_IMV_Evaluation_Result eval;
-
-	/**
-	 * File Measurement Request counter
-	 */
-	u_int16_t file_meas_request_counter;
-
-	/**
-	 * List of PTS File/Directory Measurement requests
-	 */
-	linked_list_t *file_meas_requests;
 
 	/**
 	 * List of Functional Components
@@ -118,15 +120,6 @@ struct private_imv_attestation_state_t {
 	 */
 	imv_reason_string_t *reason_string;
 
-};
-
-/**
- * PTS File/Directory Measurement request entry
- */
-struct file_meas_request_t {
-	u_int16_t id;
-	int file_id;
-	bool is_dir;
 };
 
 /**
@@ -226,6 +219,18 @@ METHOD(imv_state_t, get_max_msg_len, u_int32_t,
 	return this->max_msg_len;
 }
 
+METHOD(imv_state_t, set_action_flags, void,
+	private_imv_attestation_state_t *this, u_int32_t flags)
+{
+	this->action_flags |= flags;
+}
+
+METHOD(imv_state_t, get_action_flags, u_int32_t,
+	private_imv_attestation_state_t *this)
+{
+	return this->action_flags;
+}
+
 METHOD(imv_state_t, set_ar_id, void,
 	private_imv_attestation_state_t *this, u_int32_t id_type, chunk_t id_value)
 {
@@ -243,6 +248,18 @@ METHOD(imv_state_t, get_ar_id, chunk_t,
 	return this->ar_id_value;
 }
 
+METHOD(imv_state_t, set_session, void,
+	private_imv_attestation_state_t *this, imv_session_t *session)
+{
+	this->session = session;
+}
+
+METHOD(imv_state_t, get_session, imv_session_t*,
+	private_imv_attestation_state_t *this)
+{
+	return this->session;
+}
+
 METHOD(imv_state_t, change_state, void,
 	private_imv_attestation_state_t *this, TNC_ConnectionState new_state)
 {
@@ -251,7 +268,7 @@ METHOD(imv_state_t, change_state, void,
 
 METHOD(imv_state_t, get_recommendation, void,
 	private_imv_attestation_state_t *this, TNC_IMV_Action_Recommendation *rec,
-									TNC_IMV_Evaluation_Result *eval)
+										   TNC_IMV_Evaluation_Result *eval)
 {
 	*rec = this->rec;
 	*eval = this->eval;
@@ -259,10 +276,18 @@ METHOD(imv_state_t, get_recommendation, void,
 
 METHOD(imv_state_t, set_recommendation, void,
 	private_imv_attestation_state_t *this, TNC_IMV_Action_Recommendation rec,
-									TNC_IMV_Evaluation_Result eval)
+										   TNC_IMV_Evaluation_Result eval)
 {
 	this->rec = rec;
 	this->eval = eval;
+}
+
+METHOD(imv_state_t, update_recommendation, void,
+	private_imv_attestation_state_t *this, TNC_IMV_Action_Recommendation rec,
+										   TNC_IMV_Evaluation_Result eval)
+{
+	this->rec  = tncif_policy_update_recommendation(this->rec, rec);
+	this->eval = tncif_policy_update_evaluation(this->eval, eval);
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
@@ -316,8 +341,8 @@ METHOD(imv_state_t, get_remediation_instructions, bool,
 METHOD(imv_state_t, destroy, void,
 	private_imv_attestation_state_t *this)
 {
+	DESTROY_IF(this->session);
 	DESTROY_IF(this->reason_string);
-	this->file_meas_requests->destroy_function(this->file_meas_requests, free);
 	this->components->destroy_function(this->components, (void *)free_func_comp);
 	this->pts->destroy(this->pts);
 	free(this->ar_id_value.ptr);
@@ -341,51 +366,6 @@ METHOD(imv_attestation_state_t, get_pts, pts_t*,
 	private_imv_attestation_state_t *this)
 {
 	return this->pts;
-}
-
-METHOD(imv_attestation_state_t, add_file_meas_request, u_int16_t,
-	private_imv_attestation_state_t *this, int file_id, bool is_dir)
-{
-	file_meas_request_t *request;
-
-	request = malloc_thing(file_meas_request_t);
-	request->id = ++this->file_meas_request_counter;
-	request->file_id = file_id;
-	request->is_dir = is_dir;
-	this->file_meas_requests->insert_last(this->file_meas_requests, request);
-
-	return this->file_meas_request_counter;
-}
-
-METHOD(imv_attestation_state_t, check_off_file_meas_request, bool,
-	private_imv_attestation_state_t *this, u_int16_t id, int *file_id,
-	bool* is_dir)
-{
-	enumerator_t *enumerator;
-	file_meas_request_t *request;
-	bool found = FALSE;
-
-	enumerator = this->file_meas_requests->create_enumerator(this->file_meas_requests);
-	while (enumerator->enumerate(enumerator, &request))
-	{
-		if (request->id == id)
-		{
-			found = TRUE;
-			*file_id = request->file_id;
-			*is_dir = request->is_dir;
-			this->file_meas_requests->remove_at(this->file_meas_requests, enumerator);
-			free(request);
-			break;
-		}
-	}
-	enumerator->destroy(enumerator);
-	return found;
-}
-
-METHOD(imv_attestation_state_t, get_file_meas_request_count, int,
-	private_imv_attestation_state_t *this)
-{
-	return this->file_meas_requests->get_count(this->file_meas_requests);
 }
 
 METHOD(imv_attestation_state_t, create_component, pts_component_t*,
@@ -508,11 +488,16 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 				.set_flags = _set_flags,
 				.set_max_msg_len = _set_max_msg_len,
 				.get_max_msg_len = _get_max_msg_len,
+				.set_action_flags = _set_action_flags,
+				.get_action_flags = _get_action_flags,
 				.set_ar_id = _set_ar_id,
 				.get_ar_id = _get_ar_id,
+				.set_session = _set_session,
+				.get_session = _get_session,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
+				.update_recommendation = _update_recommendation,
 				.get_reason_string = _get_reason_string,
 				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
@@ -520,9 +505,6 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 			.get_handshake_state = _get_handshake_state,
 			.set_handshake_state = _set_handshake_state,
 			.get_pts = _get_pts,
-			.add_file_meas_request = _add_file_meas_request,
-			.check_off_file_meas_request = _check_off_file_meas_request,
-			.get_file_meas_request_count = _get_file_meas_request_count,
 			.create_component = _create_component,
 			.get_component = _get_component,
 			.finalize_components = _finalize_components,
@@ -535,7 +517,6 @@ imv_state_t *imv_attestation_state_create(TNC_ConnectionID connection_id)
 		.handshake_state = IMV_ATTESTATION_STATE_INIT,
 		.rec = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 		.eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
-		.file_meas_requests = linked_list_create(),
 		.components = linked_list_create(),
 		.pts = pts_create(FALSE),
 	);

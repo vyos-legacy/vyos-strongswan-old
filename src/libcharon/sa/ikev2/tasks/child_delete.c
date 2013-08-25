@@ -177,8 +177,11 @@ static void process_payloads(private_child_delete_t *this, message_t *message)
 					default:
 						break;
 				}
-
-				this->child_sas->insert_last(this->child_sas, child_sa);
+				if (this->child_sas->find_first(this->child_sas, NULL,
+												(void**)&child_sa) != SUCCESS)
+				{
+					this->child_sas->insert_last(this->child_sas, child_sa);
+				}
 			}
 			spis->destroy(spis);
 		}
@@ -219,12 +222,13 @@ static status_t destroy_and_reestablish(private_child_delete_t *this)
 			{
 				case ACTION_RESTART:
 					child_cfg->get_ref(child_cfg);
-					status = this->ike_sa->initiate(this->ike_sa, child_cfg, 0,
-													NULL, NULL);
+					status = this->ike_sa->initiate(this->ike_sa, child_cfg,
+									child_sa->get_reqid(child_sa), NULL, NULL);
 					break;
 				case ACTION_ROUTE:
 					charon->traps->install(charon->traps,
-							this->ike_sa->get_peer_cfg(this->ike_sa), child_cfg);
+							this->ike_sa->get_peer_cfg(this->ike_sa), child_cfg,
+							child_sa->get_reqid(child_sa));
 					break;
 				default:
 					break;
@@ -245,6 +249,7 @@ static status_t destroy_and_reestablish(private_child_delete_t *this)
  */
 static void log_children(private_child_delete_t *this)
 {
+	linked_list_t *my_ts, *other_ts;
 	enumerator_t *enumerator;
 	child_sa_t *child_sa;
 	u_int64_t bytes_in, bytes_out;
@@ -252,15 +257,17 @@ static void log_children(private_child_delete_t *this)
 	enumerator = this->child_sas->create_enumerator(this->child_sas);
 	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
+		my_ts = linked_list_create_from_enumerator(
+							child_sa->create_ts_enumerator(child_sa, TRUE));
+		other_ts = linked_list_create_from_enumerator(
+							child_sa->create_ts_enumerator(child_sa, FALSE));
 		if (this->expired)
 		{
 			DBG0(DBG_IKE, "closing expired CHILD_SA %s{%d} "
 				 "with SPIs %.8x_i %.8x_o and TS %#R=== %#R",
 				 child_sa->get_name(child_sa), child_sa->get_reqid(child_sa),
 				 ntohl(child_sa->get_spi(child_sa, TRUE)),
-				 ntohl(child_sa->get_spi(child_sa, FALSE)),
-				 child_sa->get_traffic_selectors(child_sa, TRUE),
-				 child_sa->get_traffic_selectors(child_sa, FALSE));
+				 ntohl(child_sa->get_spi(child_sa, FALSE)), my_ts, other_ts);
 		}
 		else
 		{
@@ -272,9 +279,10 @@ static void log_children(private_child_delete_t *this)
 				 child_sa->get_name(child_sa), child_sa->get_reqid(child_sa),
 				 ntohl(child_sa->get_spi(child_sa, TRUE)), bytes_in,
 				 ntohl(child_sa->get_spi(child_sa, FALSE)), bytes_out,
-				 child_sa->get_traffic_selectors(child_sa, TRUE),
-				 child_sa->get_traffic_selectors(child_sa, FALSE));
+				 my_ts, other_ts);
 		}
+		my_ts->destroy(my_ts);
+		other_ts->destroy(other_ts);
 	}
 	enumerator->destroy(enumerator);
 }
@@ -310,10 +318,6 @@ METHOD(task_t, build_i, status_t,
 METHOD(task_t, process_i, status_t,
 	private_child_delete_t *this, message_t *message)
 {
-	/* flush the list before adding new SAs */
-	this->child_sas->destroy(this->child_sas);
-	this->child_sas = linked_list_create();
-
 	process_payloads(this, message);
 	DBG1(DBG_IKE, "CHILD_SA closed");
 	return destroy_and_reestablish(this);

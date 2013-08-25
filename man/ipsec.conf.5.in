@@ -300,8 +300,7 @@ for meaning of values).
 A
 .B closeaction should not be
 used if the peer uses reauthentication or uniquids checking, as these events
-might trigger the defined action when not desired. Currently not supported with
-IKEv1.
+might trigger the defined action when not desired.
 .TP
 .BR compress " = yes | " no
 whether IPComp compression of content is proposed on the connection
@@ -731,34 +730,23 @@ different from the default additionally requires a socket implementation that
 listens on this port.
 .TP
 .BR leftprotoport " = <protocol>/<port>"
-restrict the traffic selector to a single protocol and/or port.
-Examples:
-.B leftprotoport=tcp/http
-or
-.B leftprotoport=6/80
-or
-.B leftprotoport=udp
-or
-.BR leftprotoport=/53 .
-Instead of omitting either value
-.B %any
-can be used to the same effect, e.g.
-.B leftprotoport=udp/%any
-or
-.BR leftprotoport=%any/53 .
-
-The port value can alternatively take the value
-.B %opaque
-for RFC 4301 OPAQUE selectors, or a numerical range in the form
-.BR 1024-65535 .
-None of the kernel backends currently supports opaque or port ranges and uses
-.B %any
-for policy installation instead.
+restrict the traffic selector to a single protocol and/or port. This option
+is now deprecated, protocol/port information can be defined for each subnet
+directly in
+.BR leftsubnet .
 .TP
-.BR leftrsasigkey " = <raw rsa public key> | <path to public key>"
-the left participant's public key for RSA signature authentication, in RFC 2537
-format using hex (0x prefix) or base64 (0s prefix) encoding. Also accepted is
-the path to a file containing the public key in PEM or DER encoding.
+.BR leftsigkey " = <raw public key> | <path to public key>"
+the left participant's public key for public key signature authentication,
+in PKCS#1 format using hex (0x prefix) or base64 (0s prefix) encoding. With the
+optional
+.B dns:
+or
+.B ssh:
+prefix in front of 0x or 0s, the public key is expected to be in either
+the RFC 3110 (not the full RR, only RSA key part) or RFC 4253 public key format,
+respectively.
+Also accepted is the path to a file containing the public key in PEM or DER
+encoding.
 .TP
 .BR leftsendcert " = never | no | " ifasked " | always | yes"
 Accepted values are
@@ -799,7 +787,7 @@ echoed back. Also supported are address pools expressed as
 or the use of an external IP address pool using %\fIpoolname\fR,
 where \fIpoolname\fR is the name of the IP address pool used for the lookup.
 .TP
-.BR leftsubnet " = <ip subnet>"
+.BR leftsubnet " = <ip subnet>[[<proto/port>]][,...]"
 private subnet behind the left participant, expressed as
 \fInetwork\fB/\fInetmask\fR;
 if omitted, essentially assumed to be \fIleft\fB/32\fR,
@@ -810,6 +798,36 @@ implementations, make sure to configure identical subnets in such
 configurations. IKEv2 supports multiple subnets separated by commas. IKEv1 only
 interprets the first subnet of such a definition, unless the Cisco Unity
 extension plugin is enabled.
+
+The optional part after each subnet enclosed in square brackets specifies a
+protocol/port to restrict the selector for that subnet.
+
+Examples:
+.BR leftsubnet=10.0.0.1[tcp/http],10.0.0.2[6/80] " or"
+.BR leftsubnet=fec1::1[udp],10.0.0.0/16[/53] .
+Instead of omitting either value
+.B %any
+can be used to the same effect, e.g.
+.BR leftsubnet=fec1::1[udp/%any],10.0.0.0/16[%any/53] .
+
+The port value can alternatively take the value
+.B %opaque
+for RFC 4301 OPAQUE selectors, or a numerical range in the form
+.BR 1024-65535 .
+None of the kernel backends currently supports opaque or port ranges and uses
+.B %any
+for policy installation instead.
+
+Instead of specifying a subnet,
+.B %dynamic
+can be used to replace it with the IKE address, having the same effect
+as omitting
+.B leftsubnet
+completely. Using
+.B %dynamic
+can be used to define multiple dynamic selectors, each having a potentially
+different protocol/port definition.
+
 .TP
 .BR leftupdown " = <path>"
 what ``updown'' script to run to adjust routing and/or firewalling

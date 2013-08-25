@@ -509,7 +509,7 @@ int main(int argc, char *argv[])
 	}
 	load_loggers(logger);
 
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			conftest->test->get_str(conftest->test, "preload", "")))
 	{
 		return 1;
@@ -518,6 +518,8 @@ int main(int argc, char *argv[])
 	{
 		return 1;
 	}
+	lib->plugins->status(lib->plugins, LEVEL_CTRL);
+
 	if (!load_certs(conftest->test, conftest->suite_dir))
 	{
 		return 1;

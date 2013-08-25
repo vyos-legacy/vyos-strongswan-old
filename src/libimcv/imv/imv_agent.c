@@ -15,6 +15,8 @@
 
 #include "imcv.h"
 #include "imv_agent.h"
+#include "imv_session.h"
+
 #include "ietf/ietf_attr_assess_result.h"
 
 #include <tncif_names.h>
@@ -283,6 +285,7 @@ static bool delete_connection(private_imv_agent_t *this, TNC_ConnectionID id)
 {
 	enumerator_t *enumerator;
 	imv_state_t *state;
+	imv_session_t *session;
 	bool found = FALSE;
 
 	this->connection_lock->write_lock(this->connection_lock);
@@ -292,6 +295,11 @@ static bool delete_connection(private_imv_agent_t *this, TNC_ConnectionID id)
 		if (id == state->get_connection_id(state))
 		{
 			found = TRUE;
+			session = state->get_session(state);
+			if (session)
+			{
+				imcv_db->remove_session(imcv_db, session);
+			}
 			state->destroy(state);
 			this->connections->remove_at(this->connections, enumerator);
 			break;
@@ -402,11 +410,14 @@ METHOD(imv_agent_t, create_state, TNC_Result,
 {
 	TNC_ConnectionID conn_id;
 	char *tnccs_p = NULL, *tnccs_v = NULL, *t_p = NULL, *t_v = NULL;
-	bool has_long = FALSE, has_excl = FALSE, has_soh = FALSE;
+	bool has_long = FALSE, has_excl = FALSE, has_soh = FALSE, first = TRUE;
 	linked_list_t *ar_identities;
 	enumerator_t *enumerator;
 	tncif_identity_t *tnc_id;
+	imv_session_t *session;
 	u_int32_t max_msg_len;
+	u_int32_t ar_id_type = TNC_ID_UNKNOWN;
+	chunk_t ar_id_value = chunk_empty;
 
 	conn_id = state->get_connection_id(state);
 	if (find_connection(this, conn_id))
@@ -462,10 +473,31 @@ METHOD(imv_agent_t, create_state, TNC_Result,
 			 TNC_Subject_names, tcg_subject_type,
 			 id_value.len, id_value.ptr,
 			 TNC_Authentication_names, tcg_auth_type);
-		state->set_ar_id(state, tcg_id_type, id_value);
+
+		if (first)
+		{
+			ar_id_type = tcg_id_type;
+			ar_id_value = id_value;
+			state->set_ar_id(state, ar_id_type, ar_id_value);
+			first = FALSE;
+		}
 	}
 	enumerator->destroy(enumerator);
 
+	if (imcv_db)
+	{
+		session = imcv_db->add_session(imcv_db, conn_id, ar_id_type, ar_id_value);
+		if (session)
+		{
+			DBG2(DBG_IMV, "  assigned session ID %d",
+				 session->get_session_id(session));
+			state->set_session(state, session);
+		}
+		else
+		{
+			DBG1(DBG_IMV, "  no session ID assigned");
+		}
+	}
 	ar_identities->destroy_offset(ar_identities,
 						   offsetof(tncif_identity_t, destroy));
 	free(tnccs_p);
@@ -774,7 +806,7 @@ imv_agent_t *imv_agent_create(const char *name,
 	private_imv_agent_t *this;
 
 	/* initialize  or increase the reference count */
-	if (!libimcv_init())
+	if (!libimcv_init(TRUE))
 	{
 		return NULL;
 	}

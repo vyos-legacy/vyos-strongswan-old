@@ -14,9 +14,12 @@
  */
 
 #include "imv_os_state.h"
+
 #include "imv/imv_lang_string.h"
 #include "imv/imv_reason_string.h"
 #include "imv/imv_remediation_string.h"
+
+#include <tncif_policy.h>
 
 #include <utils/debug.h>
 #include <collections/linked_list.h>
@@ -62,6 +65,11 @@ struct private_imv_os_state_t {
 	u_int32_t max_msg_len;
 
 	/**
+	 * Flags set for completed actions
+	 */
+	u_int32_t action_flags;
+
+	/**
 	 * Access Requestor ID Type
 	 */
 	u_int32_t ar_id_type;
@@ -72,6 +80,11 @@ struct private_imv_os_state_t {
 	chunk_t ar_id_value;
 
 	/**
+	 * IMV database session associated with TNCCS connection
+	 */
+	imv_session_t *session;
+
+	/**
 	 * IMV action recommendation
 	 */
 	TNC_IMV_Action_Recommendation rec;
@@ -80,6 +93,11 @@ struct private_imv_os_state_t {
 	 * IMV evaluation result
 	 */
 	TNC_IMV_Evaluation_Result eval;
+
+	/**
+	 * IMV OS handshake state
+	 */
+	imv_os_handshake_state_t handshake_state;
 
 	/**
 	 * OS Product Information (concatenation of OS Name and Version)
@@ -122,9 +140,9 @@ struct private_imv_os_state_t {
 	imv_remediation_string_t *remediation_string;
 
 	/**
-	 * Primary database key of device ID
+	 * Dgevice ID
 	 */
-	int device_id;
+	chunk_t device_id;
 
 	/**
 	 * Number of processed packages
@@ -145,16 +163,6 @@ struct private_imv_os_state_t {
 	 * Number of whitelisted packages
 	 */
 	int count_ok;
-
-	/**
-	 * Attribute request sent - mandatory response expected
-	 */
-	bool attribute_request;
-
-	/**
-	 * OS Installed Package request sent - mandatory response expected
-	 */
-	bool package_request;
 
 	/**
 	 * OS Settings
@@ -276,16 +284,16 @@ static imv_lang_string_t instr_default_pwd_enabled_descr[] = {
 };
 
 /**
- * Instruction strings for  "Install Non-Market Apps"
+ * Instruction strings for  "Unknown Source"
  */
-static imv_lang_string_t instr_non_market_apps_title[] = {
+static imv_lang_string_t instr_unknown_source_title[] = {
 	{ "en", "Unknown Software Origin" },
 	{ "de", "Unbekannte Softwareherkunft" },
 	{ "pl", "Nieznane pochodzenie softwaru" },
 	{ NULL, NULL }
 };
 
-static imv_lang_string_t instr_non_market_apps_descr[] = {
+static imv_lang_string_t instr_unknown_source_descr[] = {
 	{ "en", "Do not allow the installation of apps from unknown sources" },
 	{ "de", "Erlauben Sie nicht die Installation von Apps aus unbekannten Quellen" },
 	{ "pl", "Proszę nie dopuszczać do instalacji Apps z nieznanych źródeł" },
@@ -329,6 +337,18 @@ METHOD(imv_state_t, get_max_msg_len, u_int32_t,
 	return this->max_msg_len;
 }
 
+METHOD(imv_state_t, set_action_flags, void,
+	private_imv_os_state_t *this, u_int32_t flags)
+{
+	this->action_flags |= flags;
+}
+
+METHOD(imv_state_t, get_action_flags, u_int32_t,
+	private_imv_os_state_t *this)
+{
+	return this->action_flags;
+}
+
 METHOD(imv_state_t, set_ar_id, void,
 	private_imv_os_state_t *this, u_int32_t id_type, chunk_t id_value)
 {
@@ -346,15 +366,21 @@ METHOD(imv_state_t, get_ar_id, chunk_t,
 	return this->ar_id_value;
 }
 
-METHOD(imv_state_t, change_state, void,
-	private_imv_os_state_t *this, TNC_ConnectionState new_state)
+METHOD(imv_state_t, set_session, void,
+	private_imv_os_state_t *this, imv_session_t *session)
 {
-	this->state = new_state;
+	this->session = session;
+}
+
+METHOD(imv_state_t, get_session, imv_session_t*,
+	private_imv_os_state_t *this)
+{
+	return this->session;
 }
 
 METHOD(imv_state_t, get_recommendation, void,
 	private_imv_os_state_t *this, TNC_IMV_Action_Recommendation *rec,
-									TNC_IMV_Evaluation_Result *eval)
+								  TNC_IMV_Evaluation_Result *eval)
 {
 	*rec = this->rec;
 	*eval = this->eval;
@@ -362,10 +388,24 @@ METHOD(imv_state_t, get_recommendation, void,
 
 METHOD(imv_state_t, set_recommendation, void,
 	private_imv_os_state_t *this, TNC_IMV_Action_Recommendation rec,
-									TNC_IMV_Evaluation_Result eval)
+								  TNC_IMV_Evaluation_Result eval)
 {
 	this->rec = rec;
 	this->eval = eval;
+}
+
+METHOD(imv_state_t, update_recommendation, void,
+	private_imv_os_state_t *this, TNC_IMV_Action_Recommendation rec,
+								  TNC_IMV_Evaluation_Result eval)
+{
+	this->rec  = tncif_policy_update_recommendation(this->rec, rec);
+	this->eval = tncif_policy_update_evaluation(this->eval, eval);
+}
+
+METHOD(imv_state_t, change_state, void,
+	private_imv_os_state_t *this, TNC_ConnectionState new_state)
+{
+	this->state = new_state;
 }
 
 METHOD(imv_state_t, get_reason_string, bool,
@@ -445,11 +485,11 @@ METHOD(imv_state_t, get_remediation_instructions, bool,
 							instr_default_pwd_enabled_title,
 							instr_default_pwd_enabled_descr, NULL, NULL);
 	}
-	if (this->os_settings & OS_SETTINGS_NON_MARKET_APPS)
+	if (this->os_settings & OS_SETTINGS_UNKNOWN_SOURCE)
 	{
 		this->remediation_string->add_instruction(this->remediation_string,
-							instr_non_market_apps_title,
-							instr_non_market_apps_descr, NULL, NULL);
+							instr_unknown_source_title,
+							instr_unknown_source_descr, NULL, NULL);
 	}
 
 	*string = this->remediation_string->get_encoding(this->remediation_string);
@@ -462,6 +502,7 @@ METHOD(imv_state_t, get_remediation_instructions, bool,
 METHOD(imv_state_t, destroy, void,
 	private_imv_os_state_t *this)
 {
+	DESTROY_IF(this->session);
 	DESTROY_IF(this->reason_string);
 	DESTROY_IF(this->remediation_string);
 	this->update_packages->destroy_function(this->update_packages, free);
@@ -470,7 +511,20 @@ METHOD(imv_state_t, destroy, void,
 	free(this->name.ptr);
 	free(this->version.ptr);
 	free(this->ar_id_value.ptr);
+	free(this->device_id.ptr);
 	free(this);
+}
+
+METHOD(imv_os_state_t, set_handshake_state, void,
+	private_imv_os_state_t *this, imv_os_handshake_state_t new_state)
+{
+	this->handshake_state = new_state;
+}
+
+METHOD(imv_os_state_t, get_handshake_state, imv_os_handshake_state_t,
+	private_imv_os_state_t *this)
+{
+	return this->handshake_state;
 }
 
 METHOD(imv_os_state_t, set_info, void,
@@ -539,37 +593,13 @@ METHOD(imv_os_state_t, get_count, void,
 	}
 }
 
-METHOD(imv_os_state_t, set_attribute_request, void,
-	private_imv_os_state_t *this, bool set)
-{
-	this->attribute_request = set;
-}
-
-METHOD(imv_os_state_t, get_attribute_request, bool,
-	private_imv_os_state_t *this)
-{
-	return this->attribute_request;
-}
-
-METHOD(imv_os_state_t, set_package_request, void,
-	private_imv_os_state_t *this, bool set)
-{
-	this->package_request = set;
-}
-
-METHOD(imv_os_state_t, get_package_request, bool,
-	private_imv_os_state_t *this)
-{
-	return this->package_request;
-}
-
 METHOD(imv_os_state_t, set_device_id, void,
-	private_imv_os_state_t *this, int id)
+	private_imv_os_state_t *this, chunk_t id)
 {
-	this->device_id = id;
+	this->device_id = chunk_clone(id);
 }
 
-METHOD(imv_os_state_t, get_device_id, int,
+METHOD(imv_os_state_t, get_device_id, chunk_t,
 	private_imv_os_state_t *this)
 {
 	return this->device_id;
@@ -631,23 +661,26 @@ imv_state_t *imv_os_state_create(TNC_ConnectionID connection_id)
 				.set_flags = _set_flags,
 				.set_max_msg_len = _set_max_msg_len,
 				.get_max_msg_len = _get_max_msg_len,
+				.set_action_flags = _set_action_flags,
+				.get_action_flags = _get_action_flags,
 				.set_ar_id = _set_ar_id,
 				.get_ar_id = _get_ar_id,
+				.set_session = _set_session,
+				.get_session = _get_session,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
+				.update_recommendation = _update_recommendation,
 				.get_reason_string = _get_reason_string,
 				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
 			},
+			.set_handshake_state = _set_handshake_state,
+			.get_handshake_state = _get_handshake_state,
 			.set_info = _set_info,
 			.get_info = _get_info,
 			.set_count = _set_count,
 			.get_count = _get_count,
-			.set_attribute_request = _set_attribute_request,
-			.get_attribute_request = _get_attribute_request,
-			.set_package_request = _set_package_request,
-			.get_package_request = _get_package_request,
 			.set_device_id = _set_device_id,
 			.get_device_id = _get_device_id,
 			.set_os_settings = _set_os_settings,

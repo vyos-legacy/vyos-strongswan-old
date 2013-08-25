@@ -73,63 +73,28 @@ struct private_tun_device_t {
 	 * The current MTU
 	 */
 	int mtu;
+
+	/**
+	 * Associated address
+	 */
+	host_t *address;
+
+	/**
+	 * Netmask for address
+	 */
+	u_int8_t netmask;
 };
-
-/**
- * Set the sockaddr_t from the given netmask
- */
-static void set_netmask(struct ifreq *ifr, int family, u_int8_t netmask)
-{
-	int len, bytes, bits;
-	char *target;
-
-	switch (family)
-	{
-		case AF_INET:
-		{
-			struct sockaddr_in *addr = (struct sockaddr_in*)&ifr->ifr_addr;
-			target = (char*)&addr->sin_addr;
-			len = 4;
-			break;
-		}
-		case AF_INET6:
-		{
-			struct sockaddr_in6 *addr = (struct sockaddr_in6*)&ifr->ifr_addr;
-			target = (char*)&addr->sin6_addr;
-			len = 16;
-			break;
-		}
-		default:
-			return;
-	}
-
-	ifr->ifr_addr.sa_family = family;
-
-	bytes = (netmask + 7) / 8;
-	bits = (bytes * 8) - netmask;
-
-	memset(target, 0xff, bytes);
-	memset(target + bytes, 0x00, len - bytes);
-	target[bytes - 1] = bits ? (u_int8_t)(0xff << bits) : 0xff;
-}
 
 METHOD(tun_device_t, set_address, bool,
 	private_tun_device_t *this, host_t *addr, u_int8_t netmask)
 {
 	struct ifreq ifr;
-	int family;
-
-	family = addr->get_family(addr);
-	if ((netmask > 32 && family == AF_INET) || netmask > 128)
-	{
-		DBG1(DBG_LIB, "failed to set address on %s: invalid netmask",
-			 this->if_name);
-		return FALSE;
-	}
+	host_t *mask;
 
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, this->if_name, IFNAMSIZ);
-	memcpy(&ifr.ifr_addr, addr->get_sockaddr(addr), sizeof(sockaddr_t));
+	memcpy(&ifr.ifr_addr, addr->get_sockaddr(addr),
+		   *addr->get_sockaddr_len(addr));
 
 	if (ioctl(this->sock, SIOCSIFADDR, &ifr) < 0)
 	{
@@ -146,7 +111,15 @@ METHOD(tun_device_t, set_address, bool,
 	}
 #endif /* __APPLE__ */
 
-	set_netmask(&ifr, family, netmask);
+	mask = host_create_netmask(addr->get_family(addr), netmask);
+	if (!mask)
+	{
+		DBG1(DBG_LIB, "invalid netmask: %d", netmask);
+		return FALSE;
+	}
+	memcpy(&ifr.ifr_addr, mask->get_sockaddr(mask),
+		   *mask->get_sockaddr_len(mask));
+	mask->destroy(mask);
 
 	if (ioctl(this->sock, SIOCSIFNETMASK, &ifr) < 0)
 	{
@@ -154,7 +127,19 @@ METHOD(tun_device_t, set_address, bool,
 			 this->if_name, strerror(errno));
 		return FALSE;
 	}
+	this->address = addr->clone(addr);
+	this->netmask = netmask;
 	return TRUE;
+}
+
+METHOD(tun_device_t, get_address, host_t*,
+	private_tun_device_t *this, u_int8_t *netmask)
+{
+	if (netmask && this->address)
+	{
+		*netmask = this->netmask;
+	}
+	return this->address;
 }
 
 METHOD(tun_device_t, up, bool,
@@ -229,11 +214,23 @@ METHOD(tun_device_t, get_name, char*,
 	return this->if_name;
 }
 
+METHOD(tun_device_t, get_fd, int,
+	private_tun_device_t *this)
+{
+	return this->tunfd;
+}
+
 METHOD(tun_device_t, write_packet, bool,
 	private_tun_device_t *this, chunk_t packet)
 {
 	ssize_t s;
 
+#ifdef __APPLE__
+	/* UTUN's expect the packets to be prepended by a 32-bit protocol number
+	 * instead of parsing the packet again, we assume IPv4 for now */
+	u_int32_t proto = htonl(AF_INET);
+	packet = chunk_cata("cc", chunk_from_thing(proto), packet);
+#endif
 	s = write(this->tunfd, packet.ptr, packet.len);
 	if (s < 0)
 	{
@@ -280,6 +277,11 @@ METHOD(tun_device_t, read_packet, bool,
 		return FALSE;
 	}
 	packet->len = len;
+#ifdef __APPLE__
+	/* UTUN's prepend packets with a 32-bit protocol number */
+	packet->len -= sizeof(u_int32_t);
+	memmove(packet->ptr, packet->ptr + sizeof(u_int32_t), packet->len);
+#endif
 	return TRUE;
 }
 
@@ -308,6 +310,7 @@ METHOD(tun_device_t, destroy, void,
 	{
 		close(this->sock);
 	}
+	DESTROY_IF(this->address);
 	free(this);
 }
 
@@ -398,14 +401,18 @@ static bool init_tun(private_tun_device_t *this, const char *name_tmpl)
 	/* this works on FreeBSD and might also work on Linux with older TUN
 	 * driver versions (no IFF_TUN) */
 	char devname[IFNAMSIZ];
-	int i;
+	/* the same process is allowed to open a device again, but that's not what
+	 * we want (unless we previously closed a device, which we don't know at
+	 * this point).  therefore, this counter is static so we don't accidentally
+	 * open a device twice */
+	static int i = -1;
 
 	if (name_tmpl)
 	{
 		DBG1(DBG_LIB, "arbitrary naming of TUN devices is not supported");
 	}
 
-	for (i = 0; i < 256; i++)
+	for (; ++i < 256; )
 	{
 		snprintf(devname, IFNAMSIZ, "/dev/tun%d", i);
 		this->tunfd = open(devname, O_RDWR);
@@ -435,7 +442,9 @@ tun_device_t *tun_device_create(const char *name_tmpl)
 			.get_mtu = _get_mtu,
 			.set_mtu = _set_mtu,
 			.get_name = _get_name,
+			.get_fd = _get_fd,
 			.set_address = _set_address,
+			.get_address = _get_address,
 			.up = _up,
 			.destroy = _destroy,
 		},

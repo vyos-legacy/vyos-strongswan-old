@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2012 Tobias Brunner
+ * Copyright (C) 2006-2013 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -65,6 +65,10 @@ typedef enum kernel_feature_t kernel_feature_t;
 enum kernel_feature_t {
 	/** IPsec can process ESPv3 (RFC 4303) TFC padded packets */
 	KERNEL_ESP_V3_TFC = (1<<0),
+	/** Networking requires an "exclude" route for IKE/ESP packets */
+	KERNEL_REQUIRE_EXCLUDE_ROUTE = (1<<1),
+	/** IPsec implementation requires UDP encapsulation of ESP packets */
+	KERNEL_REQUIRE_UDP_ENCAPSULATION = (1<<2),
 };
 
 /**
@@ -141,6 +145,7 @@ struct kernel_interface_t {
 	 * @param mode			mode of the SA (tunnel, transport)
 	 * @param ipcomp		IPComp transform to use
 	 * @param cpi			CPI for IPComp
+	 * @param initiator		TRUE if initiator of the exchange creating this SA
 	 * @param encap			enable UDP encapsulation for NAT traversal
 	 * @param esn			TRUE to use Extended Sequence Numbers
 	 * @param inbound		TRUE if this is an inbound SA
@@ -155,7 +160,7 @@ struct kernel_interface_t {
 						u_int16_t enc_alg, chunk_t enc_key,
 						u_int16_t int_alg, chunk_t int_key,
 						ipsec_mode_t mode, u_int16_t ipcomp, u_int16_t cpi,
-						bool encap, bool esn, bool inbound,
+						bool initiator, bool encap, bool esn, bool inbound,
 						traffic_selector_t *src_ts, traffic_selector_t *dst_ts);
 
 	/**
@@ -195,11 +200,12 @@ struct kernel_interface_t {
 	 * @param mark			optional mark for this SA
 	 * @param[out] bytes	the number of bytes processed by SA
 	 * @param[out] packets	number of packets processed by SA
+	 * @param[out] time		last time of SA use
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*query_sa) (kernel_interface_t *this, host_t *src, host_t *dst,
 						  u_int32_t spi, u_int8_t protocol, mark_t mark,
-						  u_int64_t *bytes, u_int64_t *packets);
+						  u_int64_t *bytes, u_int64_t *packets, u_int32_t *time);
 
 	/**
 	 * Delete a previously installed SA from the SAD.
@@ -367,7 +373,7 @@ struct kernel_interface_t {
 	 *
 	 * The kernel interface uses refcounting, see add_ip().
 	 *
-	 * @param virtual_ip	virtual ip address to assign
+	 * @param virtual_ip	virtual ip address to remove
 	 * @param prefix		prefix length of the IP to uninstall, -1 for auto
 	 * @param wait			TRUE to wait untily IP is gone
 	 * @return				SUCCESS if operation completed
@@ -381,7 +387,7 @@ struct kernel_interface_t {
 	 * @param dst_net		destination net
 	 * @param prefixlen		destination net prefix length
 	 * @param gateway		gateway for this route
-	 * @param src_ip		sourc ip of the route
+	 * @param src_ip		source ip of the route
 	 * @param if_name		name of the interface the route is bound to
 	 * @return				SUCCESS if operation completed
 	 *						ALREADY_DONE if the route already exists
@@ -396,7 +402,7 @@ struct kernel_interface_t {
 	 * @param dst_net		destination net
 	 * @param prefixlen		destination net prefix length
 	 * @param gateway		gateway for this route
-	 * @param src_ip		sourc ip of the route
+	 * @param src_ip		source ip of the route
 	 * @param if_name		name of the interface the route is bound to
 	 * @return				SUCCESS if operation completed
 	 */
@@ -451,10 +457,11 @@ struct kernel_interface_t {
 	 *
 	 * @param ts			traffic selector
 	 * @param ip			returned IP address (has to be destroyed)
+	 * @param vip			set to TRUE if returned address is a virtual IP
 	 * @return				SUCCESS if address found
 	 */
 	status_t (*get_address_by_ts)(kernel_interface_t *this,
-								  traffic_selector_t *ts, host_t **ip);
+								  traffic_selector_t *ts, host_t **ip, bool *vip);
 
 	/**
 	 * Register an ipsec kernel interface constructor on the manager.
@@ -557,6 +564,14 @@ struct kernel_interface_t {
 	void (*roam)(kernel_interface_t *this, bool address);
 
 	/**
+	 * Raise a tun event.
+	 *
+	 * @param tun			TUN device
+	 * @param created		TRUE if created, FALSE if going to be destroyed
+	 */
+	void (*tun)(kernel_interface_t *this, tun_device_t *tun, bool created);
+
+	/**
 	 * Register a new algorithm with the kernel interface.
 	 *
 	 * @param alg_id			the IKE id of the algorithm
@@ -583,7 +598,7 @@ struct kernel_interface_t {
 							 char **kernel_name);
 
 	/**
-	 * Destroys a kernel_interface_manager_t object.
+	 * Destroys a kernel_interface_t object.
 	 */
 	void (*destroy) (kernel_interface_t *this);
 };

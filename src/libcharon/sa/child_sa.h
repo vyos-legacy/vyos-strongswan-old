@@ -231,7 +231,7 @@ struct child_sa_t {
 	/**
 	 * Override the DPD action specified by the CHILD_SA config.
 	 *
-	 * @param			close action to enforce
+	 * @param			dpd action to enforce
 	 */
 	void (*set_dpd_action)(child_sa_t *this, action_t action);
 
@@ -284,17 +284,20 @@ struct child_sa_t {
 	mark_t (*get_mark)(child_sa_t *this, bool inbound);
 
 	/**
-	 * Get the traffic selectors list added for one side.
+	 * Create an enumerator over traffic selectors of one side.
 	 *
-	 * @param local		TRUE for own traffic selectors, FALSE for remote
-	 * @return			list of traffic selectors
+	 * @param local		TRUE for own traffic selectors, FALSE for remote.
+	 * @return			enumerator over traffic_selector_t*
 	 */
-	linked_list_t* (*get_traffic_selectors) (child_sa_t *this, bool local);
+	enumerator_t* (*create_ts_enumerator)(child_sa_t *this, bool local);
 
 	/**
 	 * Create an enumerator over installed policies.
 	 *
-	 * @return			enumerator over pairs of traffic selectors.
+	 * The enumerated traffic selectors is a full mesh of compatible local
+	 * and remote traffic selectors.
+	 *
+	 * @return			enumerator over a pair of traffic_selector_t*
 	 */
 	enumerator_t* (*create_policy_enumerator)(child_sa_t *this);
 
@@ -321,6 +324,7 @@ struct child_sa_t {
 	 * @param integ		integrity key
 	 * @param spi		SPI to use, allocated for inbound
 	 * @param cpi		CPI to use, allocated for outbound
+	 * @param initiator	TRUE if initiator of exchange resulting in this SA
 	 * @param inbound	TRUE to install an inbound SA, FALSE for outbound
 	 * @param tfcv3		TRUE if peer supports ESPv3 TFC
 	 * @param my_ts		negotiated local traffic selector list
@@ -328,7 +332,8 @@ struct child_sa_t {
 	 * @return			SUCCESS or FAILED
 	 */
 	status_t (*install)(child_sa_t *this, chunk_t encr, chunk_t integ,
-						u_int32_t spi, u_int16_t cpi, bool inbound, bool tfcv3,
+						u_int32_t spi, u_int16_t cpi,
+						bool initiator, bool inbound, bool tfcv3,
 						linked_list_t *my_ts, linked_list_t *other_ts);
 	/**
 	 * Install the policies using some traffic selectors.
@@ -348,7 +353,7 @@ struct child_sa_t {
 	 * @param me		the new local host
 	 * @param other		the new remote host
 	 * @param vips		list of local virtual IPs
-	 * @param			TRUE to use UDP encapsulation for NAT traversal
+	 * @param encap		TRUE to use UDP encapsulation for NAT traversal
 	 * @return			SUCCESS or FAILED
 	 */
 	status_t (*update)(child_sa_t *this, host_t *me, host_t *other,

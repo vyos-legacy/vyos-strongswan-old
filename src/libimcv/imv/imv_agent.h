@@ -23,6 +23,7 @@
 #define IMV_AGENT_H_
 
 #include "imv_state.h"
+#include "imv_database.h"
 #include "pa_tnc/pa_tnc_msg.h"
 
 #include <tncifimv.h>

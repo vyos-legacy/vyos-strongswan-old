@@ -75,6 +75,7 @@ static const attr_info_t attr_info[] = {
 	{ "unity_def_domain",     VALUE_STRING, UNITY_DEF_DOMAIN,     0 },
 	{ "unity_splitdns_name",  VALUE_STRING, UNITY_SPLITDNS_NAME,  0 },
 	{ "unity_split_include",  VALUE_SUBNET, UNITY_SPLIT_INCLUDE,  0 },
+	{ "unity_split_exclude",  VALUE_SUBNET, UNITY_LOCAL_LAN,      0 },
 	{ "unity_local_lan",      VALUE_SUBNET, UNITY_LOCAL_LAN,      0 },
 };
 
@@ -153,6 +154,7 @@ static bool parse_attributes(char *name, char *value, value_type_t *value_type,
 				memcpy(pos_addr,     addr_chunk.ptr, 4);
 				memcpy(pos_addr + 4, mask_chunk.ptr, 4);
 				addr->destroy(addr);
+				addr = NULL;
 				mask->destroy(mask);
 				chunk_free(blob);
 				*blob = blob_next;

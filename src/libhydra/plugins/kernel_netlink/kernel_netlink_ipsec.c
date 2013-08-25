@@ -37,11 +37,9 @@
 
 #include <hydra.h>
 #include <utils/debug.h>
-#include <threading/thread.h>
 #include <threading/mutex.h>
 #include <collections/hashtable.h>
 #include <collections/linked_list.h>
-#include <processing/jobs/callback_job.h>
 
 /** Required for Linux 2.6.26 kernel and later */
 #ifndef XFRM_STATE_AF_UNSPEC
@@ -558,6 +556,9 @@ struct policy_entry_t {
 
 	/** List of SAs this policy is used by, ordered by priority */
 	linked_list_t *used_by;
+
+	/** reqid for this policy */
+	u_int32_t reqid;
 };
 
 /**
@@ -969,40 +970,37 @@ static void process_mapping(private_kernel_netlink_ipsec_t *this,
 /**
  * Receives events from kernel
  */
-static job_requeue_t receive_events(private_kernel_netlink_ipsec_t *this)
+static bool receive_events(private_kernel_netlink_ipsec_t *this, int fd,
+						   watcher_event_t event)
 {
 	char response[1024];
 	struct nlmsghdr *hdr = (struct nlmsghdr*)response;
 	struct sockaddr_nl addr;
 	socklen_t addr_len = sizeof(addr);
 	int len;
-	bool oldstate;
 
-	oldstate = thread_cancelability(TRUE);
-	len = recvfrom(this->socket_xfrm_events, response, sizeof(response), 0,
-				   (struct sockaddr*)&addr, &addr_len);
-	thread_cancelability(oldstate);
-
+	len = recvfrom(this->socket_xfrm_events, response, sizeof(response),
+				   MSG_DONTWAIT, (struct sockaddr*)&addr, &addr_len);
 	if (len < 0)
 	{
 		switch (errno)
 		{
 			case EINTR:
 				/* interrupted, try again */
-				return JOB_REQUEUE_DIRECT;
+				return TRUE;
 			case EAGAIN:
 				/* no data ready, select again */
-				return JOB_REQUEUE_DIRECT;
+				return TRUE;
 			default:
 				DBG1(DBG_KNL, "unable to receive from xfrm event socket");
 				sleep(1);
-				return JOB_REQUEUE_FAIR;
+				return TRUE;
 		}
 	}
 
 	if (addr.nl_pid != 0)
 	{	/* not from kernel. not interested, try another one */
-		return JOB_REQUEUE_DIRECT;
+		return TRUE;
 	}
 
 	while (NLMSG_OK(hdr, len))
@@ -1028,7 +1026,7 @@ static job_requeue_t receive_events(private_kernel_netlink_ipsec_t *this)
 		}
 		hdr = NLMSG_NEXT(hdr, len);
 	}
-	return JOB_REQUEUE_DIRECT;
+	return TRUE;
 }
 
 METHOD(kernel_ipsec_t, get_features, kernel_feature_t,
@@ -1170,7 +1168,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	u_int32_t spi, u_int8_t protocol, u_int32_t reqid, mark_t mark,
 	u_int32_t tfc, lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
 	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode, u_int16_t ipcomp,
-	u_int16_t cpi, bool encap, bool esn, bool inbound,
+	u_int16_t cpi, bool initiator, bool encap, bool esn, bool inbound,
 	traffic_selector_t* src_ts, traffic_selector_t* dst_ts)
 {
 	netlink_buf_t request;
@@ -1187,7 +1185,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		lifetime_cfg_t lft = {{0,0,0},{0,0,0},{0,0,0}};
 		add_sa(this, src, dst, htonl(ntohs(cpi)), IPPROTO_COMP, reqid, mark,
 			   tfc, &lft, ENCR_UNDEFINED, chunk_empty, AUTH_UNDEFINED,
-			   chunk_empty, mode, ipcomp, 0, FALSE, FALSE, inbound, NULL, NULL);
+			   chunk_empty, mode, ipcomp, 0, initiator, FALSE, FALSE, inbound,
+			   NULL, NULL);
 		ipcomp = IPCOMP_NONE;
 		/* use transport mode ESP SA, IPComp uses tunnel mode */
 		mode = MODE_TRANSPORT;
@@ -1220,6 +1219,12 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 			if(src_ts && dst_ts)
 			{
 				sa->sel = ts2selector(src_ts, dst_ts);
+				/* don't install proto/port on SA. This would break
+				 * potential secondary SAs for the same address using a
+				 * different prot/port. */
+				sa->sel.proto = 0;
+				sa->sel.dport = sa->sel.dport_mask = 0;
+				sa->sel.sport = sa->sel.sport_mask = 0;
 			}
 			break;
 		default:
@@ -1595,7 +1600,7 @@ static void get_replay_state(private_kernel_netlink_ipsec_t *this,
 METHOD(kernel_ipsec_t, query_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets)
+	u_int64_t *bytes, u_int64_t *packets, u_int32_t *time)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *out = NULL, *hdr;
@@ -1679,6 +1684,12 @@ METHOD(kernel_ipsec_t, query_sa, status_t,
 		if (packets)
 		{
 			*packets = sa->curlft.packets;
+		}
+		if (time)
+		{	/* curlft contains an "use" time, but that contains a timestamp
+			 * of the first use, not the last. Last use time must be queried
+			 * on the policy on Linux */
+			*time = 0;
 		}
 		status = SUCCESS;
 	}
@@ -2041,7 +2052,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 			{
 				continue;
 			}
-			tmpl->reqid = ipsec->cfg.reqid;
+			tmpl->reqid = policy->reqid;
 			tmpl->id.proto = protos[i].proto;
 			tmpl->aalgos = tmpl->ealgos = tmpl->calgos = ~0;
 			tmpl->mode = mode2kernel(proto_mode);
@@ -2049,7 +2060,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 							 policy->direction != POLICY_OUT;
 			tmpl->family = ipsec->src->get_family(ipsec->src);
 
-			if (proto_mode == MODE_TUNNEL)
+			if (proto_mode == MODE_TUNNEL || proto_mode == MODE_BEET)
 			{	/* only for tunnel mode */
 				host2xfrm(ipsec->src, &tmpl->saddr);
 				host2xfrm(ipsec->dst, &tmpl->id.daddr);
@@ -2102,7 +2113,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 		);
 
 		if (hydra->kernel_interface->get_address_by_ts(hydra->kernel_interface,
-				fwd->dst_ts, &route->src_ip) == SUCCESS)
+				fwd->dst_ts, &route->src_ip, NULL) == SUCCESS)
 		{
 			/* get the nexthop to src (src as we are in POLICY_FWD) */
 			route->gateway = hydra->kernel_interface->get_nexthop(
@@ -2197,6 +2208,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 		.sel = ts2selector(src_ts, dst_ts),
 		.mark = mark.value & mark.mask,
 		.direction = direction,
+		.reqid = sa->reqid,
 	);
 
 	/* find the policy, which matches EXACTLY */
@@ -2204,6 +2216,16 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	current = this->policies->get(this->policies, policy);
 	if (current)
 	{
+		if (current->reqid != sa->reqid)
+		{
+			DBG1(DBG_CFG, "unable to install policy %R === %R %N (mark "
+				 "%u/0x%08x) for reqid %u, the same policy for reqid %u exists",
+				 src_ts, dst_ts, policy_dir_names, direction,
+				 mark.value, mark.mask, sa->reqid, current->reqid);
+			policy_entry_destroy(this, policy);
+			this->mutex->unlock(this->mutex);
+			return INVALID_STATE;
+		}
 		/* use existing policy */
 		DBG2(DBG_KNL, "policy %R === %R %N  (mark %u/0x%08x) "
 					  "already exists, increasing refcount",
@@ -2375,7 +2397,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	/* find the policy */
 	this->mutex->lock(this->mutex);
 	current = this->policies->get(this->policies, &policy);
-	if (!current)
+	if (!current || current->reqid != reqid)
 	{
 		if (mark.value)
 		{
@@ -2398,8 +2420,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 		enumerator = current->used_by->create_enumerator(current->used_by);
 		while (enumerator->enumerate(enumerator, (void**)&mapping))
 		{
-			if (reqid == mapping->sa->cfg.reqid &&
-				priority == mapping->priority)
+			if (priority == mapping->priority)
 			{
 				current->used_by->remove_at(current->used_by, enumerator);
 				policy_sa_destroy(mapping, &direction, this);
@@ -2579,6 +2600,7 @@ METHOD(kernel_ipsec_t, destroy, void,
 
 	if (this->socket_xfrm_events > 0)
 	{
+		lib->watcher->remove(lib->watcher, this->socket_xfrm_events);
 		close(this->socket_xfrm_events);
 	}
 	DESTROY_IF(this->socket_xfrm);
@@ -2638,13 +2660,7 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 	this->replay_bmp = (this->replay_window + sizeof(u_int32_t) * 8 - 1) /
 													(sizeof(u_int32_t) * 8);
 
-	if (streq(hydra->daemon, "pluto"))
-	{	/* no routes for pluto, they are installed via updown script */
-		this->install_routes = FALSE;
-		/* no policy history for pluto */
-		this->policy_history = FALSE;
-	}
-	else if (streq(hydra->daemon, "starter"))
+	if (streq(hydra->daemon, "starter"))
 	{	/* starter has no threads, so we do not register for kernel events */
 		register_for_events = FALSE;
 	}
@@ -2687,10 +2703,8 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 			destroy(this);
 			return NULL;
 		}
-		lib->processor->queue_job(lib->processor,
-			(job_t*)callback_job_create_with_prio(
-					(callback_job_cb_t)receive_events, this, NULL,
-					(callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
+		lib->watcher->add(lib->watcher, this->socket_xfrm_events, WATCHER_READ,
+						  (watcher_cb_t)receive_events, this);
 	}
 
 	return &this->public;

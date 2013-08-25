@@ -160,9 +160,9 @@ struct attest_db_t {
 	void (*set_relative)(attest_db_t *this);
 
 	/**
-	 * Set the package security state
+	 * Set the package security or blacklist state
 	 */
-	void (*set_security)(attest_db_t *this, os_package_state_t security);
+	void (*set_package_state)(attest_db_t *this, os_package_state_t package_state);
 
 	/**
 	 * Set the sequence number
@@ -193,6 +193,11 @@ struct attest_db_t {
 	void (*list_products)(attest_db_t *this);
 
 	/**
+	 * List all directories stored in the database
+	 */
+	void (*list_directories)(attest_db_t *this);
+
+	/**
 	 * List selected files stored in the database
 	 */
 	void (*list_files)(attest_db_t *this);
@@ -221,6 +226,11 @@ struct attest_db_t {
 	 * List selected component measurement stored in the database
 	 */
 	void (*list_measurements)(attest_db_t *this);
+
+	/**
+	 * List sessions stored in the database
+	 */
+	void (*list_sessions)(attest_db_t *this);
 
 	/**
 	 * Add an entry to the database

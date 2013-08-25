@@ -1,4 +1,4 @@
-.TH STRONGSWAN.CONF 5 "2013-04-01" "@IPSEC_VERSION@" "strongSwan"
+.TH STRONGSWAN.CONF 5 "2013-07-22" "@IPSEC_VERSION@" "strongSwan"
 .SH NAME
 strongswan.conf \- strongSwan configuration file
 .SH DESCRIPTION
@@ -133,7 +133,13 @@ Path to database with file measurement information
 .TP
 .BR attest.load
 Plugins to load in ipsec attest tool
+
 .SS charon section
+.TP
+.BR Note :
+Many of these options also apply to \fBcharon\-cmd\fR and other
+\fBcharon\fR derivatives. Just use their respective name (e.g.
+\fIcharon\-cmd\fR) instead of  \fIcharon\fR.
 .TP
 .BR charon.block_threshold " [5]"
 Maximum number of half-open IKE_SAs for a single peer IP
@@ -167,6 +173,9 @@ used certificates.
 .BR charon.fragment_size " [512]"
 Maximum size (in bytes) of a sent fragment when using the proprietary IKEv1
 fragmentation extension.
+.TP
+.BR charon.group
+Name of the group the daemon changes to after startup
 .TP
 .BR charon.half_open_timeout " [30]"
 Timeout in seconds for connecting IKE_SAs (also see IKE_SA_INIT DROPPING).
@@ -311,6 +320,9 @@ Section to define syslog loggers, see LOGGER CONFIGURATION
 .TP
 .BR charon.threads " [16]"
 Number of worker threads in charon
+.TP
+.BR charon.user
+Name of the user the daemon changes to after startup
 .SS charon.plugins subsection
 .TP
 .BR charon.plugins.android_log.loglevel " [1]"
@@ -323,6 +335,18 @@ configuration payload (CP)
 .BR charon.plugins.certexpire.csv.cron
 Cron style string specifying CSV export times
 .TP
+.BR charon.plugins.certexpire.csv.empty_string
+String to use in empty intermediate CA fields
+.TP
+.BR charon.plugins.certexpire.csv.fixed_fields " [yes]"
+Use a fixed intermediate CA field count
+.TP
+.BR charon.plugins.certexpire.csv.force " [yes]"
+Force export of all trustchains we have a private key for
+.TP
+.BR charon.plugins.certexpire.csv.format " [%d:%m:%Y]"
+strftime(3) format string to export expiration dates as
+.TP
 .BR charon.plugins.certexpire.csv.local
 strftime(3) format string for the CSV file name to export local certificates to
 .TP
@@ -331,15 +355,6 @@ strftime(3) format string for the CSV file name to export remote certificates to
 .TP
 .BR charon.plugins.certexpire.csv.separator " [,]"
 CSV field separator
-.TP
-.BR charon.plugins.certexpire.csv.empty_string
-String to use in empty intermediate CA fields
-.TP
-.BR charon.plugins.certexpire.csv.format " [%d:%m:%Y]"
-strftime(3) format string to export expiration dates as
-.TP
-.BR charon.plugins.certexpire.csv.fixed_fields " [yes]"
-Use a fixed intermediate CA field count
 .TP
 .BR charon.plugins.coupling.file
 File to store coupling list to
@@ -366,6 +381,9 @@ DHCP server unicast or broadcast IP address
 .TP
 .BR charon.plugins.duplicheck.enable " [yes]"
 Enable duplicheck plugin (if loaded)
+.TP
+.BR charon.plugins.duplicheck.socket " [unix://${piddir}/charon.dck]"
+Socket provided by the duplicheck plugin
 .TP
 .BR charon.plugins.eap-aka.request_identity " [yes]"
 
@@ -409,6 +427,9 @@ Request peer authentication based on a client certificate
 .TP
 .BR charon.plugins.eap-radius.accounting " [no]"
 Send RADIUS accounting information to RADIUS servers.
+.TP
+.BR charon.plugins.eap-radius.accounting_requires_vip " [no]"
+If enabled, accounting is disabled unless an IKE_SA has at least one virtual IP
 .TP
 .BR charon.plugins.eap-radius.class_group " [no]"
 Use the
@@ -546,6 +567,9 @@ Start phase2 EAP TNC protocol after successful client authentication
 .BR charon.plugins.eap-ttls.request_peer_auth " [no]"
 Request peer authentication based on a client certificate
 .TP
+.BR charon.plugins.error-notify.socket " [unix://${piddir}/charon.enfy]"
+Socket provided by the error-notify plugin
+.TP
 .BR charon.plugins.ha.autobalance " [0]"
 Interval in seconds to automatically balance handled segments between nodes.
 Set to 0 to disable.
@@ -581,7 +605,7 @@ Set to 0 to disable.
 
 .TP
 .BR charon.plugins.ipseckey.enable " [no]"
-Enable the fetching of IPSECKEY RRs from the DNS
+Enable the fetching of IPSECKEY RRs via DNS
 .TP
 .BR charon.plugins.led.activity_led
 
@@ -595,8 +619,17 @@ Number of ipsecN devices
 .BR charon.plugins.kernel-klips.ipsec_dev_mtu " [0]"
 Set MTU of ipsecN device
 .TP
+.BR charon.plugins.kernel-netlink.roam_events " [yes]"
+Whether to trigger roam events when interfaces, addresses or routes change
+.TP
+.BR charon.plugins.kernel-pfroute.vip_wait " [1000]"
+Time in ms to wait until virtual IP addresses appear/disappear before failing.
+.TP
 .BR charon.plugins.load-tester
 Section to configure the load-tester plugin, see LOAD TESTS
+.TP
+.BR charon.plugins.lookip.socket " [unix://${piddir}/charon.lkp]"
+Socket provided by the lookip plugin
 .TP
 .BR charon.plugins.radattr.dir
 Directory where RADIUS attributes are stored in client-ID specific files.
@@ -617,6 +650,12 @@ have a high priority according to the order defined in interface-order(5).
 .BR charon.plugins.socket-default.set_source " [yes]"
 Set source address on outbound packets, if possible.
 .TP
+.BR charon.plugins.socket-default.use_ipv4 " [yes]"
+Listen on IPv4, if possible.
+.TP
+.BR charon.plugins.socket-default.use_ipv6 " [yes]"
+Listen on IPv6, if possible.
+.TP
 .BR charon.plugins.sql.database
 Database URI for charons SQL plugin
 .TP
@@ -629,6 +668,9 @@ certificates even if they don't contain a CA basic constraint.
 .TP
 .BR charon.plugins.stroke.max_concurrent " [4]"
 Maximum number of stroke messages handled concurrently
+.TP
+.BR charon.plugins.stroke.socket " [unix://${piddir}/charon.ctl]"
+Socket provided by the stroke plugin
 .TP
 .BR charon.plugins.stroke.timeout " [0]"
 Timeout in ms for any stroke command. Use 0 to disable the timeout
@@ -707,6 +749,9 @@ plugins, like resolve)
 .BR charon.plugins.whitelist.enable " [yes]"
 Enable loaded whitelist plugin
 .TP
+.BR charon.plugins.whitelist.socket " [unix://${piddir}/charon.wlst]"
+Socket provided by the whitelist plugin
+.TP
 .BR charon.plugins.xauth-eap.backend " [radius]"
 EAP plugin to be used as backend for XAuth credential verification
 .TP
@@ -759,6 +804,9 @@ Includes source file names and line numbers in leak detective output
 .TP
 .BR libstrongswan.leak_detective.usage_threshold " [10240]"
 Threshold in bytes for leaks to be reported (0 to report all)
+.TP
+.BR libstrongswan.leak_detective.usage_threshold_count " [0]"
+Threshold in number of allocations for leaks to be reported (0 to report all)
 .TP
 .BR libstrongswan.processor.priority_threads
 Subsection to configure the number of reserved threads per priority class
@@ -820,6 +868,19 @@ File to read DNS resolver configuration from
 .TP
 .BR libstrongswan.plugins.unbound.trust_anchors " [/etc/ipsec.d/dnssec.keys]"
 File to read DNSSEC trust anchors from (usually root zone KSK)
+.SS libtls section
+.TP
+.BR libtls.cipher
+List of TLS encryption ciphers
+.TP
+.BR libtls.key_exchange
+List of TLS key exchange methods
+.TP
+.BR libtls.mac
+List of TLS MAC algorithms
+.TP
+.BR libtls.suites
+List of TLS cipher suites
 .SS libtnccs section
 .TP
 .BR libtnccs.tnc_config " [/etc/tnc_config]"
@@ -829,17 +890,27 @@ TNC IMC/IMV configuration directory
 .BR libimcv.assessment_result " [yes]"
 Whether IMVs send a standard IETF Assessment Result attribute
 .TP
+.BR libimcv.database
+Global IMV policy database URI
+.TP
 .BR libimcv.debug_level " [1]"
 Debug level for a stand-alone libimcv library
 .TP
-.BR libimcv.stderr_quiet " [no]"
-Disable output to stderr with a stand-alone libimcv library
+.BR libimcv.load " [random nonce gmp pubkey x509]"
+Plugins to load in IMC/IMVs
 .TP
 .BR libimcv.os_info.name
 Manually set the name of the client OS (e.g. Ubuntu)
 .TP
 .BR libimcv.os_info.version
 Manually set the version of the client OS (e.g. 12.04 i686)
+.TP
+.BR libimcv.policy_script " [ipsec _imv_policy]"
+Script called for each TNC connection to generate IMV policies
+.TP
+.BR libimcv.stderr_quiet " [no]"
+isable output to stderr with a stand-alone libimcv library
+.PP
 .SS libimcv plugins section
 .TP
 .BR libimcv.plugins.imc-attestation.aik_blob
@@ -860,9 +931,6 @@ Use Quote2 AIK signature instead of Quote signature
 .BR libimcv.plugins.imv-attestation.cadir
 Path to directory with AIK cacerts
 .TP
-.BR libimcv.plugins.imv-attestation.database
-Path to database with file measurement information
-.TP
 .BR libimcv.plugins.imv-attestation.dh_group " [ecp256]"
 Preferred Diffie-Hellman group
 .TP
@@ -878,26 +946,14 @@ URI pointing to attestation remediation instructions
 .BR libimcv.plugins.imc-os.push_info " [yes]"
 Send operating system info without being prompted
 .TP
-.BR libimcv.plugins.imv-os.database
-Database URI for the database that stores operating system information
-.TP
 .BR libimcv.plugins.imv-os.remediation_uri
 URI pointing to operating system remediation instructions
 .TP
 .BR libimcv.plugins.imc-scanner.push_info " [yes]"
 Send open listening ports without being prompted
 .TP
-.BR libimcv.plugins.imv-scanner.closed_port_policy " [yes]"
-By default all ports must be closed (yes) or can be open (no)
-.TP
 .BR libimcv.plugins.imv-scanner.remediation_uri
 URI pointing to scanner remediation instructions
-.TP
-.BR libimcv.plugins.imv-scanner.tcp_ports
-List of TCP ports that can be open or must be closed
-.TP
-.BR libimcv.plugins.imv-scanner.udp_ports
-List of UDP ports that can be open or must be closed
 .TP
 .BR libimcv.plugins.imc-test.additional_ids " [0]"
 Number of additional IMC IDs
@@ -908,30 +964,17 @@ Command to be sent to the Test IMV
 .BR libimcv.plugins.imc-test.dummy_size " [0]"
 Size of dummy attribute to be sent to the Test IMV (0 = disabled)
 .TP
+.BR libimcv.plugins.imv-test.remediation_uri
+URI pointing to test remediation instructions
+.TP
 .BR libimcv.plugins.imc-test.retry " [no]"
 Do a handshake retry
 .TP
 .BR libimcv.plugins.imc-test.retry_command
 Command to be sent to the Test IMV in the handshake retry
 .TP
-.BR libimcv.plugins.imv-test.remediation_uri
-URI pointing to test remediation instructions
-.TP
 .BR libimcv.plugins.imv-test.rounds " [0]"
 Number of IMC-IMV retry rounds
-.SS libtls section
-.TP
-.BR libtls.cipher
-List of TLS encryption ciphers
-.TP
-.BR libtls.key_exchange
-List of TLS key exchange methods
-.TP
-.BR libtls.mac
-List of TLS MAC algorithms
-.TP
-.BR libtls.suites
-List of TLS cipher suites
 .SS manager section
 .TP
 .BR manager.database
@@ -1450,9 +1493,13 @@ Request an INTERNAL_IPV4_ADDR from the server
 .BR charon.plugins.load-tester.shutdown_when_complete " [no]"
 Shutdown the daemon after all IKE_SAs have been established
 .TP
+.BR charon.plugins.load-tester.socket " [unix://${piddir}/charon.ldt]"
+Socket provided by the load-tester plugin
+.TP
 .BR charon.plugins.load-tester.version " [0]"
 IKE version to use (0 means use IKEv2 as initiator and accept any version as
 responder)
+.PP
 .SS Configuration details
 For public key authentication, the responder uses the
 .B \(dqCN=srv, OU=load-test, O=strongSwan\(dq
@@ -1608,7 +1655,8 @@ giving up	76s	165s
 /etc/strongswan.conf
 
 .SH SEE ALSO
-ipsec.conf(5), ipsec.secrets(5), ipsec(8)
+\fBipsec.conf\fR(5), \fBipsec.secrets\fR(5), \fBipsec\fR(8), \fBcharon-cmd\fR(8)
+
 .SH HISTORY
 Written for the
 .UR http://www.strongswan.org

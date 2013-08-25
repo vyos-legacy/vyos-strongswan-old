@@ -1,7 +1,8 @@
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan
 
-INCLUDES = -I$(top_srcdir)/src/libstrongswan
-
-AM_CFLAGS = -rdynamic
+AM_CFLAGS = \
+	-rdynamic
 
 if MONOLITHIC
 noinst_LTLIBRARIES = libstrongswan-test-vectors.la
@@ -26,6 +27,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/des.c \
 	test_vectors/idea.c \
 	test_vectors/null.c \
+	test_vectors/rc2.c \
 	test_vectors/rc5.c \
 	test_vectors/serpent_cbc.c \
 	test_vectors/twofish_cbc.c \
