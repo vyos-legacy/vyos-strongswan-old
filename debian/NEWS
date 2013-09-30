@@ -1,4 +1,4 @@
-strongswan (5.1.0-1) UNRELEASED; urgency=low
+strongswan (5.1.0-1) unstable; urgency=low
 
   Starting with strongSwan 5, the IKEv1 daemon (pluto) is gone, and the charon
   daemon is now able to handle both IKEv1 and IKEv2 protocols.

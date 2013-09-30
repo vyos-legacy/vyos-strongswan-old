@@ -1,4 +1,4 @@
-strongswan (5.1.0-1) UNRELEASED; urgency=low
+strongswan (5.1.0-1) unstable; urgency=low
 
   * New upstream release.
   * debian/libstrongswan.install:
@@ -17,7 +17,7 @@ strongswan (5.1.0-1) UNRELEASED; urgency=low
     - warn users about charon replacing pluto as IKEv1 daemon and provide some
       migration pointers.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sun, 25 Aug 2013 15:37:56 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 30 Sep 2013 20:59:04 +0200
 
 strongswan (5.0.4-3) experimental; urgency=low
 
