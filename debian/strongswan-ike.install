@@ -7,3 +7,4 @@ usr/lib/ipsec/plugins/libstrongswan-eap*.so
 usr/lib/ipsec/plugins/libstrongswan-agent.so
 usr/lib/ipsec/plugins/libstrongswan-medsrv.so
 usr/lib/ipsec/plugins/libstrongswan-medcli.so
+usr/lib/ipsec/plugins/libstrongswan-certexpire.so
