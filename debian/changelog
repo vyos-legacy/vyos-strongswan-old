@@ -5,8 +5,9 @@ strongswan (5.1.0-2) UNRELEASED; urgency=low
     - enable certexpire plugin.                                 closes: #718293
     - enable lookip plugin.                                     closes: #718299
     - enable error-notify plugin.                               closes: #718304
+    - enable unity plugin.                                      closes: #718289
   * debian/strongswan-ike.install:
-    - install certexpire plugin.
+    - install certexpire and unity plugins.
     - install lookip binary and plugin.
     - install error-notify binary and plugin.
 

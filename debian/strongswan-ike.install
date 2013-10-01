@@ -12,3 +12,4 @@ usr/lib/ipsec/plugins/libstrongswan-medcli.so
 usr/lib/ipsec/plugins/libstrongswan-certexpire.so
 usr/lib/ipsec/plugins/libstrongswan-lookip.so
 usr/lib/ipsec/plugins/libstrongswan-error-notify.so
+usr/lib/ipsec/plugins/libstrongswan-unity.so
