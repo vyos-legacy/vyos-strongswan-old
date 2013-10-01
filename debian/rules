@@ -21,6 +21,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-cmd \
 		--enable-certexpire \
 		--enable-lookip \
+		--enable-error-notify \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \

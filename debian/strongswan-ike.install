@@ -3,6 +3,7 @@ usr/share/man/man8/charon-cmd.8
 usr/lib/ipsec/libcharon.so*
 usr/lib/ipsec/charon
 usr/lib/ipsec/lookip
+usr/lib/ipsec/error-notify
 usr/lib/ipsec/plugins/libstrongswan-socket*.so
 usr/lib/ipsec/plugins/libstrongswan-eap*.so
 usr/lib/ipsec/plugins/libstrongswan-agent.so
@@ -10,3 +11,4 @@ usr/lib/ipsec/plugins/libstrongswan-medsrv.so
 usr/lib/ipsec/plugins/libstrongswan-medcli.so
 usr/lib/ipsec/plugins/libstrongswan-certexpire.so
 usr/lib/ipsec/plugins/libstrongswan-lookip.so
+usr/lib/ipsec/plugins/libstrongswan-error-notify.so
