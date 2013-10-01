@@ -20,6 +20,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-attr-sql \
 		--enable-cmd \
 		--enable-certexpire \
+		--enable-lookip \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \

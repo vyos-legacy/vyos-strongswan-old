@@ -17,8 +17,8 @@ usr/share/man/man8/_updown_espmark.8
 #tools
 usr/lib/ipsec/scepclient
 usr/lib/ipsec/openac
-usr/lib/ipsec/pki
 usr/lib/ipsec/pool
+usr/lib/ipsec/pki
 usr/share/man/man8/scepclient.8
 usr/share/man/man8/openac.8
 #stroke
