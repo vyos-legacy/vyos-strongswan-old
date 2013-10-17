@@ -12,6 +12,7 @@ strongswan (5.1.0-2) UNRELEASED; urgency=low
     - install error-notify binary and plugin.
   * debian/control:
     - update long description, thanks to Justin B Rye.          closes: #725085
+    - strongswan-ike: only depend on iproute on Linux arches. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 01 Oct 2013 09:35:37 +0200
 
