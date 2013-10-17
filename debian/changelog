@@ -13,6 +13,9 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
   * debian/control:
     - update long description, thanks to Justin B Rye.          closes: #725085
     - strongswan-ike: only depend on iproute on Linux arches. 
+  * debian/po:
+    - eu.po updated, thanks Iñaki Larrañaga Murgoitio.          closes: #726636
+    - ja.po updated.                                            closes: #726059
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 01 Oct 2013 09:35:37 +0200
 
