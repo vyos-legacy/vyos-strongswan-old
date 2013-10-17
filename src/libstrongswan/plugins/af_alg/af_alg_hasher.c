@@ -99,30 +99,28 @@ METHOD(hasher_t, get_hash_size, size_t,
 	return this->size;
 }
 
-METHOD(hasher_t, reset, void,
+METHOD(hasher_t, reset, bool,
 	private_af_alg_hasher_t *this)
 {
 	this->ops->reset(this->ops);
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash, void,
+METHOD(hasher_t, get_hash, bool,
 	private_af_alg_hasher_t *this, chunk_t chunk, u_int8_t *hash)
 {
-	this->ops->hash(this->ops, chunk, hash, this->size);
+	return this->ops->hash(this->ops, chunk, hash, this->size);
 }
 
-METHOD(hasher_t, allocate_hash, void,
+METHOD(hasher_t, allocate_hash, bool,
 	private_af_alg_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	if (hash)
 	{
 		*hash = chunk_alloc(get_hash_size(this));
-		get_hash(this, chunk, hash->ptr);
+		return get_hash(this, chunk, hash->ptr);
 	}
-	else
-	{
-		get_hash(this, chunk, NULL);
-	}
+	return get_hash(this, chunk, NULL);
 }
 
 METHOD(hasher_t, destroy, void,

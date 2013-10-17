@@ -1,11 +1,5 @@
-/**
- * @file scep.h
- * @brief SCEP specific functions
- *
- * Contains functions to build and parse SCEP requests and replies
- */
-
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005 Jan Hutter, Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -23,10 +17,8 @@
 #ifndef _SCEP_H
 #define _SCEP_H
 
+#include <credentials/containers/pkcs7.h>
 #include <credentials/certificates/certificate.h>
-
-#include "../pluto/defs.h"
-#include "../pluto/pkcs7.h"
 
 /* supported SCEP operation types */
 typedef enum {
@@ -74,22 +66,22 @@ typedef struct {
 
 extern const scep_attributes_t empty_scep_attributes;
 
-extern bool parse_attributes(chunk_t blob, scep_attributes_t *attrs);
-extern void scep_generate_transaction_id(public_key_t *key,
-										 chunk_t *transID,
-										 chunk_t *serialNumber);
-extern chunk_t scep_generate_pkcs10_fingerprint(chunk_t pkcs10);
-extern chunk_t scep_transId_attribute(chunk_t transaction_id);
-extern chunk_t scep_messageType_attribute(scep_msg_t m);
-extern chunk_t scep_senderNonce_attribute(void);
-extern chunk_t scep_build_request(chunk_t data, chunk_t transID, scep_msg_t msg,
-								  certificate_t *enc_cert, int enc_alg,
-								  certificate_t *signer_cert, int digest_alg,
-								  private_key_t *private_key);
-extern bool scep_http_request(const char *url, chunk_t pkcs7, scep_op_t op,
-							  bool http_get_request, chunk_t *response);
-extern err_t scep_parse_response(chunk_t response, chunk_t transID,
-								 contentInfo_t *data, scep_attributes_t *attrs,
-								 certificate_t *signer_cert);
+bool parse_attributes(chunk_t blob, scep_attributes_t *attrs);
+void scep_generate_transaction_id(public_key_t *key,
+								  chunk_t *transID,
+								  chunk_t *serialNumber);
+chunk_t scep_generate_pkcs10_fingerprint(chunk_t pkcs10);
+chunk_t scep_transId_attribute(chunk_t transaction_id);
+chunk_t scep_messageType_attribute(scep_msg_t m);
+chunk_t scep_senderNonce_attribute(void);
+chunk_t scep_build_request(chunk_t data, chunk_t transID, scep_msg_t msg,
+						certificate_t *enc_cert, encryption_algorithm_t enc_alg,
+						size_t key_size, certificate_t *signer_cert,
+						hash_algorithm_t digest_alg, private_key_t *private_key);
+bool scep_http_request(const char *url, chunk_t msg, scep_op_t op,
+					   bool http_get_request, u_int timeout, char *src,
+					   chunk_t *response);
+err_t scep_parse_response(chunk_t response, chunk_t transID,
+						  container_t **out, scep_attributes_t *attrs);
 
 #endif /* _SCEP_H */

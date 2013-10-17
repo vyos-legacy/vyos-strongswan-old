@@ -45,9 +45,10 @@ struct aead_t {
 	 * @param assoc			associated data to sign
 	 * @param iv			initialization vector
 	 * @param encrypted		allocated encryption result
+	 * @return				TRUE if successfully encrypted
 	 */
-	void (*encrypt)(aead_t *this, chunk_t plain, chunk_t assoc, chunk_t iv,
-					chunk_t *encrypted);
+	bool (*encrypt)(aead_t *this, chunk_t plain, chunk_t assoc, chunk_t iv,
+					chunk_t *encrypted) __attribute__((warn_unused_result));
 
 	/**
 	 * Decrypt and verify data, verify associated data.
@@ -57,7 +58,7 @@ struct aead_t {
 	 * is returned in the encrypted chunk, the last get_icv_size() bytes
 	 * contain the verified ICV.
 	 *
-	 * @param encrypted		data to encrypt and verify
+	 * @param encrypted		data to decrypt and verify
 	 * @param assoc			associated data to verify
 	 * @param iv			initialization vector
 	 * @param plain			allocated result, if successful
@@ -98,11 +99,13 @@ struct aead_t {
 	 * Set the key for encryption and authentication.
 	 *
 	 * @param key			encryption and authentication key
+	 * @return				TRUE if key set successfully
 	 */
-	void (*set_key)(aead_t *this, chunk_t key);
+	bool (*set_key)(aead_t *this,
+					chunk_t key) __attribute__((warn_unused_result));
 
 	/**
-	 * Destroy a aead_t.
+	 * Destroy an aead_t.
 	 */
 	void (*destroy)(aead_t *this);
 };

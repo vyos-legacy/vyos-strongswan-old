@@ -18,7 +18,7 @@
 #include "stroke_cred.h"
 
 #include <threading/rwlock.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <crypto/hashers/hasher.h>
 
 #include <daemon.h>
@@ -348,16 +348,18 @@ METHOD(stroke_ca_t, check_for_hash_and_url, void,
 	enumerator = this->sections->create_enumerator(this->sections);
 	while (enumerator->enumerate(enumerator, (void**)&section))
 	{
-		if (section->certuribase && cert->issued_by(cert, section->cert))
+		if (section->certuribase && cert->issued_by(cert, section->cert, NULL))
 		{
 			chunk_t hash, encoded;
 
 			if (cert->get_encoding(cert, CERT_ASN1_DER, &encoded))
 			{
-				hasher->allocate_hash(hasher, encoded, &hash);
-				section->hashes->insert_last(section->hashes,
+				if (hasher->allocate_hash(hasher, encoded, &hash))
+				{
+					section->hashes->insert_last(section->hashes,
 						identification_create_from_encoding(ID_KEY_ID, hash));
-				chunk_free(&hash);
+					chunk_free(&hash);
+				}
 				chunk_free(&encoded);
 			}
 			break;

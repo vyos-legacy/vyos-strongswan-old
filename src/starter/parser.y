@@ -17,11 +17,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <freeswan.h>
+#include <library.h>
+#include <utils/debug.h>
 
-#include "../pluto/constants.h"
-#include "../pluto/defs.h"
-#include "../pluto/log.h"
 #include "ipsec-parser.h"
 
 #define YYERROR_VERBOSE
@@ -63,7 +61,7 @@ extern kw_entry_t *in_word_set (char *str, unsigned int len);
 
 config_file:
 	config_file section_or_include
-	| /* NULL */                
+	| /* NULL */
 	;
 
 section_or_include:
@@ -79,8 +77,8 @@ section_or_include:
 	| CONN STRING EOL
 	{
 		section_list_t *section = malloc_thing(section_list_t);
-		
-		section->name = clone_str($2);
+
+		section->name = strdupnull($2);
 		section->kw = NULL;
 		section->next = NULL;
 		_parser_kw = &(section->kw);
@@ -95,7 +93,7 @@ section_or_include:
 	| CA STRING EOL
 	{
 		section_list_t *section = malloc_thing(section_list_t);
-		section->name = clone_str($2);
+		section->name = strdupnull($2);
 		section->kw = NULL;
 		section->next = NULL;
 		_parser_kw = &(section->kw);
@@ -136,7 +134,7 @@ statement_kw:
 		{
 			new = (kw_list_t *)malloc_thing(kw_list_t);
 			new->entry = entry;
-			new->value = clone_str($3);
+			new->value = strdupnull($3);
 			new->next = NULL;
 			if (_parser_kw_last)
 				_parser_kw_last->next = new;
@@ -223,7 +221,7 @@ config_parsed_t *parser_load_conf(const char *file)
 
 	if (err)
 	{
-		plog("%s", parser_errstring);
+		DBG1(DBG_APP, "%s", parser_errstring);
 
 		if (cfg)
 			parser_free_conf(cfg);

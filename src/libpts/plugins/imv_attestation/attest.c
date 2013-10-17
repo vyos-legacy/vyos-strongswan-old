@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,9 +20,10 @@
 #include <string.h>
 #include <errno.h>
 #include <syslog.h>
+#include <libgen.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <imcv.h>
 #include <libpts.h>
@@ -34,7 +35,7 @@
 /**
  * global debug output variables
  */
-static int debug_level = 2;
+static int debug_level = 1;
 static bool stderr_quiet = TRUE;
 
 /**
@@ -81,6 +82,7 @@ static void attest_dbg(debug_t group, level_t level, char *fmt, ...)
  */
 attest_db_t *attest;
 
+
 /**
  * atexit handler to close db on shutdown
  */
@@ -99,10 +101,14 @@ static void do_args(int argc, char *argv[])
 		OP_USAGE,
 		OP_KEYS,
 		OP_COMPONENTS,
+		OP_DEVICES,
+		OP_DIRECTORIES,
 		OP_FILES,
 		OP_HASHES,
 		OP_MEASUREMENTS,
+		OP_PACKAGES,
 		OP_PRODUCTS,
+		OP_SESSIONS,
 		OP_ADD,
 		OP_DEL,
 	} op = OP_UNDEF;
@@ -117,23 +123,39 @@ static void do_args(int argc, char *argv[])
 		struct option long_opts[] = {
 			{ "help", no_argument, NULL, 'h' },
 			{ "components", no_argument, NULL, 'c' },
+			{ "devices", no_argument, NULL, 'e' },
+			{ "directories", no_argument, NULL, 'd' },
+			{ "dirs", no_argument, NULL, 'd' },
 			{ "files", no_argument, NULL, 'f' },
 			{ "keys", no_argument, NULL, 'k' },
+			{ "packages", no_argument, NULL, 'g' },
 			{ "products", no_argument, NULL, 'p' },
 			{ "hashes", no_argument, NULL, 'H' },
 			{ "measurements", no_argument, NULL, 'm' },
+			{ "sessions", no_argument, NULL, 's' },
 			{ "add", no_argument, NULL, 'a' },
-			{ "delete", no_argument, NULL, 'd' },
-			{ "del", no_argument, NULL, 'd' },
+			{ "delete", no_argument, NULL, 'r' },
+			{ "del", no_argument, NULL, 'r' },
+			{ "remove", no_argument, NULL, 'r' },
 			{ "aik", required_argument, NULL, 'A' },
+			{ "blacklist", no_argument, NULL, 'B' },
 			{ "component", required_argument, NULL, 'C' },
 			{ "comp", required_argument, NULL, 'C' },
 			{ "directory", required_argument, NULL, 'D' },
 			{ "dir", required_argument, NULL, 'D' },
 			{ "file", required_argument, NULL, 'F' },
+			{ "sha1-ima", no_argument, NULL, 'I' },
+			{ "package", required_argument, NULL, 'G' },
 			{ "key", required_argument, NULL, 'K' },
 			{ "owner", required_argument, NULL, 'O' },
 			{ "product", required_argument, NULL, 'P' },
+			{ "relative", no_argument, NULL, 'R' },
+			{ "rel", no_argument, NULL, 'R' },
+			{ "sequence", required_argument, NULL, 'S' },
+			{ "seq", required_argument, NULL, 'S' },
+			{ "utc", no_argument, NULL, 'U' },
+			{ "version", required_argument, NULL, 'V' },
+			{ "security", no_argument, NULL, 'Y' },
 			{ "sha1", no_argument, NULL, '1' },
 			{ "sha256", no_argument, NULL, '2' },
 			{ "sha384", no_argument, NULL, '3' },
@@ -142,6 +164,7 @@ static void do_args(int argc, char *argv[])
 			{ "pid", required_argument, NULL, '6' },
 			{ "cid", required_argument, NULL, '7' },
 			{ "kid", required_argument, NULL, '8' },
+			{ "gid", required_argument, NULL, '9' },
 			{ 0,0,0,0 }
 		};
 
@@ -156,8 +179,17 @@ static void do_args(int argc, char *argv[])
 			case 'c':
 				op = OP_COMPONENTS;
 				continue;
+			case 'd':
+				op = OP_DIRECTORIES;
+				continue;
+			case 'e':
+				op = OP_DEVICES;
+				continue;
 			case 'f':
 				op = OP_FILES;
+				continue;
+			case 'g':
+				op = OP_PACKAGES;
 				continue;
 			case 'k':
 				op = OP_KEYS;
@@ -171,10 +203,13 @@ static void do_args(int argc, char *argv[])
 			case 'm':
 				op = OP_MEASUREMENTS;
 				continue;
+			case 's':
+				op = OP_SESSIONS;
+				continue;
 			case 'a':
 				op = OP_ADD;
 				continue;
-			case 'd':
+			case 'r':
 				op = OP_DEL;
 				continue;
 			case 'A':
@@ -214,6 +249,9 @@ static void do_args(int argc, char *argv[])
 				}
 				continue;
 			}
+			case 'B':
+				attest->set_package_state(attest, OS_PACKAGE_STATE_BLACKLIST);
+				continue;
 			case 'C':
 				if (!attest->set_component(attest, optarg, op == OP_ADD))
 				{
@@ -227,10 +265,34 @@ static void do_args(int argc, char *argv[])
 				}
 				continue;
 			case 'F':
-				if (!attest->set_file(attest, optarg, op == OP_ADD))
+			{
+				char *path = strdup(optarg);
+				char *dir = dirname(path);
+				char *file = basename(optarg);
+
+				if (*dir != '.')
+				{
+					if (!attest->set_directory(attest, dir, op == OP_ADD))
+					{
+						free(path);
+						exit(EXIT_FAILURE);
+					}
+				}
+				free(path);
+				if (!attest->set_file(attest, file, op == OP_ADD))
 				{
 					exit(EXIT_FAILURE);
 				}
+				continue;
+			}
+			case 'G':
+				if (!attest->set_package(attest, optarg, op == OP_ADD))
+				{
+					exit(EXIT_FAILURE);
+				}
+				continue;
+			case 'I':
+				attest->set_algo(attest, PTS_MEAS_ALGO_SHA1_IMA);
 				continue;
 			case 'K':
 			{
@@ -251,6 +313,24 @@ static void do_args(int argc, char *argv[])
 				{
 					exit(EXIT_FAILURE);
 				}
+				continue;
+			case 'R':
+				attest->set_relative(attest);
+				continue;
+			case 'S':
+				attest->set_sequence(attest, atoi(optarg));
+				continue;
+			case 'U':
+				attest->set_utc(attest);
+				continue;
+			case 'V':
+				if (!attest->set_version(attest, optarg))
+				{
+					exit(EXIT_FAILURE);
+				}
+				continue;
+			case 'Y':
+				attest->set_package_state(attest, OS_PACKAGE_STATE_SECURITY);
 				continue;
 			case '1':
 				attest->set_algo(attest, PTS_MEAS_ALGO_SHA1);
@@ -291,6 +371,12 @@ static void do_args(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				continue;
+			case '9':
+				if (!attest->set_gid(attest, atoi(optarg)))
+				{
+					exit(EXIT_FAILURE);
+				}
+				continue;
 		}
 		break;
 	}
@@ -299,6 +385,9 @@ static void do_args(int argc, char *argv[])
 	{
 		case OP_USAGE:
 			usage();
+			break;
+		case OP_PACKAGES:
+			attest->list_packages(attest);
 			break;
 		case OP_PRODUCTS:
 			attest->list_products(attest);
@@ -309,6 +398,12 @@ static void do_args(int argc, char *argv[])
 		case OP_COMPONENTS:
 			attest->list_components(attest);
 			break;
+		case OP_DEVICES:
+			attest->list_devices(attest);
+			break;
+		case OP_DIRECTORIES:
+			attest->list_directories(attest);
+			break;
 		case OP_FILES:
 			attest->list_files(attest);
 			break;
@@ -317,6 +412,9 @@ static void do_args(int argc, char *argv[])
 			break;
 		case OP_MEASUREMENTS:
 			attest->list_measurements(attest);
+			break;
+		case OP_SESSIONS:
+			attest->list_sessions(attest);
 			break;
 		case OP_ADD:
 			attest->add(attest);
@@ -345,7 +443,7 @@ int main(int argc, char *argv[])
 	{
 		exit(SS_RC_LIBSTRONGSWAN_INTEGRITY);
 	}
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			lib->settings->get_str(lib->settings, "attest.load", PLUGINS)))
 	{
 		exit(SS_RC_INITIALIZATION_FAILED);
@@ -363,7 +461,7 @@ int main(int argc, char *argv[])
 		exit(SS_RC_INITIALIZATION_FAILED);
 	}
 	atexit(cleanup);
-	libimcv_init();
+	libimcv_init(FALSE);
 	libpts_init();
 
 	do_args(argc, argv);

@@ -14,9 +14,13 @@
  * for more details.
  */
 
+#include <openssl/opensslconf.h>
+
+#ifndef OPENSSL_NO_RSA
+
 #include "openssl_rsa_public_key.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -44,8 +48,6 @@ struct private_openssl_rsa_public_key_t {
 	refcount_t ref;
 };
 
-
-
 /**
  * Verification of an EMPSA PKCS1 signature described in PKCS#1
  */
@@ -63,12 +65,17 @@ static bool verify_emsa_pkcs1_signature(private_openssl_rsa_public_key_t *this,
 
 	if (type == NID_undef)
 	{
-		chunk_t hash = chunk_alloc(rsa_size);
+		char *buf;
+		int len;
 
-		hash.len = RSA_public_decrypt(signature.len, signature.ptr, hash.ptr,
-									  this->rsa, RSA_PKCS1_PADDING);
-		valid = chunk_equals(data, hash);
-		free(hash.ptr);
+		buf = malloc(rsa_size);
+		len = RSA_public_decrypt(signature.len, signature.ptr, buf, this->rsa,
+								 RSA_PKCS1_PADDING);
+		if (len != -1)
+		{
+			valid = chunk_equals(data, chunk_create(buf, len));
+		}
+		free(buf);
 	}
 	else
 	{
@@ -217,13 +224,13 @@ bool openssl_rsa_fingerprint(RSA *rsa, cred_encoding_type_t type, chunk_t *fp)
 			return FALSE;
 	}
 	hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-	if (!hasher)
+	if (!hasher || !hasher->allocate_hash(hasher, key, fp))
 	{
 		DBG1(DBG_LIB, "SHA1 hash algorithm not supported, fingerprinting failed");
+		DESTROY_IF(hasher);
 		free(key.ptr);
 		return FALSE;
 	}
-	hasher->allocate_hash(hasher, key, fp);
 	free(key.ptr);
 	hasher->destroy(hasher);
 	lib->encoding->cache(lib->encoding, type, rsa, *fp);
@@ -388,3 +395,5 @@ openssl_rsa_public_key_t *openssl_rsa_public_key_load(key_type_t type,
 	destroy(this);
 	return NULL;
 }
+
+#endif /* OPENSSL_NO_RSA */

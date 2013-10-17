@@ -17,7 +17,7 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_ietf_attr_product_info_t private_ietf_attr_product_info_t;
 
@@ -46,14 +46,9 @@ struct private_ietf_attr_product_info_t {
 	ietf_attr_product_info_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
@@ -78,7 +73,7 @@ struct private_ietf_attr_product_info_t {
 	/**
 	 * Product Name
 	 */
-	char *product_name;
+	chunk_t product_name;
 
 	/**
 	 * Reference count
@@ -86,13 +81,7 @@ struct private_ietf_attr_product_info_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_ietf_attr_product_info_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_ietf_attr_product_info_t *this)
 {
 	return this->type;
@@ -120,16 +109,17 @@ METHOD(pa_tnc_attr_t, build, void,
 	private_ietf_attr_product_info_t *this)
 {
 	bio_writer_t *writer;
-	chunk_t product_name;
 
-	product_name = chunk_create(this->product_name, strlen(this->product_name));
-
+	if (this->value.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(PRODUCT_INFO_MIN_SIZE);
 	writer->write_uint24(writer, this->product_vendor_id);
 	writer->write_uint16(writer, this->product_id);
-	writer->write_data  (writer, product_name);
+	writer->write_data  (writer, this->product_name);
 
-	this->value = chunk_clone(writer->get_buf(writer));
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -151,9 +141,14 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	reader->read_data  (reader, reader->remaining(reader), &product_name);
 	reader->destroy(reader);
 
-	this->product_name = malloc(product_name.len + 1);
-	memcpy(this->product_name, product_name.ptr, product_name.len);
-	this->product_name[product_name.len] = '\0';
+	if (!this->product_vendor_id && this->product_id)
+	{
+		DBG1(DBG_TNC, "IETF product information vendor ID is 0 "
+					  "but product ID is not 0");
+		*offset = 3;
+		return FAILED;
+	}
+	this->product_name = chunk_clone(product_name);
 
 	return SUCCESS;
 }
@@ -170,13 +165,13 @@ METHOD(pa_tnc_attr_t, destroy, void,
 {
 	if (ref_put(&this->ref))
 	{
-		free(this->product_name);
+		free(this->product_name.ptr);
 		free(this->value.ptr);
 		free(this);
 	}
 }
 
-METHOD(ietf_attr_product_info_t, get_info, char*,
+METHOD(ietf_attr_product_info_t, get_info, chunk_t,
 	private_ietf_attr_product_info_t *this, pen_t *vendor_id, u_int16_t *id)
 {
 	if (vendor_id)
@@ -194,14 +189,13 @@ METHOD(ietf_attr_product_info_t, get_info, char*,
  * Described in header.
  */
 pa_tnc_attr_t *ietf_attr_product_info_create(pen_t vendor_id, u_int16_t id,
-											 char *name)
+											 chunk_t name)
 {
 	private_ietf_attr_product_info_t *this;
 
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -213,11 +207,10 @@ pa_tnc_attr_t *ietf_attr_product_info_create(pen_t vendor_id, u_int16_t id,
 			},
 			.get_info = _get_info,
 		},
-		.vendor_id = PEN_IETF,
-		.type = IETF_ATTR_PRODUCT_INFORMATION,
+		.type = { PEN_IETF, IETF_ATTR_PRODUCT_INFORMATION },
 		.product_vendor_id = vendor_id,
 		.product_id = id,
-		.product_name = strdup(name),
+		.product_name = chunk_clone(name),
 		.ref = 1,
 	);
 
@@ -234,9 +227,10 @@ pa_tnc_attr_t *ietf_attr_product_info_create_from_data(chunk_t data)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,
@@ -244,8 +238,7 @@ pa_tnc_attr_t *ietf_attr_product_info_create_from_data(chunk_t data)
 			},
 			.get_info = _get_info,
 		},
-		.vendor_id = PEN_IETF,
-		.type = IETF_ATTR_PRODUCT_INFORMATION,
+		.type = { PEN_IETF, IETF_ATTR_PRODUCT_INFORMATION },
 		.value = chunk_clone(data),
 		.ref = 1,
 	);

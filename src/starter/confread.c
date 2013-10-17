@@ -19,36 +19,75 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <netdb.h>
 
-#include <freeswan.h>
-
-#include <eap/eap.h>
-
-#include "../pluto/constants.h"
-#include "../pluto/defs.h"
-#include "../pluto/log.h"
+#include <library.h>
+#include <utils/debug.h>
 
 #include "keywords.h"
 #include "confread.h"
 #include "args.h"
 #include "files.h"
-#include "interfaces.h"
 
-/* strings containing a colon are interpreted as an IPv6 address */
-#define ip_version(string)	(strchr(string, '.') ? AF_INET : AF_INET6)
+#define IKE_LIFETIME_DEFAULT         10800 /* 3 hours */
+#define IPSEC_LIFETIME_DEFAULT        3600 /* 1 hour */
+#define SA_REPLACEMENT_MARGIN_DEFAULT  540 /* 9 minutes */
+#define SA_REPLACEMENT_FUZZ_DEFAULT    100 /* 100% of margin */
+#define SA_REPLACEMENT_RETRIES_DEFAULT   3
 
 static const char ike_defaults[] = "aes128-sha1-modp2048,3des-sha1-modp1536";
 static const char esp_defaults[] = "aes128-sha1,3des-sha1";
 
-static const char firewall_defaults[] = "ipsec _updown iptables";
+static const char firewall_defaults[] = IPSEC_SCRIPT " _updown iptables";
 
 static bool daemon_exists(char *daemon, char *path)
 {
 	struct stat st;
 	if (stat(path, &st) != 0)
 	{
-		plog("Disabling %sstart option, '%s' not found", daemon, path);
+		DBG1(DBG_APP, "Disabling %sstart option, '%s' not found", daemon, path);
 		return FALSE;
+	}
+	return TRUE;
+}
+
+/**
+ * Process deprecated keywords
+ */
+static bool is_deprecated(kw_token_t token, kw_list_t *kw, char *name)
+{
+	switch (token)
+	{
+		case KW_SETUP_DEPRECATED:
+		case KW_PKCS11_DEPRECATED:
+			DBG1(DBG_APP, "# deprecated keyword '%s' in config setup",
+				 kw->entry->name);
+			break;
+		case KW_CONN_DEPRECATED:
+		case KW_END_DEPRECATED:
+		case KW_PFS_DEPRECATED:
+			DBG1(DBG_APP, "# deprecated keyword '%s' in conn '%s'",
+				 kw->entry->name, name);
+			break;
+		case KW_CA_DEPRECATED:
+			DBG1(DBG_APP, "# deprecated keyword '%s' in ca '%s'",
+				 kw->entry->name, name);
+			break;
+		default:
+			return FALSE;
+	}
+	/* additional messages for some */
+	switch (token)
+	{
+		case KW_PKCS11_DEPRECATED:
+			DBG1(DBG_APP, "  use the 'pkcs11' plugin instead", kw->entry->name);
+			break;
+		case KW_PFS_DEPRECATED:
+			DBG1(DBG_APP, "  PFS is enabled by specifying a DH group in the "
+				 "'esp' cipher suite", kw->entry->name);
+			break;
+		default:
+			break;
 	}
 	return TRUE;
 }
@@ -60,7 +99,7 @@ static void default_values(starter_config_t *cfg)
 
 	memset(cfg, 0, sizeof(struct starter_config));
 
-    /* is there enough space for all seen flags? */
+	/* is there enough space for all seen flags? */
 	assert(KW_SETUP_LAST - KW_SETUP_FIRST <
 		sizeof(cfg->setup.seen) * BITS_PER_BYTE);
 	assert(KW_CONN_LAST  - KW_CONN_FIRST <
@@ -70,66 +109,55 @@ static void default_values(starter_config_t *cfg)
 	assert(KW_CA_LAST - KW_CA_FIRST <
 		sizeof(cfg->ca_default.seen) * BITS_PER_BYTE);
 
-	cfg->setup.seen        = LEMPTY;
-	cfg->setup.fragicmp    = TRUE;
-	cfg->setup.hidetos     = TRUE;
+	cfg->setup.seen        = SEEN_NONE;
 	cfg->setup.uniqueids   = TRUE;
-	cfg->setup.interfaces  = new_list("%defaultroute");
 
 #ifdef START_CHARON
 	cfg->setup.charonstart = TRUE;
 #endif
-#ifdef START_PLUTO
-	cfg->setup.plutostart  = TRUE;
-#endif
 
-	cfg->conn_default.seen    = LEMPTY;
+	cfg->conn_default.seen    = SEEN_NONE;
 	cfg->conn_default.startup = STARTUP_NO;
 	cfg->conn_default.state   = STATE_IGNORE;
-	cfg->conn_default.policy  = POLICY_ENCRYPT | POLICY_TUNNEL | POLICY_PUBKEY |
-								POLICY_PFS | POLICY_MOBIKE;
+	cfg->conn_default.mode    = MODE_TUNNEL;
+	cfg->conn_default.options = SA_OPTION_MOBIKE;
 
-	cfg->conn_default.ike                   = clone_str(ike_defaults);
-	cfg->conn_default.esp                   = clone_str(esp_defaults);
-	cfg->conn_default.sa_ike_life_seconds   = OAKLEY_ISAKMP_SA_LIFETIME_DEFAULT;
-	cfg->conn_default.sa_ipsec_life_seconds = PLUTO_SA_LIFE_DURATION_DEFAULT;
+	cfg->conn_default.ike                   = strdupnull(ike_defaults);
+	cfg->conn_default.esp                   = strdupnull(esp_defaults);
+	cfg->conn_default.sa_ike_life_seconds   = IKE_LIFETIME_DEFAULT;
+	cfg->conn_default.sa_ipsec_life_seconds = IPSEC_LIFETIME_DEFAULT;
 	cfg->conn_default.sa_rekey_margin       = SA_REPLACEMENT_MARGIN_DEFAULT;
 	cfg->conn_default.sa_rekey_fuzz         = SA_REPLACEMENT_FUZZ_DEFAULT;
 	cfg->conn_default.sa_keying_tries       = SA_REPLACEMENT_RETRIES_DEFAULT;
-	cfg->conn_default.addr_family           = AF_INET;
-	cfg->conn_default.tunnel_addr_family    = AF_INET;
-	cfg->conn_default.install_policy	= TRUE;
-	cfg->conn_default.dpd_delay		=  30; /* seconds */
-	cfg->conn_default.dpd_timeout		= 150; /* seconds */
+	cfg->conn_default.install_policy        = TRUE;
+	cfg->conn_default.dpd_delay             =  30; /* seconds */
+	cfg->conn_default.dpd_timeout           = 150; /* seconds */
 
-	cfg->conn_default.left.seen  = LEMPTY;
-	cfg->conn_default.right.seen = LEMPTY;
+	cfg->conn_default.left.seen  = SEEN_NONE;
+	cfg->conn_default.right.seen = SEEN_NONE;
 
 	cfg->conn_default.left.sendcert  = CERT_SEND_IF_ASKED;
 	cfg->conn_default.right.sendcert = CERT_SEND_IF_ASKED;
 
-	anyaddr(AF_INET, &cfg->conn_default.left.addr);
-	anyaddr(AF_INET, &cfg->conn_default.left.nexthop);
-	anyaddr(AF_INET, &cfg->conn_default.right.addr);
-	anyaddr(AF_INET, &cfg->conn_default.right.nexthop);
 	cfg->conn_default.left.ikeport = 500;
 	cfg->conn_default.right.ikeport = 500;
 
-	cfg->ca_default.seen = LEMPTY;
+	cfg->conn_default.left.to_port = 0xffff;
+	cfg->conn_default.right.to_port = 0xffff;
+
+	cfg->ca_default.seen = SEEN_NONE;
 }
 
-#define KW_POLICY_FLAG(sy, sn, fl) \
-		if (streq(kw->value, sy)) { conn->policy |= fl; } \
-		else if (streq(kw->value, sn)) { conn->policy &= ~fl; } \
-		else { plog("# bad policy value: %s=%s", kw->entry->name, kw->value); cfg->err++; }
+#define KW_SA_OPTION_FLAG(sy, sn, fl) \
+		if (streq(kw->value, sy)) { conn->options |= fl; } \
+		else if (streq(kw->value, sn)) { conn->options &= ~fl; } \
+		else { DBG1(DBG_APP, "# bad option value: %s=%s", kw->entry->name, kw->value); cfg->err++; }
 
 static void load_setup(starter_config_t *cfg, config_parsed_t *cfgp)
 {
 	kw_list_t *kw;
 
-	DBG(DBG_CONTROL,
-		DBG_log("Loading config setup")
-    )
+	DBG2(DBG_APP, "Loading config setup");
 
 	for (kw = cfgp->config_setup; kw; kw = kw->next)
 	{
@@ -139,44 +167,48 @@ static void load_setup(starter_config_t *cfg, config_parsed_t *cfgp)
 
 		if ((int)token < KW_SETUP_FIRST || token > KW_SETUP_LAST)
 		{
-			plog("# unsupported keyword '%s' in config setup", kw->entry->name);
+			DBG1(DBG_APP, "# unsupported keyword '%s' in config setup",
+				 kw->entry->name);
 			cfg->err++;
+			continue;
+		}
+
+		if (is_deprecated(token, kw, ""))
+		{
+			cfg->non_fatal_err++;
 			continue;
 		}
 
 		if (!assign_arg(token, KW_SETUP_FIRST, kw, (char *)cfg, &assigned))
 		{
-			plog("  bad argument value in config setup");
+			DBG1(DBG_APP, "  bad argument value in config setup");
 			cfg->err++;
 			continue;
 		}
 	}
 
-	/* verify the executables are actually available (some distros split
-	 * packages but enabled both) */
+	/* verify the executables are actually available */
 #ifdef START_CHARON
 	cfg->setup.charonstart = cfg->setup.charonstart &&
-							 daemon_exists("charon", CHARON_CMD);
+							 daemon_exists(daemon_name, cmd);
 #else
 	cfg->setup.charonstart = FALSE;
-#endif
-#ifdef START_PLUTO
-	cfg->setup.plutostart = cfg->setup.plutostart &&
-							daemon_exists("pluto", PLUTO_CMD);
-#else
-	cfg->setup.plutostart = FALSE;
 #endif
 }
 
 static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
 				   kw_list_t *kw, char *conn_name, starter_config_t *cfg)
 {
-	err_t ugh = NULL;
 	bool assigned = FALSE;
-	bool has_port_wildcard;        /* set if port is %any */
 
 	char *name  = kw->entry->name;
 	char *value = kw->value;
+
+	if (is_deprecated(token, kw, conn_name))
+	{
+		cfg->non_fatal_err++;
+		return;
+	}
 
 	if (!assign_arg(token, KW_END_FIRST, kw, (char *)end, &assigned))
 		goto err;
@@ -185,157 +217,25 @@ static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
 	switch (token)
 	{
 	case KW_HOST:
-		free(end->host);
-		end->host = NULL;
-		if (streq(value, "%defaultroute"))
+		if (value && strlen(value) > 0 && value[0] == '%')
 		{
-			if (cfg->defaultroute.defined)
+			if (streq(value, "%defaultroute"))
 			{
-				end->addr    = cfg->defaultroute.addr;
-				end->nexthop = cfg->defaultroute.nexthop;
+				value = "%any";
 			}
-			else if (!cfg->defaultroute.supported)
-			{
-				plog("%%defaultroute not supported, fallback to %%any");
-			}
-			else
-			{
-				plog("# default route not known: %s=%s", name, value);
-				goto err;
-			}
-		}
-		else if (streq(value, "%any") || streq(value, "%any4"))
-		{
-			anyaddr(conn->addr_family, &end->addr);
-		}
-		else if (streq(value, "%any6"))
-		{
-			conn->addr_family = AF_INET6;
-			anyaddr(conn->addr_family, &end->addr);
-		}
-		else if (streq(value, "%group"))
-		{
-			ip_address any;
-
-			conn->policy |= POLICY_GROUP | POLICY_TUNNEL;
-			anyaddr(conn->addr_family, &end->addr);
-			anyaddr(conn->tunnel_addr_family, &any);
-			end->has_client = TRUE;
-		}
-		else
-		{
-			/* check for allow_any prefix */
-			if (value[0] == '%')
-			{
+			if (!streq(value, "%any") && !streq(value, "%any4") &&
+				!streq(value, "%any6"))
+			{	/* allow_any prefix */
 				end->allow_any = TRUE;
 				value++;
 			}
-			conn->addr_family = ip_version(value);
-			ugh = ttoaddr(value, 0, conn->addr_family, &end->addr);
-			if (ugh != NULL)
-			{
-				plog("# bad addr: %s=%s [%s]", name, value, ugh);
-				if (streq(ugh, "does not look numeric and name lookup failed"))
-				{
-					end->dns_failed = TRUE;
-					anyaddr(conn->addr_family, &end->addr);
-				}
-				else
-				{
-					goto err;
-				}
-			}
-			end->host = clone_str(value);
 		}
-		break;
-	case KW_SUBNET:
-		if ((strlen(value) >= 6 && strncmp(value,"vhost:",6) == 0)
-		||  (strlen(value) >= 5 && strncmp(value,"vnet:",5) == 0))
-		{
-			/* used by pluto only */
-			end->has_virt = TRUE;
-		}
-		else
-		{
-			ip_subnet net;
-			char *pos;
-			int len = 0;
-
-			end->has_client = TRUE;
-			conn->tunnel_addr_family = ip_version(value);
-
-			pos = strchr(value, ',');
-			if (pos)
-			{
-				len = pos - value;
-			}
-			ugh = ttosubnet(value, len, ip_version(value), &net);
-			if (ugh != NULL)
-			{
-				plog("# bad subnet: %s=%s [%s]", name, value, ugh);
-				goto err;
-			}
-		}
+		free(end->host);
+		end->host = strdupnull(value);
 		break;
 	case KW_SOURCEIP:
-		if (end->has_natip)
-		{
-			plog("# natip and sourceip cannot be defined at the same time");
-			goto err;
-		}
-		if (value[0] == '%')
-		{
-			if (streq(value, "%modeconfig") || streq(value, "%modecfg") ||
-				streq(value, "%config") || streq(value, "%cfg"))
-			{
-				/* request ip via config payload */
-				free(end->sourceip);
-				end->sourceip = NULL;
-				end->sourceip_mask = 1;
-			}
-			else
-			{	/* %poolname, strip %, serve ip requests */
-				free(end->sourceip);
-				end->sourceip = clone_str(value+1);
-				end->sourceip_mask = 0;
-			}
-			end->modecfg = TRUE;
-		}
-		else
-		{
-			char *pos;
-			ip_address addr;
-			ip_subnet net;
-
-			conn->tunnel_addr_family = ip_version(value);
-			pos = strchr(value, '/');
-
-			if (pos)
-			{	/* CIDR notation, address pool */
-				ugh = ttosubnet(value, 0, conn->tunnel_addr_family, &net);
-				if (ugh != NULL)
-				{
-					plog("# bad subnet: %s=%s [%s]", name, value, ugh);
-					goto err;
-				 }
-				*pos = '\0';
-				free(end->sourceip);
-				end->sourceip = clone_str(value);
-				end->sourceip_mask = atoi(pos + 1);
-			}
-			else
-			{	/* fixed srcip */
-				ugh = ttoaddr(value, 0, conn->tunnel_addr_family, &addr);
-				if (ugh != NULL)
-				{
-					plog("# bad addr: %s=%s [%s]", name, value, ugh);
-					goto err;
-				}
-				end->sourceip_mask = (conn->tunnel_addr_family == AF_INET) ?
-									  32 : 128;
-			}
-		}
-		conn->policy |= POLICY_TUNNEL;
+		conn->mode = MODE_TUNNEL;
+		conn->proxy_mode = FALSE;
 		break;
 	case KW_SENDCERT:
 		if (end->sendcert == CERT_YES_SEND)
@@ -357,121 +257,100 @@ static void kw_end(starter_conn_t *conn, starter_end_t *end, kw_token_t token,
 	/* individual processing of keywords that were not assigned automatically */
 	switch (token)
 	{
-	case KW_NEXTHOP:
-		if (streq(value, "%defaultroute"))
-		{
-			if (cfg->defaultroute.defined)
-			{
-				end->nexthop = cfg->defaultroute.nexthop;
-			}
-			else
-			{
-				plog("# default route not known: %s=%s", name, value);
-				goto err;
-			}
+	case KW_PROTOPORT:
+	{
+		struct protoent *proto;
+		struct servent *svc;
+		char *sep, *port = "", *endptr;
+		long int p;
+
+		sep = strchr(value, '/');
+		if (sep)
+		{	/* protocol/port */
+			*sep = '\0';
+			port = sep + 1;
 		}
-		else if (streq(value, "%direct"))
+
+		if (streq(value, "%any"))
 		{
-			ugh = anyaddr(conn->addr_family, &end->nexthop);
+			end->protocol = 0;
 		}
 		else
 		{
-			conn->addr_family = ip_version(value);
-			ugh = ttoaddr(value, 0, conn->addr_family, &end->nexthop);
+			proto = getprotobyname(value);
+			if (proto)
+			{
+				end->protocol = proto->p_proto;
+			}
+			else
+			{
+				p = strtol(value, &endptr, 0);
+				if ((*value && *endptr) || p < 0 || p > 0xff)
+				{
+					DBG1(DBG_APP, "# bad protocol: %s=%s", name, value);
+					goto err;
+				}
+				end->protocol = (u_int8_t)p;
+			}
 		}
-		if (ugh != NULL)
+		if (streq(port, "%any"))
 		{
-			plog("# bad addr: %s=%s [%s]", name, value, ugh);
-			goto err;
+			end->from_port = 0;
+			end->to_port = 0xffff;
 		}
-		break;
-	case KW_SUBNETWITHIN:
-	{
-		ip_subnet net;
-
-		end->has_client = TRUE;
-		end->has_client_wildcard = TRUE;
-		conn->tunnel_addr_family = ip_version(value);
-
-		ugh = ttosubnet(value, 0, ip_version(value), &net);
-		if (ugh != NULL)
+		else if (streq(port, "%opaque"))
 		{
-			plog("# bad subnet: %s=%s [%s]", name, value, ugh);
-			goto err;
+			end->from_port = 0xffff;
+			end->to_port = 0;
 		}
-		end->subnet = clone_str(value);
+		else if (*port)
+		{
+			svc = getservbyname(port, NULL);
+			if (svc)
+			{
+				end->from_port = end->to_port = ntohs(svc->s_port);
+			}
+			else
+			{
+				p = strtol(port, &endptr, 0);
+				if (p < 0 || p > 0xffff)
+				{
+					DBG1(DBG_APP, "# bad port: %s=%s", name, port);
+					goto err;
+				}
+				end->from_port = p;
+				if (*endptr == '-')
+				{
+					port = endptr + 1;
+					p = strtol(port, &endptr, 0);
+					if (p < 0 || p > 0xffff)
+					{
+						DBG1(DBG_APP, "# bad port: %s=%s", name, port);
+						goto err;
+					}
+				}
+				end->to_port = p;
+				if (*endptr)
+				{
+					DBG1(DBG_APP, "# bad port: %s=%s", name, port);
+					goto err;
+				}
+			}
+		}
+		if (sep)
+		{	/* restore the original text in case also= is used */
+			*sep = '/';
+		}
 		break;
 	}
-	case KW_PROTOPORT:
-		ugh = ttoprotoport(value, 0, &end->protocol, &end->port, &has_port_wildcard);
-		end->has_port_wildcard = has_port_wildcard;
-		break;
-	case KW_NATIP:
-		if (end->sourceip)
-		{
-			plog("# natip and sourceip cannot be defined at the same time");
-			goto err;
-		}
-		if (streq(value, "%defaultroute"))
-		{
-			char buf[64];
-
-			if (cfg->defaultroute.defined)
-			{
-				addrtot(&cfg->defaultroute.addr, 0, buf, sizeof(buf));
-				end->sourceip = clone_str(buf);
-			}
-			else
-			{
-				plog("# default route not known: %s=%s", name, value);
-				goto err;
-			}
-		}
-		else
-		{
-			ip_address addr;
-
-			conn->tunnel_addr_family = ip_version(value);
-			ugh = ttoaddr(value, 0, conn->tunnel_addr_family, &addr);
-			if (ugh != NULL)
-			{
-				plog("# bad addr: %s=%s [%s]", name, value, ugh);
-				goto err;
-			}
-			end->sourceip = clone_str(value);
-		}
-		end->has_natip = TRUE;
-		conn->policy |= POLICY_TUNNEL;
-		break;
 	default:
 		break;
 	}
 	return;
 
 err:
-	plog("  bad argument value in conn '%s'", conn_name);
+	DBG1(DBG_APP, "  bad argument value in conn '%s'", conn_name);
 	cfg->err++;
-}
-
-/*
- * handles left|right=<FQDN> DNS resolution failure
- */
-static void handle_dns_failure(const char *label, starter_end_t *end,
-							   starter_config_t *cfg, starter_conn_t *conn)
-{
-	if (end->dns_failed)
-	{
-		if (end->allow_any)
-		{
-			plog("# fallback to %s=%%any due to '%%' prefix or %sallowany=yes",
-				label, label);
-		}
-		else if (!end->host || conn->keyexchange == KEY_EXCHANGE_IKEV1)
-		{
-			/* declare an error */
-			cfg->err++;
-		}
-	}
 }
 
 /*
@@ -480,16 +359,17 @@ static void handle_dns_failure(const char *label, starter_end_t *end,
 static void handle_firewall(const char *label, starter_end_t *end,
 							starter_config_t *cfg)
 {
-	if (end->firewall && (end->seen & LELEM(KW_FIREWALL - KW_END_FIRST)))
+	if (end->firewall && (end->seen & SEEN_KW(KW_FIREWALL, KW_END_FIRST)))
 	{
 		if (end->updown != NULL)
 		{
-			plog("# cannot have both %sfirewall and %supdown", label, label);
+			DBG1(DBG_APP, "# cannot have both %sfirewall and %supdown", label,
+				 label);
 			cfg->err++;
 		}
 		else
 		{
-			end->updown = clone_str(firewall_defaults);
+			end->updown = strdupnull(firewall_defaults);
 			end->firewall = FALSE;
 		}
 	}
@@ -497,16 +377,16 @@ static void handle_firewall(const char *label, starter_end_t *end,
 
 static bool handle_mark(char *value, mark_t *mark)
 {
-	char *pos, *endptr;
+	char *sep, *endptr;
 
-	pos = strchr(value, '/');
-	if (pos)
+	sep = strchr(value, '/');
+	if (sep)
 	{
-		*pos = '\0';
-		mark->mask = strtoul(pos+1, &endptr, 0);
+		*sep = '\0';
+		mark->mask = strtoul(sep+1, &endptr, 0);
 		if (*endptr != '\0')
 		{
-			plog("# invalid mark mask: %s", pos+1);
+			DBG1(DBG_APP, "# invalid mark mask: %s", sep+1);
 			return FALSE;
 		}
 	}
@@ -523,10 +403,16 @@ static bool handle_mark(char *value, mark_t *mark)
 		mark->value = strtoul(value, &endptr, 0);
 		if (*endptr != '\0')
 		{
-			plog("# invalid mark value: %s", value);
+			DBG1(DBG_APP, "# invalid mark value: %s", value);
 			return FALSE;
 		}
 	}
+	if (sep)
+	{	/* restore the original text in case also= is used */
+		*sep = '/';
+	}
+	/* apply the mask to ensure the value is in range */
+	mark->value &= mark->mask;
 	return TRUE;
 }
 
@@ -566,28 +452,32 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 			{
 				also_t *also = malloc_thing(also_t);
 
-				also->name = clone_str(kw->value);
+				also->name = strdupnull(kw->value);
 				also->next = conn->also;
 				conn->also = also;
 
-				DBG(DBG_CONTROL,
-					DBG_log("  also=%s", kw->value)
-				)
+				DBG2(DBG_APP, "  also=%s", kw->value);
 			}
 			continue;
 		}
 
 		if (token < KW_CONN_FIRST || token > KW_CONN_LAST)
 		{
-			plog("# unsupported keyword '%s' in conn '%s'"
-				, kw->entry->name, conn_name);
+			DBG1(DBG_APP, "# unsupported keyword '%s' in conn '%s'",
+				 kw->entry->name, conn_name);
 			cfg->err++;
+			continue;
+		}
+
+		if (is_deprecated(token, kw, conn_name))
+		{
+			cfg->non_fatal_err++;
 			continue;
 		}
 
 		if (!assign_arg(token, KW_CONN_FIRST, kw, (char *)conn, &assigned))
 		{
-			plog("  bad argument value in conn '%s'", conn_name);
+			DBG1(DBG_APP, "  bad argument value in conn '%s'", conn_name);
 			cfg->err++;
 			continue;
 		}
@@ -598,125 +488,42 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 		switch (token)
 		{
 		case KW_TYPE:
-			conn->policy &= ~(POLICY_TUNNEL | POLICY_SHUNT_MASK);
+			conn->mode = MODE_TRANSPORT;
+			conn->proxy_mode = FALSE;
 			if (streq(kw->value, "tunnel"))
 			{
-				conn->policy |= POLICY_TUNNEL;
+				conn->mode = MODE_TUNNEL;
 			}
 			else if (streq(kw->value, "beet"))
 			{
-				conn->policy |= POLICY_BEET;
+				conn->mode = MODE_BEET;
 			}
 			else if (streq(kw->value, "transport_proxy"))
 			{
-				conn->policy |= POLICY_PROXY;
+				conn->mode = MODE_TRANSPORT;
+				conn->proxy_mode = TRUE;
 			}
 			else if (streq(kw->value, "passthrough") || streq(kw->value, "pass"))
 			{
-				conn->policy |= POLICY_SHUNT_PASS;
+				conn->mode = MODE_PASS;
 			}
-			else if (streq(kw->value, "drop"))
+			else if (streq(kw->value, "drop") || streq(kw->value, "reject"))
 			{
-				conn->policy |= POLICY_SHUNT_DROP;
+				conn->mode = MODE_DROP;
 			}
-			else if (streq(kw->value, "reject"))
+			else if (!streq(kw->value, "transport"))
 			{
-				conn->policy |= POLICY_SHUNT_REJECT;
-			}
-			else if (strcmp(kw->value, "transport") != 0)
-			{
-				plog("# bad policy value: %s=%s", kw->entry->name, kw->value);
+				DBG1(DBG_APP, "# bad policy value: %s=%s", kw->entry->name,
+					 kw->value);
 				cfg->err++;
 			}
 			break;
-		case KW_PFS:
-			KW_POLICY_FLAG("yes", "no", POLICY_PFS)
-			break;
 		case KW_COMPRESS:
-			KW_POLICY_FLAG("yes", "no", POLICY_COMPRESS)
+			KW_SA_OPTION_FLAG("yes", "no", SA_OPTION_COMPRESS)
 			break;
 		case KW_AUTH:
-			KW_POLICY_FLAG("ah", "esp", POLICY_AUTHENTICATE)
+			KW_SA_OPTION_FLAG("ah", "esp", SA_OPTION_AUTHENTICATE)
 			break;
-		case KW_AUTHBY:
-			conn->policy &= ~(POLICY_ID_AUTH_MASK | POLICY_ENCRYPT);
-
-			if (!streq(kw->value, "never"))
-			{
-				char *value = kw->value;
-				char *second = strchr(kw->value, '|');
-
-				if (second != NULL)
-				{
-					*second = '\0';
-				}
-
-				/* also handles the cases secret|rsasig and rsasig|secret */
-				for (;;)
-				{
-					if (streq(value, "rsa")   || streq(value, "rsasig")   ||
-						streq(value, "ecdsa") || streq(value, "ecdsasig") ||
-						streq(value, "pubkey"))
-					{
-						conn->policy |= POLICY_PUBKEY | POLICY_ENCRYPT;
-					}
-					else if (streq(value, "secret") || streq(value, "psk"))
-					{
-						conn->policy |= POLICY_PSK | POLICY_ENCRYPT;
-					}
-					else if (streq(value, "xauthrsasig"))
-					{
-						conn->policy |= POLICY_XAUTH_RSASIG | POLICY_ENCRYPT;
-					}
-					else if (streq(value, "xauthpsk") || streq(value, "eap"))
-					{
-						conn->policy |= POLICY_XAUTH_PSK | POLICY_ENCRYPT;
-					}
-					else
-					{
-						plog("# bad policy value: %s=%s", kw->entry->name, kw->value);
-						cfg->err++;
-						break;
-					}
-					if (second == NULL)
-					{
-						break;
-					}
-					value = second;
-					second = NULL; /* traverse the loop no more than twice */
-				}
-			}
-			break;
-		case KW_EAP:
-		{
-			char *sep;
-
-			/* check for vendor-type format */
-			sep = strchr(kw->value, '-');
-			if (sep)
-			{
-				*(sep++) = '\0';
-				conn->eap_type = atoi(kw->value);
-				conn->eap_vendor = atoi(sep);
-				if (conn->eap_type == 0 || conn->eap_vendor == 0)
-				{
-					plog("# invalid EAP type: %s=%s", kw->entry->name, kw->value);
-					cfg->err++;
-				}
-				break;
-			}
-			conn->eap_type = eap_type_from_string(kw->value);
-			if (conn->eap_type == 0)
-			{
-				conn->eap_type = atoi(kw->value);
-				if (conn->eap_type == 0)
-				{
-					plog("# unknown EAP type: %s=%s", kw->entry->name, kw->value);
-					cfg->err++;
-				}
-			}
-			break;
-		}
 		case KW_MARK:
 			if (!handle_mark(kw->value, &conn->mark_in))
 			{
@@ -749,7 +556,8 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 				conn->tfc = strtoul(kw->value, &endptr, 10);
 				if (*endptr != '\0')
 				{
-					plog("# bad integer value: %s=%s", kw->entry->name, kw->value);
+					DBG1(DBG_APP, "# bad integer value: %s=%s", kw->entry->name,
+						 kw->value);
 					cfg->err++;
 				}
 			}
@@ -766,36 +574,35 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 				conn->sa_keying_tries = strtoul(kw->value, &endptr, 10);
 				if (*endptr != '\0')
 				{
-					plog("# bad integer value: %s=%s", kw->entry->name, kw->value);
+					DBG1(DBG_APP, "# bad integer value: %s=%s", kw->entry->name,
+						 kw->value);
 					cfg->err++;
 				}
 			}
 			break;
 		case KW_REKEY:
-			KW_POLICY_FLAG("no", "yes", POLICY_DONT_REKEY)
+			KW_SA_OPTION_FLAG("no", "yes", SA_OPTION_DONT_REKEY)
 			break;
 		case KW_REAUTH:
-			KW_POLICY_FLAG("no", "yes", POLICY_DONT_REAUTH)
+			KW_SA_OPTION_FLAG("no", "yes", SA_OPTION_DONT_REAUTH)
 			break;
 		case KW_MOBIKE:
-			KW_POLICY_FLAG("yes", "no", POLICY_MOBIKE)
+			KW_SA_OPTION_FLAG("yes", "no", SA_OPTION_MOBIKE)
 			break;
 		case KW_FORCEENCAPS:
-			KW_POLICY_FLAG("yes", "no", POLICY_FORCE_ENCAP)
+			KW_SA_OPTION_FLAG("yes", "no", SA_OPTION_FORCE_ENCAP)
 			break;
 		case KW_MODECONFIG:
-			KW_POLICY_FLAG("push", "pull", POLICY_MODECFG_PUSH)
+			KW_SA_OPTION_FLAG("push", "pull", SA_OPTION_MODECFG_PUSH)
 			break;
 		case KW_XAUTH:
-			KW_POLICY_FLAG("server", "client", POLICY_XAUTH_SERVER)
+			KW_SA_OPTION_FLAG("server", "client", SA_OPTION_XAUTH_SERVER)
 			break;
 		default:
 			break;
 		}
 	}
 
-	handle_dns_failure("left", &conn->left, cfg, conn);
-	handle_dns_failure("right", &conn->right, cfg, conn);
 	handle_firewall("left", &conn->left, cfg);
 	handle_firewall("right", &conn->right, cfg);
 }
@@ -806,7 +613,7 @@ static void load_conn(starter_conn_t *conn, kw_list_t *kw, starter_config_t *cfg
 static void conn_default(char *name, starter_conn_t *conn, starter_conn_t *def)
 {
 	memcpy(conn, def, sizeof(starter_conn_t));
-	conn->name = clone_str(name);
+	conn->name = strdupnull(name);
 
 	clone_args(KW_CONN_FIRST, KW_CONN_LAST, (char *)conn, (char *)def);
 	clone_args(KW_END_FIRST, KW_END_LAST, (char *)&conn->left, (char *)&def->left);
@@ -836,27 +643,32 @@ static void load_ca(starter_ca_t *ca, kw_list_t *kw, starter_config_t *cfg)
 			{
 				also_t *also = malloc_thing(also_t);
 
-				also->name = clone_str(kw->value);
+				also->name = strdupnull(kw->value);
 				also->next = ca->also;
 				ca->also = also;
 
-				DBG(DBG_CONTROL,
-					DBG_log("  also=%s", kw->value)
-				)
+				DBG2(DBG_APP, "  also=%s", kw->value);
 			}
 			continue;
 		}
 
 		if (token < KW_CA_FIRST || token > KW_CA_LAST)
 		{
-			plog("# unsupported keyword '%s' in ca '%s'", kw->entry->name, ca_name);
+			DBG1(DBG_APP, "# unsupported keyword '%s' in ca '%s'",
+				 kw->entry->name, ca_name);
 			cfg->err++;
+			continue;
+		}
+
+		if (is_deprecated(token, kw, ca_name))
+		{
+			cfg->non_fatal_err++;
 			continue;
 		}
 
 		if (!assign_arg(token, KW_CA_FIRST, kw, (char *)ca, &assigned))
 		{
-			plog("  bad argument value in ca '%s'", ca_name);
+			DBG1(DBG_APP, "  bad argument value in ca '%s'", ca_name);
 			cfg->err++;
 		}
 	}
@@ -872,7 +684,7 @@ static void load_ca(starter_ca_t *ca, kw_list_t *kw, starter_config_t *cfg)
 static void ca_default(char *name, starter_ca_t *ca, starter_ca_t *def)
 {
 	memcpy(ca, def, sizeof(starter_ca_t));
-	ca->name = clone_str(name);
+	ca->name = strdupnull(name);
 
 	clone_args(KW_CA_FIRST, KW_CA_LAST, (char *)ca, (char *)def);
 }
@@ -889,13 +701,12 @@ static void load_also_conns(starter_conn_t *conn, also_t *also,
 
 		if (kw == NULL)
 		{
-			plog("  conn '%s' cannot include '%s'", conn->name, also->name);
+			DBG1(DBG_APP, "  conn '%s' cannot include '%s'", conn->name,
+				 also->name);
 		}
 		else
 		{
-			DBG(DBG_CONTROL,
-				DBG_log("conn '%s' includes '%s'", conn->name, also->name)
-			)
+			DBG2(DBG_APP, "conn '%s' includes '%s'", conn->name, also->name);
 			/* only load if no error occurred in the first round */
 			if (cfg->err == 0)
 				load_conn(conn, kw, cfg);
@@ -918,7 +729,7 @@ static kw_list_t* find_also_conn(const char* name, starter_conn_t *conn,
 		{
 			if (conn->visit == c->visit)
 			{
-				plog("# detected also loop");
+				DBG1(DBG_APP, "# detected also loop");
 				cfg->err++;
 				return NULL;
 			}
@@ -929,7 +740,7 @@ static kw_list_t* find_also_conn(const char* name, starter_conn_t *conn,
 		c = c->next;
 	}
 
-	plog("# also '%s' not found", name);
+	DBG1(DBG_APP, "# also '%s' not found", name);
 	cfg->err++;
 	return NULL;
 }
@@ -945,13 +756,12 @@ static void load_also_cas(starter_ca_t *ca, also_t *also, starter_config_t *cfg)
 
 		if (kw == NULL)
 		{
-			plog("  ca '%s' cannot include '%s'", ca->name, also->name);
+			DBG1(DBG_APP, "  ca '%s' cannot include '%s'", ca->name,
+				 also->name);
 		}
 		else
 		{
-			DBG(DBG_CONTROL,
-				DBG_log("ca '%s' includes '%s'", ca->name, also->name)
-			)
+			DBG2(DBG_APP, "ca '%s' includes '%s'", ca->name, also->name);
 			/* only load if no error occurred in the first round */
 			if (cfg->err == 0)
 			load_ca(ca, kw, cfg);
@@ -974,7 +784,7 @@ static kw_list_t* find_also_ca(const char* name, starter_ca_t *ca,
 		{
 			if (ca->visit == c->visit)
 			{
-				plog("# detected also loop");
+				DBG1(DBG_APP, "# detected also loop");
 				cfg->err++;
 				return NULL;
 			}
@@ -985,7 +795,7 @@ static kw_list_t* find_also_ca(const char* name, starter_ca_t *ca,
 		c = c->next;
 	}
 
-	plog("# also '%s' not found", name);
+	DBG1(DBG_APP, "# also '%s' not found", name);
 	cfg->err++;
 	return NULL;
 }
@@ -1086,9 +896,6 @@ starter_config_t* confread_load(const char *file)
 	/* set default values */
 	default_values(cfg);
 
-	/* determine default route */
-	get_defaultroute(&cfg->defaultroute);
-
 	/* load config setup section */
 	load_setup(cfg, cfgp);
 
@@ -1100,15 +907,13 @@ starter_config_t* confread_load(const char *file)
 	{
 		if (streq(sca->name, "%default"))
 		{
-			DBG(DBG_CONTROL,
-				DBG_log("Loading ca %%default")
-			)
+			DBG2(DBG_APP, "Loading ca %%default");
 			load_ca(&cfg->ca_default, sca->kw, cfg);
 		}
 	}
 
 	/* parameters defined in ca %default sections can be overloads */
-	cfg->ca_default.seen = LEMPTY;
+	cfg->ca_default.seen = SEEN_NONE;
 
 	/* load other ca sections */
 	for (sca = cfgp->ca_first; sca; sca = sca->next)
@@ -1119,9 +924,7 @@ starter_config_t* confread_load(const char *file)
 		if (streq(sca->name, "%default"))
 			continue;
 
-		DBG(DBG_CONTROL,
-			DBG_log("Loading ca '%s'", sca->name)
-		)
+		DBG2(DBG_APP, "Loading ca '%s'", sca->name);
 		ca = malloc_thing(starter_ca_t);
 
 		ca_default(sca->name, ca, &cfg->ca_default);
@@ -1169,17 +972,15 @@ starter_config_t* confread_load(const char *file)
 	{
 		if (streq(sconn->name, "%default"))
 		{
-			DBG(DBG_CONTROL,
-				DBG_log("Loading conn %%default")
-			)
+			DBG2(DBG_APP, "Loading conn %%default");
 			load_conn(&cfg->conn_default, sconn->kw, cfg);
 		}
 	}
 
-	/* parameter defined in conn %default sections can be overloaded */
-	cfg->conn_default.seen       = LEMPTY;
-	cfg->conn_default.right.seen = LEMPTY;
-	cfg->conn_default.left.seen  = LEMPTY;
+	/* parameters defined in conn %default sections can be overloaded */
+	cfg->conn_default.seen       = SEEN_NONE;
+	cfg->conn_default.right.seen = SEEN_NONE;
+	cfg->conn_default.left.seen  = SEEN_NONE;
 
 	/* load other conn sections */
 	for (sconn = cfgp->conn_first; sconn; sconn = sconn->next)
@@ -1190,9 +991,7 @@ starter_config_t* confread_load(const char *file)
 		if (streq(sconn->name, "%default"))
 			continue;
 
-		DBG(DBG_CONTROL,
-			DBG_log("Loading conn '%s'", sconn->name)
-		)
+		DBG2(DBG_APP, "Loading conn '%s'", sconn->name);
 		conn = malloc_thing(starter_conn_t);
 
 		conn_default(sconn->name, conn, &cfg->conn_default);
@@ -1245,8 +1044,8 @@ starter_config_t* confread_load(const char *file)
 	total_err = cfg->err + cfg->non_fatal_err;
 	if (total_err > 0)
 	{
-		plog("### %d parsing error%s (%d fatal) ###"
-			, total_err, (total_err > 1)?"s":"", cfg->err);
+		DBG1(DBG_APP, "### %d parsing error%s (%d fatal) ###",
+			 total_err, (total_err > 1)?"s":"", cfg->err);
 	}
 
 	return cfg;

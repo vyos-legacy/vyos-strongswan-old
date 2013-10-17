@@ -17,11 +17,11 @@
 #include <curl/curl.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "curl_fetcher.h"
 
-#define DEFAULT_TIMEOUT 10
+#define CONNECT_TIMEOUT 10
 
 typedef struct private_curl_fetcher_t private_curl_fetcher_t;
 
@@ -48,6 +48,11 @@ struct private_curl_fetcher_t {
 	 * Callback function
 	 */
 	fetcher_callback_t cb;
+
+	/**
+	 * Timeout for a transfer
+	 */
+	long timeout;
 };
 
 /**
@@ -94,7 +99,11 @@ METHOD(fetcher_t, fetch, status_t,
 	curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, error);
 	curl_easy_setopt(this->curl, CURLOPT_FAILONERROR, TRUE);
 	curl_easy_setopt(this->curl, CURLOPT_NOSIGNAL, TRUE);
-	curl_easy_setopt(this->curl, CURLOPT_CONNECTTIMEOUT, DEFAULT_TIMEOUT);
+	if (this->timeout)
+	{
+		curl_easy_setopt(this->curl, CURLOPT_TIMEOUT, this->timeout);
+	}
+	curl_easy_setopt(this->curl, CURLOPT_CONNECTTIMEOUT, CONNECT_TIMEOUT);
 	curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, (void*)curl_cb);
 	curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, &data);
 	if (this->headers)
@@ -160,13 +169,21 @@ METHOD(fetcher_t, set_option, bool,
 		}
 		case FETCH_TIMEOUT:
 		{
-			curl_easy_setopt(this->curl, CURLOPT_CONNECTTIMEOUT,
-							 va_arg(args, u_int));
+			this->timeout = va_arg(args, u_int);
 			break;
 		}
 		case FETCH_CALLBACK:
 		{
 			this->cb = va_arg(args, fetcher_callback_t);
+			break;
+		}
+		case FETCH_SOURCEIP:
+		{
+			char buf[64];
+
+			snprintf(buf, sizeof(buf), "%H", va_arg(args, host_t*));
+			supported = curl_easy_setopt(this->curl, CURLOPT_INTERFACE,
+										 buf) == CURLE_OK;
 			break;
 		}
 		default:
@@ -211,4 +228,3 @@ curl_fetcher_t *curl_fetcher_create()
 	}
 	return &this->public;
 }
-

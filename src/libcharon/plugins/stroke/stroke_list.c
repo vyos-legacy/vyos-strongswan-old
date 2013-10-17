@@ -17,6 +17,7 @@
 
 #include <inttypes.h>
 #include <time.h>
+#include <sys/utsname.h>
 
 #ifdef HAVE_MALLINFO
 #include <malloc.h>
@@ -24,7 +25,7 @@
 
 #include <hydra.h>
 #include <daemon.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <plugins/plugin.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/certificates/ac.h>
@@ -49,6 +50,11 @@ struct private_stroke_list_t {
 	 * public functions
 	 */
 	stroke_list_t public;
+
+	/**
+	 * Kind of *swan we run
+	 */
+	char *swan;
 
 	/**
 	 * timestamp of daemon start
@@ -115,11 +121,23 @@ static void log_ike_sa(FILE *out, ike_sa_t *ike_sa, bool all)
 	if (all)
 	{
 		proposal_t *ike_proposal;
+		identification_t *eap_id;
+
+		eap_id = ike_sa->get_other_eap_id(ike_sa);
+
+		if (!eap_id->equals(eap_id, ike_sa->get_other_id(ike_sa)))
+		{
+			fprintf(out, "%12s[%d]: Remote %s identity: %Y\n",
+					ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa),
+					ike_sa->get_version(ike_sa) == IKEV1 ? "XAuth" : "EAP",
+					eap_id);
+		}
 
 		ike_proposal = ike_sa->get_proposal(ike_sa);
 
-		fprintf(out, "%12s[%d]: IKE SPIs: %.16"PRIx64"_i%s %.16"PRIx64"_r%s",
+		fprintf(out, "%12s[%d]: %N SPIs: %.16"PRIx64"_i%s %.16"PRIx64"_r%s",
 				ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa),
+				ike_version_names, ike_sa->get_version(ike_sa),
 				id->get_initiator_spi(id), id->is_initiator(id) ? "*" : "",
 				id->get_responder_spi(id), id->is_initiator(id) ? "" : "*");
 
@@ -187,10 +205,13 @@ static void log_ike_sa(FILE *out, ike_sa_t *ike_sa, bool all)
 static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 {
 	time_t use_in, use_out, rekey, now;
-	u_int64_t bytes_in, bytes_out;
+	u_int64_t bytes_in, bytes_out, packets_in, packets_out;
 	proposal_t *proposal;
-	child_cfg_t *config = child_sa->get_config(child_sa);
+	linked_list_t *my_ts, *other_ts;
+	child_cfg_t *config;
 
+	config = child_sa->get_config(child_sa);
+	now = time_monotonic(NULL);
 
 	fprintf(out, "%12s{%d}:  %N, %N%s",
 			child_sa->get_name(child_sa), child_sa->get_reqid(child_sa),
@@ -254,19 +275,24 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 				}
 			}
 
-			now = time_monotonic(NULL);
-			child_sa->get_usestats(child_sa, TRUE, &use_in, &bytes_in);
+			child_sa->get_usestats(child_sa, TRUE,
+								   &use_in, &bytes_in, &packets_in);
 			fprintf(out, ", %" PRIu64 " bytes_i", bytes_in);
 			if (use_in)
 			{
-				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_in));
+				fprintf(out, " (%" PRIu64 " pkt%s, %" PRIu64 "s ago)",
+						packets_in, (packets_in == 1) ? "": "s",
+						(u_int64_t)(now - use_in));
 			}
 
-			child_sa->get_usestats(child_sa, FALSE, &use_out, &bytes_out);
+			child_sa->get_usestats(child_sa, FALSE,
+								   &use_out, &bytes_out, &packets_out);
 			fprintf(out, ", %" PRIu64 " bytes_o", bytes_out);
 			if (use_out)
 			{
-				fprintf(out, " (%" PRIu64 "s ago)", (u_int64_t)(now - use_out));
+				fprintf(out, " (%" PRIu64 " pkt%s, %" PRIu64 "s ago)",
+						packets_out, (packets_out == 1) ? "": "s",
+						(u_int64_t)(now - use_out));
 			}
 			fprintf(out, ", rekeying ");
 
@@ -289,11 +315,21 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 
 		}
 	}
+	else if (child_sa->get_state(child_sa) == CHILD_REKEYING)
+	{
+		rekey = child_sa->get_lifetime(child_sa, TRUE);
+		fprintf(out, ", expires in %V", &now, &rekey);
+	}
 
+	my_ts = linked_list_create_from_enumerator(
+							child_sa->create_ts_enumerator(child_sa, TRUE));
+	other_ts = linked_list_create_from_enumerator(
+							child_sa->create_ts_enumerator(child_sa, FALSE));
 	fprintf(out, "\n%12s{%d}:   %#R=== %#R\n",
 			child_sa->get_name(child_sa), child_sa->get_reqid(child_sa),
-			child_sa->get_traffic_selectors(child_sa, TRUE),
-			child_sa->get_traffic_selectors(child_sa, FALSE));
+			my_ts, other_ts);
+	my_ts->destroy(my_ts);
+	other_ts->destroy(other_ts);
 }
 
 /**
@@ -315,15 +351,16 @@ static void log_auth_cfgs(FILE *out, peer_cfg_t *peer_cfg, bool local)
 	enumerator = peer_cfg->create_auth_cfg_enumerator(peer_cfg, local);
 	while (enumerator->enumerate(enumerator, &auth))
 	{
-		fprintf(out, "%12s:   %s [%Y] uses ", name,	local ? "local: " : "remote:",
-				auth->get(auth, AUTH_RULE_IDENTITY));
+		fprintf(out, "%12s:   %s", name, local ? "local: " : "remote:");
+		id = auth->get(auth, AUTH_RULE_IDENTITY);
+		if (id)
+		{
+			fprintf(out, " [%Y]", id);
+		}
+		fprintf(out, " uses ");
 
 		auth_class = (uintptr_t)auth->get(auth, AUTH_RULE_AUTH_CLASS);
-		if (auth_class != AUTH_CLASS_EAP)
-		{
-			fprintf(out, "%N authentication\n", auth_class_names, auth_class);
-		}
-		else
+		if (auth_class == AUTH_CLASS_EAP)
 		{
 			if ((uintptr_t)auth->get(auth, AUTH_RULE_EAP_TYPE) == EAP_NAK)
 			{
@@ -349,6 +386,21 @@ static void log_auth_cfgs(FILE *out, peer_cfg_t *peer_cfg, bool local)
 				fprintf(out, " with EAP identity '%Y'", id);
 			}
 			fprintf(out, "\n");
+		}
+		else if (auth_class == AUTH_CLASS_XAUTH)
+		{
+			fprintf(out, "%N authentication: %s", auth_class_names, auth_class,
+					auth->get(auth, AUTH_RULE_XAUTH_BACKEND) ?: "any");
+			id = auth->get(auth, AUTH_RULE_XAUTH_IDENTITY);
+			if (id)
+			{
+				fprintf(out, " with XAuth identity '%Y'", id);
+			}
+			fprintf(out, "\n");
+		}
+		else
+		{
+			fprintf(out, "%N authentication\n", auth_class_names, auth_class);
 		}
 
 		cert = auth->get(auth, AUTH_RULE_CA_CERT);
@@ -414,16 +466,25 @@ METHOD(stroke_list_t, status, void,
 	if (all)
 	{
 		peer_cfg_t *peer_cfg;
+		ike_version_t ike_version;
 		char *pool;
 		host_t *host;
 		u_int32_t dpd;
 		time_t since, now;
 		u_int size, online, offline, i;
+		struct utsname utsname;
+
 		now = time_monotonic(NULL);
 		since = time(NULL) - (now - this->uptime);
 
-		fprintf(out, "Status of IKEv2 charon daemon (strongSwan "VERSION"):\n");
-		fprintf(out, "  uptime: %V, since %T\n", &now, &this->uptime, &since, FALSE);
+		fprintf(out, "Status of IKE charon daemon (%sSwan "VERSION, this->swan);
+		if (uname(&utsname) == 0)
+		{
+			fprintf(out, ", %s %s, %s",
+					utsname.sysname, utsname.release, utsname.machine);
+		}
+		fprintf(out, "):\n  uptime: %V, since %T\n", &now, &this->uptime, &since,
+				FALSE);
 #ifdef HAVE_MALLINFO
 		{
 			struct mallinfo mi = mallinfo();
@@ -469,7 +530,7 @@ METHOD(stroke_list_t, status, void,
 		enumerator->destroy(enumerator);
 
 		enumerator = hydra->kernel_interface->create_address_enumerator(
-									hydra->kernel_interface, FALSE, FALSE);
+								hydra->kernel_interface, ADDR_TYPE_REGULAR);
 		fprintf(out, "Listening IP addresses:\n");
 		while (enumerator->enumerate(enumerator, (void**)&host))
 		{
@@ -479,18 +540,30 @@ METHOD(stroke_list_t, status, void,
 
 		fprintf(out, "Connections:\n");
 		enumerator = charon->backends->create_peer_cfg_enumerator(
-									charon->backends, NULL, NULL, NULL, NULL);
+							charon->backends, NULL, NULL, NULL, NULL, IKE_ANY);
 		while (enumerator->enumerate(enumerator, &peer_cfg))
 		{
-			if (peer_cfg->get_ike_version(peer_cfg) != 2 ||
-				(name && !streq(name, peer_cfg->get_name(peer_cfg))))
+			char *my_addr, *other_addr;
+			bool my_allow_any, other_allow_any;
+
+			if (name && !streq(name, peer_cfg->get_name(peer_cfg)))
 			{
 				continue;
 			}
 
 			ike_cfg = peer_cfg->get_ike_cfg(peer_cfg);
-			fprintf(out, "%12s:  %s...%s", peer_cfg->get_name(peer_cfg),
-				ike_cfg->get_my_addr(ike_cfg), ike_cfg->get_other_addr(ike_cfg));
+			ike_version = peer_cfg->get_ike_version(peer_cfg);
+			my_addr = ike_cfg->get_my_addr(ike_cfg, &my_allow_any);
+			other_addr = ike_cfg->get_other_addr(ike_cfg, &other_allow_any);
+			fprintf(out, "%12s:  %s%s...%s%s  %N", peer_cfg->get_name(peer_cfg),
+					my_allow_any ? "%":"", my_addr,
+					other_allow_any ? "%":"", other_addr,
+					ike_version_names, ike_version);
+
+			if (ike_version == IKEV1 && peer_cfg->use_aggressive(peer_cfg))
+			{
+				fprintf(out, " Aggressive");
+			}
 
 			dpd = peer_cfg->get_dpd(peer_cfg);
 			if (dpd)
@@ -666,15 +739,12 @@ static void list_public_key(public_key_t *public, FILE *out)
 	private_key_t *private = NULL;
 	chunk_t keyid;
 	identification_t *id;
-	auth_cfg_t *auth;
 
 	if (public->get_fingerprint(public, KEYID_PUBKEY_SHA1, &keyid))
 	{
 		id = identification_create_from_encoding(ID_KEY_ID, keyid);
-		auth = auth_cfg_create();
 		private = lib->credmgr->get_private(lib->credmgr,
-									public->get_type(public), id, auth);
-		auth->destroy(auth);
+									public->get_type(public), id, NULL);
 		id->destroy(id);
 	}
 
@@ -819,8 +889,8 @@ static void stroke_list_certs(linked_list_t *list, char *label,
 	x509_flag_t flag_mask;
 
 	/* mask all auxiliary flags */
-	flag_mask = ~(X509_SERVER_AUTH | X509_CLIENT_AUTH |
-				  X509_SELF_SIGNED | X509_IP_ADDR_BLOCKS );
+	flag_mask = ~(X509_SERVER_AUTH | X509_CLIENT_AUTH | X509_IKE_INTERMEDIATE |
+				  X509_SELF_SIGNED | X509_IP_ADDR_BLOCKS);
 
 	enumerator = list->create_enumerator(list);
 	while (enumerator->enumerate(enumerator, (void**)&cert))
@@ -1059,7 +1129,7 @@ static void stroke_list_crls(linked_list_t *list, bool utc, FILE *out)
 		}
 		if (crl->is_delta_crl(crl, &chunk))
 		{
-			chunk = chunk_skip_zero(chunk);		
+			chunk = chunk_skip_zero(chunk);
 			fprintf(out, "  delta for: %#B\n", &chunk);
 		}
 
@@ -1151,7 +1221,15 @@ static void print_alg(FILE *out, int *len, enum_name_t *alg_names, int alg_type,
 	char alg_name[BUF_LEN];
 	int alg_name_len;
 
-	alg_name_len = sprintf(alg_name, " %N[%s]", alg_names, alg_type, plugin_name);
+	if (alg_names)
+	{
+		alg_name_len = sprintf(alg_name, " %N[%s]", alg_names, alg_type,
+							   plugin_name);
+	}
+	else
+	{
+		alg_name_len = sprintf(alg_name, " [%s]", plugin_name);
+	}
 	if (*len + alg_name_len > CRYPTO_MAX_ALG_LINE)
 	{
 		fprintf(out, "\n             ");
@@ -1177,7 +1255,7 @@ static void list_algs(FILE *out)
 	int len;
 
 	fprintf(out, "\n");
-	fprintf(out, "List of registered IKEv2 Algorithms:\n");
+	fprintf(out, "List of registered IKE algorithms:\n");
 	fprintf(out, "\n  encryption:");
 	len = 13;
 	enumerator = lib->crypto->create_crypter_enumerator(lib->crypto);
@@ -1234,6 +1312,14 @@ static void list_algs(FILE *out)
 		print_alg(out, &len, rng_quality_names, quality, plugin_name);
 	}
 	enumerator->destroy(enumerator);
+	fprintf(out, "\n  nonce-gen: ");
+	len = 13;
+	enumerator = lib->crypto->create_nonce_gen_enumerator(lib->crypto);
+	while (enumerator->enumerate(enumerator, &plugin_name))
+	{
+		print_alg(out, &len, NULL, 0, plugin_name);
+	}
+	enumerator->destroy(enumerator);
 	fprintf(out, "\n");
 }
 
@@ -1277,7 +1363,7 @@ static void list_plugins(FILE *out)
 						fprintf(out, "        %s\n", str);
 						break;
 					case FEATURE_SDEPEND:
-						fprintf(out, "        %s(soft)\n", str);
+						fprintf(out, "        %s (soft)\n", str);
 						break;
 					default:
 						break;
@@ -1285,6 +1371,7 @@ static void list_plugins(FILE *out)
 				free(str);
 			}
 		}
+		list->destroy(list);
 	}
 	enumerator->destroy(enumerator);
 }
@@ -1450,16 +1537,21 @@ stroke_list_t *stroke_list_create(stroke_attribute_t *attribute)
 
 	INIT(this,
 		.public = {
-
 			.list = _list,
 			.status = _status,
 			.leases = _leases,
 			.destroy = _destroy,
 		},
 		.uptime = time_monotonic(NULL),
+		.swan = "strong",
 		.attribute = attribute,
 	);
 
+	if (lib->settings->get_bool(lib->settings,
+		"charon.i_dont_care_about_security_and_use_aggressive_mode_psk", FALSE))
+	{
+		this->swan = "weak";
+	}
+
 	return &this->public;
 }
-

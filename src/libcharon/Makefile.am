@@ -3,6 +3,7 @@ ipseclib_LTLIBRARIES = libcharon.la
 libcharon_la_SOURCES = \
 bus/bus.c bus/bus.h \
 bus/listeners/listener.h \
+bus/listeners/logger.h \
 bus/listeners/file_logger.c bus/listeners/file_logger.h \
 bus/listeners/sys_logger.c bus/listeners/sys_logger.h \
 config/backend_manager.c config/backend_manager.h config/backend.h \
@@ -38,9 +39,11 @@ encoding/payloads/transform_substructure.c encoding/payloads/transform_substruct
 encoding/payloads/ts_payload.c encoding/payloads/ts_payload.h \
 encoding/payloads/unknown_payload.c encoding/payloads/unknown_payload.h \
 encoding/payloads/vendor_id_payload.c encoding/payloads/vendor_id_payload.h \
+encoding/payloads/hash_payload.c encoding/payloads/hash_payload.h \
+encoding/payloads/fragment_payload.c encoding/payloads/fragment_payload.h \
 kernel/kernel_handler.c kernel/kernel_handler.h \
 network/receiver.c network/receiver.h network/sender.c network/sender.h \
-network/packet.c network/packet.h network/socket.c network/socket.h \
+network/socket.c network/socket.h \
 network/socket_manager.c network/socket_manager.h \
 processing/jobs/acquire_job.c processing/jobs/acquire_job.h \
 processing/jobs/delete_child_sa_job.c processing/jobs/delete_child_sa_job.h \
@@ -50,56 +53,88 @@ processing/jobs/process_message_job.c processing/jobs/process_message_job.h \
 processing/jobs/rekey_child_sa_job.c processing/jobs/rekey_child_sa_job.h \
 processing/jobs/rekey_ike_sa_job.c processing/jobs/rekey_ike_sa_job.h \
 processing/jobs/retransmit_job.c processing/jobs/retransmit_job.h \
+processing/jobs/retry_initiate_job.c processing/jobs/retry_initiate_job.h \
 processing/jobs/send_dpd_job.c processing/jobs/send_dpd_job.h \
 processing/jobs/send_keepalive_job.c processing/jobs/send_keepalive_job.h \
 processing/jobs/start_action_job.c processing/jobs/start_action_job.h \
 processing/jobs/roam_job.c processing/jobs/roam_job.h \
 processing/jobs/update_sa_job.c processing/jobs/update_sa_job.h \
 processing/jobs/inactivity_job.c processing/jobs/inactivity_job.h \
-sa/authenticators/authenticator.c sa/authenticators/authenticator.h \
-sa/authenticators/eap_authenticator.c sa/authenticators/eap_authenticator.h \
-sa/authenticators/eap/eap_method.c sa/authenticators/eap/eap_method.h \
-sa/authenticators/eap/eap_manager.c sa/authenticators/eap/eap_manager.h \
-sa/authenticators/psk_authenticator.c sa/authenticators/psk_authenticator.h \
-sa/authenticators/pubkey_authenticator.c sa/authenticators/pubkey_authenticator.h \
+sa/eap/eap_method.c sa/eap/eap_method.h sa/eap/eap_inner_method.h \
+sa/eap/eap_manager.c sa/eap/eap_manager.h \
+sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
+sa/xauth/xauth_manager.c sa/xauth/xauth_manager.h \
+sa/authenticator.c sa/authenticator.h \
 sa/child_sa.c sa/child_sa.h \
 sa/ike_sa.c sa/ike_sa.h \
 sa/ike_sa_id.c sa/ike_sa_id.h \
+sa/keymat.h sa/keymat.c \
 sa/ike_sa_manager.c sa/ike_sa_manager.h \
-sa/task_manager.c sa/task_manager.h \
-sa/keymat.c sa/keymat.h \
+sa/task_manager.h sa/task_manager.c \
 sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
-sa/tasks/child_create.c sa/tasks/child_create.h \
-sa/tasks/child_delete.c sa/tasks/child_delete.h \
-sa/tasks/child_rekey.c sa/tasks/child_rekey.h \
-sa/tasks/ike_auth.c sa/tasks/ike_auth.h \
-sa/tasks/ike_cert_pre.c sa/tasks/ike_cert_pre.h \
-sa/tasks/ike_cert_post.c sa/tasks/ike_cert_post.h \
-sa/tasks/ike_config.c sa/tasks/ike_config.h \
-sa/tasks/ike_delete.c sa/tasks/ike_delete.h \
-sa/tasks/ike_dpd.c sa/tasks/ike_dpd.h \
-sa/tasks/ike_init.c sa/tasks/ike_init.h \
-sa/tasks/ike_natd.c sa/tasks/ike_natd.h \
-sa/tasks/ike_mobike.c sa/tasks/ike_mobike.h \
-sa/tasks/ike_rekey.c sa/tasks/ike_rekey.h \
-sa/tasks/ike_reauth.c sa/tasks/ike_reauth.h \
-sa/tasks/ike_auth_lifetime.c sa/tasks/ike_auth_lifetime.h \
-sa/tasks/ike_vendor.c sa/tasks/ike_vendor.h \
-sa/tasks/task.c sa/tasks/task.h
+sa/task.c sa/task.h
+
+if USE_IKEV2
+libcharon_la_SOURCES += \
+sa/ikev2/keymat_v2.c sa/ikev2/keymat_v2.h \
+sa/ikev2/task_manager_v2.c sa/ikev2/task_manager_v2.h \
+sa/ikev2/authenticators/eap_authenticator.c sa/ikev2/authenticators/eap_authenticator.h \
+sa/ikev2/authenticators/psk_authenticator.c sa/ikev2/authenticators/psk_authenticator.h \
+sa/ikev2/authenticators/pubkey_authenticator.c sa/ikev2/authenticators/pubkey_authenticator.h \
+sa/ikev2/tasks/child_create.c sa/ikev2/tasks/child_create.h \
+sa/ikev2/tasks/child_delete.c sa/ikev2/tasks/child_delete.h \
+sa/ikev2/tasks/child_rekey.c sa/ikev2/tasks/child_rekey.h \
+sa/ikev2/tasks/ike_auth.c sa/ikev2/tasks/ike_auth.h \
+sa/ikev2/tasks/ike_cert_pre.c sa/ikev2/tasks/ike_cert_pre.h \
+sa/ikev2/tasks/ike_cert_post.c sa/ikev2/tasks/ike_cert_post.h \
+sa/ikev2/tasks/ike_config.c sa/ikev2/tasks/ike_config.h \
+sa/ikev2/tasks/ike_delete.c sa/ikev2/tasks/ike_delete.h \
+sa/ikev2/tasks/ike_dpd.c sa/ikev2/tasks/ike_dpd.h \
+sa/ikev2/tasks/ike_init.c sa/ikev2/tasks/ike_init.h \
+sa/ikev2/tasks/ike_natd.c sa/ikev2/tasks/ike_natd.h \
+sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
+sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
+sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
+sa/ikev2/tasks/ike_auth_lifetime.c sa/ikev2/tasks/ike_auth_lifetime.h \
+sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h
+endif
+
+if USE_IKEV1
+libcharon_la_SOURCES += \
+sa/ikev1/keymat_v1.c sa/ikev1/keymat_v1.h \
+sa/ikev1/task_manager_v1.c sa/ikev1/task_manager_v1.h \
+sa/ikev1/authenticators/psk_v1_authenticator.c sa/ikev1/authenticators/psk_v1_authenticator.h \
+sa/ikev1/authenticators/pubkey_v1_authenticator.c sa/ikev1/authenticators/pubkey_v1_authenticator.h \
+sa/ikev1/authenticators/hybrid_authenticator.c sa/ikev1/authenticators/hybrid_authenticator.h \
+sa/ikev1/phase1.c sa/ikev1/phase1.h \
+sa/ikev1/tasks/main_mode.c sa/ikev1/tasks/main_mode.h \
+sa/ikev1/tasks/aggressive_mode.c sa/ikev1/tasks/aggressive_mode.h \
+sa/ikev1/tasks/informational.c sa/ikev1/tasks/informational.h \
+sa/ikev1/tasks/isakmp_cert_pre.c sa/ikev1/tasks/isakmp_cert_pre.h \
+sa/ikev1/tasks/isakmp_cert_post.c sa/ikev1/tasks/isakmp_cert_post.h \
+sa/ikev1/tasks/isakmp_natd.c sa/ikev1/tasks/isakmp_natd.h \
+sa/ikev1/tasks/isakmp_vendor.c sa/ikev1/tasks/isakmp_vendor.h \
+sa/ikev1/tasks/isakmp_delete.c sa/ikev1/tasks/isakmp_delete.h \
+sa/ikev1/tasks/isakmp_dpd.c sa/ikev1/tasks/isakmp_dpd.h \
+sa/ikev1/tasks/xauth.c sa/ikev1/tasks/xauth.h \
+sa/ikev1/tasks/quick_mode.c sa/ikev1/tasks/quick_mode.h \
+sa/ikev1/tasks/quick_delete.c sa/ikev1/tasks/quick_delete.h \
+sa/ikev1/tasks/mode_config.c sa/ikev1/tasks/mode_config.h \
+processing/jobs/dpd_timeout_job.c processing/jobs/dpd_timeout_job.h \
+processing/jobs/adopt_children_job.c processing/jobs/adopt_children_job.h
+endif
+
 
 daemon.lo :		$(top_builddir)/config.status
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I${linux_headers} \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
-	-I$(top_srcdir)/src/libcharon
-
-AM_CFLAGS = \
+	-I$(top_srcdir)/src/libcharon \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
-	-DIPSEC_PIDDIR=\"${piddir}\" \
-	-DPLUGINS=\""${libcharon_plugins}\""
+	-DIPSEC_PIDDIR=\"${piddir}\"
 
 libcharon_la_LIBADD = -lm $(PTHREADLIB) $(DLLIB) $(SOCKLIB)
 
@@ -112,13 +147,9 @@ if USE_ME
   libcharon_la_SOURCES += encoding/payloads/endpoint_notify.c encoding/payloads/endpoint_notify.h \
     processing/jobs/initiate_mediation_job.c processing/jobs/initiate_mediation_job.h \
     processing/jobs/mediation_job.c processing/jobs/mediation_job.h \
-    sa/connect_manager.c sa/connect_manager.h \
-    sa/mediation_manager.c sa/mediation_manager.h \
-    sa/tasks/ike_me.c sa/tasks/ike_me.h
-endif
-
-if USE_LIBCAP
-  libcharon_la_LIBADD += -lcap
+    sa/ikev2/connect_manager.c sa/ikev2/connect_manager.h \
+    sa/ikev2/mediation_manager.c sa/ikev2/mediation_manager.h \
+    sa/ikev2/tasks/ike_me.c sa/ikev2/tasks/ike_me.h
 endif
 
 # build optional plugins
@@ -141,13 +172,6 @@ if USE_SOCKET_DEFAULT
   SUBDIRS += plugins/socket_default
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/socket_default/libstrongswan-socket-default.la
-endif
-endif
-
-if USE_SOCKET_RAW
-  SUBDIRS += plugins/socket_raw
-if MONOLITHIC
-  libcharon_la_LIBADD += plugins/socket_raw/libstrongswan-socket-raw.la
 endif
 endif
 
@@ -183,6 +207,13 @@ if USE_SQL
   SUBDIRS += plugins/sql
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/sql/libstrongswan-sql.la
+endif
+endif
+
+if USE_IPSECKEY
+  SUBDIRS += plugins/ipseckey
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/ipseckey/libstrongswan-ipseckey.la
 endif
 endif
 
@@ -281,6 +312,13 @@ if USE_EAP_MSCHAPV2
   SUBDIRS += plugins/eap_mschapv2
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/eap_mschapv2/libstrongswan-eap-mschapv2.la
+endif
+endif
+
+if USE_EAP_DYNAMIC
+  SUBDIRS += plugins/eap_dynamic
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/eap_dynamic/libstrongswan-eap-dynamic.la
 endif
 endif
 
@@ -410,13 +448,6 @@ if MONOLITHIC
 endif
 endif
 
-if USE_NM
-  SUBDIRS += plugins/nm
-if MONOLITHIC
-  libcharon_la_LIBADD += plugins/nm/libstrongswan-nm.la
-endif
-endif
-
 if USE_DHCP
   SUBDIRS += plugins/dhcp
 if MONOLITHIC
@@ -424,10 +455,24 @@ if MONOLITHIC
 endif
 endif
 
-if USE_ANDROID
-  SUBDIRS += plugins/android
+if USE_OSX_ATTR
+  SUBDIRS += plugins/osx_attr
 if MONOLITHIC
-  libcharon_la_LIBADD += plugins/android/libstrongswan-android.la
+  libcharon_la_LIBADD += plugins/osx_attr/libstrongswan-osx-attr.la
+endif
+endif
+
+if USE_ANDROID_DNS
+  SUBDIRS += plugins/android_dns
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/android_dns/libstrongswan-android-dns.la
+endif
+endif
+
+if USE_ANDROID_LOG
+  SUBDIRS += plugins/android_log
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/android_log/libstrongswan-android-log.la
 endif
 endif
 
@@ -445,6 +490,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_KERNEL_LIBIPSEC
+  SUBDIRS += plugins/kernel_libipsec
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
+endif
+endif
+
 if USE_WHITELIST
   SUBDIRS += plugins/whitelist
 if MONOLITHIC
@@ -452,10 +504,31 @@ if MONOLITHIC
 endif
 endif
 
+if USE_LOOKIP
+  SUBDIRS += plugins/lookip
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/lookip/libstrongswan-lookip.la
+endif
+endif
+
+if USE_ERROR_NOTIFY
+  SUBDIRS += plugins/error_notify
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/error_notify/libstrongswan-error-notify.la
+endif
+endif
+
 if USE_CERTEXPIRE
   SUBDIRS += plugins/certexpire
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/certexpire/libstrongswan-certexpire.la
+endif
+endif
+
+if USE_SYSTIME_FIX
+  SUBDIRS += plugins/systime_fix
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/systime_fix/libstrongswan-systime-fix.la
 endif
 endif
 
@@ -497,7 +570,14 @@ endif
 if USE_ADDRBLOCK
   SUBDIRS += plugins/addrblock
 if MONOLITHIC
-  libcharon_la_LIBADD += plugins/uci/libstrongswan-addrblock.la
+  libcharon_la_LIBADD += plugins/addrblock/libstrongswan-addrblock.la
+endif
+endif
+
+if USE_UNITY
+  SUBDIRS += plugins/unity
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/unity/libstrongswan-unity.la
 endif
 endif
 
@@ -508,3 +588,30 @@ if MONOLITHIC
 endif
 endif
 
+if USE_XAUTH_GENERIC
+  SUBDIRS += plugins/xauth_generic
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/xauth_generic/libstrongswan-xauth-generic.la
+endif
+endif
+
+if USE_XAUTH_EAP
+  SUBDIRS += plugins/xauth_eap
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/xauth_eap/libstrongswan-xauth-eap.la
+endif
+endif
+
+if USE_XAUTH_PAM
+  SUBDIRS += plugins/xauth_pam
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/xauth_pam/libstrongswan-xauth-pam.la
+endif
+endif
+
+if USE_XAUTH_NOAUTH
+  SUBDIRS += plugins/xauth_noauth
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/xauth_noauth/libstrongswan-xauth-noauth.la
+endif
+endif

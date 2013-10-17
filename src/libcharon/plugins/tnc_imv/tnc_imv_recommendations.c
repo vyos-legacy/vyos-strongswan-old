@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2010-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,14 +15,15 @@
 
 #include <tncifimv.h>
 #include <tncif_names.h>
+#include <tncif_policy.h>
 
 #include <tnc/tnc.h>
 #include <tnc/imv/imv.h>
 #include <tnc/imv/imv_manager.h>
 #include <tnc/imv/imv_recommendations.h>
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_tnc_imv_recommendations_t private_tnc_imv_recommendations_t;
 typedef struct recommendation_entry_t recommendation_entry_t;
@@ -123,8 +125,13 @@ METHOD(recommendations_t, have_recommendation, bool,
 	TNC_IMV_Evaluation_Result final_eval;
 	bool first = TRUE, incomplete = FALSE;
 
-	*rec = final_rec = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION;
-	*eval = final_eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW;
+	final_rec  = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION;
+	final_eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW;
+	if (rec && eval)
+	{
+		*rec  = final_rec;
+		*eval = final_eval;
+	}
 
 	if (this->recs->get_count(this->recs) == 0)
 	{
@@ -151,53 +158,10 @@ METHOD(recommendations_t, have_recommendation, bool,
 		switch (policy)
 		{
 			case RECOMMENDATION_POLICY_DEFAULT:
-				switch (entry->rec)
-				{
-					case TNC_IMV_ACTION_RECOMMENDATION_NO_ACCESS:
-						final_rec = entry->rec;
-						break;
-					case TNC_IMV_ACTION_RECOMMENDATION_ISOLATE:
-						if (final_rec != TNC_IMV_ACTION_RECOMMENDATION_NO_ACCESS)
-						{
-							final_rec = entry->rec;
-						};
-						break;
-					case TNC_IMV_ACTION_RECOMMENDATION_ALLOW:
-						if (final_rec == TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION)
-						{
-							final_rec = entry->rec;
-						};
-						break;
-					case TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION:
-						break;
-				}
-				switch (entry->eval)
-				{
-					case TNC_IMV_EVALUATION_RESULT_ERROR:
-						final_eval = entry->eval;
-						break;
-					case TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MAJOR:
-						if (final_eval != TNC_IMV_EVALUATION_RESULT_ERROR)
-						{
-							final_eval = entry->eval;
-						}
-						break;
-					case TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR:
-						if (final_eval != TNC_IMV_EVALUATION_RESULT_ERROR &&
-							final_eval != TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MAJOR)
-						{
-							final_eval = entry->eval;
-						}
-						break;
-					case TNC_IMV_EVALUATION_RESULT_COMPLIANT:
-						if (final_eval == TNC_IMV_EVALUATION_RESULT_DONT_KNOW)
-						{
-							final_eval = entry->eval;
-						}
-						break;
-					case TNC_IMV_EVALUATION_RESULT_DONT_KNOW:
-						break;
-				}
+				final_rec = tncif_policy_update_recommendation(final_rec,
+															   entry->rec);
+				final_eval = tncif_policy_update_evaluation(final_eval,
+															entry->eval);
 				break;
 
 			case RECOMMENDATION_POLICY_ALL:
@@ -267,9 +231,30 @@ METHOD(recommendations_t, have_recommendation, bool,
 	{
 		return FALSE;
 	}
-	*rec = final_rec;
-	*eval = final_eval;
+	if (rec && eval)
+	{
+		*rec  = final_rec;
+		*eval = final_eval;
+	}
 	return TRUE;
+}
+
+METHOD(recommendations_t, clear_recommendation, void,
+	private_tnc_imv_recommendations_t *this)
+{
+	enumerator_t *enumerator;
+	recommendation_entry_t *entry;
+
+	enumerator = this->recs->create_enumerator(this->recs);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		entry->have_recommendation = FALSE;
+		entry->rec = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION;
+		entry->eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW;
+		chunk_clear(&entry->reason);
+		chunk_clear(&entry->reason_language);
+	}
+	enumerator->destroy(enumerator);
 }
 
 METHOD(recommendations_t, get_preferred_language, chunk_t,
@@ -293,7 +278,7 @@ METHOD(recommendations_t, set_reason_string, TNC_Result,
 	bool found = FALSE;
 
 	DBG2(DBG_TNC, "IMV %u is setting reason string to '%.*s'",
-		 id, reason.len, reason.ptr);
+		 id, (int)reason.len, reason.ptr);
 
 	enumerator = this->recs->create_enumerator(this->recs);
 	while (enumerator->enumerate(enumerator, &entry))
@@ -318,7 +303,7 @@ METHOD(recommendations_t, set_reason_language, TNC_Result,
 	bool found = FALSE;
 
 	DBG2(DBG_TNC, "IMV %u is setting reason language to '%.*s'",
-		 id, reason_lang.len, reason_lang.ptr);
+		 id, (int)reason_lang.len, reason_lang.ptr);
 
 	enumerator = this->recs->create_enumerator(this->recs);
 	while (enumerator->enumerate(enumerator, &entry))
@@ -362,21 +347,6 @@ METHOD(recommendations_t, create_reason_enumerator, enumerator_t*,
 					(void*)reason_filter, NULL, NULL);
 }
 
-METHOD(recommendations_t, clear_reasons, void,
-	private_tnc_imv_recommendations_t *this)
-{
-	enumerator_t *enumerator;
-	recommendation_entry_t *entry;
-
-	enumerator = this->recs->create_enumerator(this->recs);
-	while (enumerator->enumerate(enumerator, &entry))
-	{
-		chunk_clear(&entry->reason);
-		chunk_clear(&entry->reason_language);
-	}
-	enumerator->destroy(enumerator);
-}
-
 METHOD(recommendations_t, destroy, void,
 	private_tnc_imv_recommendations_t *this)
 {
@@ -407,12 +377,12 @@ recommendations_t* tnc_imv_recommendations_create(linked_list_t *imv_list)
 		.public = {
 			.provide_recommendation = _provide_recommendation,
 			.have_recommendation = _have_recommendation,
+			.clear_recommendation = _clear_recommendation,
 			.get_preferred_language = _get_preferred_language,
 			.set_preferred_language = _set_preferred_language,
 			.set_reason_string = _set_reason_string,
 			.set_reason_language = _set_reason_language,
 			.create_reason_enumerator = _create_reason_enumerator,
-			.clear_reasons = _clear_reasons,
 			.destroy = _destroy,
 		},
 		.recs = linked_list_create(),

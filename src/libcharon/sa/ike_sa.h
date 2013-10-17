@@ -37,11 +37,13 @@ typedef struct ike_sa_t ike_sa_t;
 #include <encoding/payloads/configuration_attribute.h>
 #include <sa/ike_sa_id.h>
 #include <sa/child_sa.h>
+#include <sa/task.h>
 #include <sa/task_manager.h>
 #include <sa/keymat.h>
 #include <config/peer_cfg.h>
 #include <config/ike_cfg.h>
 #include <credentials/auth_cfg.h>
+#include <networking/packet.h>
 
 /**
  * Timeout in seconds after that a half open IKE_SA gets deleted.
@@ -69,7 +71,8 @@ typedef struct ike_sa_t ike_sa_t;
 enum ike_extension_t {
 
 	/**
-	 * peer supports NAT traversal as specified in RFC4306
+	 * peer supports NAT traversal as specified in RFC4306 or RFC3947
+	 * including some RFC3947 drafts
 	 */
 	EXT_NATT = (1<<0),
 
@@ -102,6 +105,32 @@ enum ike_extension_t {
 	 * peer is probably a Windows 7 RAS client
 	 */
 	EXT_MS_WINDOWS = (1<<6),
+
+	/**
+	 * peer supports XAuth authentication, draft-ietf-ipsec-isakmp-xauth-06
+	 */
+	EXT_XAUTH = (1<<7),
+
+	/**
+	 * peer supports DPD detection, RFC 3706 (or IKEv2)
+	 */
+	EXT_DPD = (1<<8),
+
+	/**
+	 * peer supports Cisco Unity configuration attributes
+	 */
+	EXT_CISCO_UNITY = (1<<9),
+
+	/**
+	 * peer supports NAT traversal as specified in
+	 * draft-ietf-ipsec-nat-t-ike-02 .. -03
+	 */
+	EXT_NATT_DRAFT_02_03 = (1<<10),
+
+	/**
+	 * peer support proprietary IKE fragmentation
+	 */
+	EXT_IKE_FRAGMENTATION = (1<<11),
 };
 
 /**
@@ -148,6 +177,21 @@ enum ike_condition_t {
 	 * IKE_SA is stale, the peer is currently unreachable (MOBIKE)
 	 */
 	COND_STALE = (1<<7),
+
+	/**
+	 * Initial contact received
+	 */
+	COND_INIT_CONTACT_SEEN = (1<<8),
+
+	/**
+	 * Peer has been authenticated using XAuth
+	 */
+	COND_XAUTH_AUTHENTICATED = (1<<9),
+
+	/**
+	 * This IKE_SA is currently being reauthenticated
+	 */
+	COND_REAUTHENTICATING = (1<<10),
 };
 
 /**
@@ -156,11 +200,11 @@ enum ike_condition_t {
 enum statistic_t {
 	/** Timestamp of SA establishement */
 	STAT_ESTABLISHED = 0,
-	/** Timestamp of scheudled rekeying */
+	/** Timestamp of scheduled rekeying */
 	STAT_REKEY,
-	/** Timestamp of scheudled reauthentication */
+	/** Timestamp of scheduled reauthentication */
 	STAT_REAUTH,
-	/** Timestamp of scheudled delete */
+	/** Timestamp of scheduled delete */
 	STAT_DELETE,
 	/** Timestamp of last inbound IKE packet */
 	STAT_INBOUND,
@@ -270,6 +314,11 @@ struct ike_sa_t {
 	ike_sa_id_t* (*get_id) (ike_sa_t *this);
 
 	/**
+	 * Gets the IKE version of the SA
+	 */
+	ike_version_t (*get_version)(ike_sa_t *this);
+
+	/**
 	 * Get the numerical ID uniquely defining this IKE_SA.
 	 *
 	 * @return				unique ID
@@ -288,7 +337,7 @@ struct ike_sa_t {
 	 *
 	 * @param state			state to set for the IKE_SA
 	 */
-	void (*set_state) (ike_sa_t *this, ike_sa_state_t ike_sa);
+	void (*set_state) (ike_sa_t *this, ike_sa_state_t state);
 
 	/**
 	 * Get the name of the connection this IKE_SA uses.
@@ -304,6 +353,14 @@ struct ike_sa_t {
 	 * @return				value as integer
 	 */
 	u_int32_t (*get_statistic)(ike_sa_t *this, statistic_t kind);
+
+	/**
+	 * Set statistic value of the IKE_SA.
+	 *
+	 * @param kind			kind of value to update
+	 * @param value			value as integer
+	 */
+	void (*set_statistic)(ike_sa_t *this, statistic_t kind, u_int32_t value);
 
 	/**
 	 * Get the own host address.
@@ -661,6 +718,15 @@ struct ike_sa_t {
 						  traffic_selector_t *tsr);
 
 	/**
+	 * Retry initiation of this IKE_SA after it got deferred previously.
+	 *
+	 * @return
+	 *						- SUCCESS if initiation deferred or started
+	 *						- DESTROY_ME if initiation failed
+	 */
+	status_t (*retry_initiate) (ike_sa_t *this);
+
+	/**
 	 * Initiates the deletion of an IKE_SA.
 	 *
 	 * Sends a delete message to the remote peer and waits for
@@ -746,10 +812,8 @@ struct ike_sa_t {
 	/**
 	 * Sends a keep alive packet.
 	 *
-	 * To refresh NAT tables in a NAT router
-	 * between the peers, periodic empty
-	 * UDP packets are sent if no other traffic
-	 * was sent.
+	 * To refresh NAT tables in a NAT router between the peers, periodic empty
+	 * UDP packets are sent if no other traffic was sent.
 	 */
 	void (*send_keepalive) (ike_sa_t *this);
 
@@ -821,11 +885,13 @@ struct ike_sa_t {
 	 *
 	 * @param protocol		protocol of the SA
 	 * @param spi			inbound SPI of the CHILD_SA
+	 * @param expired		TRUE if CHILD_SA is expired
 	 * @return
 	 *						- NOT_FOUND, if IKE_SA has no such CHILD_SA
 	 *						- SUCCESS, if delete message sent
 	 */
-	status_t (*delete_child_sa) (ike_sa_t *this, protocol_id_t protocol, u_int32_t spi);
+	status_t (*delete_child_sa)(ike_sa_t *this, protocol_id_t protocol,
+								u_int32_t spi, bool expired);
 
 	/**
 	 * Destroy a CHILD SA with the specified protocol/SPI.
@@ -880,7 +946,7 @@ struct ike_sa_t {
 	status_t (*set_auth_lifetime)(ike_sa_t *this, u_int32_t lifetime);
 
 	/**
-	 * Set the virtual IP to use for this IKE_SA and its children.
+	 * Add a virtual IP to use for this IKE_SA and its children.
 	 *
 	 * The virtual IP is assigned per IKE_SA, not per CHILD_SA. It has the same
 	 * lifetime as the IKE_SA.
@@ -888,15 +954,22 @@ struct ike_sa_t {
 	 * @param local			TRUE to set local address, FALSE for remote
 	 * @param ip			IP to set as virtual IP
 	 */
-	void (*set_virtual_ip) (ike_sa_t *this, bool local, host_t *ip);
+	void (*add_virtual_ip) (ike_sa_t *this, bool local, host_t *ip);
 
 	/**
-	 * Get the virtual IP configured.
+	 * Clear all virtual IPs stored on this IKE_SA.
+	 *
+	 * @param local			TRUE to clear local addresses, FALSE for remote
+	 */
+	void (*clear_virtual_ips) (ike_sa_t *this, bool local);
+
+	/**
+	 * Create an enumerator over virtual IPs.
 	 *
 	 * @param local			TRUE to get local virtual IP, FALSE for remote
-	 * @return				host_t *virtual IP
+	 * @return				enumerator over host_t*
 	 */
-	host_t* (*get_virtual_ip) (ike_sa_t *this, bool local);
+	enumerator_t* (*create_virtual_ip_enumerator) (ike_sa_t *this, bool local);
 
 	/**
 	 * Register a configuration attribute to the IKE_SA.
@@ -933,13 +1006,26 @@ struct ike_sa_t {
 	enumerator_t* (*create_task_enumerator)(ike_sa_t *this, task_queue_t queue);
 
 	/**
+	 * Flush a task queue, cancelling all tasks in it.
+	 *
+	 * @param queue			queue type to flush
+	 */
+	void (*flush_queue)(ike_sa_t *this, task_queue_t queue);
+
+	/**
+	 * Queue a task for initiaton to the task manager.
+	 *
+	 * @param task			task to queue
+	 */
+	void (*queue_task)(ike_sa_t *this, task_t *task);
+
+	/**
 	 * Inherit all attributes of other to this after rekeying.
 	 *
 	 * When rekeying is completed, all CHILD_SAs, the virtual IP and all
 	 * outstanding tasks are moved from other to this.
-	 * As this call may initiate inherited tasks, a status is returned.
 	 *
-	 * @param other			other task to inherit from
+	 * @param other			other IKE SA to inherit from
 	 */
 	void (*inherit) (ike_sa_t *this, ike_sa_t *other);
 
@@ -955,11 +1041,14 @@ struct ike_sa_t {
 };
 
 /**
- * Creates an ike_sa_t object with a specific ID.
+ * Creates an ike_sa_t object with a specific ID and IKE version.
  *
- * @param ike_sa_id		ike_sa_id_t object to associate with new IKE_SA
+ * @param ike_sa_id		ike_sa_id_t to associate with new IKE_SA/ISAKMP_SA
+ * @param initiator		TRUE to create this IKE_SA as initiator
+ * @param version		IKE version of this SA
  * @return				ike_sa_t object
  */
-ike_sa_t *ike_sa_create(ike_sa_id_t *ike_sa_id);
+ike_sa_t *ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
+						ike_version_t version);
 
 #endif /** IKE_SA_H_ @}*/

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -37,11 +38,6 @@ struct private_sender_t {
 	 * Public part of a sender_t object.
 	 */
 	sender_t public;
-
-	/**
-	 * Sender threads job.
-	 */
-	callback_job_t *job;
 
 	/**
 	 * The packets are stored in a linked list
@@ -84,6 +80,15 @@ struct private_sender_t {
 	bool send_delay_response;
 };
 
+METHOD(sender_t, send_no_marker, void,
+	private_sender_t *this, packet_t *packet)
+{
+	this->mutex->lock(this->mutex);
+	this->list->insert_last(this->list, packet);
+	this->got->signal(this->got);
+	this->mutex->unlock(this->mutex);
+}
+
 METHOD(sender_t, send_, void,
 	private_sender_t *this, packet_t *packet)
 {
@@ -91,7 +96,9 @@ METHOD(sender_t, send_, void,
 
 	src = packet->get_source(packet);
 	dst = packet->get_destination(packet);
-	DBG1(DBG_NET, "sending packet: from %#H to %#H", src, dst);
+
+	DBG1(DBG_NET, "sending packet: from %#H to %#H (%zu bytes)", src, dst,
+		 packet->get_data(packet).len);
 
 	if (this->send_delay)
 	{
@@ -114,16 +121,23 @@ METHOD(sender_t, send_, void,
 		message->destroy(message);
 	}
 
-	this->mutex->lock(this->mutex);
-	this->list->insert_last(this->list, packet);
-	this->got->signal(this->got);
-	this->mutex->unlock(this->mutex);
+	/* if neither source nor destination port is 500 we add a Non-ESP marker */
+	if (dst->get_port(dst) != IKEV2_UDP_PORT &&
+		src->get_port(src) != IKEV2_UDP_PORT)
+	{
+		chunk_t data, marker = chunk_from_chars(0x00, 0x00, 0x00, 0x00);
+
+		data = chunk_cat("cc", marker, packet->get_data(packet));
+		packet->set_data(packet, data);
+	}
+
+	send_no_marker(this, packet);
 }
 
 /**
  * Job callback function to send packets
  */
-static job_requeue_t send_packets(private_sender_t * this)
+static job_requeue_t send_packets(private_sender_t *this)
 {
 	packet_t *packet;
 	bool oldstate;
@@ -149,7 +163,7 @@ static job_requeue_t send_packets(private_sender_t * this)
 	return JOB_REQUEUE_DIRECT;
 }
 
-METHOD(sender_t, destroy, void,
+METHOD(sender_t, flush, void,
 	private_sender_t *this)
 {
 	/* send all packets in the queue */
@@ -159,8 +173,12 @@ METHOD(sender_t, destroy, void,
 		this->sent->wait(this->sent, this->mutex);
 	}
 	this->mutex->unlock(this->mutex);
-	this->job->cancel(this->job);
-	this->list->destroy(this->list);
+}
+
+METHOD(sender_t, destroy, void,
+	private_sender_t *this)
+{
+	this->list->destroy_offset(this->list, offsetof(packet_t, destroy));
 	this->got->destroy(this->got);
 	this->sent->destroy(this->sent);
 	this->mutex->destroy(this->mutex);
@@ -177,25 +195,27 @@ sender_t * sender_create()
 	INIT(this,
 		.public = {
 			.send = _send_,
+			.send_no_marker = _send_no_marker,
+			.flush = _flush,
 			.destroy = _destroy,
 		},
 		.list = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.got = condvar_create(CONDVAR_TYPE_DEFAULT),
 		.sent = condvar_create(CONDVAR_TYPE_DEFAULT),
-		.job = callback_job_create_with_prio((callback_job_cb_t)send_packets,
-										this, NULL, NULL, JOB_PRIO_CRITICAL),
 		.send_delay = lib->settings->get_int(lib->settings,
-											"charon.send_delay", 0),
+								"%s.send_delay", 0, charon->name),
 		.send_delay_type = lib->settings->get_int(lib->settings,
-											"charon.send_delay_type", 0),
+								"%s.send_delay_type", 0, charon->name),
 		.send_delay_request = lib->settings->get_bool(lib->settings,
-											"charon.send_delay_request", TRUE),
-		.send_delay_response = lib->settings->get_int(lib->settings,
-											"charon.send_delay_response", TRUE),
+								"%s.send_delay_request", TRUE, charon->name),
+		.send_delay_response = lib->settings->get_bool(lib->settings,
+								"%s.send_delay_response", TRUE, charon->name),
 	);
 
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)send_packets,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

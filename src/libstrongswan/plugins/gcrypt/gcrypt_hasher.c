@@ -15,7 +15,7 @@
 
 #include "gcrypt_hasher.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <gcrypt.h>
 
@@ -43,13 +43,14 @@ METHOD(hasher_t, get_hash_size, size_t,
 	return gcry_md_get_algo_dlen(gcry_md_get_algo(this->hd));
 }
 
-METHOD(hasher_t, reset, void,
+METHOD(hasher_t, reset, bool,
 	private_gcrypt_hasher_t *this)
 {
 	gcry_md_reset(this->hd);
+	return TRUE;
 }
 
-METHOD(hasher_t, get_hash, void,
+METHOD(hasher_t, get_hash, bool,
 	private_gcrypt_hasher_t *this, chunk_t chunk, u_int8_t *hash)
 {
 	gcry_md_write(this->hd, chunk.ptr, chunk.len);
@@ -58,20 +59,18 @@ METHOD(hasher_t, get_hash, void,
 		memcpy(hash, gcry_md_read(this->hd, 0), get_hash_size(this));
 		gcry_md_reset(this->hd);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash, void,
+METHOD(hasher_t, allocate_hash, bool,
 	private_gcrypt_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	if (hash)
 	{
 		*hash = chunk_alloc(get_hash_size(this));
-		get_hash(this, chunk, hash->ptr);
+		return get_hash(this, chunk, hash->ptr);
 	}
-	else
-	{
-		get_hash(this, chunk, NULL);
-	}
+	return get_hash(this, chunk, NULL);
 }
 
 METHOD(hasher_t, destroy, void,

@@ -22,7 +22,7 @@
 #include <daemon.h>
 
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 
 ENUM(cert_policy_names, CERT_ALWAYS_SEND, CERT_NEVER_SEND,
@@ -60,11 +60,6 @@ struct private_peer_cfg_t {
 	char *name;
 
 	/**
-	 * IKE version to use for initiation
-	 */
-	u_int ike_version;
-
-	/**
 	 * IKE config associated to this peer config
 	 */
 	ike_cfg_t *ike_cfg;
@@ -100,6 +95,11 @@ struct private_peer_cfg_t {
 	bool use_mobike;
 
 	/**
+	 * Use aggressive mode?
+	 */
+	bool aggressive;
+
+	/**
 	 * Time before starting rekeying
 	 */
 	u_int32_t rekey_time;
@@ -125,14 +125,19 @@ struct private_peer_cfg_t {
 	u_int32_t dpd;
 
 	/**
-	 * virtual IP to use locally
+	 * DPD timeout intervall (used for IKEv1 only)
 	 */
-	host_t *virtual_ip;
+	u_int32_t dpd_timeout;
 
 	/**
-	 * pool to acquire configuration attributes from
+	 * List of virtual IPs (host_t*) to request
 	 */
-	char *pool;
+	linked_list_t *vips;
+
+	/**
+	 * List of pool names to use for virtual IP lookup
+	 */
+	linked_list_t *pools;
 
 	/**
 	 * local authentication configs (rulesets)
@@ -169,10 +174,10 @@ METHOD(peer_cfg_t, get_name, char*,
 	return this->name;
 }
 
-METHOD(peer_cfg_t, get_ike_version, u_int,
+METHOD(peer_cfg_t, get_ike_version, ike_version_t,
 	private_peer_cfg_t *this)
 {
-	return this->ike_version;
+	return this->ike_cfg->get_version(this->ike_cfg);
 }
 
 METHOD(peer_cfg_t, get_ike_cfg, ike_cfg_t*,
@@ -240,15 +245,15 @@ METHOD(peer_cfg_t, create_child_cfg_enumerator, enumerator_t*,
  * Check how good a list of TS matches a given child config
  */
 static int get_ts_match(child_cfg_t *cfg, bool local,
-						linked_list_t *sup_list, host_t *host)
+						linked_list_t *sup_list, linked_list_t *hosts)
 {
 	linked_list_t *cfg_list;
 	enumerator_t *sup_enum, *cfg_enum;
-	traffic_selector_t *sup_ts, *cfg_ts;
+	traffic_selector_t *sup_ts, *cfg_ts, *subset;
 	int match = 0, round;
 
 	/* fetch configured TS list, narrowing dynamic TS */
-	cfg_list = cfg->get_traffic_selectors(cfg, local, NULL, host);
+	cfg_list = cfg->get_traffic_selectors(cfg, local, NULL, hosts);
 
 	/* use a round counter to rate leading TS with higher priority */
 	round = sup_list->get_count(sup_list);
@@ -263,10 +268,14 @@ static int get_ts_match(child_cfg_t *cfg, bool local,
 			{	/* equality is honored better than matches */
 				match += round * 5;
 			}
-			else if (cfg_ts->is_contained_in(cfg_ts, sup_ts) ||
-					 sup_ts->is_contained_in(sup_ts, cfg_ts))
+			else
 			{
-				match += round * 1;
+				subset = cfg_ts->get_subset(cfg_ts, sup_ts);
+				if (subset)
+				{
+					subset->destroy(subset);
+					match += round * 1;
+				}
 			}
 		}
 		cfg_enum->destroy(cfg_enum);
@@ -281,7 +290,7 @@ static int get_ts_match(child_cfg_t *cfg, bool local,
 
 METHOD(peer_cfg_t, select_child_cfg, child_cfg_t*,
 	private_peer_cfg_t *this, linked_list_t *my_ts, linked_list_t *other_ts,
-	host_t *my_host, host_t *other_host)
+	linked_list_t *my_hosts, linked_list_t *other_hosts)
 {
 	child_cfg_t *current, *found = NULL;
 	enumerator_t *enumerator;
@@ -293,8 +302,8 @@ METHOD(peer_cfg_t, select_child_cfg, child_cfg_t*,
 	{
 		int my_prio, other_prio;
 
-		my_prio = get_ts_match(current, TRUE, my_ts, my_host);
-		other_prio = get_ts_match(current, FALSE, other_ts, other_host);
+		my_prio = get_ts_match(current, TRUE, my_ts, my_hosts);
+		other_prio = get_ts_match(current, FALSE, other_ts, other_hosts);
 
 		if (my_prio && other_prio)
 		{
@@ -336,13 +345,13 @@ METHOD(peer_cfg_t, get_keyingtries, u_int32_t,
 }
 
 METHOD(peer_cfg_t, get_rekey_time, u_int32_t,
-	private_peer_cfg_t *this)
+	private_peer_cfg_t *this, bool jitter)
 {
 	if (this->rekey_time == 0)
 	{
 		return 0;
 	}
-	if (this->jitter_time == 0)
+	if (this->jitter_time == 0 || !jitter)
 	{
 		return this->rekey_time;
 	}
@@ -350,13 +359,13 @@ METHOD(peer_cfg_t, get_rekey_time, u_int32_t,
 }
 
 METHOD(peer_cfg_t, get_reauth_time, u_int32_t,
-	private_peer_cfg_t *this)
+	private_peer_cfg_t *this, bool jitter)
 {
 	if (this->reauth_time == 0)
 	{
 		return 0;
 	}
-	if (this->jitter_time == 0)
+	if (this->jitter_time == 0 || !jitter)
 	{
 		return this->reauth_time;
 	}
@@ -375,22 +384,46 @@ METHOD(peer_cfg_t, use_mobike, bool,
 	return this->use_mobike;
 }
 
+METHOD(peer_cfg_t, use_aggressive, bool,
+	private_peer_cfg_t *this)
+{
+	return this->aggressive;
+}
+
 METHOD(peer_cfg_t, get_dpd, u_int32_t,
 	private_peer_cfg_t *this)
 {
 	return this->dpd;
 }
 
-METHOD(peer_cfg_t, get_virtual_ip, host_t*,
+METHOD(peer_cfg_t, get_dpd_timeout, u_int32_t,
 	private_peer_cfg_t *this)
 {
-	return this->virtual_ip;
+	return this->dpd_timeout;
 }
 
-METHOD(peer_cfg_t, get_pool, char*,
+METHOD(peer_cfg_t, add_virtual_ip, void,
+	private_peer_cfg_t *this, host_t *vip)
+{
+	this->vips->insert_last(this->vips, vip);
+}
+
+METHOD(peer_cfg_t, create_virtual_ip_enumerator, enumerator_t*,
 	private_peer_cfg_t *this)
 {
-	return this->pool;
+	return this->vips->create_enumerator(this->vips);
+}
+
+METHOD(peer_cfg_t, add_pool, void,
+	private_peer_cfg_t *this, char *name)
+{
+	this->pools->insert_last(this->pools, strdup(name));
+}
+
+METHOD(peer_cfg_t, create_pool_enumerator, enumerator_t*,
+	private_peer_cfg_t *this)
+{
+	return this->pools->create_enumerator(this->pools);
 }
 
 METHOD(peer_cfg_t, add_auth_cfg, void,
@@ -493,6 +526,10 @@ static bool auth_cfg_equal(private_peer_cfg_t *this, private_peer_cfg_t *other)
 METHOD(peer_cfg_t, equals, bool,
 	private_peer_cfg_t *this, private_peer_cfg_t *other)
 {
+	enumerator_t *e1, *e2;
+	host_t *vip1, *vip2;
+	char *pool1, *pool2;
+
 	if (this == other)
 	{
 		return TRUE;
@@ -502,8 +539,45 @@ METHOD(peer_cfg_t, equals, bool,
 		return FALSE;
 	}
 
+	if (this->vips->get_count(this->vips) != other->vips->get_count(other->vips))
+	{
+		return FALSE;
+	}
+	e1 = create_virtual_ip_enumerator(this);
+	e2 = create_virtual_ip_enumerator(other);
+	if (e1->enumerate(e1, &vip1) && e2->enumerate(e2, &vip2))
+	{
+		if (!vip1->ip_equals(vip1, vip2))
+		{
+			e1->destroy(e1);
+			e2->destroy(e2);
+			return FALSE;
+		}
+	}
+	e1->destroy(e1);
+	e2->destroy(e2);
+
+	if (this->pools->get_count(this->pools) !=
+		other->pools->get_count(other->pools))
+	{
+		return FALSE;
+	}
+	e1 = create_pool_enumerator(this);
+	e2 = create_pool_enumerator(other);
+	if (e1->enumerate(e1, &pool1) && e2->enumerate(e2, &pool2))
+	{
+		if (!streq(pool1, pool2))
+		{
+			e1->destroy(e1);
+			e2->destroy(e2);
+			return FALSE;
+		}
+	}
+	e1->destroy(e1);
+	e2->destroy(e2);
+
 	return (
-		this->ike_version == other->ike_version &&
+		get_ike_version(this) == get_ike_version(other) &&
 		this->cert_policy == other->cert_policy &&
 		this->unique == other->unique &&
 		this->keyingtries == other->keyingtries &&
@@ -513,11 +587,7 @@ METHOD(peer_cfg_t, equals, bool,
 		this->jitter_time == other->jitter_time &&
 		this->over_time == other->over_time &&
 		this->dpd == other->dpd &&
-		(this->virtual_ip == other->virtual_ip ||
-		 (this->virtual_ip && other->virtual_ip &&
-		  this->virtual_ip->equals(this->virtual_ip, other->virtual_ip))) &&
-		(this->pool == other->pool ||
-		 (this->pool && other->pool && streq(this->pool, other->pool))) &&
+		this->aggressive == other->aggressive &&
 		auth_cfg_equal(this, other)
 #ifdef ME
 		&& this->mediation == other->mediation &&
@@ -544,18 +614,18 @@ METHOD(peer_cfg_t, destroy, void,
 		this->ike_cfg->destroy(this->ike_cfg);
 		this->child_cfgs->destroy_offset(this->child_cfgs,
 										offsetof(child_cfg_t, destroy));
-		DESTROY_IF(this->virtual_ip);
 		this->local_auth->destroy_offset(this->local_auth,
 										offsetof(auth_cfg_t, destroy));
 		this->remote_auth->destroy_offset(this->remote_auth,
 										offsetof(auth_cfg_t, destroy));
+		this->vips->destroy_offset(this->vips, offsetof(host_t, destroy));
+		this->pools->destroy_function(this->pools, free);
 #ifdef ME
 		DESTROY_IF(this->mediated_by);
 		DESTROY_IF(this->peer_id);
 #endif /* ME */
 		this->mutex->destroy(this->mutex);
 		free(this->name);
-		free(this->pool);
 		free(this);
 	}
 }
@@ -563,12 +633,13 @@ METHOD(peer_cfg_t, destroy, void,
 /*
  * Described in header-file
  */
-peer_cfg_t *peer_cfg_create(char *name, u_int ike_version, ike_cfg_t *ike_cfg,
-							cert_policy_t cert_policy, unique_policy_t unique,
-							u_int32_t keyingtries, u_int32_t rekey_time,
-							u_int32_t reauth_time, u_int32_t jitter_time,
-							u_int32_t over_time, bool mobike, u_int32_t dpd,
-							host_t *virtual_ip, char *pool,
+peer_cfg_t *peer_cfg_create(char *name,
+							ike_cfg_t *ike_cfg, cert_policy_t cert_policy,
+							unique_policy_t unique, u_int32_t keyingtries,
+							u_int32_t rekey_time, u_int32_t reauth_time,
+							u_int32_t jitter_time, u_int32_t over_time,
+							bool mobike, bool aggressive, u_int32_t dpd,
+							u_int32_t dpd_timeout,
 							bool mediation, peer_cfg_t *mediated_by,
 							identification_t *peer_id)
 {
@@ -599,9 +670,13 @@ peer_cfg_t *peer_cfg_create(char *name, u_int ike_version, ike_cfg_t *ike_cfg,
 			.get_reauth_time = _get_reauth_time,
 			.get_over_time = _get_over_time,
 			.use_mobike = _use_mobike,
+			.use_aggressive = _use_aggressive,
 			.get_dpd = _get_dpd,
-			.get_virtual_ip = _get_virtual_ip,
-			.get_pool = _get_pool,
+			.get_dpd_timeout = _get_dpd_timeout,
+			.add_virtual_ip = _add_virtual_ip,
+			.create_virtual_ip_enumerator = _create_virtual_ip_enumerator,
+			.add_pool = _add_pool,
+			.create_pool_enumerator = _create_pool_enumerator,
 			.add_auth_cfg = _add_auth_cfg,
 			.create_auth_cfg_enumerator = _create_auth_cfg_enumerator,
 			.equals = (void*)_equals,
@@ -614,7 +689,6 @@ peer_cfg_t *peer_cfg_create(char *name, u_int ike_version, ike_cfg_t *ike_cfg,
 #endif /* ME */
 		},
 		.name = strdup(name),
-		.ike_version = ike_version,
 		.ike_cfg = ike_cfg,
 		.child_cfgs = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
@@ -626,9 +700,11 @@ peer_cfg_t *peer_cfg_create(char *name, u_int ike_version, ike_cfg_t *ike_cfg,
 		.jitter_time = jitter_time,
 		.over_time = over_time,
 		.use_mobike = mobike,
+		.aggressive = aggressive,
 		.dpd = dpd,
-		.virtual_ip = virtual_ip,
-		.pool = strdupnull(pool),
+		.dpd_timeout = dpd_timeout,
+		.vips = linked_list_create(),
+		.pools = linked_list_create(),
 		.local_auth = linked_list_create(),
 		.remote_auth = linked_list_create(),
 		.refcount = 1,

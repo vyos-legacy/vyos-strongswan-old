@@ -40,91 +40,45 @@ struct private_openssl_hasher_t {
 	EVP_MD_CTX *ctx;
 };
 
-/**
- * Mapping from the algorithms defined in IKEv2 to
- * OpenSSL algorithm names
- */
-typedef struct {
-	/**
-	 * Identifier specified in IKEv2
-	 */
-	int ikev2_id;
-
-	/**
-	 * Name of the algorithm, as used in OpenSSL
-	 */
-	char *name;
-} openssl_algorithm_t;
-
-#define END_OF_LIST -1
-
-/**
- * Algorithms for integrity
- */
-static openssl_algorithm_t integrity_algs[] = {
-	{HASH_MD2,		"md2"},
-	{HASH_MD5,		"md5"},
-	{HASH_SHA1,		"sha1"},
-	{HASH_SHA224,	"sha224"},
-	{HASH_SHA256,	"sha256"},
-	{HASH_SHA384,	"sha384"},
-	{HASH_SHA512,	"sha512"},
-	{HASH_MD4,		"md4"},
-	{END_OF_LIST, 	NULL},
-};
-
-/**
- * Look up an OpenSSL algorithm name
- */
-static char* lookup_algorithm(openssl_algorithm_t *openssl_algo,
-					   u_int16_t ikev2_algo)
-{
-	while (openssl_algo->ikev2_id != END_OF_LIST)
-	{
-		if (ikev2_algo == openssl_algo->ikev2_id)
-		{
-			return openssl_algo->name;
-		}
-		openssl_algo++;
-	}
-	return NULL;
-}
-
 METHOD(hasher_t, get_hash_size, size_t,
 	private_openssl_hasher_t *this)
 {
 	return this->hasher->md_size;
 }
 
-METHOD(hasher_t, reset, void,
+METHOD(hasher_t, reset, bool,
 	private_openssl_hasher_t *this)
 {
-	EVP_DigestInit_ex(this->ctx, this->hasher, NULL);
+	return EVP_DigestInit_ex(this->ctx, this->hasher, NULL) == 1;
 }
 
-METHOD(hasher_t, get_hash, void,
+METHOD(hasher_t, get_hash, bool,
 	private_openssl_hasher_t *this, chunk_t chunk, u_int8_t *hash)
 {
-	EVP_DigestUpdate(this->ctx, chunk.ptr, chunk.len);
+	if (EVP_DigestUpdate(this->ctx, chunk.ptr, chunk.len) != 1)
+	{
+		return FALSE;
+	}
 	if (hash)
 	{
-		EVP_DigestFinal_ex(this->ctx, hash, NULL);
-		reset(this);
+		if (EVP_DigestFinal_ex(this->ctx, hash, NULL) != 1)
+		{
+			return FALSE;
+		}
+		return reset(this);
 	}
+	return TRUE;
 }
 
-METHOD(hasher_t, allocate_hash, void,
+METHOD(hasher_t, allocate_hash, bool,
 	private_openssl_hasher_t *this, chunk_t chunk, chunk_t *hash)
 {
 	if (hash)
 	{
 		*hash = chunk_alloc(get_hash_size(this));
-		get_hash(this, chunk, hash->ptr);
+		return get_hash(this, chunk, hash->ptr);
 	}
-	else
-	{
-		get_hash(this, chunk, NULL);
-	}
+	return get_hash(this, chunk, NULL);
 }
 
 METHOD(hasher_t, destroy, void,
@@ -140,11 +94,11 @@ METHOD(hasher_t, destroy, void,
 openssl_hasher_t *openssl_hasher_create(hash_algorithm_t algo)
 {
 	private_openssl_hasher_t *this;
+	char* name;
 
-	char* name = lookup_algorithm(integrity_algs, algo);
+	name = enum_to_name(hash_algorithm_short_names, algo);
 	if (!name)
 	{
-		/* algo unavailable */
 		return NULL;
 	}
 
@@ -171,7 +125,11 @@ openssl_hasher_t *openssl_hasher_create(hash_algorithm_t algo)
 	this->ctx = EVP_MD_CTX_create();
 
 	/* initialization */
-	reset(this);
+	if (!reset(this))
+	{
+		destroy(this);
+		return NULL;
+	}
 
 	return &this->public;
 }

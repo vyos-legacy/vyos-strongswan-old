@@ -33,11 +33,13 @@ ENUM_NEXT(pa_subtype_ietf_names, PA_SUBTYPE_IETF_ANY, PA_SUBTYPE_IETF_ANY,
 );
 ENUM_END(pa_subtype_ietf_names, PA_SUBTYPE_IETF_ANY);
 
-ENUM_BEGIN(pa_subtype_tcg_names, PA_SUBTYPE_TCG_PTS, PA_SUBTYPE_TCG_PTS,
-	"PTS"
+ENUM_BEGIN(pa_subtype_tcg_names, PA_SUBTYPE_TCG_PTS, PA_SUBTYPE_TCG_SWID,
+	"PTS",
+	"SCAP",
+	"SWID"
 );
 ENUM_NEXT(pa_subtype_tcg_names, PA_SUBTYPE_TCG_ANY, PA_SUBTYPE_TCG_ANY,
-								PA_SUBTYPE_TCG_PTS,
+								PA_SUBTYPE_TCG_SWID,
 	"ANY"
 );
 ENUM_END(pa_subtype_tcg_names, PA_SUBTYPE_TCG_ANY);
@@ -61,12 +63,12 @@ ENUM_NEXT(pa_subtype_fhh_names, PA_SUBTYPE_FHH_ANY, PA_SUBTYPE_FHH_ANY,
 );
 ENUM_END(pa_subtype_fhh_names, PA_SUBTYPE_FHH_ANY);
 
-ENUM_BEGIN(pa_subtype_ita_names, PA_SUBTYPE_ITA_TEST, PA_SUBTYPE_ITA_SCANNER,
+ENUM_BEGIN(pa_subtype_ita_names, PA_SUBTYPE_ITA_TEST, PA_SUBTYPE_ITA_ECHO,
 	"Test",
-	"Scanner"
+	"Echo"
 );
 ENUM_NEXT(pa_subtype_ita_names, PA_SUBTYPE_ITA_ANY, PA_SUBTYPE_ITA_ANY,
-								PA_SUBTYPE_ITA_SCANNER,
+								PA_SUBTYPE_ITA_ECHO,
 	"ANY"
 );
 ENUM_END(pa_subtype_ita_names, PA_SUBTYPE_ITA_ANY);

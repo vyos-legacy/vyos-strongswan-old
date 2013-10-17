@@ -113,6 +113,24 @@ struct private_eap_sim_server_t {
 /* version of SIM protocol we speak */
 static chunk_t version = chunk_from_chars(0x00,0x01);
 
+/**
+ * Generate a payload from a message, destroy message
+ */
+static bool generate_payload(simaka_message_t *message, chunk_t data,
+							 eap_payload_t **out)
+{
+	chunk_t chunk;
+	bool ok;
+
+	ok = message->generate(message, data, &chunk);
+	if (ok)
+	{
+		*out = eap_payload_create_data_own(chunk);
+	}
+	message->destroy(message);
+	return ok;
+}
+
 METHOD(eap_method_t, initiate, status_t,
 	private_eap_sim_server_t *this, eap_payload_t **out)
 {
@@ -133,9 +151,10 @@ METHOD(eap_method_t, initiate, status_t,
 	{
 		message->add_attribute(message, AT_PERMANENT_ID_REQ, chunk_empty);
 	}
-	*out = eap_payload_create_data_own(message->generate(message, chunk_empty));
-	message->destroy(message);
-
+	if (!generate_payload(message, chunk_empty, out))
+	{
+		return FAILED;
+	}
 	this->pending = SIM_START;
 	return NEED_MORE;
 }
@@ -155,15 +174,21 @@ static status_t reauthenticate(private_eap_sim_server_t *this,
 	DBG1(DBG_IKE, "initiating EAP-SIM reauthentication");
 
 	rng = this->crypto->get_rng(this->crypto);
-	rng->allocate_bytes(rng, NONCE_LEN, &this->nonce);
+	if (!rng->allocate_bytes(rng, NONCE_LEN, &this->nonce))
+	{
+		return FAILED;
+	}
 
 	mkc = chunk_create(mk, HASH_SIZE_SHA1);
 	counter = htons(counter);
 	this->counter = chunk_clone(chunk_create((char*)&counter, sizeof(counter)));
 
-	this->crypto->derive_keys_reauth(this->crypto, mkc);
-	this->msk = this->crypto->derive_keys_reauth_msk(this->crypto,
-								this->reauth, this->counter, this->nonce, mkc);
+	if (!this->crypto->derive_keys_reauth(this->crypto, mkc) ||
+		!this->crypto->derive_keys_reauth_msk(this->crypto,
+					this->reauth, this->counter, this->nonce, mkc, &this->msk))
+	{
+		return FAILED;
+	}
 
 	message = simaka_message_create(TRUE, this->identifier++, EAP_SIM,
 									SIM_REAUTHENTICATION, this->crypto);
@@ -176,9 +201,10 @@ static status_t reauthenticate(private_eap_sim_server_t *this,
 							   next->get_encoding(next));
 		next->destroy(next);
 	}
-	*out = eap_payload_create_data_own(message->generate(message, chunk_empty));
-	message->destroy(message);
-
+	if (!generate_payload(message, chunk_empty, out))
+	{
+		return FAILED;
+	}
 	this->pending = SIM_REAUTHENTICATION;
 	return NEED_MORE;
 }
@@ -386,13 +412,17 @@ static status_t process_start(private_eap_sim_server_t *this,
 	{
 		id = this->pseudonym;
 	}
-	this->msk = this->crypto->derive_keys_full(this->crypto, id, data, &mk);
+	if (!this->crypto->derive_keys_full(this->crypto, id, data, &mk, &this->msk))
+	{
+		return FAILED;
+	}
 
 	/* build response with AT_MAC, built over "EAP packet | NONCE_MT" */
 	message = simaka_message_create(TRUE, this->identifier++, EAP_SIM,
 									SIM_CHALLENGE, this->crypto);
 	message->add_attribute(message, AT_RAND, rands);
 	id = this->mgr->provider_gen_reauth(this->mgr, this->permanent, mk.ptr);
+	free(mk.ptr);
 	if (id)
 	{
 		message->add_attribute(message, AT_NEXT_REAUTH_ID,
@@ -406,10 +436,10 @@ static status_t process_start(private_eap_sim_server_t *this,
 							   id->get_encoding(id));
 		id->destroy(id);
 	}
-	*out = eap_payload_create_data_own(message->generate(message, nonce));
-	message->destroy(message);
-
-	free(mk.ptr);
+	if (!generate_payload(message, nonce, out))
+	{
+		return FAILED;
+	}
 	this->pending = SIM_CHALLENGE;
 	return NEED_MORE;
 }
@@ -604,7 +634,8 @@ eap_sim_server_t *eap_sim_server_create(identification_t *server,
 	this->permanent = peer->clone(peer);
 	this->use_reauth = this->use_pseudonym = this->use_permanent =
 		lib->settings->get_bool(lib->settings,
-								"charon.plugins.eap-sim.request_identity", TRUE);
+								"%s.plugins.eap-sim.request_identity", TRUE,
+								charon->name);
 
 	/* generate a non-zero identifier */
 	do {

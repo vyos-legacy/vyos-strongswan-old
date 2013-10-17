@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2011-2012 Tobias Brunner
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -19,8 +20,8 @@
 
 #include <threading/thread.h>
 #include <threading/thread_value.h>
-#include <threading/condvar.h>
 #include <threading/mutex.h>
+#include <threading/rwlock.h>
 
 typedef struct private_bus_t private_bus_t;
 
@@ -34,14 +35,37 @@ struct private_bus_t {
 	bus_t public;
 
 	/**
-	 * List of registered listeners as entry_t's
+	 * List of registered listeners as entry_t.
 	 */
 	linked_list_t *listeners;
 
 	/**
-	 * mutex to synchronize active listeners, recursively
+	 * List of registered loggers for each log group as log_entry_t.
+	 * Loggers are ordered by descending log level.
+	 * The extra list stores all loggers so we can properly unregister them.
+	 */
+	linked_list_t *loggers[DBG_MAX + 1];
+
+	/**
+	 * Maximum log level of any registered logger for each log group.
+	 * This allows to check quickly if a log message has to be logged at all.
+	 */
+	level_t max_level[DBG_MAX + 1];
+
+	/**
+	 * Same as max level, but for loggers using the vlog() method.
+	 */
+	level_t max_vlevel[DBG_MAX + 1];
+
+	/**
+	 * Mutex for the list of listeners, recursively.
 	 */
 	mutex_t *mutex;
+
+	/**
+	 * Read-write lock for the list of loggers.
+	 */
+	rwlock_t *log_lock;
 
 	/**
 	 * Thread local storage the threads IKE_SA
@@ -52,7 +76,7 @@ struct private_bus_t {
 typedef struct entry_t entry_t;
 
 /**
- * a listener entry, either active or passive
+ * a listener entry
  */
 struct entry_t {
 
@@ -62,50 +86,42 @@ struct entry_t {
 	listener_t *listener;
 
 	/**
-	 * is this a active listen() call with a blocking thread
-	 */
-	bool blocker;
-
-	/**
 	 * are we currently calling this listener
 	 */
 	int calling;
 
-	/**
-	 * condvar where active listeners wait
-	 */
-	condvar_t *condvar;
 };
 
-/**
- * create a listener entry
- */
-static entry_t *entry_create(listener_t *listener, bool blocker)
-{
-	entry_t *this = malloc_thing(entry_t);
-
-	this->listener = listener;
-	this->blocker = blocker;
-	this->calling = 0;
-	this->condvar = condvar_create(CONDVAR_TYPE_DEFAULT);
-
-	return this;
-}
+typedef struct log_entry_t log_entry_t;
 
 /**
- * destroy an entry_t
+ * a logger entry
  */
-static void entry_destroy(entry_t *entry)
-{
-	entry->condvar->destroy(entry->condvar);
-	free(entry);
-}
+struct log_entry_t {
+
+	/**
+	 * registered logger interface
+	 */
+	logger_t *logger;
+
+	/**
+	 * registered log levels per group
+	 */
+	level_t levels[DBG_MAX];
+
+};
 
 METHOD(bus_t, add_listener, void,
 	private_bus_t *this, listener_t *listener)
 {
+	entry_t *entry;
+
+	INIT(entry,
+		.listener = listener,
+	);
+
 	this->mutex->lock(this->mutex);
-	this->listeners->insert_last(this->listeners, entry_create(listener, FALSE));
+	this->listeners->insert_last(this->listeners, entry);
 	this->mutex->unlock(this->mutex);
 }
 
@@ -122,7 +138,7 @@ METHOD(bus_t, remove_listener, void,
 		if (entry->listener == listener)
 		{
 			this->listeners->remove_at(this->listeners, enumerator);
-			entry_destroy(entry);
+			free(entry);
 			break;
 		}
 	}
@@ -130,74 +146,117 @@ METHOD(bus_t, remove_listener, void,
 	this->mutex->unlock(this->mutex);
 }
 
-typedef struct cleanup_data_t cleanup_data_t;
-
 /**
- * data to remove a listener using thread_cleanup_t handler
+ * Register a logger on the given log group according to the requested level
  */
-struct cleanup_data_t {
-	/** bus instance */
-	private_bus_t *this;
-	/** listener entry */
-	entry_t *entry;
-};
-
-/**
- * thread_cleanup_t handler to remove a listener
- */
-static void listener_cleanup(cleanup_data_t *data)
+static inline void register_logger(private_bus_t *this, debug_t group,
+								   log_entry_t *entry)
 {
-	data->this->listeners->remove(data->this->listeners, data->entry, NULL);
-	entry_destroy(data->entry);
+	enumerator_t *enumerator;
+	linked_list_t *loggers;
+	log_entry_t *current;
+	level_t level;
+
+	loggers = this->loggers[group];
+	level = entry->levels[group];
+
+	enumerator = loggers->create_enumerator(loggers);
+	while (enumerator->enumerate(enumerator, (void**)&current))
+	{
+		if (current->levels[group] <= level)
+		{
+			break;
+		}
+	}
+	loggers->insert_before(loggers, enumerator, entry);
+	enumerator->destroy(enumerator);
+
+	if (entry->logger->log)
+	{
+		this->max_level[group] = max(this->max_level[group], level);
+	}
+	if (entry->logger->vlog)
+	{
+		this->max_vlevel[group] = max(this->max_vlevel[group], level);
+	}
 }
 
-METHOD(bus_t, listen_, bool,
-	private_bus_t *this, listener_t *listener, job_t *job, u_int timeout)
+/**
+ * Unregister a logger from all log groups (destroys the log_entry_t)
+ */
+static inline void unregister_logger(private_bus_t *this, logger_t *logger)
 {
-	bool old, timed_out = FALSE;
-	cleanup_data_t data;
-	timeval_t tv, add;
+	enumerator_t *enumerator;
+	linked_list_t *loggers;
+	log_entry_t *entry, *found = NULL;
 
-	if (timeout)
+	loggers = this->loggers[DBG_MAX];
+	enumerator = loggers->create_enumerator(loggers);
+	while (enumerator->enumerate(enumerator, &entry))
 	{
-		add.tv_sec = timeout / 1000;
-		add.tv_usec = (timeout - (add.tv_sec * 1000)) * 1000;
-		time_monotonic(&tv);
-		timeradd(&tv, &add, &tv);
-	}
-
-	data.this = this;
-	data.entry = entry_create(listener, TRUE);
-
-	this->mutex->lock(this->mutex);
-	this->listeners->insert_last(this->listeners, data.entry);
-	lib->processor->queue_job(lib->processor, job);
-	thread_cleanup_push((thread_cleanup_t)this->mutex->unlock, this->mutex);
-	thread_cleanup_push((thread_cleanup_t)listener_cleanup, &data);
-	old = thread_cancelability(TRUE);
-	while (data.entry->blocker)
-	{
-		if (timeout)
+		if (entry->logger == logger)
 		{
-			if (data.entry->condvar->timed_wait_abs(data.entry->condvar,
-												    this->mutex, tv))
+			loggers->remove_at(loggers, enumerator);
+			found = entry;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (found)
+	{
+		debug_t group;
+
+		for (group = 0; group < DBG_MAX; group++)
+		{
+			if (found->levels[group] > LEVEL_SILENT)
 			{
-				this->listeners->remove(this->listeners, data.entry, NULL);
-				timed_out = TRUE;
-				break;
+				loggers = this->loggers[group];
+				loggers->remove(loggers, found, NULL);
+
+				this->max_level[group] = LEVEL_SILENT;
+				this->max_vlevel[group] = LEVEL_SILENT;
+				if (loggers->get_first(loggers, (void**)&entry) == SUCCESS)
+				{
+					this->max_level[group] = entry->levels[group];
+					this->max_vlevel[group] = entry->levels[group];
+				}
 			}
 		}
-		else
+		free(found);
+	}
+}
+
+METHOD(bus_t, add_logger, void,
+	private_bus_t *this, logger_t *logger)
+{
+	log_entry_t *entry;
+	debug_t group;
+
+	INIT(entry,
+		.logger = logger,
+	);
+
+	this->log_lock->write_lock(this->log_lock);
+	unregister_logger(this, logger);
+	for (group = 0; group < DBG_MAX; group++)
+	{
+		entry->levels[group] = logger->get_level(logger, group);
+		if (entry->levels[group] > LEVEL_SILENT)
 		{
-			data.entry->condvar->wait(data.entry->condvar, this->mutex);
+			register_logger(this, group, entry);
 		}
 	}
-	thread_cancelability(old);
-	thread_cleanup_pop(FALSE);
-	/* unlock mutex */
-	thread_cleanup_pop(TRUE);
-	entry_destroy(data.entry);
-	return timed_out;
+	this->loggers[DBG_MAX]->insert_last(this->loggers[DBG_MAX], entry);
+	this->log_lock->unlock(this->log_lock);
+}
+
+METHOD(bus_t, remove_logger, void,
+	private_bus_t *this, logger_t *logger)
+{
+	this->log_lock->write_lock(this->log_lock);
+	unregister_logger(this, logger);
+	this->log_lock->unlock(this->log_lock);
 }
 
 METHOD(bus_t, set_sa, void,
@@ -224,66 +283,94 @@ typedef struct {
 	debug_t group;
 	/** debug level */
 	level_t level;
-	/** format string */
-	char *format;
-	/** argument list */
+	/** message/fmt */
+	char *message;
+	/** argument list if message is a format string for vlog() */
 	va_list args;
 } log_data_t;
 
 /**
- * listener->log() invocation as a list remove callback
+ * logger->log() invocation as a invoke_function callback
  */
-static bool log_cb(entry_t *entry, log_data_t *data)
+static void log_cb(log_entry_t *entry, log_data_t *data)
 {
-	va_list args;
-
-	if (entry->calling || !entry->listener->log)
-	{	/* avoid recursive calls */
-		return FALSE;
-	}
-	entry->calling++;
-	va_copy(args, data->args);
-	if (!entry->listener->log(entry->listener, data->group, data->level,
-							  data->thread, data->ike_sa, data->format, args))
+	if (entry->logger->log && entry->levels[data->group] >= data->level)
 	{
-		if (entry->blocker)
-		{
-			entry->blocker = FALSE;
-			entry->condvar->signal(entry->condvar);
-			entry->calling--;
-		}
-		else
-		{
-			entry_destroy(entry);
-		}
-		va_end(args);
-		return TRUE;
+		entry->logger->log(entry->logger, data->group, data->level,
+						   data->thread, data->ike_sa, data->message);
 	}
-	va_end(args);
-	entry->calling--;
-	return FALSE;
+}
+
+/**
+ * logger->vlog() invocation as a invoke_function callback
+ */
+static void vlog_cb(log_entry_t *entry, log_data_t *data)
+{
+	if (entry->logger->vlog && entry->levels[data->group] >= data->level)
+	{
+		va_list copy;
+
+		va_copy(copy, data->args);
+		entry->logger->vlog(entry->logger, data->group, data->level,
+							data->thread, data->ike_sa, data->message, copy);
+		va_end(copy);
+	}
 }
 
 METHOD(bus_t, vlog, void,
 	private_bus_t *this, debug_t group, level_t level,
 	char* format, va_list args)
 {
+	linked_list_t *loggers;
 	log_data_t data;
 
-	data.ike_sa = this->thread_sa->get(this->thread_sa);
-	data.thread = thread_current_id();
-	data.group = group;
-	data.level = level;
-	data.format = format;
-	va_copy(data.args, args);
+	this->log_lock->read_lock(this->log_lock);
+	loggers = this->loggers[group];
 
-	this->mutex->lock(this->mutex);
-	/* We use the remove() method to invoke all listeners. This is cheap and
-	 * does not require an allocation for this performance critical function. */
-	this->listeners->remove(this->listeners, &data, (void*)log_cb);
-	this->mutex->unlock(this->mutex);
+	if (this->max_level[group] >= level)
+	{
+		char buf[1024];
+		ssize_t len;
 
-	va_end(data.args);
+		data.ike_sa = this->thread_sa->get(this->thread_sa);
+		data.thread = thread_current_id();
+		data.group = group;
+		data.level = level;
+		data.message = buf;
+
+		va_copy(data.args, args);
+		len = vsnprintf(data.message, sizeof(buf), format, data.args);
+		va_end(data.args);
+		if (len >= sizeof(buf))
+		{
+			len++;
+			data.message = malloc(len);
+			len = vsnprintf(data.message, len, format, args);
+		}
+		if (len > 0)
+		{
+			loggers->invoke_function(loggers, (linked_list_invoke_t)log_cb,
+									 &data);
+		}
+		if (data.message != buf)
+		{
+			free(data.message);
+		}
+	}
+	if (this->max_vlevel[group] >= level)
+	{
+		data.ike_sa = this->thread_sa->get(this->thread_sa);
+		data.thread = thread_current_id();
+		data.group = group;
+		data.level = level;
+		data.message = format;
+
+		va_copy(data.args, args);
+		loggers->invoke_function(loggers, (linked_list_invoke_t)vlog_cb, &data);
+		va_end(data.args);
+	}
+
+	this->log_lock->unlock(this->log_lock);
 }
 
 METHOD(bus_t, log_, void,
@@ -299,19 +386,11 @@ METHOD(bus_t, log_, void,
 /**
  * unregister a listener
  */
-static void unregister_listener(private_bus_t *this, entry_t *entry,
-								enumerator_t *enumerator)
+static inline void unregister_listener(private_bus_t *this, entry_t *entry,
+									   enumerator_t *enumerator)
 {
-	if (entry->blocker)
-	{
-		entry->blocker = FALSE;
-		entry->condvar->signal(entry->condvar);
-	}
-	else
-	{
-		entry_destroy(entry);
-	}
 	this->listeners->remove_at(this->listeners, enumerator);
+	free(entry);
 }
 
 METHOD(bus_t, alert, void,
@@ -406,7 +485,7 @@ METHOD(bus_t, child_state_change, void,
 }
 
 METHOD(bus_t, message, void,
-	private_bus_t *this, message_t *message, bool incoming)
+	private_bus_t *this, message_t *message, bool incoming, bool plain)
 {
 	enumerator_t *enumerator;
 	ike_sa_t *ike_sa;
@@ -425,7 +504,7 @@ METHOD(bus_t, message, void,
 		}
 		entry->calling++;
 		keep = entry->listener->message(entry->listener, ike_sa,
-										message, incoming);
+										message, incoming, plain);
 		entry->calling--;
 		if (!keep)
 		{
@@ -438,7 +517,8 @@ METHOD(bus_t, message, void,
 
 METHOD(bus_t, ike_keys, void,
 	private_bus_t *this, ike_sa_t *ike_sa, diffie_hellman_t *dh,
-	chunk_t nonce_i, chunk_t nonce_r, ike_sa_t *rekey)
+	chunk_t dh_other, chunk_t nonce_i, chunk_t nonce_r,
+	ike_sa_t *rekey, shared_key_t *shared)
 {
 	enumerator_t *enumerator;
 	entry_t *entry;
@@ -453,8 +533,8 @@ METHOD(bus_t, ike_keys, void,
 			continue;
 		}
 		entry->calling++;
-		keep = entry->listener->ike_keys(entry->listener, ike_sa, dh,
-										 nonce_i, nonce_r, rekey);
+		keep = entry->listener->ike_keys(entry->listener, ike_sa, dh, dh_other,
+										 nonce_i, nonce_r, rekey, shared);
 		entry->calling--;
 		if (!keep)
 		{
@@ -485,8 +565,8 @@ METHOD(bus_t, child_keys, void,
 			continue;
 		}
 		entry->calling++;
-		keep = entry->listener->child_keys(entry->listener, ike_sa, child_sa,
-										   initiator, dh, nonce_i, nonce_r);
+		keep = entry->listener->child_keys(entry->listener, ike_sa,
+								child_sa, initiator, dh, nonce_i, nonce_r);
 		entry->calling--;
 		if (!keep)
 		{
@@ -547,7 +627,8 @@ METHOD(bus_t, child_rekey, void,
 			continue;
 		}
 		entry->calling++;
-		keep = entry->listener->child_rekey(entry->listener, ike_sa, old, new);
+		keep = entry->listener->child_rekey(entry->listener, ike_sa,
+											old, new);
 		entry->calling--;
 		if (!keep)
 		{
@@ -626,6 +707,33 @@ METHOD(bus_t, ike_rekey, void,
 	this->mutex->unlock(this->mutex);
 }
 
+METHOD(bus_t, ike_reestablish, void,
+	private_bus_t *this, ike_sa_t *old, ike_sa_t *new)
+{
+	enumerator_t *enumerator;
+	entry_t *entry;
+	bool keep;
+
+	this->mutex->lock(this->mutex);
+	enumerator = this->listeners->create_enumerator(this->listeners);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (entry->calling || !entry->listener->ike_reestablish)
+		{
+			continue;
+		}
+		entry->calling++;
+		keep = entry->listener->ike_reestablish(entry->listener, old, new);
+		entry->calling--;
+		if (!keep)
+		{
+			unregister_listener(this, entry, enumerator);
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->mutex->unlock(this->mutex);
+}
+
 METHOD(bus_t, authorize, bool,
 	private_bus_t *this, bool final)
 {
@@ -659,6 +767,10 @@ METHOD(bus_t, authorize, bool,
 	}
 	enumerator->destroy(enumerator);
 	this->mutex->unlock(this->mutex);
+	if (!success)
+	{
+		alert(this, ALERT_AUTHORIZATION_FAILED);
+	}
 	return success;
 }
 
@@ -694,12 +806,74 @@ METHOD(bus_t, narrow, void,
 	this->mutex->unlock(this->mutex);
 }
 
+METHOD(bus_t, assign_vips, void,
+	private_bus_t *this, ike_sa_t *ike_sa, bool assign)
+{
+	enumerator_t *enumerator;
+	entry_t *entry;
+	bool keep;
+
+	this->mutex->lock(this->mutex);
+	enumerator = this->listeners->create_enumerator(this->listeners);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (entry->calling || !entry->listener->assign_vips)
+		{
+			continue;
+		}
+		entry->calling++;
+		keep = entry->listener->assign_vips(entry->listener, ike_sa, assign);
+		entry->calling--;
+		if (!keep)
+		{
+			unregister_listener(this, entry, enumerator);
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->mutex->unlock(this->mutex);
+}
+
+/**
+ * Credential manager hook function to forward bus alerts
+ */
+static void hook_creds(private_bus_t *this, credential_hook_type_t type,
+					   certificate_t *cert)
+{
+	switch (type)
+	{
+		case CRED_HOOK_EXPIRED:
+			return alert(this, ALERT_CERT_EXPIRED, cert);
+		case CRED_HOOK_REVOKED:
+			return alert(this, ALERT_CERT_REVOKED, cert);
+		case CRED_HOOK_VALIDATION_FAILED:
+			return alert(this, ALERT_CERT_VALIDATION_FAILED, cert);
+		case CRED_HOOK_NO_ISSUER:
+			return alert(this, ALERT_CERT_NO_ISSUER, cert);
+		case CRED_HOOK_UNTRUSTED_ROOT:
+			return alert(this, ALERT_CERT_UNTRUSTED_ROOT, cert);
+		case CRED_HOOK_EXCEEDED_PATH_LEN:
+			return alert(this, ALERT_CERT_EXCEEDED_PATH_LEN, cert);
+		case CRED_HOOK_POLICY_VIOLATION:
+			return alert(this, ALERT_CERT_POLICY_VIOLATION, cert);
+	}
+}
+
 METHOD(bus_t, destroy, void,
 	private_bus_t *this)
 {
+	debug_t group;
+
+	lib->credmgr->set_hook(lib->credmgr, NULL, NULL);
+	for (group = 0; group < DBG_MAX; group++)
+	{
+		this->loggers[group]->destroy(this->loggers[group]);
+	}
+	this->loggers[DBG_MAX]->destroy_function(this->loggers[DBG_MAX],
+											 (void*)free);
+	this->listeners->destroy_function(this->listeners, (void*)free);
 	this->thread_sa->destroy(this->thread_sa);
+	this->log_lock->destroy(this->log_lock);
 	this->mutex->destroy(this->mutex);
-	this->listeners->destroy_function(this->listeners, (void*)entry_destroy);
 	free(this);
 }
 
@@ -709,12 +883,14 @@ METHOD(bus_t, destroy, void,
 bus_t *bus_create()
 {
 	private_bus_t *this;
+	debug_t group;
 
 	INIT(this,
 		.public = {
 			.add_listener = _add_listener,
 			.remove_listener = _remove_listener,
-			.listen = _listen_,
+			.add_logger = _add_logger,
+			.remove_logger = _remove_logger,
 			.set_sa = _set_sa,
 			.get_sa = _get_sa,
 			.log = _log_,
@@ -727,17 +903,28 @@ bus_t *bus_create()
 			.child_keys = _child_keys,
 			.ike_updown = _ike_updown,
 			.ike_rekey = _ike_rekey,
+			.ike_reestablish = _ike_reestablish,
 			.child_updown = _child_updown,
 			.child_rekey = _child_rekey,
 			.authorize = _authorize,
 			.narrow = _narrow,
+			.assign_vips = _assign_vips,
 			.destroy = _destroy,
 		},
 		.listeners = linked_list_create(),
 		.mutex = mutex_create(MUTEX_TYPE_RECURSIVE),
+		.log_lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 		.thread_sa = thread_value_create(NULL),
 	);
 
+	for (group = 0; group <= DBG_MAX; group++)
+	{
+		this->loggers[group] = linked_list_create();
+		this->max_level[group] = LEVEL_SILENT;
+		this->max_vlevel[group] = LEVEL_SILENT;
+	}
+
+	lib->credmgr->set_hook(lib->credmgr, (credential_hook_t)hook_creds, this);
+
 	return &this->public;
 }
-

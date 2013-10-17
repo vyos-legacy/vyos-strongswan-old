@@ -29,8 +29,8 @@ typedef struct identification_t identification_t;
 typedef enum id_match_t id_match_t;
 typedef enum id_part_t id_part_t;
 
-#include <chunk.h>
-#include <utils/enumerator.h>
+#include <utils/chunk.h>
+#include <collections/enumerator.h>
 
 /**
  * Matches returned from identification_t.match
@@ -126,14 +126,14 @@ enum id_type_t {
 	ID_KEY_ID = 11,
 
 	/**
-	 * private type which represents a GeneralName of type URI
+	 * Private ID type which represents a GeneralName of type URI
 	 */
 	ID_DER_ASN1_GN_URI = 201,
 
 	/**
-	 * Private ID used by the pluto daemon for opportunistic encryption
+	 * Private ID type which represents a user ID
 	 */
-	ID_MYID = 203,
+	ID_USER_ID = 202
 };
 
 /**
@@ -241,7 +241,6 @@ struct identification_t {
 	 * no match at all, 1 means a bad match, and 2 a slightly better match.
 	 *
 	 * @param other		the ID containing one or more wildcards
-	 * @param wildcards	returns the number of wildcards, may be NULL
 	 * @return 			match value as described above
 	 */
 	id_match_t (*matches) (identification_t *this, identification_t *other);
@@ -342,7 +341,7 @@ identification_t * identification_create_from_sockaddr(sockaddr_t *sockaddr);
  * Arguments are:
  *	identification_t *identification
  */
-int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
-							   const void *const *args);
+int identification_printf_hook(printf_hook_data_t *data,
+							printf_hook_spec_t *spec, const void *const *args);
 
 #endif /** IDENTIFICATION_H_ @}*/

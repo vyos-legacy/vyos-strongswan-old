@@ -1,5 +1,7 @@
-
-INCLUDES = -I$(top_srcdir)/src/libstrongswan -I$(top_srcdir)/src/libtncif
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libtncif \
+	-I$(top_srcdir)/src/libtls
 
 ipseclib_LTLIBRARIES = libtnccs.la
 

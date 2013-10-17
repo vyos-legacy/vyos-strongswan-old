@@ -16,8 +16,7 @@
 #include "hmac_plugin.h"
 
 #include <library.h>
-#include "hmac_signer.h"
-#include "hmac_prf.h"
+#include "hmac.h"
 
 typedef struct private_hmac_plugin_t private_hmac_plugin_t;
 
@@ -73,6 +72,8 @@ METHOD(plugin_t, get_features, int,
 			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_384_384),
 				PLUGIN_DEPENDS(HASHER,  HASH_SHA384),
 			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_512_256),
+				PLUGIN_DEPENDS(HASHER,  HASH_SHA512),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_512_512),
 				PLUGIN_DEPENDS(HASHER,  HASH_SHA512),
 	};
 	*features = f;

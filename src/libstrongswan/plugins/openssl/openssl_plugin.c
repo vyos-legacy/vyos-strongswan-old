@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Tobias Brunner
+ * Copyright (C) 2008-2013 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -14,6 +14,7 @@
  * for more details.
  */
 
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/conf.h>
 #include <openssl/rand.h>
@@ -25,9 +26,10 @@
 #include "openssl_plugin.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/thread.h>
 #include <threading/mutex.h>
+#include <threading/thread_value.h>
 #include "openssl_util.h"
 #include "openssl_crypter.h"
 #include "openssl_hasher.h"
@@ -40,6 +42,15 @@
 #include "openssl_ec_public_key.h"
 #include "openssl_x509.h"
 #include "openssl_crl.h"
+#include "openssl_pkcs7.h"
+#include "openssl_pkcs12.h"
+#include "openssl_rng.h"
+#include "openssl_hmac.h"
+#include "openssl_gcm.h"
+
+#ifndef FIPS_MODE
+#define FIPS_MODE 0
+#endif
 
 typedef struct private_openssl_plugin_t private_openssl_plugin_t;
 
@@ -123,12 +134,51 @@ static void destroy_function(struct CRYPTO_dynlock_value *lock,
 }
 
 /**
+ * Thread-local value used to cleanup thread-specific error buffers
+ */
+static thread_value_t *cleanup;
+
+/**
+ * Called when a thread is destroyed. Avoid recursion by setting the thread id
+ * explicitly.
+ */
+static void cleanup_thread(void *arg)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+	CRYPTO_THREADID tid;
+
+	CRYPTO_THREADID_set_numeric(&tid, (u_long)(uintptr_t)arg);
+	ERR_remove_thread_state(&tid);
+#else
+	ERR_remove_state((u_long)(uintptr_t)arg);
+#endif
+}
+
+/**
  * Thread-ID callback function
  */
-static unsigned long id_function(void)
+static u_long id_function(void)
 {
-	return (unsigned long)thread_current_id();
+	u_long id;
+
+	/* ensure the thread ID is never zero, otherwise OpenSSL might try to
+	 * acquire locks recursively */
+	id = 1 + (u_long)thread_current_id();
+
+	/* cleanup a thread's state later if OpenSSL interacted with it */
+	cleanup->set(cleanup, (void*)(uintptr_t)id);
+	return id;
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+/**
+ * Callback for thread ID
+ */
+static void threadid_function(CRYPTO_THREADID *threadid)
+{
+	CRYPTO_THREADID_set_numeric(threadid, id_function());
+}
+#endif /* OPENSSL_VERSION_NUMBER */
 
 /**
  * initialize OpenSSL for multi-threaded use
@@ -137,7 +187,14 @@ static void threading_init()
 {
 	int i, num_locks;
 
+	cleanup = thread_value_create(cleanup_thread);
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000000fL
+	CRYPTO_THREADID_set_callback(threadid_function);
+#else
 	CRYPTO_set_id_callback(id_function);
+#endif
+
 	CRYPTO_set_locking_callback(locking_function);
 
 	CRYPTO_set_dynlock_create_callback(create_function);
@@ -150,6 +207,24 @@ static void threading_init()
 	{
 		mutex[i] = mutex_create(MUTEX_TYPE_DEFAULT);
 	}
+}
+
+/**
+ * cleanup OpenSSL threading locks
+ */
+static void threading_cleanup()
+{
+	int i, num_locks;
+
+	num_locks = CRYPTO_num_locks();
+	for (i = 0; i < num_locks; i++)
+	{
+		mutex[i]->destroy(mutex[i]);
+	}
+	free(mutex);
+	mutex = NULL;
+
+	cleanup->destroy(cleanup);
 }
 
 /**
@@ -170,27 +245,15 @@ static bool seed_rng()
 				return FALSE;
 			}
 		}
-		rng->get_bytes(rng, sizeof(buf), buf);
+		if (!rng->get_bytes(rng, sizeof(buf), buf))
+		{
+			rng->destroy(rng);
+			return FALSE;
+		}
 		RAND_seed(buf, sizeof(buf));
 	}
 	DESTROY_IF(rng);
 	return TRUE;
-}
-
-/**
- * cleanup OpenSSL threading locks
- */
-static void threading_cleanup()
-{
-	int i, num_locks;
-
-	num_locks = CRYPTO_num_locks();
-	for (i = 0; i < num_locks; i++)
-	{
-		mutex[i]->destroy(mutex[i]);
-	}
-	free(mutex);
-	mutex = NULL;
 }
 
 METHOD(plugin_t, get_name, char*,
@@ -260,6 +323,57 @@ METHOD(plugin_t, get_features, int,
 		PLUGIN_REGISTER(PRF, openssl_sha1_prf_create),
 			PLUGIN_PROVIDE(PRF, PRF_KEYED_SHA1),
 #endif
+#ifndef OPENSSL_NO_HMAC
+		PLUGIN_REGISTER(PRF, openssl_hmac_prf_create),
+#ifndef OPENSSL_NO_MD5
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_MD5),
+#endif
+#ifndef OPENSSL_NO_SHA1
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA1),
+#endif
+#ifndef OPENSSL_NO_SHA256
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_256),
+#endif
+#ifndef OPENSSL_NO_SHA512
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_384),
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_512),
+#endif
+		PLUGIN_REGISTER(SIGNER, openssl_hmac_signer_create),
+#ifndef OPENSSL_NO_MD5
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_MD5_96),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_MD5_128),
+#endif
+#ifndef OPENSSL_NO_SHA1
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_96),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_128),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA1_160),
+#endif
+#ifndef OPENSSL_NO_SHA256
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_256_128),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_256_256),
+#endif
+#ifndef OPENSSL_NO_SHA512
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_384_192),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_384_384),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_512_256),
+			PLUGIN_PROVIDE(SIGNER, AUTH_HMAC_SHA2_512_512),
+#endif
+#endif /* OPENSSL_NO_HMAC */
+#if OPENSSL_VERSION_NUMBER >= 0x1000100fL
+#ifndef OPENSSL_NO_AES
+		/* AES GCM */
+		PLUGIN_REGISTER(AEAD, openssl_gcm_create),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV8, 16),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV8, 24),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV8, 32),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV12, 16),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV12, 24),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV12, 32),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV16, 16),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV16, 24),
+			PLUGIN_PROVIDE(AEAD, ENCR_AES_GCM_ICV16, 32),
+#endif /* OPENSSL_NO_AES */
+#endif /* OPENSSL_VERSION_NUMBER */
 #ifndef OPENSSL_NO_DH
 		/* MODP DH groups */
 		PLUGIN_REGISTER(DH, openssl_diffie_hellman_create),
@@ -284,7 +398,7 @@ METHOD(plugin_t, get_features, int,
 			PLUGIN_PROVIDE(PRIVKEY, KEY_ANY),
 		PLUGIN_REGISTER(PRIVKEY_GEN, openssl_rsa_private_key_gen, FALSE),
 			PLUGIN_PROVIDE(PRIVKEY_GEN, KEY_RSA),
-		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, FALSE),
+		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, TRUE),
 			PLUGIN_PROVIDE(PUBKEY, KEY_RSA),
 		PLUGIN_REGISTER(PUBKEY, openssl_rsa_public_key_load, TRUE),
 			PLUGIN_PROVIDE(PUBKEY, KEY_ANY),
@@ -317,8 +431,19 @@ METHOD(plugin_t, get_features, int,
 		/* certificate/CRL loading */
 		PLUGIN_REGISTER(CERT_DECODE, openssl_x509_load, TRUE),
 			PLUGIN_PROVIDE(CERT_DECODE, CERT_X509),
+				PLUGIN_SDEPEND(PUBKEY, KEY_RSA),
+				PLUGIN_SDEPEND(PUBKEY, KEY_ECDSA),
+				PLUGIN_SDEPEND(PUBKEY, KEY_DSA),
 		PLUGIN_REGISTER(CERT_DECODE, openssl_crl_load, TRUE),
 			PLUGIN_PROVIDE(CERT_DECODE, CERT_X509_CRL),
+#if OPENSSL_VERSION_NUMBER >= 0x0090807fL
+#ifndef OPENSSL_NO_CMS
+		PLUGIN_REGISTER(CONTAINER_DECODE, openssl_pkcs7_load, TRUE),
+			PLUGIN_PROVIDE(CONTAINER_DECODE, CONTAINER_PKCS7),
+#endif /* OPENSSL_NO_CMS */
+#endif /* OPENSSL_VERSION_NUMBER */
+		PLUGIN_REGISTER(CONTAINER_DECODE, openssl_pkcs12_load, TRUE),
+			PLUGIN_PROVIDE(CONTAINER_DECODE, CONTAINER_PKCS12),
 #ifndef OPENSSL_NO_ECDH
 		/* EC DH groups */
 		PLUGIN_REGISTER(DH, openssl_ec_diffie_hellman_create),
@@ -360,6 +485,9 @@ METHOD(plugin_t, get_features, int,
 		PLUGIN_PROVIDE(PUBKEY_VERIFY, SIGN_ECDSA_521),
 #endif
 #endif /* OPENSSL_NO_ECDSA */
+		PLUGIN_REGISTER(RNG, openssl_rng_create),
+			PLUGIN_PROVIDE(RNG, RNG_STRONG),
+			PLUGIN_PROVIDE(RNG, RNG_WEAK),
 	};
 	*features = f;
 	return countof(f);
@@ -368,13 +496,15 @@ METHOD(plugin_t, get_features, int,
 METHOD(plugin_t, destroy, void,
 	private_openssl_plugin_t *this)
 {
+	CONF_modules_free();
+	OBJ_cleanup();
+	EVP_cleanup();
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE_cleanup();
 #endif /* OPENSSL_NO_ENGINE */
-	EVP_cleanup();
-	CONF_modules_free();
-
+	CRYPTO_cleanup_all_ex_data();
 	threading_cleanup();
+	ERR_free_strings();
 
 	free(this);
 }
@@ -385,6 +515,25 @@ METHOD(plugin_t, destroy, void,
 plugin_t *openssl_plugin_create()
 {
 	private_openssl_plugin_t *this;
+	int fips_mode;
+
+	fips_mode = lib->settings->get_int(lib->settings,
+						"libstrongswan.plugins.openssl.fips_mode", FIPS_MODE);
+#ifdef OPENSSL_FIPS
+	if (!FIPS_mode_set(fips_mode))
+	{
+		DBG1(DBG_LIB, "unable to set openssl FIPS mode(%d)", fips_mode);
+		return NULL;
+	}
+	DBG1(DBG_LIB, "openssl FIPS mode(%d) - %sabled ",fips_mode,
+				   fips_mode ? "en" : "dis");
+#else
+	if (fips_mode)
+	{
+		DBG1(DBG_LIB, "openssl FIPS mode(%d) unavailable", fips_mode);
+		return NULL;
+	}
+#endif
 
 	INIT(this,
 		.public = {
@@ -416,4 +565,3 @@ plugin_t *openssl_plugin_create()
 
 	return &this->public.plugin;
 }
-

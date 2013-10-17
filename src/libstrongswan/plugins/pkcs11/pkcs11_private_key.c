@@ -20,8 +20,9 @@
 
 #include "pkcs11_library.h"
 #include "pkcs11_manager.h"
+#include "pkcs11_public_key.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_pkcs11_private_key_t private_pkcs11_private_key_t;
 
@@ -80,12 +81,6 @@ struct private_pkcs11_private_key_t {
 	 */
 	key_type_t type;
 };
-
-/**
- * Implemented in pkcs11_public_key.c
- */
-public_key_t *pkcs11_public_key_connect(pkcs11_library_t *p11,
-									int slot, key_type_t type, chunk_t keyid);
 
 
 METHOD(private_key_t, get_type, key_type_t,
@@ -266,13 +261,15 @@ METHOD(private_key_t, sign, bool,
 	}
 	if (hash_alg != HASH_UNKNOWN)
 	{
-		hasher_t *hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
-		if (!hasher)
+		hasher_t *hasher;
+
+		hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
+		if (!hasher || !hasher->allocate_hash(hasher, data, &hash))
 		{
+			DESTROY_IF(hasher);
 			this->lib->f->C_CloseSession(session);
 			return FALSE;
 		}
-		hasher->allocate_hash(hasher, data, &hash);
 		hasher->destroy(hasher);
 		data = hash;
 	}
@@ -418,7 +415,8 @@ static pkcs11_library_t* find_lib(char *module)
 /**
  * Find the PKCS#11 lib having a keyid, and optionally a slot
  */
-static pkcs11_library_t* find_lib_by_keyid(chunk_t keyid, int *slot)
+static pkcs11_library_t* find_lib_by_keyid(chunk_t keyid, int *slot,
+										   CK_OBJECT_CLASS class)
 {
 	pkcs11_manager_t *manager;
 	enumerator_t *enumerator;
@@ -435,8 +433,7 @@ static pkcs11_library_t* find_lib_by_keyid(chunk_t keyid, int *slot)
 	{
 		if (*slot == -1 || *slot == current)
 		{
-			/* we look for a public key, it is usually readable without login */
-			CK_OBJECT_CLASS class = CKO_PUBLIC_KEY;
+			/* look for a pubkey/cert, it is usually readable without login */
 			CK_ATTRIBUTE tmpl[] = {
 				{CKA_CLASS, &class, sizeof(class)},
 				{CKA_ID, keyid.ptr, keyid.len},
@@ -575,6 +572,50 @@ static bool login(private_pkcs11_private_key_t *this, int slot)
 }
 
 /**
+ * Get a public key from a certificate with a given key ID.
+ */
+static public_key_t* find_pubkey_in_certs(private_pkcs11_private_key_t *this,
+										  chunk_t keyid)
+{
+	CK_OBJECT_CLASS class = CKO_CERTIFICATE;
+	CK_CERTIFICATE_TYPE type = CKC_X_509;
+	CK_ATTRIBUTE tmpl[] = {
+		{CKA_CLASS, &class, sizeof(class)},
+		{CKA_CERTIFICATE_TYPE, &type, sizeof(type)},
+		{CKA_ID, keyid.ptr, keyid.len},
+	};
+	CK_OBJECT_HANDLE object;
+	CK_ATTRIBUTE attr[] = {
+		{CKA_VALUE, NULL, 0},
+	};
+	enumerator_t *enumerator;
+	chunk_t data = chunk_empty;
+	public_key_t *key = NULL;
+	certificate_t *cert;
+
+	enumerator = this->lib->create_object_enumerator(this->lib, this->session,
+									tmpl, countof(tmpl), attr, countof(attr));
+	if (enumerator->enumerate(enumerator, &object))
+	{
+		data = chunk_clone(chunk_create(attr[0].pValue, attr[0].ulValueLen));
+	}
+	enumerator->destroy(enumerator);
+
+	if (data.ptr)
+	{
+		cert = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
+								  BUILD_BLOB_ASN1_DER, data, BUILD_END);
+		free(data.ptr);
+		if (cert)
+		{
+			key = cert->get_public_key(cert);
+			cert->destroy(cert);
+		}
+	}
+	return key;
+}
+
+/**
  * See header.
  */
 pkcs11_private_key_t *pkcs11_private_key_connect(key_type_t type, va_list args)
@@ -642,7 +683,11 @@ pkcs11_private_key_t *pkcs11_private_key_connect(key_type_t type, va_list args)
 	}
 	else
 	{
-		this->lib = find_lib_by_keyid(keyid, &slot);
+		this->lib = find_lib_by_keyid(keyid, &slot, CKO_PUBLIC_KEY);
+		if (!this->lib)
+		{
+			this->lib = find_lib_by_keyid(keyid, &slot, CKO_CERTIFICATE);
+		}
 		if (!this->lib)
 		{
 			DBG1(DBG_CFG, "no PKCS#11 module found having a keyid %#B", &keyid);
@@ -676,12 +721,17 @@ pkcs11_private_key_t *pkcs11_private_key_connect(key_type_t type, va_list args)
 		return NULL;
 	}
 
-	this->pubkey = pkcs11_public_key_connect(this->lib, slot, this->type,
-											 keyid);
+	this->pubkey = pkcs11_public_key_connect(this->lib, slot, this->type, keyid);
 	if (!this->pubkey)
 	{
-		destroy(this);
-		return NULL;
+		this->pubkey = find_pubkey_in_certs(this, keyid);
+		if (!this->pubkey)
+		{
+			DBG1(DBG_CFG, "no public key or certificate found for private key "
+				 "on '%s':%d", module, slot);
+			destroy(this);
+			return NULL;
+		}
 	}
 
 	return &this->public;

@@ -101,12 +101,13 @@ static ike_cfg_t *load_ike_config(private_config_t *this,
 	proposal_t *proposal;
 	char *token;
 
-	ike_cfg = ike_cfg_create(TRUE,
+	ike_cfg = ike_cfg_create(IKEV2, TRUE,
 		settings->get_bool(settings, "configs.%s.fake_nat", FALSE, config),
-		settings->get_str(settings, "configs.%s.lhost", "%any", config),
+		settings->get_str(settings, "configs.%s.lhost", "%any", config), FALSE,
 		settings->get_int(settings, "configs.%s.lport", 500, config),
-		settings->get_str(settings, "configs.%s.rhost", "%any", config),
-		settings->get_int(settings, "configs.%s.rport", 500, config));
+		settings->get_str(settings, "configs.%s.rhost", "%any", config), FALSE,
+		settings->get_int(settings, "configs.%s.rport", 500, config),
+		FRAGMENTATION_NO, 0);
 	token = settings->get_str(settings, "configs.%s.proposal", NULL, config);
 	if (token)
 	{
@@ -143,9 +144,7 @@ static child_cfg_t *load_child_config(private_config_t *this,
 	proposal_t *proposal;
 	traffic_selector_t *ts;
 	ipsec_mode_t mode = MODE_TUNNEL;
-	host_t *net;
 	char *token;
-	int bits;
 	u_int32_t tfc;
 
 	if (settings->get_bool(settings, "configs.%s.%s.transport",
@@ -183,16 +182,15 @@ static child_cfg_t *load_child_config(private_config_t *this,
 		child_cfg->add_proposal(child_cfg, proposal_create_default(PROTO_ESP));
 	}
 
-	token = settings->get_str(settings, "configs.%s.%s.lts", NULL, config);
+	token = settings->get_str(settings, "configs.%s.%s.lts", NULL, config, child);
 	if (token)
 	{
 		enumerator = enumerator_create_token(token, ",", " ");
 		while (enumerator->enumerate(enumerator, &token))
 		{
-			net = host_create_from_subnet(token, &bits);
-			if (net)
+			ts = traffic_selector_create_from_cidr(token, 0, 0, 65535);
+			if (ts)
 			{
-				ts = traffic_selector_create_from_subnet(net, bits, 0, 0);
 				child_cfg->add_traffic_selector(child_cfg, TRUE, ts);
 			}
 			else
@@ -208,16 +206,15 @@ static child_cfg_t *load_child_config(private_config_t *this,
 		child_cfg->add_traffic_selector(child_cfg, TRUE, ts);
 	}
 
-	token = settings->get_str(settings, "configs.%s.%s.rts", NULL, config);
+	token = settings->get_str(settings, "configs.%s.%s.rts", NULL, config, child);
 	if (token)
 	{
 		enumerator = enumerator_create_token(token, ",", " ");
 		while (enumerator->enumerate(enumerator, &token))
 		{
-			net = host_create_from_subnet(token, &bits);
-			if (net)
+			ts = traffic_selector_create_from_cidr(token, 0, 0, 65535);
+			if (ts)
 			{
-				ts = traffic_selector_create_from_subnet(net, bits, 0, 0);
 				child_cfg->add_traffic_selector(child_cfg, FALSE, ts);
 			}
 			else
@@ -247,13 +244,13 @@ static peer_cfg_t *load_peer_config(private_config_t *this,
 	child_cfg_t *child_cfg;
 	enumerator_t *enumerator;
 	identification_t *lid, *rid;
-	char *child, *policy;
+	char *child, *policy, *pool;
 	uintptr_t strength;
 
 	ike_cfg = load_ike_config(this, settings, config);
-	peer_cfg = peer_cfg_create(config, 2, ike_cfg, CERT_ALWAYS_SEND,
-							   UNIQUE_NO, 1, 0, 0, 0, 0, FALSE, 0,
-							   NULL, NULL, FALSE, NULL, NULL);
+	peer_cfg = peer_cfg_create(config, ike_cfg, CERT_ALWAYS_SEND,
+							   UNIQUE_NO, 1, 0, 0, 0, 0, FALSE, FALSE, 0, 0,
+							   FALSE, NULL, NULL);
 
 	auth = auth_cfg_create();
 	auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
@@ -266,12 +263,12 @@ static peer_cfg_t *load_peer_config(private_config_t *this,
 	auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
 	rid = identification_create_from_string(
 				settings->get_str(settings, "configs.%s.rid", "%any", config));
-	strength = settings->get_int(settings, "configs.%s.rsa_strength", 0);
+	strength = settings->get_int(settings, "configs.%s.rsa_strength", 0, config);
 	if (strength)
 	{
 		auth->add(auth, AUTH_RULE_RSA_STRENGTH, strength);
 	}
-	strength = settings->get_int(settings, "configs.%s.ecdsa_strength", 0);
+	strength = settings->get_int(settings, "configs.%s.ecdsa_strength", 0, config);
 	if (strength)
 	{
 		auth->add(auth, AUTH_RULE_ECDSA_STRENGTH, strength);
@@ -283,6 +280,11 @@ static peer_cfg_t *load_peer_config(private_config_t *this,
 	}
 	auth->add(auth, AUTH_RULE_IDENTITY, rid);
 	peer_cfg->add_auth_cfg(peer_cfg, auth, FALSE);
+	pool = settings->get_str(settings, "configs.%s.named_pool", NULL, config);
+	if (pool)
+	{
+		peer_cfg->add_pool(peer_cfg, pool);
+	}
 
 	DBG1(DBG_CFG, "loaded config %s: %Y - %Y", config, lid, rid);
 

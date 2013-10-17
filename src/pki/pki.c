@@ -18,7 +18,7 @@
 
 #include <unistd.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <credentials/sets/callback_cred.h>
 
 /**
@@ -76,39 +76,18 @@ bool get_form(char *form, cred_encoding_type_t *enc, credential_type_t type)
 				return FALSE;
 		}
 	}
+	else if (streq(form, "dnskey"))
+	{
+		switch (type)
+		{
+			case CRED_PUBLIC_KEY:
+				*enc =PUBKEY_DNSKEY;
+				return TRUE;
+			default:
+				return FALSE;
+		}
+	}
 	return FALSE;
-}
-
-/**
- * Convert a digest string to a hash algorithm
- */
-hash_algorithm_t get_digest(char *name)
-{
-	if (streq(name, "md5"))
-	{
-		return HASH_MD5;
-	}
-	if (streq(name, "sha1"))
-	{
-		return HASH_SHA1;
-	}
-	if (streq(name, "sha224"))
-	{
-		return HASH_SHA224;
-	}
-	if (streq(name, "sha256"))
-	{
-		return HASH_SHA256;
-	}
-	if (streq(name, "sha384"))
-	{
-		return HASH_SHA384;
-	}
-	if (streq(name, "sha512"))
-	{
-		return HASH_SHA512;
-	}
-	return HASH_UNKNOWN;
 }
 
 /**
@@ -188,7 +167,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "integrity check of pki failed\n");
 		exit(SS_RC_DAEMON_INTEGRITY);
 	}
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			lib->settings->get_str(lib->settings, "pki.load", PLUGINS)))
 	{
 		exit(SS_RC_INITIALIZATION_FAILED);

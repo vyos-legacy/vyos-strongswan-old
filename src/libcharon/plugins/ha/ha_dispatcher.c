@@ -16,9 +16,13 @@
 #include "ha_dispatcher.h"
 
 #include <daemon.h>
+#include <sa/ikev2/keymat_v2.h>
+#include <sa/ikev1/keymat_v1.h>
 #include <processing/jobs/callback_job.h>
+#include <processing/jobs/adopt_children_job.h>
 
 typedef struct private_ha_dispatcher_t private_ha_dispatcher_t;
+typedef struct ha_diffie_hellman_t ha_diffie_hellman_t;
 
 /**
  * Private data of an ha_dispatcher_t object.
@@ -54,20 +58,66 @@ struct private_ha_dispatcher_t {
 	 * HA enabled pool
 	 */
 	ha_attribute_t *attr;
-
-	/**
-	 * Dispatcher job
-	 */
-	callback_job_t *job;
 };
 
 /**
- * Quick and dirty hack implementation of diffie_hellman_t.get_shared_secret
+ * DH implementation for HA synced DH values
  */
-static status_t get_shared_secret(diffie_hellman_t *this, chunk_t *secret)
+struct ha_diffie_hellman_t {
+
+	/**
+	 * Implements diffie_hellman_t
+	 */
+	diffie_hellman_t dh;
+
+	/**
+	 * Shared secret
+	 */
+	chunk_t secret;
+
+	/**
+	 * Own public value
+	 */
+	chunk_t pub;
+};
+
+METHOD(diffie_hellman_t, dh_get_shared_secret, status_t,
+	ha_diffie_hellman_t *this, chunk_t *secret)
 {
-	*secret = chunk_clone((*(chunk_t*)this->destroy));
+	*secret = chunk_clone(this->secret);
 	return SUCCESS;
+}
+
+METHOD(diffie_hellman_t, dh_get_my_public_value, void,
+	ha_diffie_hellman_t *this, chunk_t *value)
+{
+	*value = chunk_clone(this->pub);
+}
+
+METHOD(diffie_hellman_t, dh_destroy, void,
+	ha_diffie_hellman_t *this)
+{
+	free(this);
+}
+
+/**
+ * Create a HA synced DH implementation
+ */
+static diffie_hellman_t *ha_diffie_hellman_create(chunk_t secret, chunk_t pub)
+{
+	ha_diffie_hellman_t *this;
+
+	INIT(this,
+		.dh = {
+			.get_shared_secret = _dh_get_shared_secret,
+			.get_my_public_value = _dh_get_my_public_value,
+			.destroy = _dh_destroy,
+		},
+		.secret = secret,
+		.pub = pub,
+	);
+
+	return &this->dh;
 }
 
 /**
@@ -79,9 +129,12 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 	ha_message_value_t value;
 	enumerator_t *enumerator;
 	ike_sa_t *ike_sa = NULL, *old_sa = NULL;
+	ike_version_t version = IKEV2;
 	u_int16_t encr = 0, len = 0, integ = 0, prf = 0, old_prf = PRF_UNDEFINED;
 	chunk_t nonce_i = chunk_empty, nonce_r = chunk_empty;
 	chunk_t secret = chunk_empty, old_skd = chunk_empty;
+	chunk_t dh_local = chunk_empty, dh_remote = chunk_empty, psk = chunk_empty;
+	bool ok = FALSE;
 
 	enumerator = message->create_attribute_enumerator(message);
 	while (enumerator->enumerate(enumerator, &attribute, &value))
@@ -89,11 +142,15 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 		switch (attribute)
 		{
 			case HA_IKE_ID:
-				ike_sa = ike_sa_create(value.ike_sa_id);
+				ike_sa = ike_sa_create(value.ike_sa_id,
+						value.ike_sa_id->is_initiator(value.ike_sa_id), version);
 				break;
 			case HA_IKE_REKEY_ID:
 				old_sa = charon->ike_sa_manager->checkout(charon->ike_sa_manager,
 														  value.ike_sa_id);
+				break;
+			case HA_IKE_VERSION:
+				version = value.u8;
 				break;
 			case HA_NONCE_I:
 				nonce_i = value.chunk;
@@ -103,6 +160,15 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 				break;
 			case HA_SECRET:
 				secret = value.chunk;
+				break;
+			case HA_LOCAL_DH:
+				dh_local = value.chunk;
+				break;
+			case HA_REMOTE_DH:
+				dh_remote = value.chunk;
+				break;
+			case HA_PSK:
+				psk = value.chunk;
 				break;
 			case HA_OLD_SKD:
 				old_skd = value.chunk;
@@ -131,13 +197,9 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 	if (ike_sa)
 	{
 		proposal_t *proposal;
-		keymat_t *keymat;
-		/* quick and dirty hack of a DH implementation ;-) */
-		diffie_hellman_t dh = { .get_shared_secret = get_shared_secret,
-								.destroy = (void*)&secret };
+		diffie_hellman_t *dh;
 
 		proposal = proposal_create(PROTO_IKE, 0);
-		keymat = ike_sa->get_keymat(ike_sa);
 		if (integ)
 		{
 			proposal->add_algorithm(proposal, INTEGRITY_ALGORITHM, integ, 0);
@@ -151,8 +213,35 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 			proposal->add_algorithm(proposal, PSEUDO_RANDOM_FUNCTION, prf, 0);
 		}
 		charon->bus->set_sa(charon->bus, ike_sa);
-		if (keymat->derive_ike_keys(keymat, proposal, &dh, nonce_i, nonce_r,
-									 ike_sa->get_id(ike_sa), old_prf, old_skd))
+		dh = ha_diffie_hellman_create(secret, dh_local);
+		if (ike_sa->get_version(ike_sa) == IKEV2)
+		{
+			keymat_v2_t *keymat_v2 = (keymat_v2_t*)ike_sa->get_keymat(ike_sa);
+
+			ok = keymat_v2->derive_ike_keys(keymat_v2, proposal, dh, nonce_i,
+							nonce_r, ike_sa->get_id(ike_sa), old_prf, old_skd);
+		}
+		if (ike_sa->get_version(ike_sa) == IKEV1)
+		{
+			keymat_v1_t *keymat_v1 = (keymat_v1_t*)ike_sa->get_keymat(ike_sa);
+			shared_key_t *shared = NULL;
+			auth_method_t method = AUTH_RSA;
+
+			if (psk.len)
+			{
+				method = AUTH_PSK;
+				shared = shared_key_create(SHARED_IKE, chunk_clone(psk));
+			}
+			if (keymat_v1->create_hasher(keymat_v1, proposal))
+			{
+				ok = keymat_v1->derive_ike_keys(keymat_v1, proposal,
+								dh, dh_remote, nonce_i, nonce_r,
+								ike_sa->get_id(ike_sa), method, shared);
+			}
+			DESTROY_IF(shared);
+		}
+		dh->destroy(dh);
+		if (ok)
 		{
 			if (old_sa)
 			{
@@ -168,6 +257,7 @@ static void process_ike_add(private_ha_dispatcher_t *this, ha_message_t *message
 				old_sa = NULL;
 			}
 			ike_sa->set_state(ike_sa, IKE_CONNECTING);
+			ike_sa->set_proposal(ike_sa, proposal);
 			this->cache->cache(this->cache, ike_sa, message);
 			message = NULL;
 			charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
@@ -220,7 +310,7 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 	ike_sa_t *ike_sa = NULL;
 	peer_cfg_t *peer_cfg = NULL;
 	auth_cfg_t *auth;
-	bool received_vip = FALSE, first_peer_addr = TRUE;
+	bool received_vip = FALSE, first_local_vip = TRUE, first_peer_addr = TRUE;
 
 	enumerator = message->create_attribute_enumerator(message);
 	while (enumerator->enumerate(enumerator, &attribute, &value))
@@ -254,10 +344,19 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				ike_sa->set_other_host(ike_sa, value.host->clone(value.host));
 				break;
 			case HA_LOCAL_VIP:
-				ike_sa->set_virtual_ip(ike_sa, TRUE, value.host);
+				if (first_local_vip)
+				{
+					ike_sa->clear_virtual_ips(ike_sa, TRUE);
+					first_local_vip = FALSE;
+				}
+				ike_sa->add_virtual_ip(ike_sa, TRUE, value.host);
 				break;
 			case HA_REMOTE_VIP:
-				ike_sa->set_virtual_ip(ike_sa, FALSE, value.host);
+				if (!received_vip)
+				{
+					ike_sa->clear_virtual_ips(ike_sa, FALSE);
+				}
+				ike_sa->add_virtual_ip(ike_sa, FALSE, value.host);
 				received_vip = TRUE;
 				break;
 			case HA_PEER_ADDR:
@@ -289,6 +388,8 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				set_extension(ike_sa, value.u32, EXT_STRONGSWAN);
 				set_extension(ike_sa, value.u32, EXT_EAP_ONLY_AUTHENTICATION);
 				set_extension(ike_sa, value.u32, EXT_MS_WINDOWS);
+				set_extension(ike_sa, value.u32, EXT_XAUTH);
+				set_extension(ike_sa, value.u32, EXT_DPD);
 				break;
 			case HA_CONDITIONS:
 				set_condition(ike_sa, value.u32, COND_NAT_ANY);
@@ -299,6 +400,8 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				set_condition(ike_sa, value.u32, COND_CERTREQ_SEEN);
 				set_condition(ike_sa, value.u32, COND_ORIGINAL_INITIATOR);
 				set_condition(ike_sa, value.u32, COND_STALE);
+				set_condition(ike_sa, value.u32, COND_INIT_CONTACT_SEEN);
+				set_condition(ike_sa, value.u32, COND_XAUTH_AUTHENTICATED);
 				break;
 			default:
 				break;
@@ -319,19 +422,30 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 		}
 		if (received_vip)
 		{
+			enumerator_t *pools, *vips;
 			host_t *vip;
 			char *pool;
 
 			peer_cfg = ike_sa->get_peer_cfg(ike_sa);
-			vip = ike_sa->get_virtual_ip(ike_sa, FALSE);
-			if (peer_cfg && vip)
+			if (peer_cfg)
 			{
-				pool = peer_cfg->get_pool(peer_cfg);
-				if (pool)
+				pools = peer_cfg->create_pool_enumerator(peer_cfg);
+				while (pools->enumerate(pools, &pool))
 				{
-					this->attr->reserve(this->attr, pool, vip);
+					vips = ike_sa->create_virtual_ip_enumerator(ike_sa, FALSE);
+					while (vips->enumerate(vips, &vip))
+					{
+						this->attr->reserve(this->attr, pool, vip);
+					}
+					vips->destroy(vips);
 				}
+				pools->destroy(pools);
 			}
+		}
+		if (ike_sa->get_version(ike_sa) == IKEV1)
+		{
+			lib->processor->queue_job(lib->processor, (job_t*)
+							adopt_children_job_create(ike_sa->get_id(ike_sa)));
 		}
 		this->cache->cache(this->cache, ike_sa, message);
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
@@ -378,6 +492,59 @@ static void process_ike_mid(private_ha_dispatcher_t *this,
 		if (mid)
 		{
 			ike_sa->set_message_id(ike_sa, initiator, mid);
+		}
+		this->cache->cache(this->cache, ike_sa, message);
+		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
+	}
+	else
+	{
+		message->destroy(message);
+	}
+}
+
+/**
+ * Process messages of type IKE_IV
+ */
+static void process_ike_iv(private_ha_dispatcher_t *this, ha_message_t *message)
+{
+	ha_message_attribute_t attribute;
+	ha_message_value_t value;
+	enumerator_t *enumerator;
+	ike_sa_t *ike_sa = NULL;
+	chunk_t iv = chunk_empty;
+
+	enumerator = message->create_attribute_enumerator(message);
+	while (enumerator->enumerate(enumerator, &attribute, &value))
+	{
+		switch (attribute)
+		{
+			case HA_IKE_ID:
+				ike_sa = charon->ike_sa_manager->checkout(charon->ike_sa_manager,
+														  value.ike_sa_id);
+				break;
+			case HA_IV:
+				iv = value.chunk;
+				break;
+			default:
+				break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (ike_sa)
+	{
+		if (ike_sa->get_version(ike_sa) == IKEV1)
+		{
+			if (iv.len)
+			{
+				keymat_v1_t *keymat;
+
+				keymat = (keymat_v1_t*)ike_sa->get_keymat(ike_sa);
+				if (keymat->update_iv(keymat, 0, iv))
+				{
+					keymat->confirm_iv(keymat, 0);
+				}
+			}
 		}
 		this->cache->cache(this->cache, ike_sa, message);
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
@@ -465,8 +632,7 @@ static void process_child_add(private_ha_dispatcher_t *this,
 	child_cfg_t *config = NULL;
 	child_sa_t *child_sa;
 	proposal_t *proposal;
-	keymat_t *keymat;
-	bool initiator = FALSE, failed = FALSE;
+	bool initiator = FALSE, failed = FALSE, ok = FALSE;
 	u_int32_t inbound_spi = 0, outbound_spi = 0;
 	u_int16_t inbound_cpi = 0, outbound_cpi = 0;
 	u_int8_t mode = MODE_TUNNEL, ipcomp = 0;
@@ -476,9 +642,7 @@ static void process_child_add(private_ha_dispatcher_t *this,
 	chunk_t nonce_i = chunk_empty, nonce_r = chunk_empty, secret = chunk_empty;
 	chunk_t encr_i, integ_i, encr_r, integ_r;
 	linked_list_t *local_ts, *remote_ts;
-	/* quick and dirty hack of a DH implementation */
-	diffie_hellman_t dh = { .get_shared_secret = get_shared_secret,
-							.destroy = (void*)&secret };
+	diffie_hellman_t *dh = NULL;
 
 	enumerator = message->create_attribute_enumerator(message);
 	while (enumerator->enumerate(enumerator, &attribute, &value))
@@ -572,10 +736,30 @@ static void process_child_add(private_ha_dispatcher_t *this,
 		proposal->add_algorithm(proposal, ENCRYPTION_ALGORITHM, encr, len);
 	}
 	proposal->add_algorithm(proposal, EXTENDED_SEQUENCE_NUMBERS, esn, 0);
-	keymat = ike_sa->get_keymat(ike_sa);
+	if (secret.len)
+	{
+		dh = ha_diffie_hellman_create(secret, chunk_empty);
+	}
+	if (ike_sa->get_version(ike_sa) == IKEV2)
+	{
+		keymat_v2_t *keymat_v2 = (keymat_v2_t*)ike_sa->get_keymat(ike_sa);
 
-	if (!keymat->derive_child_keys(keymat, proposal, secret.ptr ? &dh : NULL,
-					nonce_i, nonce_r, &encr_i, &integ_i, &encr_r, &integ_r))
+		ok = keymat_v2->derive_child_keys(keymat_v2, proposal, dh,
+						nonce_i, nonce_r, &encr_i, &integ_i, &encr_r, &integ_r);
+	}
+	if (ike_sa->get_version(ike_sa) == IKEV1)
+	{
+		keymat_v1_t *keymat_v1 = (keymat_v1_t*)ike_sa->get_keymat(ike_sa);
+		u_int32_t spi_i, spi_r;
+
+		spi_i = initiator ? inbound_spi : outbound_spi;
+		spi_r = initiator ? outbound_spi : inbound_spi;
+
+		ok = keymat_v1->derive_child_keys(keymat_v1, proposal, dh, spi_i, spi_r,
+						nonce_i, nonce_r, &encr_i, &integ_i, &encr_r, &integ_r);
+	}
+	DESTROY_IF(dh);
+	if (!ok)
 	{
 		DBG1(DBG_CHD, "HA CHILD_SA key derivation failed");
 		child_sa->destroy(child_sa);
@@ -610,9 +794,11 @@ static void process_child_add(private_ha_dispatcher_t *this,
 	if (initiator)
 	{
 		if (child_sa->install(child_sa, encr_r, integ_r, inbound_spi,
-					inbound_cpi, TRUE, TRUE, local_ts, remote_ts) != SUCCESS ||
+							  inbound_cpi, initiator, TRUE, TRUE,
+							  local_ts, remote_ts) != SUCCESS ||
 			child_sa->install(child_sa, encr_i, integ_i, outbound_spi,
-					outbound_cpi, FALSE, TRUE, local_ts, remote_ts) != SUCCESS)
+							  outbound_cpi, initiator, FALSE, TRUE,
+							  local_ts, remote_ts) != SUCCESS)
 		{
 			failed = TRUE;
 		}
@@ -620,9 +806,11 @@ static void process_child_add(private_ha_dispatcher_t *this,
 	else
 	{
 		if (child_sa->install(child_sa, encr_i, integ_i, inbound_spi,
-					inbound_cpi, TRUE, TRUE, local_ts, remote_ts) != SUCCESS ||
+							  inbound_cpi, initiator, TRUE, TRUE,
+							  local_ts, remote_ts) != SUCCESS ||
 			child_sa->install(child_sa, encr_r, integ_r, outbound_spi,
-					outbound_cpi, FALSE, TRUE, local_ts, remote_ts) != SUCCESS)
+							  outbound_cpi, initiator, FALSE, TRUE,
+							  local_ts, remote_ts) != SUCCESS)
 		{
 			failed = TRUE;
 		}
@@ -825,6 +1013,9 @@ static job_requeue_t dispatch(private_ha_dispatcher_t *this)
 		case HA_IKE_MID_RESPONDER:
 			process_ike_mid(this, message, FALSE);
 			break;
+		case HA_IKE_IV:
+			process_ike_iv(this, message);
+			break;
 		case HA_IKE_DELETE:
 			process_ike_delete(this, message);
 			break;
@@ -857,7 +1048,6 @@ static job_requeue_t dispatch(private_ha_dispatcher_t *this)
 METHOD(ha_dispatcher_t, destroy, void,
 	private_ha_dispatcher_t *this)
 {
-	this->job->cancel(this->job);
 	free(this);
 }
 
@@ -881,9 +1071,9 @@ ha_dispatcher_t *ha_dispatcher_create(ha_socket_t *socket,
 		.kernel = kernel,
 		.attr = attr,
 	);
-	this->job = callback_job_create_with_prio((callback_job_cb_t)dispatch,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)dispatch, this,
+				NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

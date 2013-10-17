@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2012-2013 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2011 Martin Willi
  * Copyright (C) 2011 revosec AG
  *
@@ -18,7 +21,7 @@
 
 #include "plugin_feature.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 ENUM(plugin_feature_names, FEATURE_NONE, FEATURE_CUSTOM,
 	"NONE",
@@ -29,6 +32,7 @@ ENUM(plugin_feature_names, FEATURE_NONE, FEATURE_CUSTOM,
 	"PRF",
 	"DH",
 	"RNG",
+	"NONCE_GEN",
 	"PRIVKEY",
 	"PRIVKEY_GEN",
 	"PRIVKEY_SIGN",
@@ -38,12 +42,70 @@ ENUM(plugin_feature_names, FEATURE_NONE, FEATURE_CUSTOM,
 	"PUBKEY_ENCRYPT",
 	"CERT_DECODE",
 	"CERT_ENCODE",
+	"CONTAINER_DECODE",
+	"CONTAINER_ENCODE",
 	"EAP_SERVER",
 	"EAP_CLIENT",
+	"XAUTH_SERVER",
+	"XAUTH_CLIENT",
 	"DATABASE",
 	"FETCHER",
+	"RESOLVER",
 	"CUSTOM",
 );
+
+/**
+ * See header.
+ */
+u_int32_t plugin_feature_hash(plugin_feature_t *feature)
+{
+	chunk_t data;
+
+	switch (feature->type)
+	{
+		case FEATURE_NONE:
+		case FEATURE_RNG:
+		case FEATURE_NONCE_GEN:
+		case FEATURE_DATABASE:
+		case FEATURE_FETCHER:
+		case FEATURE_RESOLVER:
+			/* put these special cases in their (type-specific) buckets */
+			data = chunk_empty;
+			break;
+		case FEATURE_CRYPTER:
+		case FEATURE_AEAD:
+		case FEATURE_SIGNER:
+		case FEATURE_HASHER:
+		case FEATURE_PRF:
+		case FEATURE_DH:
+		case FEATURE_PRIVKEY:
+		case FEATURE_PRIVKEY_GEN:
+		case FEATURE_PUBKEY:
+		case FEATURE_PRIVKEY_SIGN:
+		case FEATURE_PUBKEY_VERIFY:
+		case FEATURE_PRIVKEY_DECRYPT:
+		case FEATURE_PUBKEY_ENCRYPT:
+		case FEATURE_CERT_DECODE:
+		case FEATURE_CERT_ENCODE:
+		case FEATURE_CONTAINER_DECODE:
+		case FEATURE_CONTAINER_ENCODE:
+		case FEATURE_EAP_SERVER:
+		case FEATURE_EAP_PEER:
+			data = chunk_from_thing(feature->arg);
+			break;
+		case FEATURE_CUSTOM:
+			data = chunk_create(feature->arg.custom,
+								strlen(feature->arg.custom));
+			break;
+		case FEATURE_XAUTH_SERVER:
+		case FEATURE_XAUTH_PEER:
+			data = chunk_create(feature->arg.xauth,
+								strlen(feature->arg.xauth));
+			break;
+	}
+	return chunk_hash_inc(chunk_from_thing(feature->type),
+						  chunk_hash(data));
+}
 
 /**
  * See header.
@@ -72,6 +134,9 @@ bool plugin_feature_matches(plugin_feature_t *a, plugin_feature_t *b)
 				return a->arg.dh_group == b->arg.dh_group;
 			case FEATURE_RNG:
 				return a->arg.rng_quality <= b->arg.rng_quality;
+			case FEATURE_NONCE_GEN:
+			case FEATURE_RESOLVER:
+				return TRUE;
 			case FEATURE_PRIVKEY:
 			case FEATURE_PRIVKEY_GEN:
 			case FEATURE_PUBKEY:
@@ -85,6 +150,9 @@ bool plugin_feature_matches(plugin_feature_t *a, plugin_feature_t *b)
 			case FEATURE_CERT_DECODE:
 			case FEATURE_CERT_ENCODE:
 				return a->arg.cert == b->arg.cert;
+			case FEATURE_CONTAINER_DECODE:
+			case FEATURE_CONTAINER_ENCODE:
+				return a->arg.container == b->arg.container;
 			case FEATURE_EAP_SERVER:
 			case FEATURE_EAP_PEER:
 				return a->arg.eap == b->arg.eap;
@@ -96,6 +164,59 @@ bool plugin_feature_matches(plugin_feature_t *a, plugin_feature_t *b)
 					   streq(a->arg.fetcher, b->arg.fetcher);
 			case FEATURE_CUSTOM:
 				return streq(a->arg.custom, b->arg.custom);
+			case FEATURE_XAUTH_SERVER:
+			case FEATURE_XAUTH_PEER:
+				return streq(a->arg.xauth, b->arg.xauth);
+		}
+	}
+	return FALSE;
+}
+
+/**
+ * See header.
+ */
+bool plugin_feature_equals(plugin_feature_t *a, plugin_feature_t *b)
+{
+	if (a->type == b->type)
+	{
+		switch (a->type)
+		{
+			case FEATURE_NONE:
+			case FEATURE_CRYPTER:
+			case FEATURE_AEAD:
+			case FEATURE_SIGNER:
+			case FEATURE_HASHER:
+			case FEATURE_PRF:
+			case FEATURE_DH:
+			case FEATURE_NONCE_GEN:
+			case FEATURE_RESOLVER:
+			case FEATURE_PRIVKEY:
+			case FEATURE_PRIVKEY_GEN:
+			case FEATURE_PUBKEY:
+			case FEATURE_PRIVKEY_SIGN:
+			case FEATURE_PUBKEY_VERIFY:
+			case FEATURE_PRIVKEY_DECRYPT:
+			case FEATURE_PUBKEY_ENCRYPT:
+			case FEATURE_CERT_DECODE:
+			case FEATURE_CERT_ENCODE:
+			case FEATURE_CONTAINER_DECODE:
+			case FEATURE_CONTAINER_ENCODE:
+			case FEATURE_EAP_SERVER:
+			case FEATURE_EAP_PEER:
+			case FEATURE_CUSTOM:
+			case FEATURE_XAUTH_SERVER:
+			case FEATURE_XAUTH_PEER:
+				return plugin_feature_matches(a, b);
+			case FEATURE_RNG:
+				return a->arg.rng_quality == b->arg.rng_quality;
+			case FEATURE_DATABASE:
+				return a->arg.database == b->arg.database;
+			case FEATURE_FETCHER:
+				if (a->arg.fetcher && b->arg.fetcher)
+				{
+					return streq(a->arg.fetcher, b->arg.fetcher);
+				}
+				return !a->arg.fetcher && !b->arg.fetcher;
 		}
 	}
 	return FALSE;
@@ -167,6 +288,13 @@ char* plugin_feature_get_string(plugin_feature_t *feature)
 				return str;
 			}
 			break;
+		case FEATURE_NONCE_GEN:
+		case FEATURE_RESOLVER:
+			if (asprintf(&str, "%N", plugin_feature_names, feature->type) > 0)
+			{
+				return str;
+			}
+			break;
 		case FEATURE_PRIVKEY:
 		case FEATURE_PRIVKEY_GEN:
 		case FEATURE_PUBKEY:
@@ -200,6 +328,14 @@ char* plugin_feature_get_string(plugin_feature_t *feature)
 				return str;
 			}
 			break;
+		case FEATURE_CONTAINER_DECODE:
+		case FEATURE_CONTAINER_ENCODE:
+			if (asprintf(&str, "%N:%N", plugin_feature_names, feature->type,
+					container_type_names, feature->arg.container) > 0)
+			{
+				return str;
+			}
+			break;
 		case FEATURE_EAP_SERVER:
 		case FEATURE_EAP_PEER:
 			if (asprintf(&str, "%N:%N", plugin_feature_names, feature->type,
@@ -229,6 +365,14 @@ char* plugin_feature_get_string(plugin_feature_t *feature)
 				return str;
 			}
 			break;
+		case FEATURE_XAUTH_SERVER:
+		case FEATURE_XAUTH_PEER:
+			if (asprintf(&str, "%N:%s", plugin_feature_names, feature->type,
+					feature->arg.xauth) > 0)
+			{
+				return str;
+			}
+			break;
 	}
 	if (!str)
 	{
@@ -251,7 +395,8 @@ bool plugin_feature_load(plugin_t *plugin, plugin_feature_t *feature,
 	}
 	if (reg->kind == FEATURE_CALLBACK)
 	{
-		if (reg->arg.cb.f(plugin, feature, TRUE, reg->arg.cb.data))
+		if (!reg->arg.cb.f ||
+			 reg->arg.cb.f(plugin, feature, TRUE, reg->arg.cb.data))
 		{
 			return TRUE;
 		}
@@ -288,6 +433,10 @@ bool plugin_feature_load(plugin_t *plugin, plugin_feature_t *feature,
 			lib->crypto->add_rng(lib->crypto, feature->arg.rng_quality,
 								name, reg->arg.reg.f);
 			break;
+		case FEATURE_NONCE_GEN:
+			lib->crypto->add_nonce_gen(lib->crypto,
+								name, reg->arg.reg.f);
+			break;
 		case FEATURE_PRIVKEY:
 		case FEATURE_PRIVKEY_GEN:
 			lib->creds->add_builder(lib->creds, CRED_PRIVATE_KEY,
@@ -305,12 +454,21 @@ bool plugin_feature_load(plugin_t *plugin, plugin_feature_t *feature,
 								feature->arg.cert, reg->arg.reg.final,
 								reg->arg.reg.f);
 			break;
+		case FEATURE_CONTAINER_DECODE:
+		case FEATURE_CONTAINER_ENCODE:
+			lib->creds->add_builder(lib->creds, CRED_CONTAINER,
+								feature->arg.container, reg->arg.reg.final,
+								reg->arg.reg.f);
+			break;
 		case FEATURE_DATABASE:
 			lib->db->add_database(lib->db, reg->arg.reg.f);
 			break;
 		case FEATURE_FETCHER:
 			lib->fetcher->add_fetcher(lib->fetcher, reg->arg.reg.f,
 									  feature->arg.fetcher);
+			break;
+		case FEATURE_RESOLVER:
+			lib->resolver->add_resolver(lib->resolver, reg->arg.reg.f);
 			break;
 		default:
 			break;
@@ -330,7 +488,8 @@ bool plugin_feature_unload(plugin_t *plugin, plugin_feature_t *feature,
 	}
 	if (reg->kind == FEATURE_CALLBACK)
 	{
-		if (reg->arg.cb.f(plugin, feature, FALSE, reg->arg.cb.data))
+		if (!reg->arg.cb.f ||
+			 reg->arg.cb.f(plugin, feature, FALSE, reg->arg.cb.data))
 		{
 			return TRUE;
 		}
@@ -359,6 +518,9 @@ bool plugin_feature_unload(plugin_t *plugin, plugin_feature_t *feature,
 		case FEATURE_RNG:
 			lib->crypto->remove_rng(lib->crypto, reg->arg.reg.f);
 			break;
+		case FEATURE_NONCE_GEN:
+			lib->crypto->remove_nonce_gen(lib->crypto, reg->arg.reg.f);
+			break;
 		case FEATURE_PRIVKEY:
 		case FEATURE_PRIVKEY_GEN:
 			lib->creds->remove_builder(lib->creds, reg->arg.reg.f);
@@ -370,11 +532,18 @@ bool plugin_feature_unload(plugin_t *plugin, plugin_feature_t *feature,
 		case FEATURE_CERT_ENCODE:
 			lib->creds->remove_builder(lib->creds, reg->arg.reg.f);
 			break;
+		case FEATURE_CONTAINER_DECODE:
+		case FEATURE_CONTAINER_ENCODE:
+			lib->creds->remove_builder(lib->creds, reg->arg.reg.f);
+			break;
 		case FEATURE_DATABASE:
 			lib->db->remove_database(lib->db, reg->arg.reg.f);
 			break;
 		case FEATURE_FETCHER:
 			lib->fetcher->remove_fetcher(lib->fetcher, reg->arg.reg.f);
+			break;
+		case FEATURE_RESOLVER:
+			lib->resolver->remove_resolver(lib->resolver, reg->arg.reg.f);
 			break;
 		default:
 			break;

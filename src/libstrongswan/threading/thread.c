@@ -32,11 +32,11 @@ static inline pid_t gettid()
 #endif
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <threading/thread_value.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 #include "thread.h"
 
@@ -114,7 +114,7 @@ typedef struct {
 /**
  * Next thread ID.
  */
-static u_int next_id = 1;
+static u_int next_id;
 
 /**
  * Mutex to safely access the next thread ID.
@@ -129,7 +129,11 @@ static thread_value_t *current_thread;
 
 #ifndef HAVE_PTHREAD_CANCEL
 /* if pthread_cancel is not available, we emulate it using a signal */
+#ifdef ANDROID
+#define SIG_CANCEL SIGUSR2
+#else
 #define SIG_CANCEL (SIGRTMIN+7)
+#endif
 
 /* the signal handler for SIG_CANCEL uses pthread_exit to terminate the
  * "cancelled" thread */
@@ -337,7 +341,20 @@ thread_t *thread_create(thread_main_t main, void *arg)
  */
 thread_t *thread_current()
 {
-	return current_thread->get(current_thread);
+	private_thread_t *this;
+
+	this = (private_thread_t*)current_thread->get(current_thread);
+	if (!this)
+	{
+		this = thread_create_internal();
+
+		id_mutex->lock(id_mutex);
+		this->id = next_id++;
+		id_mutex->unlock(id_mutex);
+
+		current_thread->set(current_thread, (void*)this);
+	}
+	return &this->public;
 }
 
 /**
@@ -452,6 +469,7 @@ void threads_init()
 
 	dummy1 = thread_value_create(NULL);
 
+	next_id = 1;
 	main_thread->id = 0;
 	main_thread->thread_id = pthread_self();
 	current_thread = thread_value_create(NULL);
@@ -482,4 +500,3 @@ void threads_deinit()
 	current_thread->destroy(current_thread);
 	id_mutex->destroy(id_mutex);
 }
-

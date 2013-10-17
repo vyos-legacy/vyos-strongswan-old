@@ -15,7 +15,7 @@
 
 #include "pts/components/pts_comp_evidence.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_pts_comp_evidence_t private_pts_comp_evidence_t;
 
@@ -87,7 +87,7 @@ struct private_pts_comp_evidence_t {
 	/**
 	 * Verification Policy URI
 	 */
-	chunk_t policy_uri;
+	char *policy_uri;
 
 };
 
@@ -148,16 +148,16 @@ METHOD(pts_comp_evidence_t, get_pcr_info, bool,
 METHOD(pts_comp_evidence_t, set_pcr_info, void,
 	private_pts_comp_evidence_t *this, chunk_t pcr_before, chunk_t pcr_after)
 {
-	this->has_pcr_info = TRUE;	
+	this->has_pcr_info = TRUE;
 	this->pcr_before = pcr_before;
 	this->pcr_after =  pcr_after;
 
-	DBG2(DBG_PTS, "PCR %2d before value : %#B", this->extended_pcr, &pcr_before);
-	DBG2(DBG_PTS, "PCR %2d after value  : %#B", this->extended_pcr, &pcr_after);
+	DBG3(DBG_PTS, "PCR %2d before value : %#B", this->extended_pcr, &pcr_before);
+	DBG3(DBG_PTS, "PCR %2d after value  : %#B", this->extended_pcr, &pcr_after);
 }
 
 METHOD(pts_comp_evidence_t, get_validation, pts_comp_evid_validation_t,
-	private_pts_comp_evidence_t *this, chunk_t *uri)
+	private_pts_comp_evidence_t *this, char **uri)
 {
 	if (uri)
 	{
@@ -168,10 +168,14 @@ METHOD(pts_comp_evidence_t, get_validation, pts_comp_evid_validation_t,
 
 METHOD(pts_comp_evidence_t, set_validation, void,
 	private_pts_comp_evidence_t *this, pts_comp_evid_validation_t validation,
-	chunk_t uri)
+	char *uri)
 {
 	this->validation = validation;
-	this->policy_uri = chunk_clone(uri);
+	if (uri)
+	{
+		this->policy_uri = strdup(uri);
+		DBG3(DBG_PTS, "'%s'", uri);
+	}
 }
 
 METHOD(pts_comp_evidence_t, destroy, void,
@@ -181,7 +185,7 @@ METHOD(pts_comp_evidence_t, destroy, void,
 	free(this->measurement.ptr);
 	free(this->pcr_before.ptr);
 	free(this->pcr_after.ptr);
-	free(this->policy_uri.ptr);
+	free(this->policy_uri);
 	free(this);
 }
 
@@ -219,8 +223,8 @@ pts_comp_evidence_t *pts_comp_evidence_create(pts_comp_func_name_t *name,
 	);
 
 	name->log(name, "");
-	DBG2(DBG_PTS, "measurement time: %T", &measurement_time, FALSE);
-	DBG2(DBG_PTS, "PCR %2d extended with: %#B", extended_pcr, &measurement);
+	DBG3(DBG_PTS, "measurement time: %T", &measurement_time, FALSE);
+	DBG3(DBG_PTS, "PCR %2d extended with: %#B", extended_pcr, &measurement);
 
 	return &this->public;
 }

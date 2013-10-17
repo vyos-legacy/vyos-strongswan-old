@@ -16,6 +16,8 @@
 #include "eap_radius.h"
 #include "eap_radius_plugin.h"
 #include "eap_radius_forward.h"
+#include "eap_radius_provider.h"
+#include "eap_radius_accounting.h"
 
 #include <radius_message.h>
 #include <radius_client.h>
@@ -73,16 +75,6 @@ struct private_eap_radius_t {
 	 * Prefix to prepend to EAP identity
 	 */
 	char *id_prefix;
-
-	/**
-	 * Handle the Class attribute as group membership information?
-	 */
-	bool class_group;
-
-	/**
-	 * Handle the Filter-Id attribute as IPsec CHILD_SA name?
-	 */
-	bool filter_id;
 };
 
 /**
@@ -155,17 +147,86 @@ static bool radius2ike(private_eap_radius_t *this,
 	return FALSE;
 }
 
+/**
+ * See header.
+ */
+void eap_radius_build_attributes(radius_message_t *request)
+{
+	ike_sa_t *ike_sa;
+	host_t *host;
+	char buf[40], *station_id_fmt;;
+	u_int32_t value;
+	chunk_t chunk;
+
+	/* virtual NAS-Port-Type */
+	value = htonl(5);
+	request->add(request, RAT_NAS_PORT_TYPE, chunk_from_thing(value));
+	/* framed ServiceType */
+	value = htonl(2);
+	request->add(request, RAT_SERVICE_TYPE, chunk_from_thing(value));
+
+	ike_sa = charon->bus->get_sa(charon->bus);
+	if (ike_sa)
+	{
+		value = htonl(ike_sa->get_unique_id(ike_sa));
+		request->add(request, RAT_NAS_PORT, chunk_from_thing(value));
+		request->add(request, RAT_NAS_PORT_ID,
+					 chunk_from_str(ike_sa->get_name(ike_sa)));
+
+		host = ike_sa->get_my_host(ike_sa);
+		chunk = host->get_address(host);
+		switch (host->get_family(host))
+		{
+			case AF_INET:
+				request->add(request, RAT_NAS_IP_ADDRESS, chunk);
+				break;
+			case AF_INET6:
+				request->add(request, RAT_NAS_IPV6_ADDRESS, chunk);
+			default:
+				break;
+		}
+		if (lib->settings->get_bool(lib->settings,
+									"%s.plugins.eap-radius.station_id_with_port",
+									TRUE, charon->name))
+		{
+			station_id_fmt = "%#H";
+		}
+		else
+		{
+			station_id_fmt = "%H";
+		}
+		snprintf(buf, sizeof(buf), station_id_fmt, host);
+		request->add(request, RAT_CALLED_STATION_ID, chunk_from_str(buf));
+		host = ike_sa->get_other_host(ike_sa);
+		snprintf(buf, sizeof(buf), station_id_fmt, host);
+		request->add(request, RAT_CALLING_STATION_ID, chunk_from_str(buf));
+	}
+}
+
+/**
+ * Add a set of RADIUS attributes to a request message
+ */
+static void add_radius_request_attrs(private_eap_radius_t *this,
+									 radius_message_t *request)
+{
+	chunk_t chunk;
+
+	chunk = chunk_from_str(this->id_prefix);
+	chunk = chunk_cata("cc", chunk, this->peer->get_encoding(this->peer));
+	request->add(request, RAT_USER_NAME, chunk);
+
+	eap_radius_build_attributes(request);
+	eap_radius_forward_from_ike(request);
+}
+
 METHOD(eap_method_t, initiate, status_t,
 	private_eap_radius_t *this, eap_payload_t **out)
 {
 	radius_message_t *request, *response;
 	status_t status = FAILED;
-	chunk_t username;
 
 	request = radius_message_create(RMC_ACCESS_REQUEST);
-	username = chunk_create(this->id_prefix, strlen(this->id_prefix));
-	username = chunk_cata("cc", username, this->peer->get_encoding(this->peer));
-	request->add(request, RAT_USER_NAME, username);
+	add_radius_request_attrs(this, request);
 
 	if (this->eap_start)
 	{
@@ -175,21 +236,34 @@ METHOD(eap_method_t, initiate, status_t,
 	{
 		add_eap_identity(this, request);
 	}
-	eap_radius_forward_from_ike(request);
 
 	response = this->client->request(this->client, request);
 	if (response)
 	{
 		eap_radius_forward_to_ike(response);
-		if (radius2ike(this, response, out))
+		switch (response->get_code(response))
 		{
-			status = NEED_MORE;
+			case RMC_ACCESS_CHALLENGE:
+				if (radius2ike(this, response, out))
+				{
+					status = NEED_MORE;
+				}
+				break;
+			case RMC_ACCESS_ACCEPT:
+				/* Microsoft RADIUS servers can run in a mode where they respond
+				 * like this on the first request (i.e. without authentication),
+				 * we treat this as Access-Reject */
+			case RMC_ACCESS_REJECT:
+			default:
+				DBG1(DBG_IKE, "RADIUS authentication of '%Y' failed",
+					 this->peer);
+				break;
 		}
 		response->destroy(response);
 	}
 	else
 	{
-		charon->bus->alert(charon->bus, ALERT_RADIUS_NOT_RESPONDING);
+		eap_radius_handle_timeout(NULL);
 	}
 	request->destroy(request);
 	return status;
@@ -198,7 +272,7 @@ METHOD(eap_method_t, initiate, status_t,
 /**
  * Handle the Class attribute as group membership information
  */
-static void process_class(private_eap_radius_t *this, radius_message_t *msg)
+static void process_class(radius_message_t *msg)
 {
 	enumerator_t *enumerator;
 	chunk_t data;
@@ -235,7 +309,7 @@ static void process_class(private_eap_radius_t *this, radius_message_t *msg)
 /**
  * Handle the Filter-Id attribute as IPsec CHILD_SA name
  */
-static void process_filter_id(private_eap_radius_t *this, radius_message_t *msg)
+static void process_filter_id(radius_message_t *msg)
 {
 	enumerator_t *enumerator;
 	int type;
@@ -264,7 +338,7 @@ static void process_filter_id(private_eap_radius_t *this, radius_message_t *msg)
 			case RAT_FILTER_ID:
 				filter_id = data;
 				DBG1(DBG_IKE, "received RADIUS attribute Filter-Id: "
-							  "'%.*s'", filter_id.len, filter_id.ptr);
+							  "'%.*s'", (int)filter_id.len, filter_id.ptr);
 				break;
 			default:
 				break;
@@ -289,28 +363,107 @@ static void process_filter_id(private_eap_radius_t *this, radius_message_t *msg)
 }
 
 /**
- * Handle Session-Timeout attribte
+ * Handle Session-Timeout attribte and Interim updates
  */
-static void process_timeout(private_eap_radius_t *this, radius_message_t *msg)
+static void process_timeout(radius_message_t *msg)
 {
 	enumerator_t *enumerator;
 	ike_sa_t *ike_sa;
 	chunk_t data;
 	int type;
 
-	enumerator = msg->create_enumerator(msg);
-	while (enumerator->enumerate(enumerator, &type, &data))
+	ike_sa = charon->bus->get_sa(charon->bus);
+	if (ike_sa)
 	{
-		if (type == RAT_SESSION_TIMEOUT && data.len == 4)
+		enumerator = msg->create_enumerator(msg);
+		while (enumerator->enumerate(enumerator, &type, &data))
 		{
-			ike_sa = charon->bus->get_sa(charon->bus);
-			if (ike_sa)
+			if (type == RAT_SESSION_TIMEOUT && data.len == 4)
 			{
 				ike_sa->set_auth_lifetime(ike_sa, untoh32(data.ptr));
 			}
+			else if (type == RAT_ACCT_INTERIM_INTERVAL && data.len == 4)
+			{
+				eap_radius_accounting_start_interim(ike_sa, untoh32(data.ptr));
+			}
 		}
+		enumerator->destroy(enumerator);
 	}
-	enumerator->destroy(enumerator);
+}
+
+/**
+ * Handle Framed-IP-Address and other IKE configuration attributes
+ */
+static void process_cfg_attributes(radius_message_t *msg)
+{
+	eap_radius_provider_t *provider;
+	enumerator_t *enumerator;
+	ike_sa_t *ike_sa;
+	host_t *host;
+	chunk_t data;
+	int type, vendor;
+
+	ike_sa = charon->bus->get_sa(charon->bus);
+	provider = eap_radius_provider_get();
+	if (provider && ike_sa)
+	{
+		enumerator = msg->create_enumerator(msg);
+		while (enumerator->enumerate(enumerator, &type, &data))
+		{
+			if (type == RAT_FRAMED_IP_ADDRESS && data.len == 4)
+			{
+				host = host_create_from_chunk(AF_INET, data, 0);
+				if (host)
+				{
+					provider->add_framed_ip(provider,
+									ike_sa->get_unique_id(ike_sa), host);
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+
+		enumerator = msg->create_vendor_enumerator(msg);
+		while (enumerator->enumerate(enumerator, &vendor, &type, &data))
+		{
+			if (vendor == PEN_ALTIGA /* aka Cisco VPN3000 */)
+			{
+				switch (type)
+				{
+					case 15: /* CVPN3000-IPSec-Banner1 */
+					case 36: /* CVPN3000-IPSec-Banner2 */
+						if (ike_sa->supports_extension(ike_sa, EXT_CISCO_UNITY))
+						{
+							provider->add_attribute(provider,
+												ike_sa->get_unique_id(ike_sa),
+												UNITY_BANNER, data);
+						}
+						break;
+					default:
+						break;
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
+}
+
+/**
+ * See header.
+ */
+void eap_radius_process_attributes(radius_message_t *message)
+{
+	if (lib->settings->get_bool(lib->settings,
+					"%s.plugins.eap-radius.class_group", FALSE, charon->name))
+	{
+		process_class(message);
+	}
+	if (lib->settings->get_bool(lib->settings,
+					"%s.plugins.eap-radius.filter_id", FALSE, charon->name))
+	{
+		process_filter_id(message);
+	}
+	process_timeout(message);
+	process_cfg_attributes(message);
 }
 
 METHOD(eap_method_t, process, status_t,
@@ -321,7 +474,8 @@ METHOD(eap_method_t, process, status_t,
 	chunk_t data;
 
 	request = radius_message_create(RMC_ACCESS_REQUEST);
-	request->add(request, RAT_USER_NAME, this->peer->get_encoding(this->peer));
+	add_radius_request_attrs(this, request);
+
 	data = in->get_data(in);
 	DBG3(DBG_IKE, "%N payload %B", eap_type_names, this->type, &data);
 
@@ -334,7 +488,6 @@ METHOD(eap_method_t, process, status_t,
 	}
 	request->add(request, RAT_EAP_MESSAGE, data);
 
-	eap_radius_forward_from_ike(request);
 	response = this->client->request(this->client, request);
 	if (response)
 	{
@@ -350,22 +503,15 @@ METHOD(eap_method_t, process, status_t,
 				status = FAILED;
 				break;
 			case RMC_ACCESS_ACCEPT:
-				if (this->class_group)
-				{
-					process_class(this, response);
-				}
-				if (this->filter_id)
-				{
-					process_filter_id(this, response);
-				}
-				process_timeout(this, response);
+				eap_radius_process_attributes(response);
 				DBG1(DBG_IKE, "RADIUS authentication of '%Y' successful",
 					 this->peer);
 				status = SUCCESS;
 				break;
 			case RMC_ACCESS_REJECT:
 			default:
-				DBG1(DBG_IKE, "RADIUS authentication of '%Y' failed", this->peer);
+				DBG1(DBG_IKE, "RADIUS authentication of '%Y' failed",
+					 this->peer);
 				status = FAILED;
 				break;
 		}
@@ -453,14 +599,11 @@ eap_radius_t *eap_radius_create(identification_t *server, identification_t *peer
 		/* initially EAP_RADIUS, but is set to the method selected by RADIUS */
 		.type = EAP_RADIUS,
 		.eap_start = lib->settings->get_bool(lib->settings,
-								"charon.plugins.eap-radius.eap_start", FALSE),
+									"%s.plugins.eap-radius.eap_start", FALSE,
+									charon->name),
 		.id_prefix = lib->settings->get_str(lib->settings,
-								"charon.plugins.eap-radius.id_prefix", ""),
-		.class_group = lib->settings->get_bool(lib->settings,
-								"charon.plugins.eap-radius.class_group", FALSE),
-		.filter_id = lib->settings->get_bool(lib->settings,
-								"charon.plugins.eap-radius.filter_id", FALSE),
-
+									"%s.plugins.eap-radius.id_prefix", "",
+									charon->name),
 	);
 	this->client = eap_radius_create_client();
 	if (!this->client)
@@ -472,4 +615,3 @@ eap_radius_t *eap_radius_create(identification_t *server, identification_t *peer
 	this->server = server->clone(server);
 	return &this->public;
 }
-

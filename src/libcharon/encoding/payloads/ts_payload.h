@@ -25,15 +25,10 @@
 typedef struct ts_payload_t ts_payload_t;
 
 #include <library.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <selectors/traffic_selector.h>
 #include <encoding/payloads/payload.h>
 #include <encoding/payloads/traffic_selector_substructure.h>
-
-/**
- * Length of a TS payload without the Traffic selectors.
- */
-#define TS_PAYLOAD_HEADER_LENGTH 8
 
 /**
  * Class representing an IKEv2 TS payload.

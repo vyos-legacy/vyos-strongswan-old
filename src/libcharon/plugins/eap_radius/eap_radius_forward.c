@@ -16,8 +16,8 @@
 #include "eap_radius_forward.h"
 
 #include <daemon.h>
-#include <utils/linked_list.h>
-#include <utils/hashtable.h>
+#include <collections/linked_list.h>
+#include <collections/hashtable.h>
 #include <threading/mutex.h>
 
 typedef struct private_eap_radius_forward_t private_eap_radius_forward_t;
@@ -248,7 +248,8 @@ static void ike2queue(message_t *message, linked_list_t *queue,
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{
-		if (payload->get_type(payload) == NOTIFY)
+		if (payload->get_type(payload) == NOTIFY ||
+			payload->get_type(payload) == NOTIFY_V1)
 		{
 			notify = (notify_payload_t*)payload;
 			if (notify->get_notify_type(notify) == RADIUS_ATTRIBUTE)
@@ -319,11 +320,11 @@ void eap_radius_forward_to_ike(radius_message_t *response)
 
 METHOD(listener_t, message, bool,
 	private_eap_radius_forward_t *this,
-	ike_sa_t *ike_sa, message_t *message, bool incoming)
+	ike_sa_t *ike_sa, message_t *message, bool incoming, bool plain)
 {
 	linked_list_t *queue;
 
-	if (message->get_exchange_type(message) == IKE_AUTH)
+	if (plain && message->get_exchange_type(message) == IKE_AUTH)
 	{
 		if (incoming)
 		{
@@ -436,9 +437,11 @@ eap_radius_forward_t *eap_radius_forward_create()
 			.destroy = _destroy,
 		},
 		.from_attr = parse_selector(lib->settings->get_str(lib->settings,
-						"charon.plugins.eap-radius.forward.ike_to_radius", "")),
+							"%s.plugins.eap-radius.forward.ike_to_radius", "",
+							charon->name)),
 		.to_attr = parse_selector(lib->settings->get_str(lib->settings,
-						"charon.plugins.eap-radius.forward.radius_to_ike", "")),
+							"%s.plugins.eap-radius.forward.radius_to_ike", "",
+							charon->name)),
 		.from = hashtable_create((hashtable_hash_t)hash,
 						(hashtable_equals_t)equals, 8),
 		.to = hashtable_create((hashtable_hash_t)hash,

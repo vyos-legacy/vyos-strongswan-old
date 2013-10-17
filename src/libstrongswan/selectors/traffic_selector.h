@@ -27,7 +27,7 @@ typedef enum ts_type_t ts_type_t;
 typedef struct traffic_selector_t traffic_selector_t;
 
 #include <library.h>
-#include <utils/host.h>
+#include <networking/host.h>
 
 /**
  * Traffic selector types.
@@ -203,8 +203,9 @@ struct traffic_selector_t {
 	 *
 	 * @param net		converted subnet (has to be freed)
 	 * @param mask		converted net mask
+	 * @return			TRUE if traffic selector matches exactly to the subnet
 	 */
-	void (*to_subnet) (traffic_selector_t *this, host_t **net, u_int8_t *mask);
+	bool (*to_subnet) (traffic_selector_t *this, host_t **net, u_int8_t *mask);
 
 	/**
 	 * Destroys the ts object
@@ -229,6 +230,21 @@ traffic_selector_t *traffic_selector_create_from_string(
 									u_int8_t protocol, ts_type_t type,
 									char *from_addr, u_int16_t from_port,
 									char *to_addr, u_int16_t to_port);
+
+
+
+/**
+ * Create a traffic selector from a CIDR string.
+ *
+ * @param string		CIDR string, such as 10.1.0.0/16
+ * @param protocol		protocol for this ts, such as TCP or UDP
+ * @param from_port		start of allowed port range
+ * @param to_port		end of port range
+ * @return				traffic selector, NULL if string invalid
+ */
+traffic_selector_t *traffic_selector_create_from_cidr(
+										char *string, u_int8_t protocol,
+										u_int16_t from_port, u_int16_t to_port);
 
 /**
  * Create a new traffic selector using data read from the net.
@@ -274,14 +290,15 @@ traffic_selector_t *traffic_selector_create_from_rfc3779_format(ts_type_t type,
  * @param net			subnet to use
  * @param netbits		size of the subnet, as used in e.g. 192.168.0.0/24 notation
  * @param protocol		protocol for this ts, such as TCP or UDP
- * @param port			port number, host order
+ * @param from_port		start of allowed port range
+ * @param to_port		end of port range
  * @return
  *						- traffic_selector_t object
  *						- NULL if address family of net not supported
  */
 traffic_selector_t *traffic_selector_create_from_subnet(
-									host_t *net, u_int8_t netbits,
-									u_int8_t protocol, u_int16_t port);
+							host_t *net, u_int8_t netbits, u_int8_t protocol,
+							u_int16_t from_port, u_int16_t to_port);
 
 /**
  * Create a traffic selector for host-to-host cases.
@@ -309,7 +326,7 @@ traffic_selector_t *traffic_selector_create_dynamic(u_int8_t protocol,
  * With the #-specifier, arguments are:
  *	linked_list_t *list containing traffic_selector_t*
  */
-int traffic_selector_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
-								 const void *const *args);
+int traffic_selector_printf_hook(printf_hook_data_t *data,
+							printf_hook_spec_t *spec, const void *const *args);
 
 #endif /** TRAFFIC_SELECTOR_H_ @}*/

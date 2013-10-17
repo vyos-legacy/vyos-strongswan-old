@@ -52,10 +52,6 @@ enum certificate_type_t {
 	CERT_PKCS10_REQUEST,
 	/** PGP certificate */
 	CERT_GPG,
-	/** Pluto cert_t (not a certificate_t), either x509 or PGP */
-	CERT_PLUTO_CERT,
-	/** Pluto x509crl_t (not a certificate_t), certificate revocation list */
-	CERT_PLUTO_CRL,
 };
 
 /**
@@ -143,9 +139,11 @@ struct certificate_t {
 	 * Check if this certificate is issued and signed by a specific issuer.
 	 *
 	 * @param issuer	issuer's certificate
+	 * @param scheme	receives signature scheme used during verification
 	 * @return			TRUE if certificate issued by issuer and trusted
 	 */
-	bool (*issued_by)(certificate_t *this, certificate_t *issuer);
+	bool (*issued_by)(certificate_t *this, certificate_t *issuer,
+					  signature_scheme_t *scheme);
 
 	/**
 	 * Get the public key associated to this certificate.

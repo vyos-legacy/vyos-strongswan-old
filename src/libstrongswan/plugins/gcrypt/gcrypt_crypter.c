@@ -17,7 +17,7 @@
 
 #include <gcrypt.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_gcrypt_crypter_t private_gcrypt_crypter_t;
 
@@ -59,50 +59,47 @@ struct private_gcrypt_crypter_t {
 /**
  * Set the IV for en/decryption
  */
-static void set_iv(private_gcrypt_crypter_t *this, chunk_t iv)
+static bool set_iv(private_gcrypt_crypter_t *this, chunk_t iv)
 {
 	if (this->ctr_mode)
 	{
 		memcpy(this->ctr.iv, iv.ptr, sizeof(this->ctr.iv));
 		this->ctr.counter = htonl(1);
-		gcry_cipher_setctr(this->h, &this->ctr, sizeof(this->ctr));
+		return gcry_cipher_setctr(this->h, &this->ctr, sizeof(this->ctr)) == 0;
 	}
-	else
-	{
-		gcry_cipher_setiv(this->h, iv.ptr, iv.len);
-	}
+	return gcry_cipher_setiv(this->h, iv.ptr, iv.len) == 0;
 }
 
-METHOD(crypter_t, decrypt, void,
+METHOD(crypter_t, decrypt, bool,
 	private_gcrypt_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *dst)
 {
-	set_iv(this, iv);
-
+	if (!set_iv(this, iv))
+	{
+		return FALSE;
+	}
 	if (dst)
 	{
 		*dst = chunk_alloc(data.len);
-		gcry_cipher_decrypt(this->h, dst->ptr, dst->len, data.ptr, data.len);
+		return gcry_cipher_decrypt(this->h, dst->ptr, dst->len,
+								   data.ptr, data.len) == 0;
 	}
-	else
-	{
-		gcry_cipher_decrypt(this->h, data.ptr, data.len, NULL, 0);
-	}
+	return gcry_cipher_decrypt(this->h, data.ptr, data.len, NULL, 0) == 0;
 }
 
-METHOD(crypter_t, encrypt, void,
+METHOD(crypter_t, encrypt, bool,
 	private_gcrypt_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *dst)
 {
-	set_iv(this, iv);
-
+	if (!set_iv(this, iv))
+	{
+		return FALSE;
+	}
 	if (dst)
 	{
 		*dst = chunk_alloc(data.len);
-		gcry_cipher_encrypt(this->h, dst->ptr, dst->len, data.ptr, data.len);
+		return gcry_cipher_encrypt(this->h, dst->ptr, dst->len,
+								   data.ptr, data.len) == 0;
 	}
-	else
-	{
-		gcry_cipher_encrypt(this->h, data.ptr, data.len, NULL, 0);
-	}
+	return gcry_cipher_encrypt(this->h, data.ptr, data.len, NULL, 0) == 0;
 }
 
 METHOD(crypter_t, get_block_size, size_t,
@@ -144,7 +141,7 @@ METHOD(crypter_t, get_key_size, size_t,
 	return len;
 }
 
-METHOD(crypter_t, set_key, void,
+METHOD(crypter_t, set_key, bool,
 	private_gcrypt_crypter_t *this, chunk_t key)
 {
 	if (this->ctr_mode)
@@ -154,7 +151,7 @@ METHOD(crypter_t, set_key, void,
 			   sizeof(this->ctr.nonce));
 		key.len -= sizeof(this->ctr.nonce);
 	}
-	gcry_cipher_setkey(this->h, key.ptr, key.len);
+	return gcry_cipher_setkey(this->h, key.ptr, key.len) == 0;
 }
 
 METHOD(crypter_t, destroy, void,

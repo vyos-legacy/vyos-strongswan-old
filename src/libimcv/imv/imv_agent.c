@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2013 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,11 +15,16 @@
 
 #include "imcv.h"
 #include "imv_agent.h"
+#include "imv_session.h"
+
+#include "ietf/ietf_attr_assess_result.h"
 
 #include <tncif_names.h>
+#include <tncif_identity.h>
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
+#include <bio/bio_reader.h>
 #include <threading/rwlock.h>
 
 typedef struct private_imv_agent_t private_imv_agent_t;
@@ -39,14 +45,14 @@ struct private_imv_agent_t {
 	const char *name;
 
 	/**
-	 * message vendor ID of IMV
+	 * message types registered by IMV
 	 */
-	TNC_VendorID vendor_id;
+	pen_type_t *supported_types;
 
 	/**
-	 * message subtype of IMV
+	 * number of message types registered by IMV
 	 */
-	TNC_MessageSubtype subtype;
+	u_int32_t type_count;
 
 	/**
 	 * ID of IMV as assigned by TNCS
@@ -93,44 +99,6 @@ struct private_imv_agent_t {
 									TNC_VendorIDList supported_vids,
 									TNC_MessageSubtypeList supported_subtypes,
 									TNC_UInt32 type_count);
-
-	/**
-	 * Call when an IMV-IMC message is to be sent
-	 *
-	 * @param imv_id			IMV ID assigned by TNCS
-	 * @param connection_id		network connection ID assigned by TNCS
-	 * @param msg				message to send
-	 * @param msg_len			message length in bytes
-	 * @param msg_type			message type
-	 * @return					TNC result code
-	 */
-	TNC_Result (*send_message)(TNC_IMVID imv_id,
-							   TNC_ConnectionID connection_id,
-							   TNC_BufferReference msg,
-							   TNC_UInt32 msg_len,
-							   TNC_MessageType msg_type);
-
-	/**
-	 * Call when an IMV-IMC message is to be sent with long message types
-	 *
-	 * @param imv_id			IMV ID assigned by TNCS
-	 * @param connection_id		network connection ID assigned by TNCS
-	 * @param msg_flags			message flags
-	 * @param msg				message to send
-	 * @param msg_len			message length in bytes
-	 * @param msg_vid			message vendor ID
-	 * @param msg_subtype		message subtype
-	 * @param dst_imc_id		destination IMC ID
-	 * @return					TNC result code
-	 */
-	TNC_Result (*send_message_long)(TNC_IMVID imv_id,
-									TNC_ConnectionID connection_id,
-									TNC_UInt32 msg_flags,
-									TNC_BufferReference msg,
-									TNC_UInt32 msg_len,
-									TNC_VendorID msg_vid,
-									TNC_MessageSubtype msg_subtype,
-									TNC_UInt32 dst_imc_id);
 
 	/**
 	 * Deliver IMV Action Recommendation and IMV Evaluation Results to the TNCS
@@ -218,14 +186,14 @@ METHOD(imv_agent_t, bind_functions, TNC_Result,
 		this->public.request_handshake_retry = NULL;
 	}
 	if (bind_function(this->id, "TNC_TNCS_SendMessage",
-			(void**)&this->send_message) != TNC_RESULT_SUCCESS)
+			(void**)&this->public.send_message) != TNC_RESULT_SUCCESS)
 	{
-		this->send_message = NULL;
+		this->public.send_message = NULL;
 	}
 	if (bind_function(this->id, "TNC_TNCS_SendMessageLong",
-			(void**)&this->send_message_long) != TNC_RESULT_SUCCESS)
+			(void**)&this->public.send_message_long) != TNC_RESULT_SUCCESS)
 	{
-		this->send_message_long = NULL;
+		this->public.send_message_long = NULL;
 	}
 	if (bind_function(this->id, "TNC_TNCS_ProvideRecommendation",
 			(void**)&this->provide_recommendation) != TNC_RESULT_SUCCESS)
@@ -247,22 +215,40 @@ METHOD(imv_agent_t, bind_functions, TNC_Result,
 	{
 		this->reserve_additional_id = NULL;
 	}
-	DBG2(DBG_IMV, "IMV %u \"%s\" provided with bind function",
-				  this->id, this->name);
 
 	if (this->report_message_types_long)
 	{
-		this->report_message_types_long(this->id, &this->vendor_id,
-										&this->subtype, 1);
-	}
-	else if (this->report_message_types &&
-			 this->vendor_id <= TNC_VENDORID_ANY &&
-			 this->subtype <= TNC_SUBTYPE_ANY)
-	{
-		TNC_MessageType type;
+		TNC_VendorIDList vendor_id_list;
+		TNC_MessageSubtypeList subtype_list;
+		int i;
 
-		type = (this->vendor_id << 8) | this->subtype;
-		this->report_message_types(this->id, &type, 1);
+		vendor_id_list = malloc(this->type_count * sizeof(TNC_UInt32));
+		subtype_list   = malloc(this->type_count * sizeof(TNC_UInt32));
+
+		for (i = 0; i < this->type_count; i++)
+		{
+			vendor_id_list[i] = this->supported_types[i].vendor_id;
+			subtype_list[i]   = this->supported_types[i].type;
+		}
+		this->report_message_types_long(this->id, vendor_id_list, subtype_list,
+										this->type_count);
+		free(vendor_id_list);
+		free(subtype_list);
+	}
+	else if (this->report_message_types)
+	{
+		TNC_MessageTypeList type_list;
+		int i;
+
+		type_list = malloc(this->type_count * sizeof(TNC_UInt32));
+
+		for (i = 0; i < this->type_count; i++)
+		{
+			type_list[i] = (this->supported_types[i].vendor_id << 8) |
+						   (this->supported_types[i].type & 0xff);
+		}
+		this->report_message_types(this->id, type_list, this->type_count);
+		free(type_list);
 	}
 	return TNC_RESULT_SUCCESS;
 }
@@ -299,6 +285,7 @@ static bool delete_connection(private_imv_agent_t *this, TNC_ConnectionID id)
 {
 	enumerator_t *enumerator;
 	imv_state_t *state;
+	imv_session_t *session;
 	bool found = FALSE;
 
 	this->connection_lock->write_lock(this->connection_lock);
@@ -308,6 +295,11 @@ static bool delete_connection(private_imv_agent_t *this, TNC_ConnectionID id)
 		if (id == state->get_connection_id(state))
 		{
 			found = TRUE;
+			session = state->get_session(state);
+			if (session)
+			{
+				imcv_db->remove_session(imcv_db, session);
+			}
 			state->destroy(state);
 			this->connections->remove_at(this->connections, enumerator);
 			break;
@@ -351,12 +343,81 @@ static char* get_str_attribute(private_imv_agent_t *this, TNC_ConnectionID id,
 	return NULL;
  }
 
+/**
+ * Read an UInt32 attribute
+ */
+static u_int32_t get_uint_attribute(private_imv_agent_t *this, TNC_ConnectionID id,
+									TNC_AttributeID attribute_id)
+{
+	TNC_UInt32 len;
+	char buf[4];
+
+	if (this->get_attribute  &&
+		this->get_attribute(this->id, id, attribute_id, 4, buf, &len) ==
+							TNC_RESULT_SUCCESS && len == 4)
+	{
+		return untoh32(buf);
+	}
+	return 0;
+ }
+
+/**
+ * Read a TNC identity attribute
+ */
+static linked_list_t* get_identity_attribute(private_imv_agent_t *this,
+											 TNC_ConnectionID id,
+											 TNC_AttributeID attribute_id)
+{
+	TNC_UInt32 len;
+	char buf[2048];
+	u_int32_t count;
+	tncif_identity_t *tnc_id;
+	bio_reader_t *reader;
+	linked_list_t *list;
+
+	list = linked_list_create();
+
+	if (!this->get_attribute ||
+		 this->get_attribute(this->id, id, attribute_id, sizeof(buf), buf, &len)
+				!= TNC_RESULT_SUCCESS || len > sizeof(buf))
+	{
+		return list;
+	}
+
+	reader = bio_reader_create(chunk_create(buf, len));
+	if (!reader->read_uint32(reader, &count))
+	{
+			goto end;
+	}
+	while (count--)
+	{
+		tnc_id = tncif_identity_create_empty();
+		if (!tnc_id->process(tnc_id, reader))
+		{
+			tnc_id->destroy(tnc_id);
+			goto end;
+		}
+		list->insert_last(list, tnc_id);
+	}
+
+end:
+	reader->destroy(reader);
+	return list;
+ }
+
 METHOD(imv_agent_t, create_state, TNC_Result,
 	private_imv_agent_t *this, imv_state_t *state)
 {
 	TNC_ConnectionID conn_id;
 	char *tnccs_p = NULL, *tnccs_v = NULL, *t_p = NULL, *t_v = NULL;
-	bool has_long = FALSE, has_excl = FALSE, has_soh = FALSE;
+	bool has_long = FALSE, has_excl = FALSE, has_soh = FALSE, first = TRUE;
+	linked_list_t *ar_identities;
+	enumerator_t *enumerator;
+	tncif_identity_t *tnc_id;
+	imv_session_t *session;
+	u_int32_t max_msg_len;
+	u_int32_t ar_id_type = TNC_ID_UNKNOWN;
+	chunk_t ar_id_value = chunk_empty;
 
 	conn_id = state->get_connection_id(state);
 	if (find_connection(this, conn_id))
@@ -371,18 +432,74 @@ METHOD(imv_agent_t, create_state, TNC_Result,
 	has_long = get_bool_attribute(this, conn_id, TNC_ATTRIBUTEID_HAS_LONG_TYPES);
 	has_excl = get_bool_attribute(this, conn_id, TNC_ATTRIBUTEID_HAS_EXCLUSIVE);
 	has_soh  = get_bool_attribute(this, conn_id, TNC_ATTRIBUTEID_HAS_SOH);
-	tnccs_p = get_str_attribute(this, conn_id, TNC_ATTRIBUTEID_IFTNCCS_PROTOCOL); 
+	tnccs_p = get_str_attribute(this, conn_id, TNC_ATTRIBUTEID_IFTNCCS_PROTOCOL);
 	tnccs_v = get_str_attribute(this, conn_id, TNC_ATTRIBUTEID_IFTNCCS_VERSION);
 	t_p = get_str_attribute(this, conn_id, TNC_ATTRIBUTEID_IFT_PROTOCOL);
 	t_v = get_str_attribute(this, conn_id, TNC_ATTRIBUTEID_IFT_VERSION);
+	max_msg_len = get_uint_attribute(this, conn_id, TNC_ATTRIBUTEID_MAX_MESSAGE_SIZE);
+	ar_identities = get_identity_attribute(this, conn_id, TNC_ATTRIBUTEID_AR_IDENTITIES);
 
 	state->set_flags(state, has_long, has_excl);
+	state->set_max_msg_len(state, max_msg_len);
 
-	DBG2(DBG_IMV, "IMV %u \"%s\" created a state for Connection ID %u: "
-				  "%s %s with %slong %sexcl %ssoh over %s %s",
-				  this->id, this->name, conn_id, tnccs_p ? tnccs_p:"?",
-				  tnccs_v ? tnccs_v:"?", has_long ? "+":"-", has_excl ? "+":"-",
-				  has_soh ? "+":"-",  t_p ? t_p:"?", t_v ? t_v :"?");
+	DBG2(DBG_IMV, "IMV %u \"%s\" created a state for %s %s Connection ID %u: "
+				  "%slong %sexcl %ssoh", this->id, this->name,
+				  tnccs_p ? tnccs_p:"?", tnccs_v ? tnccs_v:"?", conn_id,
+			      has_long ? "+":"-", has_excl ? "+":"-", has_soh ? "+":"-");
+	DBG2(DBG_IMV, "  over %s %s with maximum PA-TNC message size of %u bytes",
+				  t_p ? t_p:"?", t_v ? t_v :"?", max_msg_len);
+
+	enumerator = ar_identities->create_enumerator(ar_identities);
+	while (enumerator->enumerate(enumerator, &tnc_id))
+	{
+		pen_type_t id_type, subject_type, auth_type;
+		u_int32_t tcg_id_type, tcg_subject_type, tcg_auth_type;
+		chunk_t id_value;
+
+		id_type = tnc_id->get_identity_type(tnc_id);
+		id_value = tnc_id->get_identity_value(tnc_id);
+		subject_type = tnc_id->get_subject_type(tnc_id);
+		auth_type = tnc_id->get_auth_type(tnc_id);
+
+		tcg_id_type =      (id_type.vendor_id == PEN_TCG) ?
+							id_type.type : TNC_ID_UNKNOWN;
+		tcg_subject_type = (subject_type.vendor_id == PEN_TCG) ?
+							subject_type.type : TNC_SUBJECT_UNKNOWN;
+		tcg_auth_type =    (auth_type.vendor_id == PEN_TCG) ?
+							auth_type.type : TNC_AUTH_UNKNOWN;
+
+
+		DBG2(DBG_IMV, "  %N AR identity '%.*s' authenticated by %N",
+			 TNC_Subject_names, tcg_subject_type,
+			 id_value.len, id_value.ptr,
+			 TNC_Authentication_names, tcg_auth_type);
+
+		if (first)
+		{
+			ar_id_type = tcg_id_type;
+			ar_id_value = id_value;
+			state->set_ar_id(state, ar_id_type, ar_id_value);
+			first = FALSE;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (imcv_db)
+	{
+		session = imcv_db->add_session(imcv_db, conn_id, ar_id_type, ar_id_value);
+		if (session)
+		{
+			DBG2(DBG_IMV, "  assigned session ID %d",
+				 session->get_session_id(session));
+			state->set_session(state, session);
+		}
+		else
+		{
+			DBG1(DBG_IMV, "  no session ID assigned");
+		}
+	}
+	ar_identities->destroy_offset(ar_identities,
+						   offsetof(tncif_identity_t, destroy));
 	free(tnccs_p);
 	free(tnccs_v);
 	free(t_p);
@@ -449,7 +566,7 @@ METHOD(imv_agent_t, change_state, TNC_Result,
 			DBG1(DBG_IMV, "IMV %u \"%s\" was notified of unknown state %u "
 				 		  "for Connection ID %u",
 						  this->id, this->name, new_state, connection_id);
-			return TNC_RESULT_INVALID_PARAMETER;		
+			return TNC_RESULT_INVALID_PARAMETER;
 	}
 	return TNC_RESULT_SUCCESS;
 }
@@ -468,220 +585,16 @@ METHOD(imv_agent_t, get_state, bool,
 	return TRUE;
 }
 
-METHOD(imv_agent_t, send_message, TNC_Result,
-	private_imv_agent_t *this, TNC_ConnectionID connection_id, bool excl,
-	TNC_UInt32 src_imv_id, TNC_UInt32 dst_imc_id, chunk_t msg)
+METHOD(imv_agent_t, get_name, const char*,
+	private_imv_agent_t *this)
 {
-	TNC_MessageType type;
-	TNC_UInt32 msg_flags;
-	imv_state_t *state;
-
-	state = find_connection(this, connection_id);
-	if (!state)
-	{
-		DBG1(DBG_IMV, "IMV %u \"%s\" has no state for Connection ID %u",
-					  this->id, this->name, connection_id);
-		return TNC_RESULT_FATAL;
-	}
-
-	if (state->has_long(state) && this->send_message_long)
-	{
-		if (!src_imv_id)
-		{
-			src_imv_id = this->id;
-		}
-		msg_flags = excl ? TNC_MESSAGE_FLAGS_EXCLUSIVE : 0;
-
-		return this->send_message_long(src_imv_id, connection_id, msg_flags,
-									   msg.ptr, msg.len, this->vendor_id,
-									   this->subtype, dst_imc_id);
-	}
-	if (this->send_message)
-	{
-		type = (this->vendor_id << 8) | this->subtype;
-
-		return this->send_message(this->id, connection_id, msg.ptr, msg.len,
-								  type);
-	}
-	return TNC_RESULT_FATAL;
+	return	this->name;
 }
 
-METHOD(imv_agent_t, set_recommendation, TNC_Result,
-	private_imv_agent_t *this, TNC_ConnectionID connection_id,
-							   TNC_IMV_Action_Recommendation rec,
-							   TNC_IMV_Evaluation_Result eval)
+METHOD(imv_agent_t, get_id, TNC_IMVID,
+	private_imv_agent_t *this)
 {
-	imv_state_t *state;
-
-	state = find_connection(this, connection_id);
-	if (!state)
-	{
-		DBG1(DBG_IMV, "IMV %u \"%s\" has no state for Connection ID %u",
-					  this->id, this->name, connection_id);
-		return TNC_RESULT_FATAL;
-	}
-
-	state->set_recommendation(state, rec, eval);
-	return this->provide_recommendation(this->id, connection_id, rec, eval);
-}
-
-METHOD(imv_agent_t, receive_message, TNC_Result,
-	private_imv_agent_t *this, imv_state_t *state, chunk_t msg,
-	TNC_VendorID msg_vid, TNC_MessageSubtype msg_subtype,
-	TNC_UInt32 src_imc_id, TNC_UInt32 dst_imv_id, pa_tnc_msg_t **pa_tnc_msg)
-{
-	pa_tnc_msg_t *pa_msg, *error_msg;
-	pa_tnc_attr_t *error_attr;
-	enumerator_t *enumerator;
-	TNC_MessageType msg_type;
-	TNC_UInt32 msg_flags, src_imv_id, dst_imc_id;
-	TNC_ConnectionID connection_id;
-	TNC_Result result;
-
-	connection_id = state->get_connection_id(state);
-
-	if (state->has_long(state))
-	{
-		if (dst_imv_id != TNC_IMVID_ANY)
-		{
-			DBG2(DBG_IMV, "IMV %u \"%s\" received message for Connection ID %u "
-						  "from IMC %u to IMV %u", this->id, this->name,
-						   connection_id, src_imc_id, dst_imv_id);
-		}
-		else
-		{
-			DBG2(DBG_IMV, "IMV %u \"%s\" received message for Connection ID %u "
-						  "from IMC %u", this->id, this->name, connection_id,
-						   src_imc_id);
-		}
-	}
-	else
-	{
-		DBG2(DBG_IMV, "IMV %u \"%s\" received message for Connection ID %u",
-					   this->id, this->name, connection_id);
-	}
-
-	*pa_tnc_msg = NULL;
-	pa_msg = pa_tnc_msg_create_from_data(msg);
-
-	switch (pa_msg->process(pa_msg))
-	{
-		case SUCCESS:
-			*pa_tnc_msg = pa_msg;
-			break;
-		case VERIFY_ERROR:
-			/* build error message */
-			error_msg = pa_tnc_msg_create();
-			enumerator = pa_msg->create_error_enumerator(pa_msg);
-			while (enumerator->enumerate(enumerator, &error_attr))
-			{
-				error_msg->add_attribute(error_msg,
-										 error_attr->get_ref(error_attr));
-			}
-			enumerator->destroy(enumerator);
-			error_msg->build(error_msg);
-
-			/* send error message */
-			msg = error_msg->get_encoding(error_msg);
-
-			if (state->has_long(state) && this->send_message_long)
-			{
-				if (state->has_excl(state))
-				{
-					msg_flags =	TNC_MESSAGE_FLAGS_EXCLUSIVE;
-					dst_imc_id = src_imc_id;
-				}
-				else
-				{
-					msg_flags = 0;
-					dst_imc_id = TNC_IMCID_ANY;
-				}
-				src_imv_id = (dst_imv_id == TNC_IMVID_ANY) ? this->id
-														   : dst_imv_id;
-								
-				result = this->send_message_long(src_imv_id, connection_id,
-										msg_flags, msg.ptr, msg.len, msg_vid,
-										msg_subtype, dst_imc_id);
-			}
-			else if (this->send_message)
-			{
-				msg_type = (msg_vid << 8) | msg_subtype;
-
-				result = this->send_message(this->id, connection_id,
-										msg.ptr, msg.len, msg_type);
-			}
-			else
-			{
-				result = TNC_RESULT_FATAL;
-			}
-
-			/* clean up */
-			error_msg->destroy(error_msg);
-			pa_msg->destroy(pa_msg);
-			return result;
-		case FAILED:
-		default:
-			pa_msg->destroy(pa_msg);
-			state->set_recommendation(state,
-							TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
-							TNC_IMV_EVALUATION_RESULT_ERROR);
-			return this->provide_recommendation(this->id, connection_id,
-							TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
-							TNC_IMV_EVALUATION_RESULT_ERROR);
-	}
-	return TNC_RESULT_SUCCESS;
-}
-
-METHOD(imv_agent_t, provide_recommendation, TNC_Result,
-	private_imv_agent_t *this, TNC_ConnectionID connection_id)
-{
-	imv_state_t *state;
-	TNC_IMV_Action_Recommendation rec;
-	TNC_IMV_Evaluation_Result eval;
-	TNC_UInt32 lang_len;
-	char buf[BUF_LEN];
-	chunk_t pref_lang = { buf, 0 }, reason_string, reason_lang;
-
-	state = find_connection(this, connection_id);
-	if (!state)
-	{
-		DBG1(DBG_IMV, "IMV %u \"%s\" has no state for Connection ID %u",
-					  this->id, this->name, connection_id);
-		return TNC_RESULT_FATAL;
-	}
-	state->get_recommendation(state, &rec, &eval);
-
-
-	/* send a reason string if action recommendation is not allow */
-	if (rec != TNC_IMV_ACTION_RECOMMENDATION_ALLOW)
-	{
-		/* check if there a preferred language has been requested */
-		if (this->get_attribute  &&
-			this->get_attribute(this->id, connection_id,
-								TNC_ATTRIBUTEID_PREFERRED_LANGUAGE, BUF_LEN,
-								buf, &lang_len) == TNC_RESULT_SUCCESS &&
-			lang_len <= BUF_LEN)
-		{
-			pref_lang.len = lang_len;
-			DBG2(DBG_IMV, "preferred language is '%.*s'",
-						   pref_lang.len, pref_lang.ptr);
-		}
-
-		/* find a reason string for the preferred or default language and set it */
-		if (this->set_attribute &&
-			state->get_reason_string(state, pref_lang, &reason_string,
-													   &reason_lang))
-		{
-			this->set_attribute(this->id, connection_id,
-								TNC_ATTRIBUTEID_REASON_STRING,
-								reason_string.len, reason_string.ptr);
-			this->set_attribute(this->id, connection_id,
-								TNC_ATTRIBUTEID_REASON_LANGUAGE,
-								reason_lang.len, reason_lang.ptr);
-		}
-	}
-			
-	return this->provide_recommendation(this->id, connection_id, rec, eval);
+	return	this->id;
 }
 
 METHOD(imv_agent_t, reserve_additional_ids, TNC_Result,
@@ -729,6 +642,146 @@ METHOD(imv_agent_t, create_id_enumerator, enumerator_t*,
 	return this->additional_ids->create_enumerator(this->additional_ids);
 }
 
+typedef struct {
+	/**
+	 * implements enumerator_t
+	 */
+	enumerator_t public;
+
+	/**
+	 * language length
+	 */
+	TNC_UInt32 lang_len;
+
+	/**
+	 * language buffer
+	 */
+	char lang_buf[BUF_LEN];
+
+	/**
+	 * position pointer into language buffer
+	 */
+	char *lang_pos;
+
+} language_enumerator_t;
+
+/**
+ * Implementation of language_enumerator.destroy.
+ */
+static void language_enumerator_destroy(language_enumerator_t *this)
+{
+	free(this);
+}
+
+/**
+ * Implementation of language_enumerator.enumerate
+ */
+static bool language_enumerator_enumerate(language_enumerator_t *this, ...)
+{
+	char *pos, *cur_lang, **lang;
+	TNC_UInt32 len;
+	va_list args;
+
+	if (!this->lang_len)
+	{
+		return FALSE;
+	}
+	cur_lang = this->lang_pos;
+	pos = strchr(this->lang_pos, ',');
+	if (pos)
+	{
+		len = pos - this->lang_pos;
+		this->lang_pos += len + 1,
+		this->lang_len -= len + 1;
+	}
+	else
+	{
+		len = this->lang_len;
+		pos = this->lang_pos + len;
+		this->lang_pos = NULL;
+		this->lang_len = 0;
+	}
+
+	/* remove preceding whitespace */
+	while (*cur_lang == ' ' && len--)
+	{
+		cur_lang++;
+	}
+
+	/* remove trailing whitespace */
+	while (len && *(--pos) == ' ')
+	{
+		len--;
+	}
+	cur_lang[len] = '\0';
+
+	va_start(args, this);
+	lang = va_arg(args, char**);
+	*lang = cur_lang;
+	va_end(args);
+
+	return TRUE;
+}
+
+METHOD(imv_agent_t, create_language_enumerator, enumerator_t*,
+	private_imv_agent_t *this, imv_state_t *state)
+{
+	language_enumerator_t *e;
+
+	/* Create a language enumerator instance */
+	e = malloc_thing(language_enumerator_t);
+	e->public.enumerate = (void*)language_enumerator_enumerate;
+	e->public.destroy = (void*)language_enumerator_destroy;
+
+	if (!this->get_attribute ||
+		!this->get_attribute(this->id, state->get_connection_id(state),
+						TNC_ATTRIBUTEID_PREFERRED_LANGUAGE, BUF_LEN,
+						e->lang_buf, &e->lang_len) == TNC_RESULT_SUCCESS ||
+		e->lang_len >= BUF_LEN)
+	{
+		e->lang_len = 0;
+	}
+	e->lang_buf[e->lang_len] = '\0';
+	e->lang_pos = e->lang_buf;
+
+	return (enumerator_t*)e;
+}
+
+METHOD(imv_agent_t, provide_recommendation, TNC_Result,
+	private_imv_agent_t *this, imv_state_t *state)
+{
+	TNC_IMV_Action_Recommendation rec;
+	TNC_IMV_Evaluation_Result eval;
+	TNC_ConnectionID connection_id;
+	chunk_t reason_string;
+	char *reason_lang;
+	enumerator_t *e;
+
+	state->get_recommendation(state, &rec, &eval);
+	connection_id = state->get_connection_id(state);
+
+	/* send a reason string if action recommendation is not allow */
+	if (rec != TNC_IMV_ACTION_RECOMMENDATION_ALLOW)
+	{
+		/* find a reason string for the preferred language and set it */
+		if (this->set_attribute)
+		{
+			e = create_language_enumerator(this, state);
+			if (state->get_reason_string(state, e, &reason_string, &reason_lang))
+			{
+				this->set_attribute(this->id, connection_id,
+									TNC_ATTRIBUTEID_REASON_STRING,
+									reason_string.len, reason_string.ptr);
+				this->set_attribute(this->id, connection_id,
+									TNC_ATTRIBUTEID_REASON_LANGUAGE,
+									strlen(reason_lang), reason_lang);
+			}
+			e->destroy(e);
+		}
+	}
+	return this->provide_recommendation(this->id, connection_id, rec, eval);
+}
+
 METHOD(imv_agent_t, destroy, void,
 	private_imv_agent_t *this)
 {
@@ -747,13 +800,13 @@ METHOD(imv_agent_t, destroy, void,
  * Described in header.
  */
 imv_agent_t *imv_agent_create(const char *name,
-							  pen_t vendor_id, u_int32_t subtype,
+							  pen_type_t *supported_types, u_int32_t type_count,
 							  TNC_IMVID id, TNC_Version *actual_version)
 {
 	private_imv_agent_t *this;
 
 	/* initialize  or increase the reference count */
-	if (!libimcv_init())
+	if (!libimcv_init(TRUE))
 	{
 		return NULL;
 	}
@@ -765,18 +818,18 @@ imv_agent_t *imv_agent_create(const char *name,
 			.delete_state = _delete_state,
 			.change_state = _change_state,
 			.get_state = _get_state,
-			.send_message = _send_message,
-			.receive_message = _receive_message,
-			.set_recommendation = _set_recommendation,
-			.provide_recommendation = _provide_recommendation,
+			.get_name = _get_name,
+			.get_id = _get_id,
 			.reserve_additional_ids = _reserve_additional_ids,
 			.count_additional_ids = _count_additional_ids,
 			.create_id_enumerator = _create_id_enumerator,
+			.create_language_enumerator = _create_language_enumerator,
+			.provide_recommendation = _provide_recommendation,
 			.destroy = _destroy,
 		},
 		.name = name,
-		.vendor_id = vendor_id,
-		.subtype = subtype,
+		.supported_types = supported_types,
+		.type_count = type_count,
 		.id = id,
 		.additional_ids = linked_list_create(),
 		.connections = linked_list_create(),

@@ -123,6 +123,10 @@ typedef enum export_flag_t export_flag_t;
 enum export_flag_t {
 	/** export an X509 certificate */
 	EXPORT_X509 =		0x0001,
+	/** export an X509 end entity certificate for a connection */
+	EXPORT_CONN_CERT =	0x0002,
+	/** export the complete trust chain of a connection */
+	EXPORT_CONN_CHAIN =	0x0004,
 };
 
 /**
@@ -152,18 +156,21 @@ struct stroke_end_t {
 	char *ca;
 	char *ca2;
 	char *groups;
+	char *groups2;
 	char *cert_policy;
 	char *updown;
 	char *address;
 	u_int16_t ikeport;
 	char *sourceip;
-	int sourceip_mask;
+	char *dns;
 	char *subnets;
 	int sendcert;
 	int hostaccess;
 	int tohost;
+	int allow_any;
 	u_int8_t protocol;
-	u_int16_t port;
+	u_int16_t from_port;
+	u_int16_t to_port;
 };
 
 typedef struct stroke_msg_t stroke_msg_t;
@@ -221,6 +228,8 @@ struct stroke_msg_t {
 		STR_MEMUSAGE,
 		/* set username and password for a connection */
 		STR_USER_CREDS,
+		/* print/reset counters */
+		STR_COUNTERS,
 		/* more to come */
 	} type;
 
@@ -242,16 +251,15 @@ struct stroke_msg_t {
 		/* data for STR_ADD_CONN */
 		struct {
 			char *name;
-			int ikev2;
-			/* next three are deprecated, use stroke_end_t.auth instead */
-			int auth_method;
-			u_int32_t eap_type;
-			u_int32_t eap_vendor;
+			int version;
 			char *eap_identity;
 			char *aaa_identity;
+			char *xauth_identity;
 			int mode;
 			int mobike;
+			int aggressive;
 			int force_encap;
+			int fragmentation;
 			int ipcomp;
 			time_t inactivity;
 			int proxy_mode;
@@ -259,6 +267,7 @@ struct stroke_msg_t {
 			int close_action;
 			u_int32_t reqid;
 			u_int32_t tfc;
+			u_int8_t ikedscp;
 
 			crl_policy_t crl_policy;
 			int unique;
@@ -280,6 +289,7 @@ struct stroke_msg_t {
 			} rekey;
 			struct {
 				time_t delay;
+				time_t timeout;
 				int action;
 			} dpd;
 			struct {
@@ -350,6 +360,13 @@ struct stroke_msg_t {
 			char *username;
 			char *password;
 		} user_creds;
+
+		/* data for STR_COUNTERS */
+		struct {
+			/* reset or print counters? */
+			int reset;
+			char *name;
+		} counters;
 	};
 	char buffer[STROKE_BUF_LEN];
 };

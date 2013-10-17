@@ -15,14 +15,14 @@
 
 #include "pkcs1_encoder.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/asn1.h>
 #include <asn1/oid.h>
 
 /**
  * Encode a public key in PKCS#1/ASN.1 DER
  */
-bool build_pub(chunk_t *encoding, va_list args)
+static bool build_pub(chunk_t *encoding, va_list args)
 {
 	chunk_t n, e;
 
@@ -40,7 +40,7 @@ bool build_pub(chunk_t *encoding, va_list args)
 /**
  * Encode a public key in PKCS#1/ASN.1 DER, contained in subjectPublicKeyInfo
  */
-bool build_pub_info(chunk_t *encoding, va_list args)
+static bool build_pub_info(chunk_t *encoding, va_list args)
 {
 	chunk_t n, e;
 
@@ -61,7 +61,7 @@ bool build_pub_info(chunk_t *encoding, va_list args)
 /**
  * Encode a private key in PKCS#1/ASN.1 DER
  */
-bool build_priv(chunk_t *encoding, va_list args)
+static bool build_priv(chunk_t *encoding, va_list args)
 {
 	chunk_t n, e, d, p, q, exp1, exp2, coeff;
 
@@ -94,14 +94,14 @@ static bool hash_pubkey(chunk_t pubkey, chunk_t *hash)
 	hasher_t *hasher;
 
 	hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-	if (hasher == NULL)
+	if (!hasher || !hasher->allocate_hash(hasher, pubkey, hash))
 	{
+		DESTROY_IF(hasher);
 		chunk_free(&pubkey);
 		DBG1(DBG_LIB, "SHA1 hash algorithm not supported, "
 			 "fingerprinting failed");
 		return FALSE;
 	}
-	hasher->allocate_hash(hasher, pubkey, hash);
 	hasher->destroy(hasher);
 	chunk_free(&pubkey);
 	return TRUE;

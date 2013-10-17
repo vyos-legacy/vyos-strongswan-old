@@ -21,9 +21,9 @@
 #include <string.h>
 #include <errno.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <library.h>
-#include <utils/host.h>
+#include <networking/host.h>
 #include <utils/identification.h>
 #include <attributes/attributes.h>
 
@@ -493,6 +493,21 @@ static void add_addresses(char *pool, char *path, int timeout)
 	if (file != stdin)
 	{
 		fclose(file);
+	}
+
+	if (family == AF_INET6)
+	{	/* update address family if necessary */
+		addr = host_create_from_string("%any6", 0);
+		if (db->execute(db, NULL,
+					"UPDATE pools SET start = ?, end = ? WHERE id = ?",
+					DB_BLOB, addr->get_address(addr),
+					DB_BLOB, addr->get_address(addr), DB_UINT, pool_id) <= 0)
+		{
+			addr->destroy(addr);
+			fprintf(stderr, "updating pool address family failed.\n");
+			exit(EXIT_FAILURE);
+		}
+		addr->destroy(addr);
 	}
 
 	commit_transaction();
@@ -1245,7 +1260,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "integrity check of pool failed\n");
 		exit(SS_RC_DAEMON_INTEGRITY);
 	}
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			lib->settings->get_str(lib->settings, "pool.load", PLUGINS)))
 	{
 		exit(SS_RC_INITIALIZATION_FAILED);

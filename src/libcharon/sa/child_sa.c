@@ -25,6 +25,7 @@
 
 #include <hydra.h>
 #include <daemon.h>
+#include <collections/array.h>
 
 ENUM(child_sa_state_names, CHILD_CREATED, CHILD_DESTROYING,
 	"CREATED",
@@ -79,14 +80,14 @@ struct private_child_sa_t {
 	u_int16_t other_cpi;
 
 	/**
-	 * List for local traffic selectors
+	 * Array for local traffic selectors
 	 */
-	linked_list_t *my_ts;
+	array_t *my_ts;
 
 	/**
-	 * List for remote traffic selectors
+	 * Array for remote traffic selectors
 	 */
-	linked_list_t *other_ts;
+	array_t *other_ts;
 
 	/**
 	 * Protocol used to protect this SA, ESP|AH
@@ -122,6 +123,11 @@ struct private_child_sa_t {
 	 * state of the CHILD_SA
 	 */
 	child_sa_state_t state;
+
+	/**
+	 * TRUE if this CHILD_SA is used to install trap policies
+	 */
+	bool trap;
 
 	/**
 	 * Specifies if UDP encapsulation is enabled (NAT traversal)
@@ -177,6 +183,16 @@ struct private_child_sa_t {
 	 * last number of outbound bytes
 	 */
 	u_int64_t other_usebytes;
+
+	/**
+	 * last number of inbound packets
+	 */
+	u_int64_t my_usepackets;
+
+	/**
+	 * last number of outbound bytes
+	 */
+	u_int64_t other_usepackets;
 };
 
 /**
@@ -316,10 +332,14 @@ METHOD(child_sa_t, set_proposal, void,
 	this->proposal = proposal->clone(proposal);
 }
 
-METHOD(child_sa_t, get_traffic_selectors, linked_list_t*,
-	   private_child_sa_t *this, bool local)
+METHOD(child_sa_t, create_ts_enumerator, enumerator_t*,
+	private_child_sa_t *this, bool local)
 {
-	return local ? this->my_ts : this->other_ts;
+	if (local)
+	{
+		return array_create_enumerator(this->my_ts);
+	}
+	return array_create_enumerator(this->other_ts);
 }
 
 typedef struct policy_enumerator_t policy_enumerator_t;
@@ -334,8 +354,8 @@ struct policy_enumerator_t {
 	enumerator_t *mine;
 	/** enumerator over others TS */
 	enumerator_t *other;
-	/** list of others TS, to recreate enumerator */
-	linked_list_t *list;
+	/** array of others TS, to recreate enumerator */
+	array_t *array;
 	/** currently enumerating TS for "me" side */
 	traffic_selector_t *ts;
 };
@@ -351,7 +371,7 @@ METHOD(enumerator_t, policy_enumerate, bool,
 		if (!this->other->enumerate(this->other, &other_ts))
 		{	/* end of others list, restart with new of mine */
 			this->other->destroy(this->other);
-			this->other = this->list->create_enumerator(this->list);
+			this->other = array_create_enumerator(this->array);
 			this->ts = NULL;
 			continue;
 		}
@@ -390,9 +410,9 @@ METHOD(child_sa_t, create_policy_enumerator, enumerator_t*,
 			.enumerate = (void*)_policy_enumerate,
 			.destroy = _policy_destroy,
 		},
-		.mine = this->my_ts->create_enumerator(this->my_ts),
-		.other = this->other_ts->create_enumerator(this->other_ts),
-		.list = this->other_ts,
+		.mine = array_create_enumerator(this->my_ts),
+		.other = array_create_enumerator(this->other_ts),
+		.array = this->other_ts,
 		.ts = NULL,
 	);
 
@@ -408,7 +428,8 @@ METHOD(child_sa_t, create_policy_enumerator, enumerator_t*,
 static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 {
 	status_t status = FAILED;
-	u_int64_t bytes;
+	u_int64_t bytes, packets;
+	u_int32_t time;
 
 	if (inbound)
 	{
@@ -417,12 +438,17 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 			status = hydra->kernel_interface->query_sa(hydra->kernel_interface,
 							this->other_addr, this->my_addr, this->my_spi,
 							proto_ike2ip(this->protocol), this->mark_in,
-							&bytes);
+							&bytes, &packets, &time);
 			if (status == SUCCESS)
 			{
 				if (bytes > this->my_usebytes)
 				{
 					this->my_usebytes = bytes;
+					this->my_usepackets = packets;
+					if (time)
+					{
+						this->my_usetime = time;
+					}
 					return SUCCESS;
 				}
 				return FAILED;
@@ -436,12 +462,17 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 			status = hydra->kernel_interface->query_sa(hydra->kernel_interface,
 							this->my_addr, this->other_addr, this->other_spi,
 							proto_ike2ip(this->protocol), this->mark_out,
-							&bytes);
+							&bytes, &packets, &time);
 			if (status == SUCCESS)
 			{
 				if (bytes > this->other_usebytes)
 				{
 					this->other_usebytes = bytes;
+					this->other_usepackets = packets;
+					if (time)
+					{
+						this->other_usetime = time;
+					}
 					return SUCCESS;
 				}
 				return FAILED;
@@ -454,7 +485,7 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 /**
  * updates the cached usetime
  */
-static void update_usetime(private_child_sa_t *this, bool inbound)
+static bool update_usetime(private_child_sa_t *this, bool inbound)
 {
 	enumerator_t *enumerator;
 	traffic_selector_t *my_ts, *other_ts;
@@ -494,7 +525,7 @@ static void update_usetime(private_child_sa_t *this, bool inbound)
 
 	if (last_use == 0)
 	{
-		return;
+		return FALSE;
 	}
 	if (inbound)
 	{
@@ -504,17 +535,26 @@ static void update_usetime(private_child_sa_t *this, bool inbound)
 	{
 		this->other_usetime = last_use;
 	}
+	return TRUE;
 }
 
 METHOD(child_sa_t, get_usestats, void,
-	   private_child_sa_t *this, bool inbound, time_t *time, u_int64_t *bytes)
+	private_child_sa_t *this, bool inbound,
+	time_t *time, u_int64_t *bytes, u_int64_t *packets)
 {
-	if (update_usebytes(this, inbound) != FAILED)
+	if ((!bytes && !packets) || update_usebytes(this, inbound) != FAILED)
 	{
 		/* there was traffic since last update or the kernel interface
 		 * does not support querying the number of usebytes.
 		 */
-		update_usetime(this, inbound);
+		if (time)
+		{
+			if (!update_usetime(this, inbound) && !bytes && !packets)
+			{
+				/* if policy query did not yield a usetime, query SAs instead */
+				update_usebytes(this, inbound);
+			}
+		}
 	}
 	if (time)
 	{
@@ -524,6 +564,20 @@ METHOD(child_sa_t, get_usestats, void,
 	{
 		*bytes = inbound ? this->my_usebytes : this->other_usebytes;
 	}
+	if (packets)
+	{
+		*packets = inbound ? this->my_usepackets : this->other_usepackets;
+	}
+}
+
+METHOD(child_sa_t, get_mark, mark_t,
+	private_child_sa_t *this, bool inbound)
+{
+	if (inbound)
+	{
+		return this->mark_in;
+	}
+	return this->mark_out;
 }
 
 METHOD(child_sa_t, get_lifetime, time_t,
@@ -558,9 +612,9 @@ METHOD(child_sa_t, alloc_cpi, u_int16_t,
 }
 
 METHOD(child_sa_t, install, status_t,
-	   private_child_sa_t *this, chunk_t encr, chunk_t integ, u_int32_t spi,
-	   u_int16_t cpi, bool inbound, bool tfcv3, linked_list_t *my_ts,
-	   linked_list_t *other_ts)
+	private_child_sa_t *this, chunk_t encr, chunk_t integ, u_int32_t spi,
+	u_int16_t cpi, bool initiator, bool inbound, bool tfcv3,
+	linked_list_t *my_ts, linked_list_t *other_ts)
 {
 	u_int16_t enc_alg = ENCR_UNDEFINED, int_alg = AUTH_UNDEFINED, size;
 	u_int16_t esn = NO_EXT_SEQ_NUMBERS;
@@ -617,7 +671,14 @@ METHOD(child_sa_t, install, status_t,
 	now = time_monotonic(NULL);
 	if (lifetime->time.rekey)
 	{
-		this->rekey_time = now + lifetime->time.rekey;
+		if (this->rekey_time)
+		{
+			this->rekey_time = min(this->rekey_time, now + lifetime->time.rekey);
+		}
+		else
+		{
+			this->rekey_time = now + lifetime->time.rekey;
+		}
 	}
 	if (lifetime->time.life)
 	{
@@ -629,28 +690,26 @@ METHOD(child_sa_t, install, status_t,
 		lifetime->time.rekey = 0;
 	}
 
-	if (this->mode == MODE_BEET || this->mode == MODE_TRANSPORT)
+	/* BEET requires the bound address from the traffic selectors.
+	 * TODO: We add just the first traffic selector for now, as the
+	 * kernel accepts a single TS per SA only */
+	if (inbound)
 	{
-		/* BEET requires the bound address from the traffic selectors.
-		 * TODO: We add just the first traffic selector for now, as the
-		 * kernel accepts a single TS per SA only */
-		if (inbound)
-		{
-			my_ts->get_first(my_ts, (void**)&dst_ts);
-			other_ts->get_first(other_ts, (void**)&src_ts);
-		}
-		else
-		{
-			my_ts->get_first(my_ts, (void**)&src_ts);
-			other_ts->get_first(other_ts, (void**)&dst_ts);
-		}
+		my_ts->get_first(my_ts, (void**)&dst_ts);
+		other_ts->get_first(other_ts, (void**)&src_ts);
+	}
+	else
+	{
+		my_ts->get_first(my_ts, (void**)&src_ts);
+		other_ts->get_first(other_ts, (void**)&dst_ts);
 	}
 
 	status = hydra->kernel_interface->add_sa(hydra->kernel_interface,
 				src, dst, spi, proto_ike2ip(this->protocol), this->reqid,
 				inbound ? this->mark_in : this->mark_out, tfc,
 				lifetime, enc_alg, encr, int_alg, integ, this->mode,
-				this->ipcomp, cpi, this->encap, esn, update, src_ts, dst_ts);
+				this->ipcomp, cpi, initiator, this->encap, esn, update,
+				src_ts, dst_ts);
 
 	free(lifetime);
 
@@ -718,13 +777,13 @@ METHOD(child_sa_t, add_policies, status_t,
 	enumerator = my_ts_list->create_enumerator(my_ts_list);
 	while (enumerator->enumerate(enumerator, &my_ts))
 	{
-		this->my_ts->insert_last(this->my_ts, my_ts->clone(my_ts));
+		array_insert(this->my_ts, ARRAY_TAIL, my_ts->clone(my_ts));
 	}
 	enumerator->destroy(enumerator);
 	enumerator = other_ts_list->create_enumerator(other_ts_list);
 	while (enumerator->enumerate(enumerator, &other_ts))
 	{
-		this->other_ts->insert_last(this->other_ts, other_ts->clone(other_ts));
+		array_insert(this->other_ts, ARRAY_TAIL, other_ts->clone(other_ts));
 	}
 	enumerator->destroy(enumerator);
 
@@ -757,8 +816,11 @@ METHOD(child_sa_t, add_policies, status_t,
 			other_sa.ah.spi = this->other_spi;
 		}
 
-		priority = this->state == CHILD_CREATED ? POLICY_PRIORITY_ROUTED
-												: POLICY_PRIORITY_DEFAULT;
+		/* if we're not in state CHILD_INSTALLING (i.e. if there is no SAD
+		 * entry) we install a trap policy */
+		this->trap = this->state == CHILD_CREATED;
+		priority = this->trap ? POLICY_PRIORITY_ROUTED
+							  : POLICY_PRIORITY_DEFAULT;
 
 		/* enumerate pairs of traffic selectors */
 		enumerator = create_policy_enumerator(this);
@@ -787,16 +849,32 @@ METHOD(child_sa_t, add_policies, status_t,
 		enumerator->destroy(enumerator);
 	}
 
-	if (status == SUCCESS && this->state == CHILD_CREATED)
-	{	/* switch to routed state if no SAD entry set up */
+	if (status == SUCCESS && this->trap)
+	{
 		set_state(this, CHILD_ROUTED);
 	}
 	return status;
 }
 
+/**
+ * Callback to reinstall a virtual IP
+ */
+static void reinstall_vip(host_t *vip, host_t *me)
+{
+	char *iface;
+
+	if (hydra->kernel_interface->get_interface(hydra->kernel_interface,
+											   me, &iface))
+	{
+		hydra->kernel_interface->del_ip(hydra->kernel_interface, vip, -1, TRUE);
+		hydra->kernel_interface->add_ip(hydra->kernel_interface, vip, -1, iface);
+		free(iface);
+	}
+}
+
 METHOD(child_sa_t, update, status_t,
-	   private_child_sa_t *this,  host_t *me, host_t *other, host_t *vip,
-	   bool encap)
+	private_child_sa_t *this,  host_t *me, host_t *other, linked_list_t *vips,
+	bool encap)
 {
 	child_sa_state_t old;
 	bool transport_proxy_mode;
@@ -902,13 +980,7 @@ METHOD(child_sa_t, update, status_t,
 
 				/* we reinstall the virtual IP to handle interface roaming
 				 * correctly */
-				if (vip)
-				{
-					hydra->kernel_interface->del_ip(hydra->kernel_interface,
-													vip);
-					hydra->kernel_interface->add_ip(hydra->kernel_interface,
-													vip, me);
-				}
+				vips->invoke_function(vips, (void*)reinstall_vip, me);
 
 				/* reinstall updated policies */
 				install_policies_internal(this, me, other, my_ts, other_ts,
@@ -960,8 +1032,7 @@ METHOD(child_sa_t, destroy, void,
 	traffic_selector_t *my_ts, *other_ts;
 	policy_priority_t priority;
 
-	priority = this->state == CHILD_ROUTED ? POLICY_PRIORITY_ROUTED
-										   : POLICY_PRIORITY_DEFAULT;
+	priority = this->trap ? POLICY_PRIORITY_ROUTED : POLICY_PRIORITY_DEFAULT;
 
 	set_state(this, CHILD_DESTROYING);
 
@@ -1003,8 +1074,8 @@ METHOD(child_sa_t, destroy, void,
 		enumerator->destroy(enumerator);
 	}
 
-	this->my_ts->destroy_offset(this->my_ts, offsetof(traffic_selector_t, destroy));
-	this->other_ts->destroy_offset(this->other_ts, offsetof(traffic_selector_t, destroy));
+	array_destroy_offset(this->my_ts, offsetof(traffic_selector_t, destroy));
+	array_destroy_offset(this->other_ts, offsetof(traffic_selector_t, destroy));
 	this->my_addr->destroy(this->my_addr);
 	this->other_addr->destroy(this->other_addr);
 	DESTROY_IF(this->proposal);
@@ -1013,12 +1084,47 @@ METHOD(child_sa_t, destroy, void,
 }
 
 /**
+ * Get proxy address for one side, if any
+ */
+static host_t* get_proxy_addr(child_cfg_t *config, host_t *ike, bool local)
+{
+	host_t *host = NULL;
+	u_int8_t mask;
+	enumerator_t *enumerator;
+	linked_list_t *ts_list, *list;
+	traffic_selector_t *ts;
+
+	list = linked_list_create_with_items(ike, NULL);
+	ts_list = config->get_traffic_selectors(config, local, NULL, list);
+	list->destroy(list);
+
+	enumerator = ts_list->create_enumerator(ts_list);
+	while (enumerator->enumerate(enumerator, &ts))
+	{
+		if (ts->is_host(ts, NULL) && ts->to_subnet(ts, &host, &mask))
+		{
+			DBG1(DBG_CHD, "%s address: %H is a transport mode proxy for %H",
+				 local ? "my" : "other", ike, host);
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	ts_list->destroy_offset(ts_list, offsetof(traffic_selector_t, destroy));
+
+	if (!host)
+	{
+		host = ike->clone(ike);
+	}
+	return host;
+}
+
+/**
  * Described in header.
  */
 child_sa_t * child_sa_create(host_t *me, host_t* other,
 							 child_cfg_t *config, u_int32_t rekey, bool encap)
 {
-	static u_int32_t reqid = 0;
+	static refcount_t reqid = 0;
 	private_child_sa_t *this;
 
 	INIT(this,
@@ -1038,6 +1144,7 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 			.set_proposal = _set_proposal,
 			.get_lifetime = _get_lifetime,
 			.get_usestats = _get_usestats,
+			.get_mark = _get_mark,
 			.has_encap = _has_encap,
 			.get_ipcomp = _get_ipcomp,
 			.set_ipcomp = _set_ipcomp,
@@ -1050,17 +1157,15 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 			.install = _install,
 			.update = _update,
 			.add_policies = _add_policies,
-			.get_traffic_selectors = _get_traffic_selectors,
+			.create_ts_enumerator = _create_ts_enumerator,
 			.create_policy_enumerator = _create_policy_enumerator,
 			.destroy = _destroy,
 		},
-		.my_addr = me->clone(me),
-		.other_addr = other->clone(other),
 		.encap = encap,
 		.ipcomp = IPCOMP_NONE,
 		.state = CHILD_CREATED,
-		.my_ts = linked_list_create(),
-		.other_ts = linked_list_create(),
+		.my_ts = array_create(0, 0),
+		.other_ts = array_create(0, 0),
 		.protocol = PROTO_NONE,
 		.mode = MODE_TUNNEL,
 		.close_action = config->get_close_action(config),
@@ -1076,65 +1181,42 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 	if (!this->reqid)
 	{
 		/* reuse old reqid if we are rekeying an existing CHILD_SA */
-		this->reqid = rekey ? rekey : ++reqid;
+		if (rekey)
+		{
+			this->reqid = rekey;
+		}
+		else
+		{
+			this->reqid = charon->traps->find_reqid(charon->traps, config);
+			if (!this->reqid)
+			{
+				this->reqid = ref_get(&reqid);
+			}
+		}
+	}
+
+	if (this->mark_in.value == MARK_REQID)
+	{
+		this->mark_in.value = this->reqid;
+	}
+	if (this->mark_out.value == MARK_REQID)
+	{
+		this->mark_out.value = this->reqid;
 	}
 
 	/* MIPv6 proxy transport mode sets SA endpoints to TS hosts */
 	if (config->get_mode(config) == MODE_TRANSPORT &&
 		config->use_proxy_mode(config))
 	{
-		ts_type_t type;
-		int family;
-		chunk_t addr;
-		host_t *host;
-		enumerator_t *enumerator;
-		linked_list_t *my_ts_list, *other_ts_list;
-		traffic_selector_t *my_ts, *other_ts;
-
 		this->mode = MODE_TRANSPORT;
 
-		my_ts_list = config->get_traffic_selectors(config, TRUE, NULL, me);
-		enumerator = my_ts_list->create_enumerator(my_ts_list);
-		if (enumerator->enumerate(enumerator, &my_ts))
-		{
-			if (my_ts->is_host(my_ts, NULL) &&
-			   !my_ts->is_host(my_ts, this->my_addr))
-			{
-				type = my_ts->get_type(my_ts);
-				family = (type == TS_IPV4_ADDR_RANGE) ? AF_INET : AF_INET6;
-				addr = my_ts->get_from_address(my_ts);
-				host = host_create_from_chunk(family, addr, 0);
-				free(addr.ptr);
-				DBG1(DBG_CHD, "my address: %H is a transport mode proxy for %H",
-							   this->my_addr, host);
-				this->my_addr->destroy(this->my_addr);
-				this->my_addr = host;
-			}
-		}
-		enumerator->destroy(enumerator);
-		my_ts_list->destroy_offset(my_ts_list, offsetof(traffic_selector_t, destroy));
-
-		other_ts_list = config->get_traffic_selectors(config, FALSE, NULL, other);
-		enumerator = other_ts_list->create_enumerator(other_ts_list);
-		if (enumerator->enumerate(enumerator, &other_ts))
-		{
-			if (other_ts->is_host(other_ts, NULL) &&
-			   !other_ts->is_host(other_ts, this->other_addr))
-			{
-				type = other_ts->get_type(other_ts);
-				family = (type == TS_IPV4_ADDR_RANGE) ? AF_INET : AF_INET6;
-				addr = other_ts->get_from_address(other_ts);
-				host = host_create_from_chunk(family, addr, 0);
-				free(addr.ptr);
-				DBG1(DBG_CHD, "other address: %H is a transport mode proxy for %H",
-							   this->other_addr, host);
-				this->other_addr->destroy(this->other_addr);
-				this->other_addr = host;
-			}
-		}
-		enumerator->destroy(enumerator);
-		other_ts_list->destroy_offset(other_ts_list, offsetof(traffic_selector_t, destroy));
+		this->my_addr = get_proxy_addr(config, me, TRUE);
+		this->other_addr = get_proxy_addr(config, other, FALSE);
 	}
-
+	else
+	{
+		this->my_addr = me->clone(me);
+		this->other_addr = other->clone(other);
+	}
 	return &this->public;
 }

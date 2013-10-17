@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,13 +16,15 @@
 /**
  *
  * @defgroup imc_state_t imc_state
- * @{ @ingroup imc_state
+ * @{ @ingroup libimcv_imc
  */
 
 #ifndef IMC_STATE_H_
 #define IMC_STATE_H_
 
 #include <tncif.h>
+#include <tncifimv.h>
+#include <tncifimc.h>
 
 #include <library.h>
 
@@ -33,8 +36,7 @@ typedef struct imc_state_t imc_state_t;
 struct imc_state_t {
 
 	/**
-	 * Get the TNCS connection I
-D attached to the state
+	 * Get the TNCS connection ID attached to the state
 	 *
 	 * @return				TNCS connection ID of the state
 	 */
@@ -64,11 +66,44 @@ D attached to the state
 	void (*set_flags)(imc_state_t *this, bool has_long, bool has_excl);
 
 	/**
+	 * Set the maximum size of a PA-TNC message for this TNCCS connection
+	 *
+	 * @param max_msg_len	maximum size of a PA-TNC message
+	 */
+	void (*set_max_msg_len)(imc_state_t *this, u_int32_t max_msg_len);
+
+	/**
+	 * Get the maximum size of a PA-TNC message for this TNCCS connection
+	 *
+	 * @return				maximum size of a PA-TNC message
+	 */
+	u_int32_t (*get_max_msg_len)(imc_state_t *this);
+
+	/**
 	 * Change the connection state
 	 *
 	 * @param new_state		new connection state
 	 */
 	void (*change_state)(imc_state_t *this, TNC_ConnectionState new_state);
+
+	/**
+	 * Set the Assessment/Evaluation Result
+	 *
+	 * @param id			IMC ID
+	 * @param result		Assessment/Evaluation Result
+	 */
+	void (*set_result)(imc_state_t *this, TNC_IMCID id,
+										  TNC_IMV_Evaluation_Result result);
+
+	/**
+	 * Get the Assessment/Evaluation Result
+	 *
+	 * @param id			IMC ID
+	 * @param result		Assessment/Evaluation Result
+	 * @return				TRUE if result is known
+	 */
+	bool (*get_result)(imc_state_t *this, TNC_IMCID id,
+										  TNC_IMV_Evaluation_Result *result);
 
 	/**
 	 * Destroys an imc_state_t object

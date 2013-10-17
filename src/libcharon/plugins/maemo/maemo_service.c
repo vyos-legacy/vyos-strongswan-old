@@ -323,17 +323,21 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 								NULL);
 	}
 
-	ike_cfg = ike_cfg_create(TRUE, FALSE, "0.0.0.0", IKEV2_UDP_PORT,
-							 hostname, IKEV2_UDP_PORT);
+	ike_cfg = ike_cfg_create(IKEV2, TRUE, FALSE, "0.0.0.0", FALSE,
+							 charon->socket->get_port(charon->socket, FALSE),
+							 hostname, FALSE, IKEV2_UDP_PORT, FRAGMENTATION_NO,
+							 0);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
 
-	peer_cfg = peer_cfg_create(this->current, 2, ike_cfg, CERT_SEND_IF_ASKED,
+	peer_cfg = peer_cfg_create(this->current, ike_cfg,
+							   CERT_SEND_IF_ASKED,
 							   UNIQUE_REPLACE, 1, /* keyingtries */
 							   36000, 0, /* rekey 10h, reauth none */
 							   600, 600, /* jitter, over 10min */
-							   TRUE, 0, /* mobike, DPD */
-							   host_create_from_string("0.0.0.0", 0) /* virt */,
-							   NULL, FALSE, NULL, NULL); /* pool, mediation */
+							   TRUE, FALSE, /* mobike, aggressive */
+							   0, 0, /* DPD delay, timeout */
+							   FALSE, NULL, NULL); /* mediation */
+	peer_cfg->add_virtual_ip(peer_cfg,  host_create_from_string("0.0.0.0", 0));
 
 	auth = auth_cfg_create();
 	auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_EAP);
@@ -354,12 +358,16 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 											 0, "255.255.255.255", 65535);
 	child_cfg->add_traffic_selector(child_cfg, FALSE, ts);
 	peer_cfg->add_child_cfg(peer_cfg, child_cfg);
-	/* get an additional reference because initiate consumes one */
-	child_cfg->get_ref(child_cfg);
 
 	/* get us an IKE_SA */
 	ike_sa = charon->ike_sa_manager->checkout_by_config(charon->ike_sa_manager,
 														peer_cfg);
+	if (!ike_sa)
+	{
+		peer_cfg->destroy(peer_cfg);
+		this->status = VPN_STATUS_CONNECTION_FAILED;
+		return FALSE;
+	}
 	if (!ike_sa->get_peer_cfg(ike_sa))
 	{
 		ike_sa->set_peer_cfg(ike_sa, peer_cfg);
@@ -373,6 +381,8 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 	this->public.listener.ike_state_change = _ike_state_change;
 	charon->bus->add_listener(charon->bus, &this->public.listener);
 
+	/* get an additional reference because initiate consumes one */
+	child_cfg->get_ref(child_cfg);
 	if (ike_sa->initiate(ike_sa, child_cfg, 0, NULL, NULL) != SUCCESS)
 	{
 		DBG1(DBG_CFG, "failed to initiate tunnel");
@@ -423,8 +433,10 @@ static job_requeue_t run(private_maemo_service_t *this)
 	return JOB_REQUEUE_NONE;
 }
 
-METHOD(maemo_service_t, destroy, void,
-	   private_maemo_service_t *this)
+/**
+ * Cancel the GLib Main Event Loop
+ */
+static bool cancel(private_maemo_service_t *this)
 {
 	if (this->loop)
 	{
@@ -434,6 +446,12 @@ METHOD(maemo_service_t, destroy, void,
 		}
 		g_main_loop_unref(this->loop);
 	}
+	return TRUE;
+}
+
+METHOD(maemo_service_t, destroy, void,
+	   private_maemo_service_t *this)
+{
 	if (this->context)
 	{
 		osso_rpc_unset_cb_f(this->context,
@@ -502,9 +520,8 @@ maemo_service_t *maemo_service_create()
 	}
 
 	lib->processor->queue_job(lib->processor,
-				(job_t*)callback_job_create_with_prio((callback_job_cb_t)run,
-										this, NULL, NULL, JOB_PRIO_CRITICAL));
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)run, this,
+				NULL, (callback_job_cancel_t)cancel, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }
-

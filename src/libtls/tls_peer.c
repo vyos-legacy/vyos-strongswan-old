@@ -15,7 +15,7 @@
 
 #include "tls_peer.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <credentials/certificates/x509.h>
 
 #include <time.h>
@@ -665,6 +665,8 @@ METHOD(tls_handshake_t, process, status_t,
 			{
 				return process_certreq(this, reader);
 			}
+			/* no cert request, server does not want to authenticate us */
+			DESTROY_IF(this->peer);
 			this->peer = NULL;
 			/* fall through since TLS_CERTIFICATE_REQUEST is optional */
 		case STATE_CERTREQ_RECEIVED:
@@ -709,13 +711,15 @@ static status_t send_client_hello(private_tls_peer_t *this,
 
 	htoun32(&this->client_random, time(NULL));
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng ||
+		!rng->get_bytes(rng, sizeof(this->client_random) - 4,
+						this->client_random + 4))
 	{
-		DBG1(DBG_TLS, "no suitable RNG found to generate client random");
+		DBG1(DBG_TLS, "failed to generate client random");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(this->client_random) - 4, this->client_random + 4);
 	rng->destroy(rng);
 
 	/* TLS version */
@@ -758,6 +762,7 @@ static status_t send_client_hello(private_tls_peer_t *this,
 	enumerator->destroy(enumerator);
 	if (curves)
 	{
+		curves->wrap16(curves);
 		extensions->write_data16(extensions, curves->get_buf(curves));
 		curves->destroy(curves);
 
@@ -847,6 +852,7 @@ static status_t send_certificate(private_tls_peer_t *this,
 	{
 		DBG1(DBG_TLS, "no TLS peer certificate found for '%Y', "
 			 "skipping client authentication", this->peer);
+		this->peer->destroy(this->peer);
 		this->peer = NULL;
 	}
 
@@ -903,20 +909,24 @@ static status_t send_key_exchange_encrypt(private_tls_peer_t *this,
 	chunk_t encrypted;
 
 	rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
-	if (!rng)
+	if (!rng || !rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2))
 	{
-		DBG1(DBG_TLS, "no suitable RNG found for TLS premaster secret");
+		DBG1(DBG_TLS, "failed to generate TLS premaster secret");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2);
 	rng->destroy(rng);
 	htoun16(premaster, TLS_1_2);
 
-	this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
-								 this->session, this->server,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
+									  this->session, this->server,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		return NEED_MORE;
+	}
 
 	public = find_public_key(this);
 	if (!public)
@@ -958,10 +968,15 @@ static status_t send_key_exchange_dhe(private_tls_peer_t *this,
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
 		return NEED_MORE;
 	}
-	this->crypto->derive_secrets(this->crypto, premaster,
-								 this->session, this->server,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, premaster,
+									  this->session, this->server,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		chunk_clear(&premaster);
+		return NEED_MORE;
+	}
 	chunk_clear(&premaster);
 
 	this->dh->get_my_public_value(this->dh, &pub);
@@ -1120,11 +1135,25 @@ METHOD(tls_handshake_t, finished, bool,
 	return this->state == STATE_FINISHED_RECEIVED;
 }
 
+METHOD(tls_handshake_t, get_peer_id, identification_t*,
+	private_tls_peer_t *this)
+{
+	return this->peer;
+}
+
+METHOD(tls_handshake_t, get_server_id, identification_t*,
+	private_tls_peer_t *this)
+{
+	return this->server;
+}
+
 METHOD(tls_handshake_t, destroy, void,
 	private_tls_peer_t *this)
 {
 	DESTROY_IF(this->private);
 	DESTROY_IF(this->dh);
+	DESTROY_IF(this->peer);
+	this->server->destroy(this->server);
 	this->peer_auth->destroy(this->peer_auth);
 	this->server_auth->destroy(this->server_auth);
 	free(this->hashsig.ptr);
@@ -1149,6 +1178,8 @@ tls_peer_t *tls_peer_create(tls_t *tls, tls_crypto_t *crypto, tls_alert_t *alert
 				.cipherspec_changed = _cipherspec_changed,
 				.change_cipherspec = _change_cipherspec,
 				.finished = _finished,
+				.get_peer_id = _get_peer_id,
+				.get_server_id = _get_server_id,
 				.destroy = _destroy,
 			},
 		},
@@ -1156,8 +1187,8 @@ tls_peer_t *tls_peer_create(tls_t *tls, tls_crypto_t *crypto, tls_alert_t *alert
 		.tls = tls,
 		.crypto = crypto,
 		.alert = alert,
-		.peer = peer,
-		.server = server,
+		.peer = peer ? peer->clone(peer) : NULL,
+		.server = server->clone(server),
 		.peer_auth = auth_cfg_create(),
 		.server_auth = auth_cfg_create(),
 	);

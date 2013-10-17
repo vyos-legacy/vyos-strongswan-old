@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -14,9 +14,11 @@
  */
 
 /**
+ * @defgroup imv_attestation imv_attestation
+ * @ingroup libpts_plugins
  *
  * @defgroup imv_attestation_state_t imv_attestation_state
- * @{ @ingroup imv_attestation_state
+ * @{ @ingroup imv_attestation
  */
 
 #ifndef IMV_ATTESTATION_STATE_H_
@@ -24,11 +26,24 @@
 
 #include <imv/imv_state.h>
 #include <pts/pts.h>
+#include <pts/pts_database.h>
 #include <pts/components/pts_component.h>
 #include <library.h>
 
 typedef struct imv_attestation_state_t imv_attestation_state_t;
+typedef enum imv_attestation_flag_t imv_attestation_flag_t;
 typedef enum imv_attestation_handshake_state_t imv_attestation_handshake_state_t;
+typedef enum imv_meas_error_t imv_meas_error_t;
+
+/**
+ * IMV Attestation Flags set for completed actions
+ */
+enum imv_attestation_flag_t {
+	IMV_ATTESTATION_FLAG_ATTR_REQ =  (1<<0),
+	IMV_ATTESTATION_FLAG_ALGO =      (1<<1),
+	IMV_ATTESTATION_FLAG_FILE_MEAS = (1<<2),
+	IMV_ATTESTATION_FLAG_REC =       (1<<3)
+};
 
 /**
  * IMV Attestation Handshake States (state machine)
@@ -37,10 +52,20 @@ enum imv_attestation_handshake_state_t {
 	IMV_ATTESTATION_STATE_INIT,
 	IMV_ATTESTATION_STATE_NONCE_REQ,
 	IMV_ATTESTATION_STATE_TPM_INIT,
-	IMV_ATTESTATION_STATE_MEAS,
 	IMV_ATTESTATION_STATE_COMP_EVID,
 	IMV_ATTESTATION_STATE_EVID_FINAL,
 	IMV_ATTESTATION_STATE_END,
+};
+
+/**
+ * IMV Measurement Error Types
+ */
+enum imv_meas_error_t {
+	IMV_ATTESTATION_ERROR_FILE_MEAS_FAIL =  1,
+	IMV_ATTESTATION_ERROR_FILE_MEAS_PEND =  2,
+	IMV_ATTESTATION_ERROR_COMP_EVID_FAIL =  4,
+	IMV_ATTESTATION_ERROR_COMP_EVID_PEND =  8,
+	IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL = 16
 };
 
 /**
@@ -60,7 +85,7 @@ struct imv_attestation_state_t {
 	 */
 	imv_attestation_handshake_state_t (*get_handshake_state)(
 		imv_attestation_state_t *this);
-	
+
 	/**
 	 * Set state of the handshake
 	 *
@@ -77,72 +102,52 @@ struct imv_attestation_state_t {
 	pts_t* (*get_pts)(imv_attestation_state_t *this);
 
 	/**
-	 * Add an entry to the list of pending file/directory measurement requests
+	 * Create and add an entry to the list of Functional Components
 	 *
-	 * @param file_id			primary key into file table
-	 * @param is_dir			TRUE if directory
-	 * @return					unique request ID
+	 * @param name				Component Functional Name
+	 * @param depth				Sub-component Depth
+	 * @param pts_db			PTS measurement database
+	 * @return					created functional component instance or NULL
 	 */
-	u_int16_t (*add_file_meas_request)(imv_attestation_state_t *this,
-									   int file_id, bool is_dir);
+	pts_component_t* (*create_component)(imv_attestation_state_t *this,
+										 pts_comp_func_name_t *name,
+										 u_int32_t depth,
+										 pts_database_t *pts_db);
 
 	/**
-	 * Returns the number of pending file/directory measurement requests
+	 * Get a Functional Component with a given name
 	 *
-	 * @return					number of pending requests
-	 */
-	int (*get_file_meas_request_count)(imv_attestation_state_t *this);
-
-	/**
-	 * Check for presence of request_id and if found remove it from the list
-	 *
-	 * @param id				unique request ID
-	 * @param file_id			primary key into file table
-	 * @param is_dir			return TRUE if request was for a directory
-	 * @return					TRUE if request ID found, FALSE otherwise
-	 */
-	bool (*check_off_file_meas_request)(imv_attestation_state_t *this,
-										u_int16_t id, int *file_id, bool *is_dir);
-
-	/**
-	 * Add an entry to the list of Functional Components waiting for evidence
-	 *
-	 * @param entry				Functional Component
-	 */
-	void (*add_component)(imv_attestation_state_t *this, pts_component_t *entry);
-
-	/**
-	 * Returns the number of Functional Component waiting for evidence
-	 *
-	 * @return					Number of waiting Functional Components
-	 */
-	int (*get_component_count)(imv_attestation_state_t *this);
-
-	/**
-	 * Check for presence of Functional Component and remove and return it
-	 *
-	 * @param name			 	Name of the requested Functional Component
+	 * @param name				Name of the requested Functional Component
 	 * @return					Functional Component if found, NULL otherwise
 	 */
-	pts_component_t* (*check_off_component)(imv_attestation_state_t *this,
-											pts_comp_func_name_t *name);
+	pts_component_t* (*get_component)(imv_attestation_state_t *this,
+									  pts_comp_func_name_t *name);
 
 	/**
 	 * Tell the Functional Components to finalize any measurement registrations
+	 * and to check if all expected measurements were received
 	 */
-	void (*check_off_registrations)(imv_attestation_state_t *this);
+	void (*finalize_components)(imv_attestation_state_t *this);
 
 	/**
-	 * Indicates if a file measurement error occurred
+	 * Have the Functional Component measurements been finalized?
+	 */
+	bool (*components_finalized)(imv_attestation_state_t *this);
+
+	/**
+	 * Indicates the types of measurement errors that occurred
 	 *
-	 * @return					TRUE in case of measurement error
+	 * @return					Measurement error flags
 	 */
-	bool (*get_measurement_error)(imv_attestation_state_t *this);
+	u_int32_t (*get_measurement_error)(imv_attestation_state_t *this);
 
 	/**
-	 * Call if a file measurement error is encountered
+	 * Call if a measurement error is encountered
+	 *
+	 * @param error				Measurement error type
 	 */
-	void (*set_measurement_error)(imv_attestation_state_t *this);
+	void (*set_measurement_error)(imv_attestation_state_t *this,
+								  u_int32_t error);
 
 };
 

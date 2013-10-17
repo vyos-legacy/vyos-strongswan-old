@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,29 +15,29 @@
 
 #include "pts.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <crypto/hashers/hasher.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
 
+#ifdef TSS_TROUSERS
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
+#else
+#ifndef TPM_TAG_QUOTE_INFO2
+#define TPM_TAG_QUOTE_INFO2 0x0036
+#endif
+#ifndef TPM_LOC_ZERO
+#define TPM_LOC_ZERO 0x01
+#endif
+#endif
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <libgen.h>
+#include <unistd.h>
 #include <errno.h>
-
-#define PTS_BUF_SIZE	4096
-
-/**
- * Maximum number of PCR's of TPM, TPM Spec 1.2
- */
-#define PCR_MAX_NUM				24
-
-/**
- * Number of bytes that can be saved in a PCR of TPM, TPM Spec 1.2
- */
-#define PCR_LEN					20
 
 typedef struct private_pts_t private_pts_t;
 
@@ -118,29 +118,9 @@ struct private_pts_t {
  	certificate_t *aik;
 
 	/**
-	 * Table of extended PCRs with corresponding values
+	 * Shadow PCR set
 	 */
-	u_char* pcrs[PCR_MAX_NUM];
-
-	/**
-	 * Length of PCR registers
-	 */
-	size_t pcr_len;
-
-	/**
-	 * Number of extended PCR registers
-	 */
-	u_int32_t pcr_count;
-
-	/**
-	 * Highest extended PCR register
-	 */
-	u_int32_t pcr_max;
-
-	/**
-	 * Bitmap of extended PCR registers
-	 */
-	u_int8_t pcr_select[PCR_MAX_NUM / 8];
+	pts_pcr_t *pcrs;
 
 };
 
@@ -225,9 +205,13 @@ METHOD(pts_t, create_dh_nonce, bool,
 	DBG2(DBG_PTS, "nonce length is %d", nonce_len);
 	nonce = this->is_imc ? &this->responder_nonce : &this->initiator_nonce;
 	chunk_free(nonce);
-	rng->allocate_bytes(rng, nonce_len, nonce);
+	if (!rng->allocate_bytes(rng, nonce_len, nonce))
+	{
+		DBG1(DBG_PTS, "failed to allocate nonce");
+		rng->destroy(rng);
+		return FALSE;
+	}
 	rng->destroy(rng);
-
 	return TRUE;
 }
 
@@ -282,10 +266,15 @@ METHOD(pts_t, calculate_secret, bool,
 	hash_alg = pts_meas_algo_to_hash(this->dh_hash_algorithm);
 	hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
 
-	hasher->allocate_hash(hasher, chunk_from_chars('1'), NULL);
-	hasher->allocate_hash(hasher, this->initiator_nonce, NULL);
-	hasher->allocate_hash(hasher, this->responder_nonce, NULL);
-	hasher->allocate_hash(hasher, shared_secret, &this->secret);
+	if (!hasher ||
+		!hasher->get_hash(hasher, chunk_from_chars('1'), NULL) ||
+		!hasher->get_hash(hasher, this->initiator_nonce, NULL) ||
+		!hasher->get_hash(hasher, this->responder_nonce, NULL) ||
+		!hasher->allocate_hash(hasher, shared_secret, &this->secret))
+	{
+		DESTROY_IF(hasher);
+		return FALSE;
+	}
 	hasher->destroy(hasher);
 
 	/* The DH secret must be destroyed */
@@ -299,6 +288,8 @@ METHOD(pts_t, calculate_secret, bool,
 	DBG3(DBG_PTS, "secret assessment value: %B", &this->secret);
 	return TRUE;
 }
+
+#ifdef TSS_TROUSERS
 
 /**
  * Print TPM 1.2 Version Info
@@ -319,13 +310,25 @@ static void print_tpm_version_info(private_pts_t *this)
 	else
 	{
 		DBG2(DBG_PTS, "TPM 1.2 Version Info: Chip Version: %hhu.%hhu.%hhu.%hhu,"
-					  " Spec Level: %hu, Errata Rev: %hhu, Vendor ID: %.4s",
+					  " Spec Level: %hu, Errata Rev: %hhu, Vendor ID: %.4s [%.*s]",
 					  versionInfo.version.major, versionInfo.version.minor,
 					  versionInfo.version.revMajor, versionInfo.version.revMinor,
 					  versionInfo.specLevel, versionInfo.errataRev,
-					  versionInfo.tpmVendorID);
+					  versionInfo.tpmVendorID, versionInfo.vendorSpecificSize,
+					  versionInfo.vendorSpecificSize ?
+					  (char*)versionInfo.vendorSpecific : "");
 	}
+	free(versionInfo.vendorSpecific);
 }
+
+#else
+
+static void print_tpm_version_info(private_pts_t *this)
+{
+	DBG1(DBG_PTS, "unknown TPM version: no TSS implementation available");
+}
+
+#endif /* TSS_TROUSERS */
 
 METHOD(pts_t, get_platform_info, char*,
 	private_pts_t *this)
@@ -334,10 +337,15 @@ METHOD(pts_t, get_platform_info, char*,
 }
 
 METHOD(pts_t, set_platform_info, void,
-	private_pts_t *this, char *info)
+	private_pts_t *this, chunk_t name, chunk_t version)
 {
+	int len = name.len + 1 + version.len + 1;
+
+	/* platform info is a concatenation of OS name and OS version */
 	free(this->platform_info);
-	this->platform_info = strdup(info);
+	this->platform_info = malloc(len);
+	snprintf(this->platform_info, len, "%.*s %.*s", (int)name.len, name.ptr,
+			(int)version.len, version.ptr);
 }
 
 METHOD(pts_t, get_tpm_version_info, bool,
@@ -357,12 +365,6 @@ METHOD(pts_t, set_tpm_version_info, void,
 {
 	this->tpm_version_info = chunk_clone(info);
 	print_tpm_version_info(this);
-}
-
-METHOD(pts_t, get_pcr_len, size_t,
-	private_pts_t *this)
-{
-	return this->pcr_len;
 }
 
 /**
@@ -486,54 +488,6 @@ METHOD(pts_t, get_aik_keyid, bool,
 	return success;
 }
 
-METHOD(pts_t, hash_file, bool,
-	private_pts_t *this, hasher_t *hasher, char *pathname, u_char *hash)
-{
-	u_char buffer[PTS_BUF_SIZE];
-	FILE *file;
-	int bytes_read;
-
-	file = fopen(pathname, "rb");
-	if (!file)
-	{
-		DBG1(DBG_PTS,"  file '%s' can not be opened, %s", pathname,
-			 strerror(errno));
-		return FALSE;
-	}
-	while (TRUE)
-	{
-		bytes_read = fread(buffer, 1, sizeof(buffer), file);
-		if (bytes_read > 0)
-		{
-			hasher->get_hash(hasher, chunk_create(buffer, bytes_read), NULL);
-		}
-		else
-		{
-			hasher->get_hash(hasher, chunk_empty, hash);
-			break;
-		}
-	}
-	fclose(file);
-
-	return TRUE;
-}
-
-/**
- * Get the relative filename of a fully qualified file pathname
- */
-static char* get_filename(char *pathname)
-{
-	char *pos, *filename;
-
-	pos = filename = pathname;
-	while (pos && *(++pos) != '\0')
-	{
-		filename = pos;
-		pos = strchr(filename, '/');
-	}
-	return filename;
-}
-
 METHOD(pts_t, is_path_valid, bool,
 	private_pts_t *this, char *path, pts_error_code_t *error_code)
 {
@@ -565,82 +519,6 @@ METHOD(pts_t, is_path_valid, bool,
 	return TRUE;
 }
 
-METHOD(pts_t, do_measurements, pts_file_meas_t*,
-	private_pts_t *this, u_int16_t request_id, char *pathname, bool is_directory)
-{
-	hasher_t *hasher;
-	hash_algorithm_t hash_alg;
-	u_char hash[HASH_SIZE_SHA384];
-	chunk_t measurement;
-	pts_file_meas_t *measurements;
-
-	/* Create a hasher */
-	hash_alg = pts_meas_algo_to_hash(this->algorithm);
-	hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
-	if (!hasher)
-	{
-		DBG1(DBG_PTS, "hasher %N not available", hash_algorithm_names, hash_alg);
-		return NULL;
-	}
-
-	/* Create a measurement object */
-	measurements = pts_file_meas_create(request_id);
-
-	/* Link the hash to the measurement and set the measurement length */
-	measurement = chunk_create(hash, hasher->get_hash_size(hasher));
-
-	if (is_directory)
-	{
-		enumerator_t *enumerator;
-		char *rel_name, *abs_name;
-		struct stat st;
-
-		enumerator = enumerator_create_directory(pathname);
-		if (!enumerator)
-		{
-			DBG1(DBG_PTS,"  directory '%s' can not be opened, %s", pathname,
-				 strerror(errno));
-			hasher->destroy(hasher);
-			measurements->destroy(measurements);
-			return NULL;
-		}
-		while (enumerator->enumerate(enumerator, &rel_name, &abs_name, &st))
-		{
-			/* measure regular files only */
-			if (S_ISREG(st.st_mode) && *rel_name != '.')
-			{
-				if (!hash_file(this, hasher, abs_name, hash))
-				{
-					enumerator->destroy(enumerator);
-					hasher->destroy(hasher);
-					measurements->destroy(measurements);
-					return NULL;
-				}
-				DBG2(DBG_PTS, "  %#B for '%s'", &measurement, rel_name);
-				measurements->add(measurements, rel_name, measurement);
-			}
-		}
-		enumerator->destroy(enumerator);
-	}
-	else
-	{
-		char *filename;
-
-		if (!hash_file(this, hasher, pathname, hash))
-		{
-			hasher->destroy(hasher);
-			measurements->destroy(measurements);
-			return NULL;
-		}
-		filename = get_filename(pathname);
-		DBG2(DBG_PTS, "  %#B for '%s'", &measurement, filename);
-		measurements->add(measurements, filename, measurement);
-	}
-	hasher->destroy(hasher);
-
-	return measurements;
-}
-
 /**
  * Obtain statistical information describing a file
  */
@@ -654,6 +532,7 @@ static bool file_metadata(char *pathname, pts_file_metadata_t **entry)
 	if (stat(pathname, &st))
 	{
 		DBG1(DBG_PTS, "unable to obtain statistics about '%s'", pathname);
+		free(this);
 		return FALSE;
 	}
 
@@ -748,12 +627,15 @@ METHOD(pts_t, get_metadata, pts_file_meta_t*,
 			metadata->destroy(metadata);
 			return NULL;
 		}
-		entry->filename = strdup(get_filename(pathname));
+		entry->filename = strdup(basename(pathname));
 		metadata->add(metadata, entry);
 	}
 
 	return metadata;
 }
+
+
+#ifdef TSS_TROUSERS
 
 METHOD(pts_t, read_pcr, bool,
 	private_pts_t *this, u_int32_t pcr_num, chunk_t *pcr_value)
@@ -809,7 +691,7 @@ METHOD(pts_t, extend_pcr, bool,
 	TSS_HTPM hTPM;
 	TSS_RESULT result;
 	u_int32_t pcr_length;
-	chunk_t pcr_value;
+	chunk_t pcr_value = chunk_empty;
 
 	result = Tspi_Context_Create(&hContext);
 	if (result != TSS_SUCCESS)
@@ -829,8 +711,8 @@ METHOD(pts_t, extend_pcr, bool,
 		goto err;
 	}
 
-	pcr_value = chunk_alloc(PCR_LEN);
-	result = Tspi_TPM_PcrExtend(hTPM, pcr_num, PCR_LEN, input.ptr,
+	pcr_value = chunk_alloc(PTS_PCR_LEN);
+	result = Tspi_TPM_PcrExtend(hTPM, pcr_num, PTS_PCR_LEN, input.ptr,
 								NULL, &pcr_length, &pcr_value.ptr);
 	if (result != TSS_SUCCESS)
 	{
@@ -842,7 +724,7 @@ METHOD(pts_t, extend_pcr, bool,
 
 	DBG3(DBG_PTS, "PCR %d extended with:      %B", pcr_num, &input);
 	DBG3(DBG_PTS, "PCR %d value after extend: %B", pcr_num, output);
-	
+
 	chunk_clear(&pcr_value);
 	Tspi_Context_FreeMemory(hContext, NULL);
 	Tspi_Context_Close(hContext);
@@ -851,28 +733,12 @@ METHOD(pts_t, extend_pcr, bool,
 
 err:
 	DBG1(DBG_PTS, "TPM not available: tss error 0x%x", result);
-	
+
 	chunk_clear(&pcr_value);
 	Tspi_Context_FreeMemory(hContext, NULL);
 	Tspi_Context_Close(hContext);
-	
+
 	return FALSE;
-}
-
-
-static void clear_pcrs(private_pts_t *this)
-{
-	int i;
-
-	for (i = 0; i <= this->pcr_max; i++)
-	{
-		free(this->pcrs[i]);
-		this->pcrs[i] = NULL;
-	}
-	this->pcr_count = 0;
-	this->pcr_max = 0;
-
-	memset(this->pcr_select, 0x00, sizeof(this->pcr_select));
 }
 
 METHOD(pts_t, quote_tpm, bool,
@@ -890,7 +756,8 @@ METHOD(pts_t, quote_tpm, bool,
 	TSS_RESULT result;
 	chunk_t quote_info;
 	BYTE* versionInfo;
-	u_int32_t versionInfoSize, pcr, i = 0, f = 1;
+	u_int32_t versionInfoSize, pcr;
+	enumerator_t *enumerator;
 	bool success = FALSE;
 
 	result = Tspi_Context_Create(&hContext);
@@ -943,32 +810,30 @@ METHOD(pts_t, quote_tpm, bool,
 			Tspi_Context_CreateObject(hContext, TSS_OBJECT_TYPE_PCRS,
 							TSS_PCRS_STRUCT_INFO_SHORT, &hPcrComposite) :
 			Tspi_Context_CreateObject(hContext, TSS_OBJECT_TYPE_PCRS,
-							0, &hPcrComposite);
+							TSS_PCRS_STRUCT_DEFAULT, &hPcrComposite);
 	if (result != TSS_SUCCESS)
 	{
 		goto err2;
 	}
 
 	/* Select PCRs */
-	for (pcr = 0; pcr <= this->pcr_max ; pcr++)
+	enumerator = this->pcrs->create_enumerator(this->pcrs);
+	while (enumerator->enumerate(enumerator, &pcr))
 	{
-		if (f == 256)
+		result = use_quote2 ?
+				Tspi_PcrComposite_SelectPcrIndexEx(hPcrComposite, pcr,
+											TSS_PCRS_DIRECTION_RELEASE) :
+				Tspi_PcrComposite_SelectPcrIndex(hPcrComposite, pcr);
+		if (result != TSS_SUCCESS)
 		{
-			i++;
-			f = 1;
-		}		
-		if (this->pcr_select[i] & f)
-		{
-			result = use_quote2 ?
-					Tspi_PcrComposite_SelectPcrIndexEx(hPcrComposite, pcr,
-												TSS_PCRS_DIRECTION_RELEASE) :
-					Tspi_PcrComposite_SelectPcrIndex(hPcrComposite, pcr);
-			if (result != TSS_SUCCESS)
-			{
-				goto err3;
-			}
+			break;
 		}
-		f <<= 1;
+	}
+	enumerator->destroy(enumerator);
+
+	if (result != TSS_SUCCESS)
+	{
+		goto err3;
 	}
 
 	/* Set the Validation Data */
@@ -1023,93 +888,34 @@ err2:
 
 err1:
 	Tspi_Context_Close(hContext);
-
 	if (!success)
 	{
 		DBG1(DBG_PTS, "TPM not available: tss error 0x%x", result);
 	}
-	clear_pcrs(this);
-
 	return success;
 }
 
-METHOD(pts_t, select_pcr, bool,
-	private_pts_t *this, u_int32_t pcr)
+#else /* TSS_TROUSERS */
+
+METHOD(pts_t, read_pcr, bool,
+	private_pts_t *this, u_int32_t pcr_num, chunk_t *pcr_value)
 {
-	u_int32_t i, f;
-
-	if (pcr >= PCR_MAX_NUM)
-	{
-		DBG1(DBG_PTS, "PCR %u: number is larger than maximum of %u",
-					   pcr, PCR_MAX_NUM-1);
-		return FALSE;
-	}
-
-	/* Determine PCR selection flag */
-	i = pcr / 8;
-	f = 1 << (pcr - 8*i);
-
-	/* Has this PCR already been selected? */
-	if (!(this->pcr_select[i] & f))
-	{
-		this->pcr_select[i] |= f;
-		this->pcr_max = max(this->pcr_max, pcr);
-		this->pcr_count++;
-	}
-
-	return TRUE;
+	return FALSE;
 }
 
-METHOD(pts_t, add_pcr, bool,
-	private_pts_t *this, u_int32_t pcr, chunk_t pcr_before, chunk_t pcr_after)
+METHOD(pts_t, extend_pcr, bool,
+	private_pts_t *this, u_int32_t pcr_num, chunk_t input, chunk_t *output)
 {
-	if (pcr >= PCR_MAX_NUM)
-	{
-		DBG1(DBG_PTS, "PCR %u: number is larger than maximum of %u",
-					   pcr, PCR_MAX_NUM-1);
-		return FALSE;
-	}
-
-	/* Is the length of the PCR registers already set? */
-	if (this->pcr_len)
-	{
-		if (pcr_after.len != this->pcr_len)
-		{
-			DBG1(DBG_PTS, "PCR %02u: length is %d bytes but should be %d bytes",
-						   pcr_after.len, this->pcr_len);
-			return FALSE;
-		}
-	}
-	else
-	{
-		this->pcr_len = pcr_after.len;
-	}
-
-	/* Has the value of the PCR register already been assigned? */
-	if (this->pcrs[pcr])
-	{
-		if (!memeq(this->pcrs[pcr], pcr_before.ptr, this->pcr_len))
-		{
-			DBG1(DBG_PTS, "PCR %02u: new pcr_before value does not equal "
-						  "old pcr_after value");
-		}
-		/* remove the old PCR value */
-		free(this->pcrs[pcr]);
-	}
-	else
-	{
-		/* add extended PCR Register */
-		this->pcr_select[pcr / 8] |= 1 << (pcr % 8);
-		this->pcr_max = max(this->pcr_max, pcr);
-		this->pcr_count++;
-	}
-
-	/* Duplicate and store current PCR value */
-	pcr_after = chunk_clone(pcr_after);
-	this->pcrs[pcr] = pcr_after.ptr;
-
-	return TRUE;
+	return FALSE;
 }
+
+METHOD(pts_t, quote_tpm, bool,
+	private_pts_t *this, bool use_quote2, chunk_t *pcr_comp, chunk_t *quote_sig)
+{
+	return FALSE;
+}
+
+#endif /* TSS_TROUSERS */
 
 /**
  * TPM_QUOTE_INFO structure:
@@ -1130,13 +936,11 @@ METHOD(pts_t, get_quote_info, bool,
 	pts_meas_algorithms_t comp_hash_algo,
 	chunk_t *out_pcr_comp, chunk_t *out_quote_info)
 {
-	u_int8_t size_of_select;
-	int pcr_comp_len, i;
-	chunk_t pcr_comp, hash_pcr_comp;
+	chunk_t selection, pcr_comp, hash_pcr_comp;
 	bio_writer_t *writer;
 	hasher_t *hasher;
 
-	if (this->pcr_count == 0)
+	if (!this->pcrs->get_count(this->pcrs))
 	{
 		DBG1(DBG_PTS, "No extended PCR entries available, "
 					  "unable to construct TPM Quote Info");
@@ -1154,34 +958,9 @@ METHOD(pts_t, get_quote_info, bool,
 					  "unable to construct TPM Quote Info2");
 		return FALSE;
 	}
-	
-	/**
-	 * A TPM v1.2 has 24 PCR Registers
-	 * so the bitmask field length used by TrouSerS is at least 3 bytes
-	 */
-	size_of_select = max(PCR_MAX_NUM / 8, 1 + this->pcr_max / 8);
-	pcr_comp_len = 2 + size_of_select + 4 + this->pcr_count * this->pcr_len;
-	
-	writer = bio_writer_create(pcr_comp_len);
 
-	writer->write_uint16(writer, size_of_select);
-	for (i = 0; i < size_of_select; i++)
-	{
-		writer->write_uint8(writer, this->pcr_select[i]);
-	}
+	pcr_comp = this->pcrs->get_composite(this->pcrs);
 
-	writer->write_uint32(writer, this->pcr_count * this->pcr_len);
-	for (i = 0; i < 8 * size_of_select; i++)
-	{
-		if (this->pcrs[i])
-		{
-			writer->write_data(writer, chunk_create(this->pcrs[i], this->pcr_len));
-		}
-	}
-	pcr_comp = chunk_clone(writer->get_buf(writer));
-	DBG3(DBG_PTS, "constructed PCR Composite: %B", &pcr_comp);
-
-	writer->destroy(writer);
 
 	/* Output the TPM_PCR_COMPOSITE expected from IMC */
 	if (comp_hash_algo)
@@ -1192,7 +971,12 @@ METHOD(pts_t, get_quote_info, bool,
 		hasher = lib->crypto->create_hasher(lib->crypto, algo);
 
 		/* Hash the PCR Composite Structure */
-		hasher->allocate_hash(hasher, pcr_comp, out_pcr_comp);
+		if (!hasher || !hasher->allocate_hash(hasher, pcr_comp, out_pcr_comp))
+		{
+			DESTROY_IF(hasher);
+			free(pcr_comp.ptr);
+			return FALSE;
+		}
 		DBG3(DBG_PTS, "constructed PCR Composite hash: %#B", out_pcr_comp);
 		hasher->destroy(hasher);
 	}
@@ -1203,7 +987,13 @@ METHOD(pts_t, get_quote_info, bool,
 
 	/* SHA1 hash of PCR Composite to construct TPM_QUOTE_INFO */
 	hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-	hasher->allocate_hash(hasher, pcr_comp, &hash_pcr_comp);
+	if (!hasher || !hasher->allocate_hash(hasher, pcr_comp, &hash_pcr_comp))
+	{
+		DESTROY_IF(hasher);
+		chunk_free(out_pcr_comp);
+		free(pcr_comp.ptr);
+		return FALSE;
+	}
 	hasher->destroy(hasher);
 
 	/* Construct TPM_QUOTE_INFO/TPM_QUOTE_INFO2 structure */
@@ -1220,15 +1010,11 @@ METHOD(pts_t, get_quote_info, bool,
 		/* Secret assessment value 20 bytes (nonce) */
 		writer->write_data(writer, this->secret);
 
-		/* Length of the PCR selection field */
-		writer->write_uint16(writer, size_of_select);
-
 		/* PCR selection */
-		for (i = 0; i < size_of_select ; i++)
-		{
-			writer->write_uint8(writer, this->pcr_select[i]);
-		}
-		
+		selection.ptr = pcr_comp.ptr;
+		selection.len = 2 + this->pcrs->get_selection_size(this->pcrs);
+		writer->write_data(writer, selection);
+
 		/* TPM Locality Selection */
 		writer->write_uint8(writer, TPM_LOC_ZERO);
 
@@ -1257,13 +1043,12 @@ METHOD(pts_t, get_quote_info, bool,
 	}
 
 	/* TPM Quote Info */
-	*out_quote_info = chunk_clone(writer->get_buf(writer));
+	*out_quote_info = writer->extract_buf(writer);
 	DBG3(DBG_PTS, "constructed TPM Quote Info: %B", out_quote_info);
 
 	writer->destroy(writer);
 	free(pcr_comp.ptr);
 	free(hash_pcr_comp.ptr);
-	clear_pcrs(this);
 
 	return TRUE;
 }
@@ -1292,10 +1077,16 @@ METHOD(pts_t, verify_quote_signature, bool,
 	return TRUE;
 }
 
+METHOD(pts_t, get_pcrs, pts_pcr_t*,
+	private_pts_t *this)
+{
+	return this->pcrs;
+}
+
 METHOD(pts_t, destroy, void,
 	private_pts_t *this)
 {
-	clear_pcrs(this);
+	DESTROY_IF(this->pcrs);
 	DESTROY_IF(this->aik);
 	DESTROY_IF(this->dh);
 	free(this->initiator_nonce.ptr);
@@ -1307,121 +1098,8 @@ METHOD(pts_t, destroy, void,
 	free(this);
 }
 
-#define RELEASE_LSB		0
-#define RELEASE_DEBIAN	1
 
-/**
- * Determine Linux distribution and hardware platform
- */
-static char* extract_platform_info(void)
-{
-	FILE *file;
-	char buf[BUF_LEN], *pos = buf, *value = NULL;
-	int i, len = BUF_LEN - 1;
-	struct utsname uninfo;
-
-	/* Linux/Unix distribution release info (from http://linuxmafia.com) */
-	const char* releases[] = {
-		"/etc/lsb-release",           "/etc/debian_version",
-		"/etc/SuSE-release",          "/etc/novell-release",
-		"/etc/sles-release",          "/etc/redhat-release",
-		"/etc/fedora-release",        "/etc/gentoo-release",
-		"/etc/slackware-version",     "/etc/annvix-release",
-		"/etc/arch-release",          "/etc/arklinux-release",
-		"/etc/aurox-release",         "/etc/blackcat-release",
-		"/etc/cobalt-release",        "/etc/conectiva-release",
-		"/etc/debian_release",        "/etc/immunix-release",
-		"/etc/lfs-release",           "/etc/linuxppc-release",
-		"/etc/mandrake-release",      "/etc/mandriva-release",
-		"/etc/mandrakelinux-release", "/etc/mklinux-release",
-		"/etc/pld-release",           "/etc/redhat_version",
-		"/etc/slackware-release",     "/etc/e-smith-release",
-		"/etc/release",               "/etc/sun-release",
-		"/etc/tinysofa-release",      "/etc/turbolinux-release",
-		"/etc/ultrapenguin-release",  "/etc/UnitedLinux-release",
-		"/etc/va-release",            "/etc/yellowdog-release"
-	};
-
-	const char description[] = "DISTRIB_DESCRIPTION=\"";
-	const char str_debian[] = "Debian ";
-
-	for (i = 0; i < countof(releases); i++)
-	{
-		file = fopen(releases[i], "r");
-		if (!file)
-		{
-			continue;
-		}
-
-		if (i == RELEASE_DEBIAN)
-		{
-			strcpy(buf, str_debian);
-			pos += strlen(str_debian);
-			len -= strlen(str_debian); 
-		}
-
-		fseek(file, 0, SEEK_END);
-		len = min(ftell(file), len);
-		rewind(file);
-		pos[len] = '\0';
-		if (fread(pos, 1, len, file) != len)
-		{
-			DBG1(DBG_PTS, "failed to read file '%s'", releases[i]);
-			fclose(file);
-			return NULL;
-		}
-		fclose(file);
-
-		if (i == RELEASE_LSB)
-		{
-			pos = strstr(buf, description);
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find begin of lsb-release "
-							  "DESCRIPTION field");
-				return NULL;
-			}
-			value = pos + strlen(description);
-			pos = strchr(value, '"');
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find end of lsb-release "
-							  "DESCRIPTION field");
-				return NULL;
-			 }
-		}
-		else
-		{
-			value = buf;
-			pos = strchr(pos, '\n');
-			if (!pos)
-			{
-				DBG1(DBG_PTS, "failed to find end of release string");
-				return NULL;
-			 }
-		}
-		break;
-	}
-
-	if (!value)
-	{
-		DBG1(DBG_PTS, "no distribution release file found");
-		return NULL;
-	}
-
-	if (uname(&uninfo) < 0)
-	{
-		DBG1(DBG_PTS, "could not retrieve machine architecture");
-		return NULL;
-	}
-
-	*pos++ = ' ';
-	len = sizeof(buf)-1 + (pos - buf);
-	strncpy(pos, uninfo.machine, len);
-
-	DBG1(DBG_PTS, "platform is '%s'", value);
-	return strdup(value);
-}
+#ifdef TSS_TROUSERS
 
 /**
  * Check for a TPM by querying for TPM Version Info
@@ -1471,12 +1149,30 @@ static bool has_tpm(private_pts_t *this)
 	return FALSE;
 }
 
+#else /* TSS_TROUSERS */
+
+static bool has_tpm(private_pts_t *this)
+{
+	return FALSE;
+}
+
+#endif /* TSS_TROUSERS */
+
+
 /**
  * See header
  */
 pts_t *pts_create(bool is_imc)
 {
 	private_pts_t *this;
+	pts_pcr_t *pcrs;
+
+	pcrs = pts_pcr_create();
+	if (!pcrs)
+	{
+		DBG1(DBG_PTS, "shadow PCR set could not be created");
+		return NULL;
+	}
 
 	INIT(this,
 		.public = {
@@ -1494,19 +1190,15 @@ pts_t *pts_create(bool is_imc)
 			.set_platform_info = _set_platform_info,
 			.get_tpm_version_info = _get_tpm_version_info,
 			.set_tpm_version_info = _set_tpm_version_info,
-			.get_pcr_len = _get_pcr_len,
 			.get_aik = _get_aik,
 			.set_aik = _set_aik,
 			.get_aik_keyid = _get_aik_keyid,
 			.is_path_valid = _is_path_valid,
-			.hash_file = _hash_file,
-			.do_measurements = _do_measurements,
 			.get_metadata = _get_metadata,
 			.read_pcr = _read_pcr,
 			.extend_pcr = _extend_pcr,
 			.quote_tpm = _quote_tpm,
-			.select_pcr = _select_pcr,
-			.add_pcr = _add_pcr,
+			.get_pcrs = _get_pcrs,
 			.get_quote_info = _get_quote_info,
 			.verify_quote_signature  = _verify_quote_signature,
 			.destroy = _destroy,
@@ -1515,16 +1207,14 @@ pts_t *pts_create(bool is_imc)
 		.proto_caps = PTS_PROTO_CAPS_V,
 		.algorithm = PTS_MEAS_ALGO_SHA256,
 		.dh_hash_algorithm = PTS_MEAS_ALGO_SHA256,
+		.pcrs = pcrs,
 	);
 
 	if (is_imc)
 	{
-		this->platform_info = extract_platform_info();
-
 		if (has_tpm(this))
 		{
 			this->has_tpm = TRUE;
-			this->pcr_len = PCR_LEN;
 			this->proto_caps |= PTS_PROTO_CAPS_T | PTS_PROTO_CAPS_D;
 			load_aik(this);
 			load_aik_blob(this);

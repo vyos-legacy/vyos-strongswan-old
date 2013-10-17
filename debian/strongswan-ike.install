@@ -1,0 +1,9 @@
+usr/sbin/charon-cmd
+usr/share/man/man8/charon-cmd.8
+usr/lib/ipsec/libcharon.so*
+usr/lib/ipsec/charon
+usr/lib/ipsec/plugins/libstrongswan-socket*.so
+usr/lib/ipsec/plugins/libstrongswan-eap*.so
+usr/lib/ipsec/plugins/libstrongswan-agent.so
+usr/lib/ipsec/plugins/libstrongswan-medsrv.so
+usr/lib/ipsec/plugins/libstrongswan-medcli.so

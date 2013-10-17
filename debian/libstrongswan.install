@@ -6,9 +6,11 @@ usr/lib/ipsec/libsimaka.so*
 usr/lib/ipsec/libtnccs.so*
 usr/lib/ipsec/libradius.so*
 usr/lib/ipsec/libtls.so*
+usr/lib/ipsec/libpttls.so*
 usr/lib/ipsec/plugins/libstrongswan-gmp.so
 usr/lib/ipsec/plugins/libstrongswan-openssl.so
 usr/lib/ipsec/plugins/libstrongswan-x509.so
+usr/lib/ipsec/plugins/libstrongswan-pkcs7.so
 usr/lib/ipsec/plugins/libstrongswan-pkcs11.so
 usr/lib/ipsec/plugins/libstrongswan-pgp.so
 usr/lib/ipsec/plugins/libstrongswan-pem.so
@@ -42,4 +44,11 @@ usr/lib/ipsec/plugins/libstrongswan-ldap.so
 usr/lib/ipsec/plugins/libstrongswan-attr*.so
 usr/lib/ipsec/plugins/libstrongswan-curl.so
 usr/lib/ipsec/plugins/libstrongswan-gcrypt.so
+usr/lib/ipsec/plugins/libstrongswan-nonce.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-eap.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-generic.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-pam.so
+usr/lib/ipsec/plugins/libstrongswan-rc2.so
+usr/lib/ipsec/plugins/libstrongswan-pkcs12.so
+usr/lib/ipsec/plugins/libstrongswan-sshkey.so
 etc/strongswan.conf

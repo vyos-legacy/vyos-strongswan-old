@@ -15,7 +15,9 @@
 
 /**
  * @defgroup pki pki
- * @{ @ingroup pki
+ *
+ * @addtogroup pki
+ * @{
  */
 
 #ifndef PKI_H_
@@ -30,10 +32,5 @@
  * Convert a form string to a encoding type
  */
 bool get_form(char *form, cred_encoding_type_t *enc, credential_type_t type);
-
-/**
- * Convert a digest string to a hash algorithm
- */
-hash_algorithm_t get_digest(char *name);
 
 #endif /** PKI_H_ @}*/

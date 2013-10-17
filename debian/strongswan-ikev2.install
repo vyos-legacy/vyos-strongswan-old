@@ -1,7 +1,0 @@
-usr/lib/ipsec/libcharon.so*
-usr/lib/ipsec/charon
-usr/lib/ipsec/plugins/libstrongswan-socket*.so
-usr/lib/ipsec/plugins/libstrongswan-eap*.so
-usr/lib/ipsec/plugins/libstrongswan-agent.so
-usr/lib/ipsec/plugins/libstrongswan-medsrv.so
-usr/lib/ipsec/plugins/libstrongswan-medcli.so

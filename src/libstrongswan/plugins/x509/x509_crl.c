@@ -20,14 +20,14 @@ typedef struct revoked_t revoked_t;
 
 #include <time.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <library.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/keys/private_key.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /**
  * entry for a revoked certificate
@@ -221,7 +221,7 @@ static bool parse(private_x509_crl_t *this)
 {
 	asn1_parser_t *parser;
 	chunk_t object;
-	chunk_t extnID;
+	chunk_t extnID = chunk_empty;
 	chunk_t userCertificate = chunk_empty;
 	int objectID;
 	int sig_alg = OID_UNKNOWN;
@@ -319,6 +319,9 @@ static bool parse(private_x509_crl_t *this)
 							goto end;
 						}
 						this->baseCrlNumber = object;
+						break;
+					case OID_ISSUING_DIST_POINT:
+						/* TODO support of IssuingDistributionPoints */
 						break;
 					default:
 						if (critical && lib->settings->get_bool(lib->settings,
@@ -442,7 +445,7 @@ METHOD(certificate_t, has_issuer, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_x509_crl_t *this, certificate_t *issuer)
+	private_x509_crl_t *this, certificate_t *issuer, signature_scheme_t *schemep)
 {
 	public_key_t *key;
 	signature_scheme_t scheme;
@@ -490,6 +493,10 @@ METHOD(certificate_t, issued_by, bool,
 	}
 	valid = key->verify(key, scheme, this->tbsCertList, this->signature);
 	key->destroy(key);
+	if (valid && schemep)
+	{
+		*schemep = scheme;
+	}
 	return valid;
 }
 

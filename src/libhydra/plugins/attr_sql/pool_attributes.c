@@ -17,7 +17,7 @@
 #include <string.h>
 
 #include <library.h>
-#include <utils/host.h>
+#include <networking/host.h>
 
 #include "pool_attributes.h"
 #include "pool_usage.h"
@@ -75,6 +75,7 @@ static const attr_info_t attr_info[] = {
 	{ "unity_def_domain",     VALUE_STRING, UNITY_DEF_DOMAIN,     0 },
 	{ "unity_splitdns_name",  VALUE_STRING, UNITY_SPLITDNS_NAME,  0 },
 	{ "unity_split_include",  VALUE_SUBNET, UNITY_SPLIT_INCLUDE,  0 },
+	{ "unity_split_exclude",  VALUE_SUBNET, UNITY_LOCAL_LAN,      0 },
 	{ "unity_local_lan",      VALUE_SUBNET, UNITY_LOCAL_LAN,      0 },
 };
 
@@ -153,6 +154,7 @@ static bool parse_attributes(char *name, char *value, value_type_t *value_type,
 				memcpy(pos_addr,     addr_chunk.ptr, 4);
 				memcpy(pos_addr + 4, mask_chunk.ptr, 4);
 				addr->destroy(addr);
+				addr = NULL;
 				mask->destroy(mask);
 				chunk_free(blob);
 				*blob = blob_next;
@@ -492,7 +494,7 @@ void del_attr(char *name, char *pool, char *identity,
 			{
 				fprintf(stderr, "deleting %s attribute (%N) with value '%.*s'%s failed.\n",
 						 		name, configuration_attribute_type_names, type,
-								blob_db.len, blob_db.ptr, id_pool_str);
+								(int)blob_db.len, blob_db.ptr, id_pool_str);
 			}
 
 			else
@@ -514,7 +516,7 @@ void del_attr(char *name, char *pool, char *identity,
 		{
 			printf("deleted %s attribute (%N) with value '%.*s'%s.\n",
 				   name, configuration_attribute_type_names, type,
-				   blob_db.len, blob_db.ptr, id_pool_str);
+				   (int)blob_db.len, blob_db.ptr, id_pool_str);
 		}
 		else
 		{
@@ -555,7 +557,7 @@ void del_attr(char *name, char *pool, char *identity,
 				fprintf(stderr, "the %s attribute (%N) with value '%.*s'%s "
 								"was not found.\n", name,
 								 configuration_attribute_type_names, type,
-								 blob.len, blob.ptr, id_pool_str);
+								 (int)blob.len, blob.ptr, id_pool_str);
 			}
 		}
 	}

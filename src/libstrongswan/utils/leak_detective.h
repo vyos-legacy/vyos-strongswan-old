@@ -43,11 +43,26 @@ struct leak_detective_t {
 	void (*report)(leak_detective_t *this, bool detailed);
 
 	/**
+	 * Number of detected leaks.
+	 *
+	 * @return				number of leaks
+	 */
+	int (*leaks)(leak_detective_t *this);
+
+	/**
 	 * Report current memory usage to out.
 	 *
 	 * @param out			target to write usage report to
 	 */
 	void (*usage)(leak_detective_t *this, FILE *out);
+
+	/**
+	 * Enable/disable leak detective hooks for the current thread.
+	 *
+	 * @param				TRUE to enable, FALSE to disable
+	 * @return				state active before calling set_state
+	 */
+	bool (*set_state)(leak_detective_t *this, bool enabled);
 
 	/**
 	 * Destroy a leak_detective instance.
@@ -61,4 +76,3 @@ struct leak_detective_t {
 leak_detective_t *leak_detective_create();
 
 #endif /** LEAK_DETECTIVE_H_ @}*/
-

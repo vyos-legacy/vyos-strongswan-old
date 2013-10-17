@@ -18,7 +18,7 @@
 #include <sqlite3.h>
 #include <unistd.h>
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/mutex.h>
 
 typedef struct private_sqlite_database_t private_sqlite_database_t;
@@ -206,6 +206,7 @@ static bool sqlite_enumerator_enumerate(sqlite_enumerator_t *this, ...)
 			}
 			default:
 				DBG1(DBG_LIB, "invalid result type supplied");
+				va_end(args);
 				return FALSE;
 		}
 	}
@@ -299,7 +300,10 @@ static int busy_handler(private_sqlite_database_t *this, int count)
 METHOD(database_t, destroy, void,
 	private_sqlite_database_t *this)
 {
-	sqlite3_close(this->db);
+	if (sqlite3_close(this->db) == SQLITE_BUSY)
+	{
+		DBG1(DBG_LIB, "sqlite close failed because database is busy");
+	}
 	this->mutex->destroy(this->mutex);
 	free(this);
 }
@@ -315,7 +319,7 @@ sqlite_database_t *sqlite_database_create(char *uri)
 	/**
 	 * parse sqlite:///path/to/file.db uri
 	 */
-	if (!strneq(uri, "sqlite://", 9))
+	if (!strpfx(uri, "sqlite://"))
 	{
 		return NULL;
 	}

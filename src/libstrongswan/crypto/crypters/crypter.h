@@ -60,7 +60,9 @@ enum encryption_algorithm_t {
 	ENCR_UNDEFINED =        1024,
 	ENCR_DES_ECB =          1025,
 	ENCR_SERPENT_CBC =      1026,
-	ENCR_TWOFISH_CBC =      1027
+	ENCR_TWOFISH_CBC =      1027,
+	/* see macros below to handle RC2 (effective) key length */
+	ENCR_RC2_CBC =          1028,
 };
 
 #define DES_BLOCK_SIZE			 8
@@ -69,6 +71,15 @@ enum encryption_algorithm_t {
 #define CAMELLIA_BLOCK_SIZE		16
 #define SERPENT_BLOCK_SIZE		16
 #define TWOFISH_BLOCK_SIZE		16
+
+/**
+ * For RC2, if the effective key size in bits is not key_size * 8, it should
+ * be encoded with the macro below. It can be decoded with the other two macros.
+ * After decoding the value should be validated.
+ */
+#define RC2_KEY_SIZE(kl, eff) ((kl) | ((eff) << 8))
+#define RC2_EFFECTIVE_KEY_LEN(ks) ((ks) >> 8)
+#define RC2_KEY_LEN(ks) ((ks) & 0xff)
 
 /**
  * enum name for encryption_algorithm_t.
@@ -90,9 +101,10 @@ struct crypter_t {
 	 * @param data			data to encrypt
 	 * @param iv			initializing vector
 	 * @param encrypted		chunk to allocate encrypted data, or NULL
+	 * @return				TRUE if encryption successful
 	 */
-	void (*encrypt) (crypter_t *this, chunk_t data, chunk_t iv,
-					 chunk_t *encrypted);
+	bool (*encrypt)(crypter_t *this, chunk_t data, chunk_t iv,
+					chunk_t *encrypted) __attribute__((warn_unused_result));
 
 	/**
 	 * Decrypt a chunk of data and allocate space for the decrypted value.
@@ -104,9 +116,10 @@ struct crypter_t {
 	 * @param data			data to decrypt
 	 * @param iv			initializing vector
 	 * @param encrypted		chunk to allocate decrypted data, or NULL
+	 * @return				TRUE if decryption successful
 	 */
-	void (*decrypt) (crypter_t *this, chunk_t data, chunk_t iv,
-					 chunk_t *decrypted);
+	bool (*decrypt)(crypter_t *this, chunk_t data, chunk_t iv,
+					chunk_t *decrypted) __attribute__((warn_unused_result));
 
 	/**
 	 * Get the block size of the crypto algorithm.
@@ -117,7 +130,7 @@ struct crypter_t {
 	 *
 	 * @return				block size in bytes
 	 */
-	size_t (*get_block_size) (crypter_t *this);
+	size_t (*get_block_size)(crypter_t *this);
 
 	/**
 	 * Get the IV size of the crypto algorithm.
@@ -135,7 +148,7 @@ struct crypter_t {
 	 *
 	 * @return				key size in bytes
 	 */
-	size_t (*get_key_size) (crypter_t *this);
+	size_t (*get_key_size)(crypter_t *this);
 
 	/**
 	 * Set the key.
@@ -143,13 +156,15 @@ struct crypter_t {
 	 * The length of the key must match get_key_size().
 	 *
 	 * @param key			key to set
+	 * @return				TRUE if key set successfully
 	 */
-	void (*set_key) (crypter_t *this, chunk_t key);
+	bool (*set_key)(crypter_t *this,
+					chunk_t key) __attribute__((warn_unused_result));
 
 	/**
 	 * Destroys a crypter_t object.
 	 */
-	void (*destroy) (crypter_t *this);
+	void (*destroy)(crypter_t *this);
 };
 
 /**

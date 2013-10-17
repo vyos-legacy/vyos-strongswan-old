@@ -59,7 +59,7 @@ struct private_sha1_prf_t {
  */
 extern void SHA1Update(private_sha1_hasher_t* this, u_int8_t *data, u_int32_t len);
 
-METHOD(prf_t, get_bytes, void,
+METHOD(prf_t, get_bytes, bool,
 	private_sha1_prf_t *this, chunk_t seed, u_int8_t *bytes)
 {
 	u_int32_t *hash = (u_int32_t*)bytes;
@@ -71,6 +71,8 @@ METHOD(prf_t, get_bytes, void,
 	hash[2] = htonl(this->hasher->state[2]);
 	hash[3] = htonl(this->hasher->state[3]);
 	hash[4] = htonl(this->hasher->state[4]);
+
+	return TRUE;
 }
 
 METHOD(prf_t, get_block_size, size_t,
@@ -79,11 +81,11 @@ METHOD(prf_t, get_block_size, size_t,
 	return HASH_SIZE_SHA1;
 }
 
-METHOD(prf_t, allocate_bytes, void,
+METHOD(prf_t, allocate_bytes, bool,
 	private_sha1_prf_t *this, chunk_t seed, chunk_t *chunk)
 {
 	*chunk = chunk_alloc(HASH_SIZE_SHA1);
-	get_bytes(this, seed, chunk->ptr);
+	return get_bytes(this, seed, chunk->ptr);
 }
 
 METHOD(prf_t, get_key_size, size_t,
@@ -92,18 +94,23 @@ METHOD(prf_t, get_key_size, size_t,
 	return sizeof(this->hasher->state);
 }
 
-METHOD(prf_t, set_key, void,
+METHOD(prf_t, set_key, bool,
 	private_sha1_prf_t *this, chunk_t key)
 {
 	int i, rounds;
 	u_int32_t *iv = (u_int32_t*)key.ptr;
 
-	this->hasher->public.hasher_interface.reset(&this->hasher->public.hasher_interface);
+	if (!this->hasher->public.hasher_interface.reset(
+										&this->hasher->public.hasher_interface))
+	{
+		return FALSE;
+	}
 	rounds = min(key.len/sizeof(u_int32_t), sizeof(this->hasher->state));
 	for (i = 0; i < rounds; i++)
 	{
 		this->hasher->state[i] ^= htonl(iv[i]);
 	}
+	return TRUE;
 }
 
 METHOD(prf_t, destroy, void,

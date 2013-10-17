@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -42,6 +42,46 @@ METHOD(plugin_t, get_name, char*,
 	return "tnc-ifmap";
 }
 
+/**
+ * Register tnc_ifmap plugin features
+ */
+static bool register_tnc_ifmap(private_tnc_ifmap_plugin_t *this,
+								plugin_feature_t *feature, bool reg, void *data)
+{
+	if (reg)
+	{
+		this->listener = tnc_ifmap_listener_create(FALSE);
+		if (!this->listener)
+		{
+			return FALSE;
+		}
+		charon->bus->add_listener(charon->bus, &this->listener->listener);
+	}
+	else
+	{
+		if (this->listener)
+		{
+			charon->bus->remove_listener(charon->bus, &this->listener->listener);
+			this->listener->destroy(this->listener);
+		}
+	}
+	return TRUE;
+}
+
+METHOD(plugin_t, get_features, int,
+	tnc_ifmap_plugin_t *this, plugin_feature_t *features[])
+{
+	static plugin_feature_t f[] = {
+		PLUGIN_CALLBACK((plugin_feature_callback_t)register_tnc_ifmap, NULL),
+			PLUGIN_PROVIDE(CUSTOM, "tnc-ifmap-2.1"),
+				PLUGIN_SDEPEND(CERT_DECODE, CERT_X509),
+				PLUGIN_SDEPEND(PRIVKEY, KEY_RSA),
+				PLUGIN_SDEPEND(CUSTOM, "stroke"),
+	};
+	*features = f;
+	return countof(f);
+}
+
 METHOD(plugin_t, reload, bool,
 	private_tnc_ifmap_plugin_t *this)
 {
@@ -56,19 +96,14 @@ METHOD(plugin_t, reload, bool,
 	{
 		return FALSE;
 	}
-
 	charon->bus->add_listener(charon->bus, &this->listener->listener);
+
 	return TRUE;
 }
 
 METHOD(plugin_t, destroy, void,
 	private_tnc_ifmap_plugin_t *this)
 {
-	if (this->listener)
-	{
-		charon->bus->remove_listener(charon->bus, &this->listener->listener);
-		this->listener->destroy(this->listener);
-	}
 	free(this);
 }
 
@@ -83,17 +118,13 @@ plugin_t *tnc_ifmap_plugin_create()
 		.public = {
 			.plugin = {
 				.get_name = _get_name,
+				.get_features = _get_features,
 				.reload = _reload,
 				.destroy = _destroy,
 			},
 		},
-		.listener = tnc_ifmap_listener_create(FALSE),
 	);
 
-	if (this->listener)
-	{
-		charon->bus->add_listener(charon->bus, &this->listener->listener);
-	}
 	return &this->public.plugin;
 }
 

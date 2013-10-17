@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2005-2007 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -25,10 +26,10 @@
 typedef struct sender_t sender_t;
 
 #include <library.h>
-#include <network/packet.h>
+#include <networking/packet.h>
 
 /**
- * Thread responsible for sending packets over the socket.
+ * Callback job responsible for sending IKE packets over the socket.
  */
 struct sender_t {
 
@@ -42,6 +43,20 @@ struct sender_t {
 	 * @param packet	packet to send
 	 */
 	void (*send) (sender_t *this, packet_t *packet);
+
+	/**
+	 * The same as send() but does not add Non-ESP markers automatically.
+	 *
+	 * @param packet	packet to send
+	 */
+	void (*send_no_marker) (sender_t *this, packet_t *packet);
+
+	/**
+	 * Enforce a flush of the send queue.
+	 *
+	 * This function blocks until all queued packets have been sent.
+	 */
+	void (*flush)(sender_t *this);
 
 	/**
 	 * Destroys a sender object.

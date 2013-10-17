@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2011 Tobias Brunner
+ * Copyright (C) 2006-2013 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -16,6 +16,28 @@
  * for more details.
  */
 
+/*
+ * Copyright (c) 2012 Nanoteq Pty Ltd
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 /**
  * @defgroup kernel_interface kernel_interface
  * @{ @ingroup hkernel
@@ -25,13 +47,29 @@
 #define KERNEL_INTERFACE_H_
 
 typedef struct kernel_interface_t kernel_interface_t;
+typedef enum kernel_feature_t kernel_feature_t;
 
-#include <utils/host.h>
+#include <networking/host.h>
 #include <crypto/prf_plus.h>
 
 #include <kernel/kernel_listener.h>
 #include <kernel/kernel_ipsec.h>
 #include <kernel/kernel_net.h>
+
+/**
+ * Bitfield of optional features a kernel backend supports.
+ *
+ * This feature-set is for both, kernel_ipsec_t and kernel_net_t. Each
+ * backend returns a subset of these features.
+ */
+enum kernel_feature_t {
+	/** IPsec can process ESPv3 (RFC 4303) TFC padded packets */
+	KERNEL_ESP_V3_TFC = (1<<0),
+	/** Networking requires an "exclude" route for IKE/ESP packets */
+	KERNEL_REQUIRE_EXCLUDE_ROUTE = (1<<1),
+	/** IPsec implementation requires UDP encapsulation of ESP packets */
+	KERNEL_REQUIRE_UDP_ENCAPSULATION = (1<<2),
+};
 
 /**
  * Constructor function for ipsec kernel interface
@@ -50,6 +88,13 @@ typedef kernel_net_t* (*kernel_net_constructor_t)(void);
  * for SA and policy management and interface and IP address management.
  */
 struct kernel_interface_t {
+
+	/**
+	 * Get the feature set supported by the net and ipsec kernel backends.
+	 *
+	 * @return				ORed feature-set of backends
+	 */
+	kernel_feature_t (*get_features)(kernel_interface_t *this);
 
 	/**
 	 * Get a SPI from the kernel.
@@ -100,6 +145,7 @@ struct kernel_interface_t {
 	 * @param mode			mode of the SA (tunnel, transport)
 	 * @param ipcomp		IPComp transform to use
 	 * @param cpi			CPI for IPComp
+	 * @param initiator		TRUE if initiator of the exchange creating this SA
 	 * @param encap			enable UDP encapsulation for NAT traversal
 	 * @param esn			TRUE to use Extended Sequence Numbers
 	 * @param inbound		TRUE if this is an inbound SA
@@ -114,7 +160,7 @@ struct kernel_interface_t {
 						u_int16_t enc_alg, chunk_t enc_key,
 						u_int16_t int_alg, chunk_t int_key,
 						ipsec_mode_t mode, u_int16_t ipcomp, u_int16_t cpi,
-						bool encap, bool esn, bool inbound,
+						bool initiator, bool encap, bool esn, bool inbound,
 						traffic_selector_t *src_ts, traffic_selector_t *dst_ts);
 
 	/**
@@ -153,11 +199,13 @@ struct kernel_interface_t {
 	 * @param protocol		protocol for this SA (ESP/AH)
 	 * @param mark			optional mark for this SA
 	 * @param[out] bytes	the number of bytes processed by SA
+	 * @param[out] packets	number of packets processed by SA
+	 * @param[out] time		last time of SA use
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*query_sa) (kernel_interface_t *this, host_t *src, host_t *dst,
 						  u_int32_t spi, u_int8_t protocol, mark_t mark,
-						  u_int64_t *bytes);
+						  u_int64_t *bytes, u_int64_t *packets, u_int32_t *time);
 
 	/**
 	 * Delete a previously installed SA from the SAD.
@@ -260,7 +308,7 @@ struct kernel_interface_t {
 	 * Does a route lookup to get the source address used to reach dest.
 	 * The returned host is allocated and must be destroyed.
 	 * An optional src address can be used to check if a route is available
-	 * for given source to dest.
+	 * for the given source to dest.
 	 *
 	 * @param dest			target destination address
 	 * @param src			source address to check, or NULL
@@ -274,19 +322,23 @@ struct kernel_interface_t {
 	 *
 	 * Does a route lookup to get the next hop used to reach dest.
 	 * The returned host is allocated and must be destroyed.
+	 * An optional src address can be used to check if a route is available
+	 * for the given source to dest.
 	 *
 	 * @param dest			target destination address
 	 * @return				next hop address, NULL if unreachable
 	 */
-	host_t* (*get_nexthop)(kernel_interface_t *this, host_t *dest);
+	host_t* (*get_nexthop)(kernel_interface_t *this, host_t *dest, host_t *src);
 
 	/**
-	 * Get the interface name of a local address.
+	 * Get the interface name of a local address. Interfaces that are down or
+	 * ignored by config are not considered.
 	 *
 	 * @param host			address to get interface name from
-	 * @return				allocated interface name, or NULL if not found
+	 * @param name			allocated interface name (optional)
+	 * @return				TRUE if interface found and usable
 	 */
-	char* (*get_interface) (kernel_interface_t *this, host_t *host);
+	bool (*get_interface)(kernel_interface_t *this, host_t *host, char **name);
 
 	/**
 	 * Creates an enumerator over all local addresses.
@@ -295,12 +347,11 @@ struct kernel_interface_t {
 	 * enumerator gets destroyed.
 	 * The hosts are read-only, do not modify of free.
 	 *
-	 * @param include_down_ifaces	TRUE to enumerate addresses from down interfaces
-	 * @param include_virtual_ips	TRUE to enumerate virtual ip addresses
-	 * @return						enumerator over host_t's
+	 * @param which			a combination of address types to enumerate
+	 * @return				enumerator over host_t's
 	 */
 	enumerator_t *(*create_address_enumerator) (kernel_interface_t *this,
-						bool include_down_ifaces, bool include_virtual_ips);
+												kernel_address_type_t which);
 
 	/**
 	 * Add a virtual IP to an interface.
@@ -308,24 +359,27 @@ struct kernel_interface_t {
 	 * Virtual IPs are attached to an interface. If an IP is added multiple
 	 * times, the IP is refcounted and not removed until del_ip() was called
 	 * as many times as add_ip().
-	 * The virtual IP is attached to the interface where the iface_ip is found.
 	 *
 	 * @param virtual_ip	virtual ip address to assign
-	 * @param iface_ip		IP of an interface to attach virtual IP
+	 * @param prefix		prefix length to install IP with, -1 for auto
+	 * @param iface			interface to install virtual IP on
 	 * @return				SUCCESS if operation completed
 	 */
-	status_t (*add_ip) (kernel_interface_t *this, host_t *virtual_ip,
-						host_t *iface_ip);
+	status_t (*add_ip) (kernel_interface_t *this, host_t *virtual_ip, int prefix,
+						char *iface);
 
 	/**
 	 * Remove a virtual IP from an interface.
 	 *
 	 * The kernel interface uses refcounting, see add_ip().
 	 *
-	 * @param virtual_ip	virtual ip address to assign
+	 * @param virtual_ip	virtual ip address to remove
+	 * @param prefix		prefix length of the IP to uninstall, -1 for auto
+	 * @param wait			TRUE to wait untily IP is gone
 	 * @return				SUCCESS if operation completed
 	 */
-	status_t (*del_ip) (kernel_interface_t *this, host_t *virtual_ip);
+	status_t (*del_ip) (kernel_interface_t *this, host_t *virtual_ip,
+						int prefix, bool wait);
 
 	/**
 	 * Add a route.
@@ -333,7 +387,7 @@ struct kernel_interface_t {
 	 * @param dst_net		destination net
 	 * @param prefixlen		destination net prefix length
 	 * @param gateway		gateway for this route
-	 * @param src_ip		sourc ip of the route
+	 * @param src_ip		source ip of the route
 	 * @param if_name		name of the interface the route is bound to
 	 * @return				SUCCESS if operation completed
 	 *						ALREADY_DONE if the route already exists
@@ -348,7 +402,7 @@ struct kernel_interface_t {
 	 * @param dst_net		destination net
 	 * @param prefixlen		destination net prefix length
 	 * @param gateway		gateway for this route
-	 * @param src_ip		sourc ip of the route
+	 * @param src_ip		source ip of the route
 	 * @param if_name		name of the interface the route is bound to
 	 * @return				SUCCESS if operation completed
 	 */
@@ -361,24 +415,53 @@ struct kernel_interface_t {
 	 *
 	 * @param fd			socket file descriptor to setup policy for
 	 * @param family		protocol family of the socket
-	 * @return				TRUE of policy set up successfully
+	 * @return				TRUE if policy set up successfully
 	 */
 	bool (*bypass_socket)(kernel_interface_t *this, int fd, int family);
+
+	/**
+	 * Enable decapsulation of ESP-in-UDP packets for the given port/socket.
+	 *
+	 * @param fd			socket file descriptor
+	 * @param family		protocol family of the socket
+	 * @param port			the UDP port
+	 * @return				TRUE if UDP decapsulation was enabled successfully
+	 */
+	bool (*enable_udp_decap)(kernel_interface_t *this, int fd, int family,
+							 u_int16_t port);
+
 
 	/**
 	 * manager methods
 	 */
 
 	/**
-	 * Tries to find an ip address of a local interface that is included in the
+	 * Verifies that the given interface is usable and not excluded by
+	 * configuration.
+	 *
+	 * @param iface			interface name
+	 * @return				TRUE if usable
+	 */
+	bool (*is_interface_usable)(kernel_interface_t *this, const char *iface);
+
+	/**
+	 * Check if interfaces are excluded by config.
+	 *
+	 * @return				TRUE if no interfaces are exclued by config
+	 */
+	bool (*all_interfaces_usable)(kernel_interface_t *this);
+
+	/**
+	 * Tries to find an IP address of a local interface that is included in the
 	 * supplied traffic selector.
 	 *
 	 * @param ts			traffic selector
-	 * @param ip			returned ip (has to be destroyed)
+	 * @param ip			returned IP address (has to be destroyed)
+	 * @param vip			set to TRUE if returned address is a virtual IP
 	 * @return				SUCCESS if address found
 	 */
 	status_t (*get_address_by_ts)(kernel_interface_t *this,
-								  traffic_selector_t *ts, host_t **ip);
+								  traffic_selector_t *ts, host_t **ip, bool *vip);
 
 	/**
 	 * Register an ipsec kernel interface constructor on the manager.
@@ -481,7 +564,41 @@ struct kernel_interface_t {
 	void (*roam)(kernel_interface_t *this, bool address);
 
 	/**
-	 * Destroys a kernel_interface_manager_t object.
+	 * Raise a tun event.
+	 *
+	 * @param tun			TUN device
+	 * @param created		TRUE if created, FALSE if going to be destroyed
+	 */
+	void (*tun)(kernel_interface_t *this, tun_device_t *tun, bool created);
+
+	/**
+	 * Register a new algorithm with the kernel interface.
+	 *
+	 * @param alg_id			the IKE id of the algorithm
+	 * @param type				the transform type of the algorithm
+	 * @param kernel_id			the kernel id of the algorithm
+	 * @param kernel_name		the kernel name of the algorithm
+	 */
+	void (*register_algorithm)(kernel_interface_t *this, u_int16_t alg_id,
+							   transform_type_t type, u_int16_t kernel_id,
+							   char *kernel_name);
+
+	/**
+	 * Return the kernel-specific id and/or name for an algorithms depending on
+	 * the arguments specified.
+	 *
+	 * @param alg_id			the IKE id of the algorithm
+	 * @param type				the transform type of the algorithm
+	 * @param kernel_id			the kernel id of the algorithm (optional)
+	 * @param kernel_name		the kernel name of the algorithm (optional)
+	 * @return					TRUE if algorithm was found
+	 */
+	bool (*lookup_algorithm)(kernel_interface_t *this, u_int16_t alg_id,
+							 transform_type_t type, u_int16_t *kernel_id,
+							 char **kernel_name);
+
+	/**
+	 * Destroys a kernel_interface_t object.
 	 */
 	void (*destroy) (kernel_interface_t *this);
 };

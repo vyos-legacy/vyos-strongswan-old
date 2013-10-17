@@ -16,7 +16,7 @@
 #include "eap_peap_peer.h"
 #include "eap_peap_avp.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <daemon.h>
 
 typedef struct private_eap_peap_peer_t private_eap_peap_peer_t;
@@ -85,7 +85,7 @@ METHOD(tls_application_t, process, status_t,
 		default:
 			return FAILED;
 	}
- 		
+
 	in = eap_payload_create_data(data);
 	DBG3(DBG_IKE, "%B", &data);
 	chunk_free(&data);
@@ -151,7 +151,8 @@ METHOD(tls_application_t, process, status_t,
 		if (!this->ph2_method)
 		{
 			DBG1(DBG_IKE, "EAP method not supported");
-			this->out = eap_payload_create_nak(in->get_identifier(in));
+			this->out = eap_payload_create_nak(in->get_identifier(in), 0, 0,
+											   in->is_expanded(in));
 			in->destroy(in);
 			return NEED_MORE;
 		}

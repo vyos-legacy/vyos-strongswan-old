@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Sansar Choinyanbuu
- * Copyright (C) 2010-2011 Andreas Steffen
+ * Copyright (C) 2010-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -34,8 +34,10 @@
 #include <tnc/imc/imc_manager.h>
 #include <tnc/imv/imv_manager.h>
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <daemon.h>
 #include <threading/mutex.h>
+#include <collections/linked_list.h>
 #include <pen/pen.h>
 
 typedef struct private_tnccs_20_t private_tnccs_20_t;
@@ -46,14 +48,34 @@ typedef struct private_tnccs_20_t private_tnccs_20_t;
 struct private_tnccs_20_t {
 
 	/**
-	 * Public tls_t interface.
+	 * Public tnccs_t interface.
 	 */
-	tls_t public;
+	tnccs_t public;
 
 	/**
 	 * TNCC if TRUE, TNCS if FALSE
 	 */
 	bool is_server;
+
+	/**
+	 * Server identity
+	 */
+	identification_t *server;
+
+	/**
+	 * Client identity
+	 */
+	identification_t *peer;
+
+	/**
+	 * Underlying TNC IF-T transport protocol
+	 */
+	tnc_ift_type_t transport;
+
+	/**
+	 * Type of TNC client authentication
+	 */
+	u_int32_t auth_type;
 
 	/**
 	 * PB-TNC State Machine
@@ -66,9 +88,24 @@ struct private_tnccs_20_t {
 	TNC_ConnectionID connection_id;
 
 	/**
-	 * PB-TNC batch being constructed
+	 * PB-TNC messages to be sent
 	 */
-	pb_tnc_batch_t *batch;
+	linked_list_t *messages;
+
+	/**
+	 * Type of PB-TNC batch being constructed
+	 */
+	pb_tnc_batch_type_t batch_type;
+
+	/**
+	 * Maximum PB-TNC batch size
+	 */
+	size_t max_batch_len;
+
+	/**
+	 * Maximum PA-TNC message size
+	 */
+	size_t max_msg_len;
 
 	/**
 	 * Mutex locking the batch in construction
@@ -96,6 +133,30 @@ struct private_tnccs_20_t {
 	recommendations_t *recs;
 
 };
+
+/**
+ * If the batch type changes then delete all accumulated PB-TNC messages
+ */
+void change_batch_type(private_tnccs_20_t *this, pb_tnc_batch_type_t batch_type)
+{
+	pb_tnc_msg_t *msg;
+
+	if (batch_type != this->batch_type)
+	{
+		if (this->batch_type != PB_BATCH_NONE)
+		{
+			DBG1(DBG_TNC, "cancelling PB-TNC %N batch",
+				 pb_tnc_batch_type_names, this->batch_type);
+
+			while (this->messages->remove_last(this->messages,
+											  (void**)&msg) == SUCCESS)
+			{
+				msg->destroy(msg);
+			}
+		}
+		this->batch_type = batch_type;
+	}
+}
 
 METHOD(tnccs_t, send_msg, TNC_Result,
 	private_tnccs_20_t* this, TNC_IMCID imc_id, TNC_IMVID imv_id,
@@ -138,13 +199,13 @@ METHOD(tnccs_t, send_msg, TNC_Result,
 	/* adding PA message to SDATA or CDATA batch only */
 	batch_type = this->is_server ? PB_BATCH_SDATA : PB_BATCH_CDATA;
 	this->mutex->lock(this->mutex);
-	if (!this->batch)
+	if (this->batch_type == PB_BATCH_NONE)
 	{
-		this->batch = pb_tnc_batch_create(this->is_server, batch_type);
+		this->batch_type = batch_type;
 	}
-	if (this->batch->get_type(this->batch) == batch_type)
+	if (this->batch_type == batch_type)
 	{
-		this->batch->add_msg(this->batch, pb_tnc_msg);
+		this->messages->insert_last(this->messages, pb_tnc_msg);
 	}
 	else
 	{
@@ -167,30 +228,31 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 		case PB_MSG_PA:
 		{
 			pb_pa_msg_t *pa_msg;
-			u_int32_t msg_vid, msg_subtype;
+			pen_type_t msg_subtype;
 			u_int16_t imc_id, imv_id;
 			chunk_t msg_body;
 			bool excl;
 			enum_name_t *pa_subtype_names;
 
 			pa_msg = (pb_pa_msg_t*)msg;
-			msg_vid = pa_msg->get_vendor_id(pa_msg, &msg_subtype);
+			msg_subtype = pa_msg->get_subtype(pa_msg);
 			msg_body = pa_msg->get_body(pa_msg);
 			imc_id = pa_msg->get_collector_id(pa_msg);
 			imv_id = pa_msg->get_validator_id(pa_msg);
 			excl = pa_msg->get_exclusive_flag(pa_msg);
 
-			pa_subtype_names = get_pa_subtype_names(msg_vid);
+			pa_subtype_names = get_pa_subtype_names(msg_subtype.vendor_id);
 			if (pa_subtype_names)
 			{
 				DBG2(DBG_TNC, "handling PB-PA message type '%N/%N' 0x%06x/0x%08x",
-					 pen_names, msg_vid, pa_subtype_names, msg_subtype,
-					 msg_vid, msg_subtype);
+					 pen_names, msg_subtype.vendor_id, pa_subtype_names,
+					 msg_subtype.type, msg_subtype.vendor_id, msg_subtype.type);
 			}
 			else
 			{
 				DBG2(DBG_TNC, "handling PB-PA message type '%N' 0x%06x/0x%08x",
-					 pen_names, msg_vid, msg_vid, msg_subtype);
+					 pen_names, msg_subtype.vendor_id, msg_subtype.vendor_id,
+					 msg_subtype.type);
 			}
 
 			this->send_msg = TRUE;
@@ -198,13 +260,15 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			{
 				tnc->imvs->receive_message(tnc->imvs, this->connection_id,
 										   excl, msg_body.ptr, msg_body.len,
-										   msg_vid, msg_subtype, imc_id, imv_id);
+										   msg_subtype.vendor_id,
+										   msg_subtype.type, imc_id, imv_id);
 			}
 			else
 			{
 				tnc->imcs->receive_message(tnc->imcs, this->connection_id,
 										   excl, msg_body.ptr, msg_body.len,
-										   msg_vid, msg_subtype, imv_id, imc_id);
+										   msg_subtype.vendor_id,
+										   msg_subtype.type, imv_id, imc_id);
 			}
 			this->send_msg = FALSE;
 			break;
@@ -247,7 +311,36 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 		}
 		case PB_MSG_REMEDIATION_PARAMETERS:
 		{
-			/* TODO : Remediation parameters message processing */
+			pb_remediation_parameters_msg_t *rem_msg;
+			pen_type_t parameters_type;
+			chunk_t parameters, string, lang_code;
+
+			rem_msg = (pb_remediation_parameters_msg_t*)msg;
+			parameters_type = rem_msg->get_parameters_type(rem_msg);
+			parameters = rem_msg->get_parameters(rem_msg);
+
+			if (parameters_type.vendor_id == PEN_IETF)
+			{
+				switch (parameters_type.type)
+				{
+					case PB_REMEDIATION_URI:
+						DBG1(DBG_TNC, "remediation uri: %.*s",
+									   parameters.len, parameters.ptr);
+						break;
+					case PB_REMEDIATION_STRING:
+						string = rem_msg->get_string(rem_msg, &lang_code);
+						DBG1(DBG_TNC, "remediation string: [%.*s]\n%.*s",
+									   lang_code.len, lang_code.ptr,
+									   string.len, string.ptr);
+						break;
+					default:
+						DBG1(DBG_TNC, "remediation parameters: %B", &parameters);
+				}
+			}
+			else
+			{
+				DBG1(DBG_TNC, "remediation parameters: %B", &parameters);
+			}
 			break;
 		}
 		case PB_MSG_ERROR:
@@ -312,9 +405,12 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			lang_msg = (pb_language_preference_msg_t*)msg;
 			lang = lang_msg->get_language_preference(lang_msg);
 
-			DBG2(DBG_TNC, "setting language preference to '%.*s'",
-						   lang.len, lang.ptr);
-			this->recs->set_preferred_language(this->recs, lang);
+			if (this->recs)
+			{
+				DBG2(DBG_TNC, "setting language preference to '%.*s'",
+					 (int)lang.len, lang.ptr);
+				this->recs->set_preferred_language(this->recs, lang);
+			}
 			break;
 		}
 		case PB_MSG_REASON_STRING:
@@ -325,10 +421,9 @@ static void handle_message(private_tnccs_20_t *this, pb_tnc_msg_t *msg)
 			reason_msg = (pb_reason_string_msg_t*)msg;
 			reason_string = reason_msg->get_reason_string(reason_msg);
 			language_code = reason_msg->get_language_code(reason_msg);
-			DBG2(DBG_TNC, "reason string is '%.*s'", reason_string.len,
-													 reason_string.ptr);
-			DBG2(DBG_TNC, "language code is '%.*s'", language_code.len,
-													 language_code.ptr);
+			DBG1(DBG_TNC, "reason string is '%.*s' [%.*s]",
+				 (int)reason_string.len, reason_string.ptr,
+				 (int)language_code.len, language_code.ptr);
 			break;
 		}
 		default:
@@ -344,23 +439,20 @@ static void build_retry_batch(private_tnccs_20_t *this)
 	pb_tnc_batch_type_t batch_retry_type;
 
 	batch_retry_type = this->is_server ? PB_BATCH_SRETRY : PB_BATCH_CRETRY;
-	if (this->batch)
+	if (this->batch_type == batch_retry_type)
 	{
-		if (this->batch->get_type(this->batch) == batch_retry_type)
-		{
-			/* retry batch has already been created */
-			return;
-		}
-		DBG1(DBG_TNC, "cancelling PB-TNC %N batch",
-			pb_tnc_batch_type_names, this->batch->get_type(this->batch));
-		this->batch->destroy(this->batch);
-	 }
+		/* retry batch has already been selected */
+		return;
+	}
+
+	change_batch_type(this, batch_retry_type);
+
 	if (this->is_server)
 	{
+		this->recs->clear_recommendation(this->recs);
 		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
 											TNC_CONNECTION_STATE_HANDSHAKE);
 	}
-	this->batch = pb_tnc_batch_create(this->is_server, batch_retry_type);
 }
 
 METHOD(tls_t, process, status_t,
@@ -375,8 +467,9 @@ METHOD(tls_t, process, status_t,
 	if (this->is_server && !this->connection_id)
 	{
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
-								TNCCS_2_0, (tnccs_t*)this, _send_msg,
-								&this->request_handshake_retry, &this->recs);
+									TNCCS_2_0, (tnccs_t*)this, _send_msg,
+									&this->request_handshake_retry,
+									this->max_msg_len, &this->recs);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -461,13 +554,7 @@ METHOD(tls_t, process, status_t,
 		case FAILED:
 			this->fatal_error = TRUE;
 			this->mutex->lock(this->mutex);
-			if (this->batch)
-			{
-				DBG1(DBG_TNC, "cancelling PB-TNC %N batch",
-					pb_tnc_batch_type_names, this->batch->get_type(this->batch));
-				this->batch->destroy(this->batch);
-			 }
-			this->batch = pb_tnc_batch_create(this->is_server, PB_BATCH_CLOSE);
+			change_batch_type(this, PB_BATCH_CLOSE);
 			this->mutex->unlock(this->mutex);
 			/* fall through to add error messages to outbound batch */
 		case VERIFY_ERROR:
@@ -475,7 +562,7 @@ METHOD(tls_t, process, status_t,
 			while (enumerator->enumerate(enumerator, &msg))
 			{
 				this->mutex->lock(this->mutex);
-				this->batch->add_msg(this->batch, msg->get_ref(msg));
+				this->messages->insert_last(this->messages, msg->get_ref(msg));
 				this->mutex->unlock(this->mutex);
 			}
 			enumerator->destroy(enumerator);
@@ -496,6 +583,7 @@ static void check_and_build_recommendation(private_tnccs_20_t *this)
 {
 	TNC_IMV_Action_Recommendation rec;
 	TNC_IMV_Evaluation_Result eval;
+	TNC_ConnectionState state;
 	TNC_IMVID id;
 	chunk_t reason, language;
 	enumerator_t *enumerator;
@@ -508,38 +596,44 @@ static void check_and_build_recommendation(private_tnccs_20_t *this)
 	}
 	if (this->recs->have_recommendation(this->recs, &rec, &eval))
 	{
-		this->batch = pb_tnc_batch_create(this->is_server, PB_BATCH_RESULT);
+		this->batch_type = PB_BATCH_RESULT;
 
 		msg = pb_assessment_result_msg_create(eval);
-		this->batch->add_msg(this->batch, msg);
+		this->messages->insert_last(this->messages, msg);
 
 		/**
 		 * Map IMV Action Recommendation codes to PB Access Recommendation codes
+		 * and communicate Access Recommendation to IMVs
 		 */
 		switch (rec)
 		{
 			case TNC_IMV_ACTION_RECOMMENDATION_ALLOW:
+				state = TNC_CONNECTION_STATE_ACCESS_ALLOWED;
 				pb_rec = PB_REC_ACCESS_ALLOWED;
 				break;
 			case TNC_IMV_ACTION_RECOMMENDATION_ISOLATE:
+				state = TNC_CONNECTION_STATE_ACCESS_ISOLATED;
 				pb_rec = PB_REC_QUARANTINED;
 				break;
 			case TNC_IMV_ACTION_RECOMMENDATION_NO_ACCESS:
 			case TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION:
 			default:
+				state = TNC_CONNECTION_STATE_ACCESS_NONE;
 				pb_rec = PB_REC_ACCESS_DENIED;
 		}
+		tnc->imvs->notify_connection_change(tnc->imvs, this->connection_id,
+											state);
+
 		msg = pb_access_recommendation_msg_create(pb_rec);
-		this->batch->add_msg(this->batch, msg);
+		this->messages->insert_last(this->messages, msg);
 
 		enumerator = this->recs->create_reason_enumerator(this->recs);
 		while (enumerator->enumerate(enumerator, &id, &reason, &language))
 		{
 			msg = pb_reason_string_msg_create(reason, language);
-			this->batch->add_msg(this->batch, msg);
+			this->messages->insert_last(this->messages, msg);
 		}
 		enumerator->destroy(enumerator);
-		this->recs->clear_reasons(this->recs);
 	}
 }
 
@@ -557,7 +651,8 @@ METHOD(tls_t, build, status_t,
 
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
 										TNCCS_2_0, (tnccs_t*)this, _send_msg,
-										&this->request_handshake_retry, NULL);
+										&this->request_handshake_retry,
+										this->max_msg_len, NULL);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -568,8 +663,8 @@ METHOD(tls_t, build, status_t,
 		msg = pb_language_preference_msg_create(chunk_create(pref_lang,
 													strlen(pref_lang)));
 		this->mutex->lock(this->mutex);
-		this->batch = pb_tnc_batch_create(this->is_server, PB_BATCH_CDATA);
-		this->batch->add_msg(this->batch, msg);
+		this->batch_type = PB_BATCH_CDATA;
+		this->messages->insert_last(this->messages, msg);
 		this->mutex->unlock(this->mutex);
 
 		tnc->imcs->notify_connection_change(tnc->imcs, this->connection_id,
@@ -583,7 +678,7 @@ METHOD(tls_t, build, status_t,
 
 	state = this->state_machine->get_state(this->state_machine);
 
-	if (this->is_server && this->fatal_error && state == PB_STATE_END)
+	if (this->fatal_error && state == PB_STATE_END)
 	{
 		DBG1(DBG_TNC, "a fatal PB-TNC error occurred, terminating connection");
 		return FAILED;
@@ -603,66 +698,110 @@ METHOD(tls_t, build, status_t,
 		this->request_handshake_retry = FALSE;
 	}
 
-	if (!this->batch)
+	if (this->is_server &&  state == PB_STATE_SERVER_WORKING &&
+		this->recs->have_recommendation(this->recs, NULL, NULL))
+	{
+		check_and_build_recommendation(this);
+	}
+
+	if (this->batch_type == PB_BATCH_NONE)
 	{
 		if (this->is_server)
 		{
 			if (state == PB_STATE_SERVER_WORKING)
 			{
-				check_and_build_recommendation(this);
+				if (this->state_machine->get_empty_cdata(this->state_machine))
+				{
+					check_and_build_recommendation(this);
+				}
+				else
+				{
+					DBG2(DBG_TNC, "no recommendation available yet, "
+								  "sending empty PB-TNC SDATA batch");
+					this->batch_type = PB_BATCH_SDATA;
+				}
 			}
 		}
 		else
 		{
-			/**
-			 * if the DECIDED state has been reached and no CRETRY is under way
-			 * or if a CLOSE batch with error messages has been received,
-			 * a PB-TNC client replies with an empty CLOSE batch.
-			 */
-			if (state == PB_STATE_DECIDED || state == PB_STATE_END)
+			switch (state)
 			{
-				this->batch = pb_tnc_batch_create(this->is_server, PB_BATCH_CLOSE);
+				case PB_STATE_CLIENT_WORKING:
+					DBG2(DBG_TNC, "no client data to send, "
+								  "sending empty PB-TNC CDATA batch");
+					this->batch_type = PB_BATCH_CDATA;
+					break;
+				case PB_STATE_DECIDED:
+					/**
+					 * In the DECIDED state and if no CRETRY is under way,
+					 * a PB-TNC client replies with an empty CLOSE batch.
+					 */
+					this->batch_type = PB_BATCH_CLOSE;
+					break;
+				default:
+					break;
 			}
 		}
 	}
 
-	if (this->batch)
+	if (this->batch_type != PB_BATCH_NONE)
 	{
-		pb_tnc_batch_type_t batch_type;
+		pb_tnc_batch_t *batch;
+		pb_tnc_msg_t *msg;
 		chunk_t data;
+		int msg_count;
+		enumerator_t *enumerator;
 
-		batch_type = this->batch->get_type(this->batch);
-
-		if (this->state_machine->send_batch(this->state_machine, batch_type))
+		if (this->state_machine->send_batch(this->state_machine, this->batch_type))
 		{
-			this->batch->build(this->batch);
-			data = this->batch->get_encoding(this->batch);
+			batch = pb_tnc_batch_create(this->is_server, this->batch_type,
+										min(this->max_batch_len, *buflen));
+
+			enumerator = this->messages->create_enumerator(this->messages);
+			while (enumerator->enumerate(enumerator, &msg))
+			{
+				if (batch->add_msg(batch, msg))
+				{
+					this->messages->remove_at(this->messages, enumerator);
+				}
+				else
+				{
+					break;
+				}
+			}
+			enumerator->destroy(enumerator);
+
+			batch->build(batch);
+			data = batch->get_encoding(batch);
 			DBG1(DBG_TNC, "sending PB-TNC %N batch (%d bytes) for Connection ID %u",
-						   pb_tnc_batch_type_names, batch_type, data.len,
+						   pb_tnc_batch_type_names, this->batch_type, data.len,
 						   this->connection_id);
 			DBG3(DBG_TNC, "%B", &data);
-			*msglen = data.len;
 
-			if (data.len > *buflen)
+			*buflen = data.len;
+			*msglen = 0;
+			memcpy(buf, data.ptr, *buflen);
+			batch->destroy(batch);
+
+			msg_count = this->messages->get_count(this->messages);
+			if (msg_count)
 			{
-				DBG1(DBG_TNC, "fragmentation of PB-TNC batch not supported yet");
+				DBG2(DBG_TNC, "queued %d PB-TNC message%s for next %N batch",
+					 msg_count, (msg_count == 1) ? "" : "s",
+					 pb_tnc_batch_type_names, this->batch_type);
 			}
 			else
 			{
-				*buflen = data.len;
+				this->batch_type = PB_BATCH_NONE;
 			}
-			memcpy(buf, data.ptr, *buflen);
+
 			status = ALREADY_DONE;
 		}
 		else
 		{
-			DBG1(DBG_TNC, "cancelling unexpected PB-TNC batch type: %N",
-				 pb_tnc_batch_type_names, batch_type);
+			change_batch_type(this, PB_BATCH_NONE);
 			status = INVALID_STATE;
 		}
-
-		this->batch->destroy(this->batch);
-		this->batch = NULL;
 	}
 	else
 	{
@@ -678,6 +817,18 @@ METHOD(tls_t, is_server, bool,
 	private_tnccs_20_t *this)
 {
 	return this->is_server;
+}
+
+METHOD(tls_t, get_server_id, identification_t*,
+	private_tnccs_20_t *this)
+{
+	return this->server;
+}
+
+METHOD(tls_t, get_peer_id, identification_t*,
+	private_tnccs_20_t *this)
+{
+	return this->peer;
 }
 
 METHOD(tls_t, get_purpose, tls_purpose_t,
@@ -713,32 +864,80 @@ METHOD(tls_t, destroy, void,
 {
 	tnc->tnccs->remove_connection(tnc->tnccs, this->connection_id,
 											  this->is_server);
+	this->server->destroy(this->server);
+	this->peer->destroy(this->peer);
 	this->state_machine->destroy(this->state_machine);
 	this->mutex->destroy(this->mutex);
-	DESTROY_IF(this->batch);
+	this->messages->destroy_offset(this->messages,
+								   offsetof(pb_tnc_msg_t, destroy));
 	free(this);
+}
+
+METHOD(tnccs_t, get_transport, tnc_ift_type_t,
+	private_tnccs_20_t *this)
+{
+	return this->transport;
+}
+
+METHOD(tnccs_t, set_transport, void,
+	private_tnccs_20_t *this, tnc_ift_type_t transport)
+{
+	this->transport = transport;
+}
+
+METHOD(tnccs_t, get_auth_type, u_int32_t,
+	private_tnccs_20_t *this)
+{
+	return this->auth_type;
+}
+
+METHOD(tnccs_t, set_auth_type, void,
+	private_tnccs_20_t *this, u_int32_t auth_type)
+{
+	this->auth_type = auth_type;
 }
 
 /**
  * See header
  */
-tls_t *tnccs_20_create(bool is_server)
+tnccs_t* tnccs_20_create(bool is_server,
+						 identification_t *server,
+						 identification_t *peer,
+						 tnc_ift_type_t transport)
 {
 	private_tnccs_20_t *this;
 
 	INIT(this,
 		.public = {
-			.process = _process,
-			.build = _build,
-			.is_server = _is_server,
-			.get_purpose = _get_purpose,
-			.is_complete = _is_complete,
-			.get_eap_msk = _get_eap_msk,
-			.destroy = _destroy,
+			.tls = {
+				.process = _process,
+				.build = _build,
+				.is_server = _is_server,
+				.get_server_id = _get_server_id,
+				.get_peer_id = _get_peer_id,
+				.get_purpose = _get_purpose,
+				.is_complete = _is_complete,
+				.get_eap_msk = _get_eap_msk,
+				.destroy = _destroy,
+			},
+			.get_transport = _get_transport,
+			.set_transport = _set_transport,
+			.get_auth_type = _get_auth_type,
+			.set_auth_type = _set_auth_type,
 		},
 		.is_server = is_server,
+		.server = server->clone(server),
+		.peer = peer->clone(peer),
+		.transport = transport,
 		.state_machine = pb_tnc_state_machine_create(is_server),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.messages = linked_list_create(),
+		.max_batch_len = lib->settings->get_int(lib->settings,
+								"%s.plugins.tnccs-20.max_batch_size", 65522,
+								charon->name),
+		.max_msg_len = lib->settings->get_int(lib->settings,
+								"%s.plugins.tnccs-20.max_message_size", 65490,
+								charon->name),
 	);
 
 	return &this->public;

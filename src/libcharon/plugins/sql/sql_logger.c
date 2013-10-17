@@ -18,6 +18,7 @@
 #include "sql_logger.h"
 
 #include <daemon.h>
+#include <threading/thread_value.h>
 
 typedef struct private_sql_logger_t private_sql_logger_t;
 
@@ -42,24 +43,23 @@ struct private_sql_logger_t {
 	int level;
 
 	/**
-	 * avoid recursive logging
+	 * avoid recursive calls by the same thread
 	 */
-	bool recursive;
+	thread_value_t *recursive;
 };
 
-METHOD(listener_t, log_, bool,
+METHOD(logger_t, log_, void,
 	private_sql_logger_t *this, debug_t group, level_t level, int thread,
-	ike_sa_t* ike_sa, char *format, va_list args)
+	ike_sa_t* ike_sa, const char *message)
 {
-	if (this->recursive)
+	if (this->recursive->get(this->recursive))
 	{
-		return TRUE;
+		return;
 	}
-	this->recursive = TRUE;
+	this->recursive->set(this->recursive, this->recursive);
 
-	if (ike_sa && level <= this->level)
+	if (ike_sa)
 	{
-		char buffer[8192];
 		chunk_t local_spi, remote_spi;
 		host_t *local_host, *remote_host;
 		identification_t *local_id, *remote_id;
@@ -85,8 +85,6 @@ METHOD(listener_t, log_, bool,
 		local_host = ike_sa->get_my_host(ike_sa);
 		remote_host = ike_sa->get_other_host(ike_sa);
 
-		vsnprintf(buffer, sizeof(buffer), format, args);
-
 		this->db->execute(this->db, NULL, "REPLACE INTO ike_sas ("
 						  "local_spi, remote_spi, id, initiator, "
 						  "local_id_type, local_id_data, "
@@ -104,13 +102,19 @@ METHOD(listener_t, log_, bool,
 						  DB_BLOB, local_host->get_address(local_host),
 						  DB_BLOB, remote_host->get_address(remote_host));
 		this->db->execute(this->db, NULL, "INSERT INTO logs ("
-						  "local_spi, signal, level, msg) VALUES (?, ?, ?, ?)",
+						  "local_spi, `signal`, level, msg) "
+						  "VALUES (?, ?, ?, ?)",
 						  DB_BLOB, local_spi, DB_INT, group, DB_INT, level,
-						  DB_TEXT, buffer);
+						  DB_TEXT, message);
 	}
-	this->recursive = FALSE;
-	/* always stay registered */
-	return TRUE;
+
+	this->recursive->set(this->recursive, NULL);
+}
+
+METHOD(logger_t, get_level, level_t,
+	private_sql_logger_t *this, debug_t group)
+{
+	return this->level;
 }
 
 METHOD(sql_logger_t, destroy, void,
@@ -128,14 +132,16 @@ sql_logger_t *sql_logger_create(database_t *db)
 
 	INIT(this,
 		.public = {
-			.listener = {
+			.logger = {
 				.log = _log_,
+				.get_level = _get_level,
 			},
 			.destroy = _destroy,
 		},
 		.db = db,
+		.recursive = thread_value_create(NULL),
 		.level = lib->settings->get_int(lib->settings,
-										"charon.plugins.sql.loglevel", -1),
+								"%s.plugins.sql.loglevel", -1, charon->name),
 	);
 
 	return &this->public;

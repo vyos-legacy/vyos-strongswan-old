@@ -15,7 +15,7 @@
 
 /**
  * @defgroup pts pts
- * @{ @ingroup pts
+ * @{ @ingroup libpts
  */
 
 #ifndef PTS_H_
@@ -29,12 +29,13 @@ typedef struct pts_t pts_t;
 #include "pts_file_meas.h"
 #include "pts_file_meta.h"
 #include "pts_dh_group.h"
+#include "pts_pcr.h"
 #include "pts_req_func_comp_evid.h"
 #include "pts_simple_evid_final.h"
 #include "components/pts_comp_func_name.h"
 
 #include <library.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /**
  * UTF-8 encoding of the character used to delimiter the filename
@@ -170,9 +171,10 @@ struct pts_t {
 	/**
 	 * Set Platform and OS Info
 	 *
-	 * @param info				Platform and OS info
+	 * @param name				OS name
+	 * @param version			OS version
 	 */
-	void (*set_platform_info)(pts_t *this, char *info);
+	void (*set_platform_info)(pts_t *this, chunk_t name, chunk_t version);
 
 	/**
 	 * Get TPM 1.2 Version Info
@@ -188,13 +190,6 @@ struct pts_t {
 	 * @param info				chunk containing a TPM_CAP_VERSION_INFO struct
 	 */
 	void (*set_tpm_version_info)(pts_t *this, chunk_t info);
-
-	/**
-	 * Get the length of the TPM PCR registers
-	 *
-	 * @return					Length of PCR registers in bytes, 0 if undefined
-	 */
-	size_t (*get_pcr_len)(pts_t *this);
 
 	/**
 	 * Get Attestation Identity Certificate or Public Key
@@ -230,34 +225,13 @@ struct pts_t {
 	bool (*is_path_valid)(pts_t *this, char *path, pts_error_code_t *error_code);
 
 	/**
-	* Compute a hash over a file
-	 * @param hasher			Hasher to be used
-	 * @param pathname			Absolute path of a file
-	 * @param hash				Buffer to keep hash output
-	 * @return					TRUE if path is valid and hashing succeeded
-	 */
-	bool (*hash_file)(pts_t *this, hasher_t *hasher, char *pathname, u_char *hash);
-
-	/**
-	 * Do PTS File Measurements
-	 *
-	 * @param request_id		ID of PTS File Measurement Request
-	 * @param pathname			Absolute pathname of file to be measured
-	 * @param is_directory		TRUE if directory contents are measured
-	 * @return					PTS File Measurements of NULL if FAILED
-	 */
-	pts_file_meas_t* (*do_measurements)(pts_t *this, u_int16_t request_id,
-										char *pathname, bool is_directory);
-
-	/**
 	 * Obtain file metadata
 	 *
 	 * @param pathname			Absolute pathname of file/directory
-	 * @param is_directory		TRUE if directory contents are requested
+	 * @param is_dir			TRUE if directory contents are requested
 	 * @return					PTS File Metadata or NULL if FAILED
 	 */
-	pts_file_meta_t* (*get_metadata)(pts_t *this, char *pathname,
-									 bool is_directory);
+	pts_file_meta_t* (*get_metadata)(pts_t *this, char *pathname, bool is_dir);
 
 	/**
 	 * Reads given PCR value and returns it
@@ -294,24 +268,12 @@ struct pts_t {
 	 bool (*quote_tpm)(pts_t *this, bool use_quote2, chunk_t *pcr_comp,
 													 chunk_t *quote_sig);
 
-	 /**
-	 * Mark an extended PCR as selected
+	/**
+	 * Get the shadow PCR set
 	 *
-	 * @param pcr				Number of the extended PCR
-	 * @return					TRUE if PCR number is valid
+	 * @return					shadow PCR set
 	 */
-	 bool (*select_pcr)(pts_t *this, u_int32_t pcr);
-
-	 /**
-	 * Add an extended PCR with its corresponding value
-	 *
-	 * @param pcr				Number of the extended PCR
-	 * @param pcr_before		PCR value before extension
-	 * @param pcr_after			PCR value after extension
-	 * @return					TRUE if PCR number and register length is valid
-	 */
-	bool (*add_pcr)(pts_t *this, u_int32_t pcr, chunk_t pcr_before,
-												chunk_t pcr_after);
+	pts_pcr_t* (*get_pcrs)(pts_t *this);
 
 	 /**
 	 * Constructs and returns TPM Quote Info structure expected from IMC

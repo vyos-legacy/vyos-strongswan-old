@@ -15,7 +15,7 @@
 
 #include "tls_protection.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_tls_protection_t private_tls_protection_t;
 
@@ -93,7 +93,7 @@ struct private_tls_protection_t {
 /**
  * Create the header and feed it into a signer for MAC verification
  */
-static void sigheader(signer_t *signer, u_int32_t seq, u_int8_t type,
+static bool sigheader(signer_t *signer, u_int32_t seq, u_int8_t type,
 					  u_int16_t version, u_int16_t length)
 {
 	/* we only support 32 bit sequence numbers, but TLS uses 64 bit */
@@ -110,7 +110,7 @@ static void sigheader(signer_t *signer, u_int32_t seq, u_int8_t type,
 	htoun16(&header.version, version);
 	htoun16(&header.length, length);
 
-	signer->get_signature(signer, chunk_from_thing(header), NULL);
+	return signer->get_signature(signer, chunk_from_thing(header), NULL);
 }
 
 METHOD(tls_protection_t, process, status_t,
@@ -150,7 +150,12 @@ METHOD(tls_protection_t, process, status_t,
 				return NEED_MORE;
 			}
 		}
-		this->crypter_in->decrypt(this->crypter_in, data, iv, NULL);
+		if (!this->crypter_in->decrypt(this->crypter_in, data, iv, NULL))
+		{
+			free(next_iv.ptr);
+			this->alert->add(this->alert, TLS_FATAL, TLS_BAD_RECORD_MAC);
+			return NEED_MORE;
+		}
 
 		if (next_iv.len)
 		{	/* next record IV is last ciphertext block of this record */
@@ -180,8 +185,9 @@ METHOD(tls_protection_t, process, status_t,
 		mac = chunk_skip(data, data.len - bs);
 		data.len -= bs;
 
-		sigheader(this->signer_in, this->seq_in, type, this->version, data.len);
-		if (!this->signer_in->verify_signature(this->signer_in, data, mac))
+		if (!sigheader(this->signer_in, this->seq_in, type,
+					   this->version, data.len) ||
+			!this->signer_in->verify_signature(this->signer_in, data, mac))
 		{
 			DBG1(DBG_TLS, "TLS record MAC verification failed");
 			this->alert->add(this->alert, TLS_FATAL, TLS_BAD_RECORD_MAC);
@@ -218,9 +224,13 @@ METHOD(tls_protection_t, build, status_t,
 		{
 			chunk_t mac;
 
-			sigheader(this->signer_out, this->seq_out, *type,
-					  this->version, data->len);
-			this->signer_out->allocate_signature(this->signer_out, *data, &mac);
+			if (!sigheader(this->signer_out, this->seq_out, *type,
+						   this->version, data->len) ||
+				!this->signer_out->allocate_signature(this->signer_out,
+						   *data, &mac))
+			{
+				return FAILED;
+			}
 			if (this->crypter_out)
 			{
 				chunk_t padding, iv;
@@ -238,20 +248,29 @@ METHOD(tls_protection_t, build, status_t,
 				}
 				else
 				{	/* TLSv1.1 uses random IVs, prepended to record */
-					if (!this->rng)
+					iv.len = this->crypter_out->get_iv_size(this->crypter_out);
+					if (!this->rng ||
+						!this->rng->allocate_bytes(this->rng, iv.len, &iv))
 					{
-						DBG1(DBG_TLS, "no RNG supported to generate TLS IV");
+						DBG1(DBG_TLS, "failed to generate TLS IV");
 						free(data->ptr);
 						return FAILED;
 					}
-					iv.len = this->crypter_out->get_iv_size(this->crypter_out);
-					this->rng->allocate_bytes(this->rng, iv.len, &iv);
 				}
 
 				*data = chunk_cat("mmcc", *data, mac, padding,
 								  chunk_from_thing(padding_length));
 				/* encrypt inline */
-				this->crypter_out->encrypt(this->crypter_out, *data, iv, NULL);
+				if (!this->crypter_out->encrypt(this->crypter_out, *data,
+												iv, NULL))
+				{
+					if (!this->iv_out.len)
+					{
+						free(iv.ptr);
+					}
+					free(data->ptr);
+					return FAILED;
+				}
 
 				if (this->iv_out.len)
 				{	/* next record IV is last ciphertext block of this record */

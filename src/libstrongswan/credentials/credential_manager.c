@@ -16,11 +16,11 @@
 #include "credential_manager.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/thread_value.h>
 #include <threading/mutex.h>
 #include <threading/rwlock.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <credentials/sets/cert_cache.h>
 #include <credentials/sets/auth_cfg_wrapper.h>
 #include <credentials/certificates/x509.h>
@@ -53,6 +53,11 @@ struct private_credential_manager_t {
 	thread_value_t *local_sets;
 
 	/**
+	 * Exclusive local sets, linked_list_t with credential_set_t
+	 */
+	thread_value_t *exclusive_local_sets;
+
+	/**
 	 * trust relationship and certificate cache
 	 */
 	cert_cache_t *cache;
@@ -76,6 +81,16 @@ struct private_credential_manager_t {
 	 * mutex for cache queue
 	 */
 	mutex_t *queue_mutex;
+
+	/**
+	 * Registered hook to call on validation errors
+	 */
+	credential_hook_t hook;
+
+	/**
+	 * Registered data to pass to hook
+	 */
+	void *hook_data;
 };
 
 /** data to pass to create_private_enumerator */
@@ -117,12 +132,39 @@ typedef struct {
 	enumerator_t *global;
 	/** enumerator over local sets */
 	enumerator_t *local;
+	/** enumerator over exclusive local sets */
+	enumerator_t *exclusive;
 } sets_enumerator_t;
 
+METHOD(credential_manager_t, set_hook, void,
+	private_credential_manager_t *this, credential_hook_t hook, void *data)
+{
+	this->hook = hook;
+	this->hook_data = data;
+}
+
+METHOD(credential_manager_t, call_hook, void,
+	private_credential_manager_t *this, credential_hook_type_t type,
+	certificate_t *cert)
+{
+	if (this->hook)
+	{
+		this->hook(this->hook_data, type, cert);
+	}
+}
 
 METHOD(enumerator_t, sets_enumerate, bool,
 	sets_enumerator_t *this, credential_set_t **set)
 {
+	if (this->exclusive)
+	{
+		if (this->exclusive->enumerate(this->exclusive, set))
+		{	/* only enumerate last added */
+			this->exclusive->destroy(this->exclusive);
+			this->exclusive = NULL;
+			return TRUE;
+		}
+	}
 	if (this->global)
 	{
 		if (this->global->enumerate(this->global, set))
@@ -145,6 +187,7 @@ METHOD(enumerator_t, sets_destroy, void,
 {
 	DESTROY_IF(this->global);
 	DESTROY_IF(this->local);
+	DESTROY_IF(this->exclusive);
 	free(this);
 }
 
@@ -154,19 +197,28 @@ METHOD(enumerator_t, sets_destroy, void,
 static enumerator_t *create_sets_enumerator(private_credential_manager_t *this)
 {
 	sets_enumerator_t *enumerator;
-	linked_list_t *local;
+	linked_list_t *list;
 
 	INIT(enumerator,
 		.public = {
 			.enumerate = (void*)_sets_enumerate,
 			.destroy = _sets_destroy,
 		},
-		.global = this->sets->create_enumerator(this->sets),
 	);
-	local = this->local_sets->get(this->local_sets);
-	if (local)
+
+	list = this->exclusive_local_sets->get(this->exclusive_local_sets);
+	if (list && list->get_count(list))
 	{
-		enumerator->local = local->create_enumerator(local);
+		enumerator->exclusive = list->create_enumerator(list);
+	}
+	else
+	{
+		enumerator->global = this->sets->create_enumerator(this->sets);
+		list = this->local_sets->get(this->local_sets);
+		if (list)
+		{
+			enumerator->local = list->create_enumerator(list);
+		}
 	}
 	return &enumerator->public;
 }
@@ -352,8 +404,8 @@ METHOD(credential_manager_t, get_shared, shared_key_t*,
 	identification_t *me, identification_t *other)
 {
 	shared_key_t *current, *found = NULL;
-	id_match_t *best_me = ID_MATCH_NONE, *best_other = ID_MATCH_NONE;
-	id_match_t *match_me, *match_other;
+	id_match_t best_me = ID_MATCH_NONE, best_other = ID_MATCH_NONE;
+	id_match_t match_me, match_other;
 	enumerator_t *enumerator;
 
 	enumerator = create_shared_enumerator(this, type, me, other);
@@ -367,32 +419,76 @@ METHOD(credential_manager_t, get_shared, shared_key_t*,
 			best_me = match_me;
 			best_other = match_other;
 		}
+		if (best_me == ID_MATCH_PERFECT && best_other == ID_MATCH_PERFECT)
+		{
+			break;
+		}
 	}
 	enumerator->destroy(enumerator);
 	return found;
 }
 
 METHOD(credential_manager_t, add_local_set, void,
-	private_credential_manager_t *this, credential_set_t *set)
+	private_credential_manager_t *this, credential_set_t *set, bool exclusive)
 {
 	linked_list_t *sets;
+	thread_value_t *tv;
 
-	sets = this->local_sets->get(this->local_sets);
-	if (!sets)
-	{	/* first invocation */
-		sets = linked_list_create();
-		this->local_sets->set(this->local_sets, sets);
+	if (exclusive)
+	{
+		tv = this->exclusive_local_sets;
 	}
-	sets->insert_last(sets, set);
+	else
+	{
+		tv = this->local_sets;
+	}
+	sets = tv->get(tv);
+	if (!sets)
+	{
+		sets = linked_list_create();
+		tv->set(tv, sets);
+	}
+	if (exclusive)
+	{
+		sets->insert_first(sets, set);
+	}
+	else
+	{
+		sets->insert_last(sets, set);
+	}
 }
 
 METHOD(credential_manager_t, remove_local_set, void,
 	private_credential_manager_t *this, credential_set_t *set)
 {
 	linked_list_t *sets;
+	thread_value_t *tv;
 
-	sets = this->local_sets->get(this->local_sets);
-	sets->remove(sets, set, NULL);
+	tv = this->local_sets;
+	sets = tv->get(tv);
+	if (sets && sets->remove(sets, set, NULL) && sets->get_count(sets) == 0)
+	{
+		tv->set(tv, NULL);
+		sets->destroy(sets);
+	}
+	tv = this->exclusive_local_sets;
+	sets = tv->get(tv);
+	if (sets && sets->remove(sets, set, NULL) && sets->get_count(sets) == 0)
+	{
+		tv->set(tv, NULL);
+		sets->destroy(sets);
+	}
+}
+
+METHOD(credential_manager_t, issued_by, bool,
+	private_credential_manager_t *this, certificate_t *subject,
+	certificate_t *issuer, signature_scheme_t *scheme)
+{
+	if (this->cache)
+	{
+		return this->cache->issued_by(this->cache, subject, issuer, scheme);
+	}
+	return subject->issued_by(subject, issuer, scheme);
 }
 
 METHOD(credential_manager_t, cache_cert, void,
@@ -449,32 +545,76 @@ static void cache_queue(private_credential_manager_t *this)
 }
 
 /**
+ * Use validators to check the lifetime of certificates
+ */
+static bool check_lifetime(private_credential_manager_t *this,
+						   certificate_t *cert, char *label,
+						   int pathlen, bool trusted, auth_cfg_t *auth)
+{
+	time_t not_before, not_after;
+	cert_validator_t *validator;
+	enumerator_t *enumerator;
+	status_t status = NEED_MORE;
+
+	enumerator = this->validators->create_enumerator(this->validators);
+	while (enumerator->enumerate(enumerator, &validator))
+	{
+		if (!validator->check_lifetime)
+		{
+			continue;
+		}
+		status = validator->check_lifetime(validator, cert,
+										   pathlen, trusted, auth);
+		if (status != NEED_MORE)
+		{
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	switch (status)
+	{
+		case NEED_MORE:
+			if (!cert->get_validity(cert, NULL, &not_before, &not_after))
+			{
+				DBG1(DBG_CFG, "%s certificate invalid (valid from %T to %T)",
+					 label, &not_before, FALSE, &not_after, FALSE);
+				break;
+			}
+			return TRUE;
+		case SUCCESS:
+			return TRUE;
+		case FAILED:
+		default:
+			break;
+	}
+	call_hook(this, CRED_HOOK_EXPIRED, cert);
+	return FALSE;
+}
+
+/**
  * check a certificate for its lifetime
  */
 static bool check_certificate(private_credential_manager_t *this,
 				certificate_t *subject, certificate_t *issuer, bool online,
 				int pathlen, bool trusted, auth_cfg_t *auth)
 {
-	time_t not_before, not_after;
 	cert_validator_t *validator;
 	enumerator_t *enumerator;
 
-	if (!subject->get_validity(subject, NULL, &not_before, &not_after))
+	if (!check_lifetime(this, subject, "subject", pathlen, FALSE, auth) ||
+		!check_lifetime(this, issuer, "issuer", pathlen + 1, trusted, auth))
 	{
-		DBG1(DBG_CFG, "subject certificate invalid (valid from %T to %T)",
-			 &not_before, FALSE, &not_after, FALSE);
-		return FALSE;
-	}
-	if (!issuer->get_validity(issuer, NULL, &not_before, &not_after))
-	{
-		DBG1(DBG_CFG, "issuer certificate invalid (valid from %T to %T)",
-			 &not_before, FALSE, &not_after, FALSE);
 		return FALSE;
 	}
 
 	enumerator = this->validators->create_enumerator(this->validators);
 	while (enumerator->enumerate(enumerator, &validator))
 	{
+		if (!validator->validate)
+		{
+			continue;
+		}
 		if (!validator->validate(validator, subject, issuer,
 								 online, pathlen, trusted, auth))
 		{
@@ -514,7 +654,8 @@ static certificate_t *get_pretrusted_cert(private_credential_manager_t *this,
  * Get the issuing certificate of a subject certificate
  */
 static certificate_t *get_issuer_cert(private_credential_manager_t *this,
-									  certificate_t *subject, bool trusted)
+									  certificate_t *subject, bool trusted,
+									  signature_scheme_t *scheme)
 {
 	enumerator_t *enumerator;
 	certificate_t *issuer = NULL, *candidate;
@@ -523,7 +664,7 @@ static certificate_t *get_issuer_cert(private_credential_manager_t *this,
 										subject->get_issuer(subject), trusted);
 	while (enumerator->enumerate(enumerator, &candidate))
 	{
-		if (this->cache->issued_by(this->cache, subject, candidate))
+		if (issued_by(this, subject, candidate, scheme))
 		{
 			issuer = candidate->get_ref(candidate);
 			break;
@@ -573,6 +714,7 @@ static bool verify_trust_chain(private_credential_manager_t *this,
 {
 	certificate_t *current, *issuer;
 	auth_cfg_t *auth;
+	signature_scheme_t scheme;
 	int pathlen;
 
 	auth = auth_cfg_create();
@@ -582,11 +724,11 @@ static bool verify_trust_chain(private_credential_manager_t *this,
 
 	for (pathlen = 0; pathlen <= MAX_TRUST_PATH_LEN; pathlen++)
 	{
-		issuer = get_issuer_cert(this, current, TRUE);
+		issuer = get_issuer_cert(this, current, TRUE, &scheme);
 		if (issuer)
 		{
 			/* accept only self-signed CAs as trust anchor */
-			if (this->cache->issued_by(this->cache, issuer, issuer))
+			if (issued_by(this, issuer, issuer, NULL))
 			{
 				auth->add(auth, AUTH_RULE_CA_CERT, issuer->get_ref(issuer));
 				DBG1(DBG_CFG, "  using trusted ca certificate \"%Y\"",
@@ -599,27 +741,31 @@ static bool verify_trust_chain(private_credential_manager_t *this,
 				DBG1(DBG_CFG, "  using trusted intermediate ca certificate "
 					 "\"%Y\"", issuer->get_subject(issuer));
 			}
+			auth->add(auth, AUTH_RULE_SIGNATURE_SCHEME, scheme);
 		}
 		else
 		{
-			issuer = get_issuer_cert(this, current, FALSE);
+			issuer = get_issuer_cert(this, current, FALSE, &scheme);
 			if (issuer)
 			{
 				if (current->equals(current, issuer))
 				{
-					DBG1(DBG_CFG, "  self-signed certificate \"%Y\" is not trusted",
-						 current->get_subject(current));
+					DBG1(DBG_CFG, "  self-signed certificate \"%Y\" is not "
+						 "trusted", current->get_subject(current));
 					issuer->destroy(issuer);
+					call_hook(this, CRED_HOOK_UNTRUSTED_ROOT, current);
 					break;
 				}
 				auth->add(auth, AUTH_RULE_IM_CERT, issuer->get_ref(issuer));
 				DBG1(DBG_CFG, "  using untrusted intermediate certificate "
 					 "\"%Y\"", issuer->get_subject(issuer));
+				auth->add(auth, AUTH_RULE_SIGNATURE_SCHEME, scheme);
 			}
 			else
 			{
 				DBG1(DBG_CFG, "no issuer certificate found for \"%Y\"",
 					 current->get_subject(current));
+				call_hook(this, CRED_HOOK_NO_ISSUER, current);
 				break;
 			}
 		}
@@ -638,8 +784,8 @@ static bool verify_trust_chain(private_credential_manager_t *this,
 		current = issuer;
 		if (trusted)
 		{
-			DBG1(DBG_CFG, "  reached self-signed root ca with a path length of %d",
-						  pathlen);
+			DBG1(DBG_CFG, "  reached self-signed root ca with a "
+				 "path length of %d", pathlen);
 			break;
 		}
 	}
@@ -647,6 +793,7 @@ static bool verify_trust_chain(private_credential_manager_t *this,
 	if (pathlen > MAX_TRUST_PATH_LEN)
 	{
 		DBG1(DBG_CFG, "maximum path length of %d exceeded", MAX_TRUST_PATH_LEN);
+		call_hook(this, CRED_HOOK_EXCEEDED_PATH_LEN, subject);
 	}
 	if (trusted)
 	{
@@ -708,8 +855,7 @@ METHOD(enumerator_t, trusted_enumerate, bool,
 			/* if we find a trusted self signed certificate, we just accept it.
 			 * However, in order to fulfill authorization rules, we try to build
 			 * the trust chain if it is not self signed */
-			if (this->this->cache->issued_by(this->this->cache,
-								   this->pretrusted, this->pretrusted) ||
+			if (issued_by(this->this, this->pretrusted, this->pretrusted, NULL) ||
 				verify_trust_chain(this->this, this->pretrusted, this->auth,
 								   TRUE, this->online))
 			{
@@ -859,7 +1005,7 @@ METHOD(credential_manager_t, create_public_enumerator, enumerator_t*,
 	if (auth)
 	{
 		enumerator->wrapper = auth_cfg_wrapper_create(auth);
-		add_local_set(this, &enumerator->wrapper->set);
+		add_local_set(this, &enumerator->wrapper->set, FALSE);
 	}
 	this->lock->read_lock(this->lock);
 	return &enumerator->public;
@@ -916,8 +1062,7 @@ static auth_cfg_t *build_trustchain(private_credential_manager_t *this,
 		}
 		else
 		{
-			if (!has_anchor &&
-				this->cache->issued_by(this->cache, current, current))
+			if (!has_anchor && issued_by(this, current, current, NULL))
 			{	/* If no trust anchor specified, accept any CA */
 				trustchain->add(trustchain, AUTH_RULE_CA_CERT, current);
 				return trustchain;
@@ -928,7 +1073,7 @@ static auth_cfg_t *build_trustchain(private_credential_manager_t *this,
 		{
 			break;
 		}
-		issuer = get_issuer_cert(this, current, FALSE);
+		issuer = get_issuer_cert(this, current, FALSE, NULL);
 		if (!issuer)
 		{
 			if (!has_anchor)
@@ -973,6 +1118,29 @@ static private_key_t *get_private_by_cert(private_credential_manager_t *this,
 	return private;
 }
 
+/**
+ * Move the actually used certificate to front, so it gets returned with get()
+ */
+static void prefer_cert(auth_cfg_t *auth, certificate_t *cert)
+{
+	enumerator_t *enumerator;
+	auth_rule_t rule;
+	certificate_t *current;
+
+	enumerator = auth->create_enumerator(auth);
+	while (enumerator->enumerate(enumerator, &rule, &current))
+	{
+		if (rule == AUTH_RULE_SUBJECT_CERT)
+		{
+			current->get_ref(current);
+			auth->replace(auth, enumerator, AUTH_RULE_SUBJECT_CERT, cert);
+			cert = current;
+		}
+	}
+	enumerator->destroy(enumerator);
+	auth->add(auth, AUTH_RULE_SUBJECT_CERT, cert);
+}
+
 METHOD(credential_manager_t, get_private, private_key_t*,
 	private_credential_manager_t *this, key_type_t type, identification_t *id,
 	auth_cfg_t *auth)
@@ -981,6 +1149,7 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 	certificate_t *cert;
 	private_key_t *private = NULL;
 	auth_cfg_t *trustchain;
+	auth_rule_t rule;
 
 	/* check if this is a lookup by key ID, and do it if so */
 	if (id && id->get_type(id) == ID_KEY_ID)
@@ -992,42 +1161,73 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 		}
 	}
 
-	/* if a specific certificate is preferred, check for a matching key */
-	cert = auth->get(auth, AUTH_RULE_SUBJECT_CERT);
-	if (cert)
+	if (auth)
 	{
-		private = get_private_by_cert(this, cert, type);
+		/* try to find a trustchain with one of the configured subject certs */
+		enumerator = auth->create_enumerator(auth);
+		while (enumerator->enumerate(enumerator, &rule, &cert))
+		{
+			if (rule == AUTH_RULE_SUBJECT_CERT)
+			{
+				private = get_private_by_cert(this, cert, type);
+				if (private)
+				{
+					trustchain = build_trustchain(this, cert, auth);
+					if (trustchain)
+					{
+						auth->merge(auth, trustchain, FALSE);
+						prefer_cert(auth, cert->get_ref(cert));
+						trustchain->destroy(trustchain);
+						break;
+					}
+					private->destroy(private);
+					private = NULL;
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
 		if (private)
 		{
-			trustchain = build_trustchain(this, cert, auth);
-			if (trustchain)
-			{
-				auth->merge(auth, trustchain, FALSE);
-				trustchain->destroy(trustchain);
-			}
 			return private;
 		}
-	}
 
-	/* try to build a trust chain for each certificate found */
-	enumerator = create_cert_enumerator(this, CERT_ANY, type, id, FALSE);
-	while (enumerator->enumerate(enumerator, &cert))
-	{
-		private = get_private_by_cert(this, cert, type);
-		if (private)
+		/* if none yielded a trustchain, enforce the first configured cert */
+		cert = auth->get(auth, AUTH_RULE_SUBJECT_CERT);
+		if (cert)
 		{
-			trustchain = build_trustchain(this, cert, auth);
-			if (trustchain)
+			private = get_private_by_cert(this, cert, type);
+			if (private)
 			{
-				auth->merge(auth, trustchain, FALSE);
-				trustchain->destroy(trustchain);
-				break;
+				trustchain = build_trustchain(this, cert, auth);
+				if (trustchain)
+				{
+					auth->merge(auth, trustchain, FALSE);
+					trustchain->destroy(trustchain);
+				}
+				return private;
 			}
-			private->destroy(private);
-			private = NULL;
 		}
+
+		/* try to build a trust chain for each certificate found */
+		enumerator = create_cert_enumerator(this, CERT_ANY, type, id, FALSE);
+		while (enumerator->enumerate(enumerator, &cert))
+		{
+			private = get_private_by_cert(this, cert, type);
+			if (private)
+			{
+				trustchain = build_trustchain(this, cert, auth);
+				if (trustchain)
+				{
+					auth->merge(auth, trustchain, FALSE);
+					trustchain->destroy(trustchain);
+					break;
+				}
+				private->destroy(private);
+				private = NULL;
+			}
+		}
+		enumerator->destroy(enumerator);
 	}
-	enumerator->destroy(enumerator);
 
 	/* if no valid trustchain was found, fall back to the first usable cert */
 	if (!private)
@@ -1038,7 +1238,10 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 			private = get_private_by_cert(this, cert, type);
 			if (private)
 			{
-				auth->add(auth, AUTH_RULE_SUBJECT_CERT, cert->get_ref(cert));
+				if (auth)
+				{
+					auth->add(auth, AUTH_RULE_SUBJECT_CERT, cert->get_ref(cert));
+				}
 				break;
 			}
 		}
@@ -1050,14 +1253,10 @@ METHOD(credential_manager_t, get_private, private_key_t*,
 METHOD(credential_manager_t, flush_cache, void,
 	private_credential_manager_t *this, certificate_type_t type)
 {
-	this->cache->flush(this->cache, type);
-}
-
-METHOD(credential_manager_t, issued_by, bool,
-	private_credential_manager_t *this, certificate_t *subject,
-	certificate_t *issuer)
-{
-	return this->cache->issued_by(this->cache, subject, issuer);
+	if (this->cache)
+	{
+		this->cache->flush(this->cache, type);
+	}
 }
 
 METHOD(credential_manager_t, add_set, void,
@@ -1097,10 +1296,14 @@ METHOD(credential_manager_t, destroy, void,
 {
 	cache_queue(this);
 	this->cache_queue->destroy(this->cache_queue);
-	this->sets->remove(this->sets, this->cache, NULL);
+	if (this->cache)
+	{
+		this->sets->remove(this->sets, this->cache, NULL);
+		this->cache->destroy(this->cache);
+	}
 	this->sets->destroy(this->sets);
 	this->local_sets->destroy(this->local_sets);
-	this->cache->destroy(this->cache);
+	this->exclusive_local_sets->destroy(this->exclusive_local_sets);
 	this->validators->destroy(this->validators);
 	this->lock->destroy(this->lock);
 	this->queue_mutex->destroy(this->queue_mutex);
@@ -1133,18 +1336,24 @@ credential_manager_t *credential_manager_create()
 			.remove_local_set = _remove_local_set,
 			.add_validator = _add_validator,
 			.remove_validator = _remove_validator,
+			.set_hook = _set_hook,
+			.call_hook = _call_hook,
 			.destroy = _destroy,
 		},
 		.sets = linked_list_create(),
 		.validators = linked_list_create(),
-		.cache = cert_cache_create(),
 		.cache_queue = linked_list_create(),
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 		.queue_mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 	);
 
 	this->local_sets = thread_value_create((thread_cleanup_t)this->sets->destroy);
-	this->sets->insert_first(this->sets, this->cache);
+	this->exclusive_local_sets = thread_value_create((thread_cleanup_t)this->sets->destroy);
+	if (lib->settings->get_bool(lib->settings, "libstrongswan.cert_cache", TRUE))
+	{
+		this->cache = cert_cache_create();
+		this->sets->insert_first(this->sets, this->cache);
+	}
 
 	return &this->public;
 }

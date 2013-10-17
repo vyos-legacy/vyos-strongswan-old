@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2013 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,17 +16,19 @@
 /**
  *
  * @defgroup imv_agent_t imv_agent
- * @{ @ingroup imv_agent
+ * @{ @ingroup libimcv_imv
  */
 
 #ifndef IMV_AGENT_H_
 #define IMV_AGENT_H_
 
 #include "imv_state.h"
+#include "imv_database.h"
 #include "pa_tnc/pa_tnc_msg.h"
 
 #include <tncifimv.h>
 #include <pen/pen.h>
+#include <collections/linked_list.h>
 
 #include <library.h>
 
@@ -47,6 +50,44 @@ struct imv_agent_t {
 	TNC_Result (*request_handshake_retry)(TNC_IMVID imv_id,
 										  TNC_ConnectionID connection_id,
 										  TNC_RetryReason reason);
+
+	/**
+	 * Call when an IMV-IMC message is to be sent
+	 *
+	 * @param imv_id			IMV ID assigned by TNCS
+	 * @param connection_id		network connection ID assigned by TNCS
+	 * @param msg				message to send
+	 * @param msg_len			message length in bytes
+	 * @param msg_type			message type
+	 * @return					TNC result code
+	 */
+	TNC_Result (*send_message)(TNC_IMVID imv_id,
+							   TNC_ConnectionID connection_id,
+							   TNC_BufferReference msg,
+							   TNC_UInt32 msg_len,
+							   TNC_MessageType msg_type);
+
+	/**
+	 * Call when an IMV-IMC message is to be sent with long message types
+	 *
+	 * @param imv_id			IMV ID assigned by TNCS
+	 * @param connection_id		network connection ID assigned by TNCS
+	 * @param msg_flags			message flags
+	 * @param msg				message to send
+	 * @param msg_len			message length in bytes
+	 * @param msg_vid			message vendor ID
+	 * @param msg_subtype		message subtype
+	 * @param dst_imc_id		destination IMC ID
+	 * @return					TNC result code
+	 */
+	TNC_Result (*send_message_long)(TNC_IMVID imv_id,
+									TNC_ConnectionID connection_id,
+									TNC_UInt32 msg_flags,
+									TNC_BufferReference msg,
+									TNC_UInt32 msg_len,
+									TNC_VendorID msg_vid,
+									TNC_MessageSubtype msg_subtype,
+									TNC_UInt32 dst_imc_id);
 
 	/**
 	 * Bind TNCS functions
@@ -98,61 +139,18 @@ struct imv_agent_t {
 					  TNC_ConnectionID connection_id, imv_state_t **state);
 
 	/**
-	 * Call when a PA-TNC message is to be sent
+	 * Get IMV name
 	 *
-	 * @param connection_id		network connection ID assigned by TNCS
-	 * @param excl				exclusive flag
-	 * @param src_imv_id		IMV ID to be set as source
-	 * @param dst_imc_id		IMD ID to be set as destination
-	 * @param msg				message to send
-	 * @return					TNC result code
+	 * return					IMV name
 	 */
-	TNC_Result (*send_message)(imv_agent_t *this,
-							   TNC_ConnectionID connection_id, bool excl,
-							   TNC_UInt32 src_imv_id, TNC_UInt32 dst_imc_id,
-							   chunk_t msg);
+	const char* (*get_name)(imv_agent_t *this);
 
 	/**
-	 * Call when a PA-TNC message was received
+	 * Get base IMV ID
 	 *
-	 * @param state				state for current connection
-	 * @param msg				received unparsed message
-	 * @param msg_vid			message vendorID of the received message
-	 * @param msg_subtype		message subtype of the received message
-	 * @param src_imc_id		source IMC ID
-	 * @param dst_imv_id		destination IMV ID
-	 * @param pa_tnc_message	parsed PA-TNC message or NULL if an error occurred
-	 * @return					TNC result code
+	 * return					base IMV ID
 	 */
-	TNC_Result (*receive_message)(imv_agent_t *this,
-								  imv_state_t *state, chunk_t msg,
-								  TNC_VendorID msg_vid,
-								  TNC_MessageSubtype msg_subtype,
-								  TNC_UInt32 src_imc_id,
-								  TNC_UInt32 dst_imv_id,
-								  pa_tnc_msg_t **pa_tnc_msg);
-
-	/**
-	 * Set Action Recommendation and Evaluation Result in the IMV state
-	 *
-	 * @param connection_id		network connection ID assigned by TNCS
-	 * @param rec				IMV action recommendation
-	 * @param eval				IMV evaluation result
-	 * @return					TNC result code
-	 */
-	TNC_Result (*set_recommendation)(imv_agent_t *this,
-									 TNC_ConnectionID connection_id,
-									 TNC_IMV_Action_Recommendation rec,
-									 TNC_IMV_Evaluation_Result eval);
-
-	/**
-	 * Deliver IMV Action Recommendation and IMV Evaluation Result to the TNCS
-	 *
-	 * @param connection_id		network connection ID assigned by TNCS
-	 * @return					TNC result code
-	 */
-	TNC_Result (*provide_recommendation)(imv_agent_t *this,
-										 TNC_ConnectionID connection_id);
+	TNC_IMVID (*get_id)(imv_agent_t *this);
 
 	/**
 	 * Reserve additional IMV IDs from TNCS
@@ -175,6 +173,22 @@ struct imv_agent_t {
 	enumerator_t* (*create_id_enumerator)(imv_agent_t *this);
 
 	/**
+	 * Create a preferred languages enumerator
+	 *
+	 * @param					state of TNCCS connection
+	 */
+	enumerator_t* (*create_language_enumerator)(imv_agent_t *this,
+				   imv_state_t *state);
+
+	/**
+	 * Deliver IMV Action Recommendation and IMV Evaluation Result to the TNCS
+	 *
+	 * @param state				state bound to a connection ID
+	 * @return					TNC result code
+	 */
+	TNC_Result (*provide_recommendation)(imv_agent_t *this, imv_state_t* state);
+
+	/**
 	 * Destroys an imv_agent_t object
 	 */
 	void (*destroy)(imv_agent_t *this);
@@ -184,14 +198,14 @@ struct imv_agent_t {
  * Create an imv_agent_t object
  *
  * @param name				name of the IMV
- * @param vendor_id			vendor ID of the IMV
- * @param subtype			message subtype of the IMV
+ * @param supported_types	list of message types registered by the IMV
+ * @param type_count		number of registered message types
  * @param id				ID of the IMV as assigned by the TNCS
  * @param actual_version	actual version of the IF-IMV API
  *
  */
 imv_agent_t *imv_agent_create(const char *name,
-							  pen_t vendor_id, u_int32_t subtype,
+							  pen_type_t *supported_types, u_int32_t type_count,
 							  TNC_IMVID id, TNC_Version *actual_version);
 
 #endif /** IMV_AGENT_H_ @}*/

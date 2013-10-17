@@ -17,7 +17,7 @@
 
 #include "gateway.h"
 
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 typedef struct private_manager_t private_manager_t;
 
@@ -118,7 +118,7 @@ METHOD(manager_t, logout, void,
 	this->user = 0;
 }
 
-METHOD(context_t, destroy, void,
+METHOD(fast_context_t, destroy, void,
 	private_manager_t *this)
 {
 	if (this->gateway) this->gateway->destroy(this->gateway);
@@ -148,4 +148,3 @@ manager_t *manager_create(storage_t *storage)
 
 	return &this->public;
 }
-

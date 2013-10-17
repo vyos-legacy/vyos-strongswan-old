@@ -15,7 +15,7 @@
 
 #include "ha_attribute.h"
 
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <threading/mutex.h>
 
 typedef struct private_ha_attribute_t private_ha_attribute_t;
@@ -170,17 +170,29 @@ static bool responsible_for(private_ha_attribute_t *this, int bit)
 }
 
 METHOD(attribute_provider_t, acquire_address, host_t*,
-	private_ha_attribute_t *this, char *name, identification_t *id,
+	private_ha_attribute_t *this, linked_list_t *pools, identification_t *id,
 	host_t *requested)
 {
-	pool_t *pool;
+	enumerator_t *enumerator;
+	pool_t *pool = NULL;
 	int offset = -1, byte, bit;
 	host_t *address;
+	char *name;
 
+	enumerator = pools->create_enumerator(pools);
 	this->mutex->lock(this->mutex);
-	pool = get_pool(this, name);
-	if (pool)
+	while (enumerator->enumerate(enumerator, &name))
 	{
+		pool = get_pool(this, name);
+		if (!pool)
+		{
+			continue;
+		}
+		if (pool->base->get_family(pool->base) !=
+			requested->get_family(requested))
+		{
+			continue;
+		}
 		for (byte = 0; byte < pool->size / 8; byte++)
 		{
 			if (pool->mask[byte] != 0xFF)
@@ -208,6 +220,8 @@ METHOD(attribute_provider_t, acquire_address, host_t*,
 		}
 	}
 	this->mutex->unlock(this->mutex);
+	enumerator->destroy(enumerator);
+
 	if (offset != -1)
 	{
 		address = offset2host(pool, offset);
@@ -218,26 +232,40 @@ METHOD(attribute_provider_t, acquire_address, host_t*,
 }
 
 METHOD(attribute_provider_t, release_address, bool,
-	private_ha_attribute_t *this, char *name, host_t *address,
+	private_ha_attribute_t *this, linked_list_t *pools, host_t *address,
 	identification_t *id)
 {
+	enumerator_t *enumerator;
 	pool_t *pool;
 	int offset;
+	char *name;
 	bool found = FALSE;
 
+	enumerator = pools->create_enumerator(pools);
 	this->mutex->lock(this->mutex);
-	pool = get_pool(this, name);
-	if (pool)
+	while (enumerator->enumerate(enumerator, &name))
 	{
+		pool = get_pool(this, name);
+		if (!pool)
+		{
+			continue;
+		}
+		if (pool->base->get_family(pool->base) != address->get_family(address))
+		{
+			continue;
+		}
 		offset = host2offset(pool, address);
 		if (offset > 0 && offset < pool->size)
 		{
 			pool->mask[offset / 8] &= ~(1 << (offset % 8));
 			DBG1(DBG_CFG, "released address %H to HA pool '%s'", address, name);
 			found = TRUE;
+			break;
 		}
 	}
 	this->mutex->unlock(this->mutex);
+	enumerator->destroy(enumerator);
+
 	return found;
 }
 
@@ -281,7 +309,7 @@ static void load_pools(private_ha_attribute_t *this)
 	pool_t *pool;
 
 	enumerator = lib->settings->create_key_value_enumerator(lib->settings,
-													"charon.plugins.ha.pools");
+										"%s.plugins.ha.pools", charon->name);
 	while (enumerator->enumerate(enumerator, &name, &net))
 	{
 		net = strdup(net);

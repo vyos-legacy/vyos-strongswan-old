@@ -23,11 +23,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <freeswan.h>
-
-#include "../pluto/constants.h"
-#include "../pluto/defs.h"
-#include "../pluto/log.h"
+#include <library.h>
+#include <utils/debug.h>
 
 #include "confread.h"
 #include "invokecharon.h"
@@ -49,22 +46,22 @@ void starter_charon_sigchild(pid_t pid, int status)
 		if (status == SS_RC_LIBSTRONGSWAN_INTEGRITY ||
 			status == SS_RC_DAEMON_INTEGRITY)
 		{
-			plog("charon has quit: integrity test of %s failed",
-				  (status == 64) ? "libstrongswan" : "charon");
+			DBG1(DBG_APP, "%s has quit: integrity test of %s failed",
+				 daemon_name, (status == 64) ? "libstrongswan" : daemon_name);
 			_stop_requested = 1;
 		}
 		else if (status == SS_RC_INITIALIZATION_FAILED)
 		{
-			plog("charon has quit: initialization failed");
+			DBG1(DBG_APP, "%s has quit: initialization failed", daemon_name);
 			_stop_requested = 1;
 		}
 		if (!_stop_requested)
 		{
-			plog("charon has died -- restart scheduled (%dsec)"
-				, CHARON_RESTART_DELAY);
+			DBG1(DBG_APP, "%s has died -- restart scheduled (%dsec)",
+				 daemon_name, CHARON_RESTART_DELAY);
 			alarm(CHARON_RESTART_DELAY);   // restart in 5 sec
 		}
-		unlink(CHARON_PID_FILE);
+		unlink(pid_file);
 	}
 }
 
@@ -91,7 +88,8 @@ int starter_stop_charon (void)
 			else if (i == 40)
 			{
 				kill(pid, SIGKILL);
-				plog("starter_stop_charon(): charon does not respond, sending KILL");
+				DBG1(DBG_APP, "starter_stop_charon(): %s does not respond, sending KILL",
+					 daemon_name);
 			}
 			else
 			{
@@ -101,15 +99,15 @@ int starter_stop_charon (void)
 		}
 		if (_charon_pid == 0)
 		{
-			plog("charon stopped after %d ms", 200*i);
+			DBG1(DBG_APP, "%s stopped after %d ms", daemon_name, 200*i);
 			return 0;
 		}
-		plog("starter_stop_charon(): can't stop charon !!!");
+		DBG1(DBG_APP, "starter_stop_charon(): can't stop %s !!!", daemon_name);
 		return -1;
 	}
 	else
 	{
-		plog("stater_stop_charon(): charon was not started...");
+		DBG1(DBG_APP, "stater_stop_charon(): %s was not started...", daemon_name);
 	}
 	return -1;
 }
@@ -122,7 +120,7 @@ int starter_start_charon (starter_config_t *cfg, bool no_fork, bool attach_gdb)
 	char buffer[BUF_LEN];
 	int argc = 1;
 	char *arg[] = {
-		CHARON_CMD, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+		cmd, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 		NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
@@ -133,7 +131,7 @@ int starter_start_charon (starter_config_t *cfg, bool no_fork, bool attach_gdb)
 		argc = 0;
 		arg[argc++] = "/usr/bin/gdb";
 		arg[argc++] = "--args";
-		arg[argc++] = CHARON_CMD;
+		arg[argc++] = cmd;
 		}
 	if (!no_fork)
 	{
@@ -175,7 +173,8 @@ int starter_start_charon (starter_config_t *cfg, bool no_fork, bool attach_gdb)
 
 	if (_charon_pid)
 	{
-		plog("starter_start_charon(): charon already started...");
+		DBG1(DBG_APP, "starter_start_charon(): %s already started...",
+			 daemon_name);
 		return -1;
 	}
 	else
@@ -187,34 +186,37 @@ int starter_start_charon (starter_config_t *cfg, bool no_fork, bool attach_gdb)
 		switch (pid)
 		{
 		case -1:
-			plog("can't fork(): %s", strerror(errno));
+			DBG1(DBG_APP, "can't fork(): %s", strerror(errno));
 			return -1;
 		case 0:
 			/* child */
 			setsid();
+			closefrom(3);
 			sigprocmask(SIG_SETMASK, 0, NULL);
 			/* disable glibc's malloc checker, conflicts with leak detective */
 			setenv("MALLOC_CHECK_", "0", 1);
 			execv(arg[0], arg);
-			plog("can't execv(%s,...): %s", arg[0], strerror(errno));
+			DBG1(DBG_APP, "can't execv(%s,...): %s", arg[0], strerror(errno));
 			exit(1);
 		default:
 			/* father */
-				_charon_pid = pid;
-				for (i = 0; i < 500 && _charon_pid; i++)
+			_charon_pid = pid;
+			for (i = 0; i < 500 && _charon_pid; i++)
 			{
 				/* wait for charon for a maximum of 500 x 20 ms = 10 s */
 				usleep(20000);
-				if (stat(CHARON_PID_FILE, &stb) == 0)
+				if (stat(pid_file, &stb) == 0)
 				{
-					plog("charon (%d) started after %d ms", _charon_pid, 20*(i+1));
+					DBG1(DBG_APP, "%s (%d) started after %d ms", daemon_name,
+						 _charon_pid, 20*(i+1));
 					return 0;
 				}
 			}
 			if (_charon_pid)
 			{
 				/* If charon is started but with no ctl file, stop it */
-				plog("charon too long to start... - kill kill");
+				DBG1(DBG_APP, "%s too long to start... - kill kill",
+					 daemon_name);
 				for (i = 0; i < 20 && (pid = _charon_pid) != 0; i++)
 				{
 					if (i == 0)
@@ -234,7 +236,7 @@ int starter_start_charon (starter_config_t *cfg, bool no_fork, bool attach_gdb)
 			}
 			else
 			{
-				plog("charon refused to be started");
+				DBG1(DBG_APP, "%s refused to be started", daemon_name);
 			}
 			return -1;
 		}

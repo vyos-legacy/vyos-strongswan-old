@@ -17,7 +17,7 @@
 
 #include <time.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <credentials/certificates/x509.h>
 
 typedef struct private_tls_server_t private_tls_server_t;
@@ -78,6 +78,11 @@ struct private_tls_server_t {
 	 * Peer identity, NULL for no client authentication
 	 */
 	identification_t *peer;
+
+	/**
+	 * Is it acceptable if we couldn't verify the peer certificate?
+	 */
+	bool peer_auth_optional;
 
 	/**
 	 * State we are in
@@ -266,13 +271,15 @@ static status_t process_client_hello(private_tls_server_t *this,
 
 	htoun32(&this->server_random, time(NULL));
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng ||
+		!rng->get_bytes(rng, sizeof(this->server_random) - 4,
+						this->server_random + 4))
 	{
-		DBG1(DBG_TLS, "no suitable RNG found to generate server random");
+		DBG1(DBG_TLS, "failed to generate server random");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(this->server_random) - 4, this->server_random + 4);
 	rng->destroy(rng);
 
 	if (!this->tls->set_version(this->tls, version))
@@ -311,11 +318,11 @@ static status_t process_client_hello(private_tls_server_t *this,
 			return NEED_MORE;
 		}
 		rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
-		if (rng)
+		if (!rng || !rng->allocate_bytes(rng, SESSION_ID_SIZE, &this->session))
 		{
-			rng->allocate_bytes(rng, SESSION_ID_SIZE, &this->session);
-			rng->destroy(rng);
+			DBG1(DBG_TLS, "generating TLS session identifier failed, skipped");
 		}
+		DESTROY_IF(rng);
 		DBG1(DBG_TLS, "negotiated %N using suite %N",
 			 tls_version_names, this->tls->get_version(this->tls),
 			 tls_cipher_suite_names, this->suite);
@@ -365,6 +372,12 @@ static status_t process_certificate(private_tls_server_t *this,
 				DBG1(DBG_TLS, "received TLS peer certificate '%Y'",
 					 cert->get_subject(cert));
 				first = FALSE;
+				if (this->peer == NULL)
+				{	/* apply identity to authenticate */
+					this->peer = cert->get_subject(cert);
+					this->peer = this->peer->clone(this->peer);
+					this->peer_auth_optional = TRUE;
+				}
 			}
 			else
 			{
@@ -407,13 +420,13 @@ static status_t process_key_exchange_encrypted(private_tls_server_t *this,
 	htoun16(premaster, this->client_version);
 	/* pre-randomize premaster for failure cases */
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	if (!rng || !rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2))
 	{
-		DBG1(DBG_TLS, "creating RNG failed");
+		DBG1(DBG_TLS, "failed to generate premaster secret");
 		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		DESTROY_IF(rng);
 		return NEED_MORE;
 	}
-	rng->get_bytes(rng, sizeof(premaster) - 2, premaster + 2);
 	rng->destroy(rng);
 
 	if (this->private &&
@@ -436,10 +449,14 @@ static status_t process_key_exchange_encrypted(private_tls_server_t *this,
 		DBG1(DBG_TLS, "decrypting Client Key Exchange failed");
 	}
 
-	this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
-								 this->session, this->peer,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, chunk_from_thing(premaster),
+									  this->session, this->peer,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		return NEED_MORE;
+	}
 
 	this->state = STATE_KEY_EXCHANGE_RECEIVED;
 	return NEED_MORE;
@@ -485,10 +502,15 @@ static status_t process_key_exchange_dhe(private_tls_server_t *this,
 		return NEED_MORE;
 	}
 
-	this->crypto->derive_secrets(this->crypto, premaster,
-								 this->session, this->peer,
-								 chunk_from_thing(this->client_random),
-								 chunk_from_thing(this->server_random));
+	if (!this->crypto->derive_secrets(this->crypto, premaster,
+									  this->session, this->peer,
+									  chunk_from_thing(this->client_random),
+									  chunk_from_thing(this->server_random)))
+	{
+		this->alert->add(this->alert, TLS_FATAL, TLS_INTERNAL_ERROR);
+		chunk_clear(&premaster);
+		return NEED_MORE;
+	}
 	chunk_clear(&premaster);
 
 	this->state = STATE_KEY_EXCHANGE_RECEIVED;
@@ -539,13 +561,22 @@ static status_t process_cert_verify(private_tls_server_t *this,
 	{
 		DBG1(DBG_TLS, "no trusted certificate found for '%Y' to verify TLS peer",
 			 this->peer);
-		this->alert->add(this->alert, TLS_FATAL, TLS_CERTIFICATE_UNKNOWN);
-		return NEED_MORE;
+		if (!this->peer_auth_optional)
+		{	/* client authentication is required */
+			this->alert->add(this->alert, TLS_FATAL, TLS_CERTIFICATE_UNKNOWN);
+			return NEED_MORE;
+		}
+		/* reset peer identity, we couldn't authenticate it */
+		this->peer->destroy(this->peer);
+		this->peer = NULL;
+		this->state = STATE_KEY_EXCHANGE_RECEIVED;
 	}
-
+	else
+	{
+		this->state = STATE_CERT_VERIFY_RECEIVED;
+	}
 	this->crypto->append_handshake(this->crypto,
 								   TLS_CERTIFICATE_VERIFY, reader->peek(reader));
-	this->state = STATE_CERT_VERIFY_RECEIVED;
 	return NEED_MORE;
 }
 
@@ -968,11 +999,7 @@ METHOD(tls_handshake_t, build, status_t,
 			}
 			/* otherwise fall through to next state */
 		case STATE_KEY_EXCHANGE_SENT:
-			if (this->peer)
-			{
-				return send_certificate_request(this, type, writer);
-			}
-			/* otherwise fall through to next state */
+			return send_certificate_request(this, type, writer);
 		case STATE_CERTREQ_SENT:
 			return send_hello_done(this, type, writer);
 		case STATE_CIPHERSPEC_CHANGED_OUT:
@@ -1034,11 +1061,25 @@ METHOD(tls_handshake_t, finished, bool,
 	return this->state == STATE_FINISHED_SENT;
 }
 
+METHOD(tls_handshake_t, get_peer_id, identification_t*,
+	private_tls_server_t *this)
+{
+	return this->peer;
+}
+
+METHOD(tls_handshake_t, get_server_id, identification_t*,
+	private_tls_server_t *this)
+{
+	return this->server;
+}
+
 METHOD(tls_handshake_t, destroy, void,
 	private_tls_server_t *this)
 {
 	DESTROY_IF(this->private);
 	DESTROY_IF(this->dh);
+	DESTROY_IF(this->peer);
+	this->server->destroy(this->server);
 	this->peer_auth->destroy(this->peer_auth);
 	this->server_auth->destroy(this->server_auth);
 	free(this->hashsig.ptr);
@@ -1064,14 +1105,16 @@ tls_server_t *tls_server_create(tls_t *tls,
 				.cipherspec_changed = _cipherspec_changed,
 				.change_cipherspec = _change_cipherspec,
 				.finished = _finished,
+				.get_peer_id = _get_peer_id,
+				.get_server_id = _get_server_id,
 				.destroy = _destroy,
 			},
 		},
 		.tls = tls,
 		.crypto = crypto,
 		.alert = alert,
-		.server = server,
-		.peer = peer,
+		.server = server->clone(server),
+		.peer = peer ? peer->clone(peer) : NULL,
 		.state = STATE_INIT,
 		.peer_auth = auth_cfg_create(),
 		.server_auth = auth_cfg_create(),

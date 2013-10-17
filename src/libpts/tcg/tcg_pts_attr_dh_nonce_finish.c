@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,7 +18,7 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_tcg_pts_attr_dh_nonce_finish_t
 					private_tcg_pts_attr_dh_nonce_finish_t;
@@ -36,7 +36,7 @@ typedef struct private_tcg_pts_attr_dh_nonce_finish_t
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |						D-H Initiator Nonce ...					|
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  
+ *
  */
 
 #define PTS_DH_NONCE_FINISH_SIZE			12
@@ -53,14 +53,9 @@ struct private_tcg_pts_attr_dh_nonce_finish_t {
 	tcg_pts_attr_dh_nonce_finish_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
@@ -71,7 +66,7 @@ struct private_tcg_pts_attr_dh_nonce_finish_t {
 	 * Noskip flag
 	 */
 	bool noskip_flag;
-	
+
 	/**
 	 * Selected Hashing Algorithm
 	 */
@@ -93,13 +88,7 @@ struct private_tcg_pts_attr_dh_nonce_finish_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_tcg_pts_attr_dh_nonce_finish_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_tcg_pts_attr_dh_nonce_finish_t *this)
 {
 	return this->type;
@@ -128,14 +117,18 @@ METHOD(pa_tnc_attr_t, build, void,
 {
 	bio_writer_t *writer;
 
+	if (this->value.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(PTS_DH_NONCE_FINISH_SIZE);
 	writer->write_uint8 (writer, PTS_DH_NONCE_FINISH_RESERVED);
 	writer->write_uint8 (writer, this->initiator_nonce.len);
 	writer->write_uint16(writer, this->hash_algo);
 	writer->write_data  (writer, this->initiator_value);
 	writer->write_data  (writer, this->initiator_nonce);
-	
-	this->value = chunk_clone(writer->get_buf(writer));
+
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -217,7 +210,6 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_finish_create(
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -231,8 +223,7 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_finish_create(
 			.get_initiator_nonce = _get_initiator_nonce,
 			.get_initiator_value = _get_initiator_value,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_DH_NONCE_FINISH,
+		.type = { PEN_TCG, TCG_PTS_DH_NONCE_FINISH },
 		.hash_algo = hash_algo,
 		.initiator_value = initiator_value,
 		.initiator_nonce = chunk_clone(initiator_nonce),
@@ -252,7 +243,6 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_finish_create_from_data(chunk_t value)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -266,8 +256,7 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_finish_create_from_data(chunk_t value)
 			.get_initiator_nonce = _get_initiator_nonce,
 			.get_initiator_value = _get_initiator_value,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_DH_NONCE_FINISH,
+		.type = { PEN_TCG, TCG_PTS_DH_NONCE_FINISH },
 		.value = chunk_clone(value),
 		.ref = 1,
 	);

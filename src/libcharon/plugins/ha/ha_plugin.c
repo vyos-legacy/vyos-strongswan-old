@@ -97,14 +97,46 @@ METHOD(plugin_t, get_name, char*,
 	return "ha";
 }
 
+/**
+ * Register listener
+ */
+static bool plugin_cb(private_ha_plugin_t *this,
+					  plugin_feature_t *feature, bool reg, void *cb_data)
+{
+	if (reg)
+	{
+		charon->bus->add_listener(charon->bus, &this->segments->listener);
+		charon->bus->add_listener(charon->bus, &this->ike->listener);
+		charon->bus->add_listener(charon->bus, &this->child->listener);
+		hydra->attributes->add_provider(hydra->attributes,
+										&this->attr->provider);
+	}
+	else
+	{
+		hydra->attributes->remove_provider(hydra->attributes,
+										   &this->attr->provider);
+		charon->bus->remove_listener(charon->bus, &this->segments->listener);
+		charon->bus->remove_listener(charon->bus, &this->ike->listener);
+		charon->bus->remove_listener(charon->bus, &this->child->listener);
+	}
+	return TRUE;
+}
+
+METHOD(plugin_t, get_features, int,
+	private_ha_plugin_t *this, plugin_feature_t *features[])
+{
+	static plugin_feature_t f[] = {
+		PLUGIN_CALLBACK((plugin_feature_callback_t)plugin_cb, NULL),
+			PLUGIN_PROVIDE(CUSTOM, "ha"),
+	};
+	*features = f;
+	return countof(f);
+}
+
 METHOD(plugin_t, destroy, void,
 	private_ha_plugin_t *this)
 {
 	DESTROY_IF(this->ctl);
-	hydra->attributes->remove_provider(hydra->attributes, &this->attr->provider);
-	charon->bus->remove_listener(charon->bus, &this->segments->listener);
-	charon->bus->remove_listener(charon->bus, &this->ike->listener);
-	charon->bus->remove_listener(charon->bus, &this->child->listener);
 	this->ike->destroy(this->ike);
 	this->child->destroy(this->child);
 	this->dispatcher->destroy(this->dispatcher);
@@ -128,22 +160,29 @@ plugin_t *ha_plugin_create()
 	bool fifo, monitor, resync;
 
 	local = lib->settings->get_str(lib->settings,
-								"charon.plugins.ha.local", NULL);
+							"%s.plugins.ha.local", NULL, charon->name);
 	remote = lib->settings->get_str(lib->settings,
-								"charon.plugins.ha.remote", NULL);
+							"%s.plugins.ha.remote", NULL, charon->name);
 	secret = lib->settings->get_str(lib->settings,
-								"charon.plugins.ha.secret", NULL);
+							"%s.plugins.ha.secret", NULL, charon->name);
 	fifo = lib->settings->get_bool(lib->settings,
-								"charon.plugins.ha.fifo_interface", TRUE);
+							"%s.plugins.ha.fifo_interface", TRUE, charon->name);
 	monitor = lib->settings->get_bool(lib->settings,
-								"charon.plugins.ha.monitor", TRUE);
+							"%s.plugins.ha.monitor", TRUE, charon->name);
 	resync = lib->settings->get_bool(lib->settings,
-								"charon.plugins.ha.resync", TRUE);
+							"%s.plugins.ha.resync", TRUE, charon->name);
 	count = min(SEGMENTS_MAX, lib->settings->get_int(lib->settings,
-								"charon.plugins.ha.segment_count", 1));
+							"%s.plugins.ha.segment_count", 1, charon->name));
 	if (!local || !remote)
 	{
 		DBG1(DBG_CFG, "HA config misses local/remote address");
+		return NULL;
+	}
+
+	if (!lib->caps->keep(lib->caps, CAP_CHOWN))
+	{	/* required to chown(2) control socket, ha_kernel also needs it at
+		 * runtime */
+		DBG1(DBG_CFG, "ha plugin requires CAP_CHOWN capability");
 		return NULL;
 	}
 
@@ -151,7 +190,7 @@ plugin_t *ha_plugin_create()
 		.public = {
 			.plugin = {
 				.get_name = _get_name,
-				.reload = (void*)return_false,
+				.get_features = _get_features,
 				.destroy = _destroy,
 			},
 		},
@@ -182,10 +221,6 @@ plugin_t *ha_plugin_create()
 	this->ike = ha_ike_create(this->socket, this->tunnel, this->cache);
 	this->child = ha_child_create(this->socket, this->tunnel, this->segments,
 								  this->kernel);
-	charon->bus->add_listener(charon->bus, &this->segments->listener);
-	charon->bus->add_listener(charon->bus, &this->ike->listener);
-	charon->bus->add_listener(charon->bus, &this->child->listener);
-	hydra->attributes->add_provider(hydra->attributes, &this->attr->provider);
 
 	return &this->public.plugin;
 }

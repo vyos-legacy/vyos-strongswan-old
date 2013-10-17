@@ -98,9 +98,10 @@ The IKE_SA configuration uses the following options (as key/value pairs):
                   src/libstrongswan/crypt/proposal/proposal_keywords.txt
   fake_nat:       Fake the NAT_DETECTION_*_IP payloads to simulate a NAT
                   scenario
-  rsa_strength:   connection requires a trustchain with RSA keys of given bits
-  ecdsa_strength: connection requires a trustchain with ECDSA keys of given bits
-  cert_policy:    connection requries a certificate with the given OID policy
+  rsa_strength:   Connection requires a trustchain with RSA keys of given bits
+  ecdsa_strength: Connection requires a trustchain with ECDSA keys of given bits
+  cert_policy:    Connection requries a certificate with the given OID policy
+  named_pool:     Name of an IP pool defined e.g. in a database backend
 
 The following CHILD_SA specific configuration options are supported:
 
@@ -109,6 +110,7 @@ The following CHILD_SA specific configuration options are supported:
   transport:   Propose IPsec transport mode instead of tunnel mode
   tfc_padding: Inject Traffic Flow Confidentialty bytes to align packets to the
                given length
+  proposal:    CHILD_SA proposal list, same syntax as IKE_SA proposal list
 
 6. Credentials
 --------------
@@ -238,6 +240,7 @@ Currently, the following hooks are defined with the following options:
   rebuild_auth:       rebuild AUTH payload, i.e. if ID payload changed
   reset_seq:          Reset sequence numbers of an ESP SA
     delay:            Seconds to delay reset after SA established
+    oseq:             Sequence number to set, default is 0
   set_critical:       Set critical bit on existing payloads:
     request:          yes to set in request, no in response
     id:               IKEv2 message identifier of message to mangle payloads

@@ -14,8 +14,8 @@
  */
 
 /**
- * @defgroup tcg_attrt tcg_attr
- * @{ @ingroup tcg_attr
+ * @defgroup tcg_attr tcg_attr
+ * @{ @ingroup libpts
  */
 
 #ifndef TCG_ATTR_H_
@@ -30,6 +30,19 @@ typedef enum tcg_attr_t tcg_attr_t;
  * TCG PTS IF-M Attributes (section 4 of PTS PROTO: Binding to TNC IF-M)
  */
 enum tcg_attr_t {
+
+	/* SCAP Messages */
+	TCG_SCAP_REFERENCES =                 0x00000001,
+	TCG_SCAP_CAPS_AND_INVENTORY =         0x00000002,
+	TCG_SCAP_CONTENT =                    0x00000003,
+	TCG_SCAP_ASSESSMENT =                 0x00000004,
+	TCG_SCAP_RESULTS =                    0x00000005,
+	TCG_SCAP_SUMMARY_RESULTS =            0x00000006,
+
+	/* SWID Messages */
+	TCG_SWID_INVENTORY_REQUEST =          0x00000011,
+	TCG_SWID_TAG_RESPONSE =               0x00000012,
+	TCG_SWID_TAG_IDENTIFIER_RESPONSE =    0x00000013,
 
 	/* PTS Protocol Negotiations */
 	TCG_PTS_REQ_PROTO_CAPS =              0x01000000,

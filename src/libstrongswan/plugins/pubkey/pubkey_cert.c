@@ -17,7 +17,7 @@
 
 #include <time.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_pubkey_cert_t private_pubkey_cert_t;
 
@@ -110,15 +110,25 @@ METHOD(certificate_t, has_issuer, id_match_t,
 METHOD(certificate_t, equals, bool,
 	private_pubkey_cert_t *this, certificate_t *other)
 {
+	identification_t *other_subject;
 	public_key_t *other_key;
 
+	if (this == (private_pubkey_cert_t*)other)
+	{
+		return TRUE;
+	}
+	if (other->get_type(other) != CERT_TRUSTED_PUBKEY)
+	{
+		return FALSE;
+	}
 	other_key = other->get_public_key(other);
 	if (other_key)
 	{
 		if (public_key_equals(this->key, other_key))
 		{
 			other_key->destroy(other_key);
-			return TRUE;
+			other_subject = other->get_subject(other);
+			return other_subject->equals(other_subject, this->subject);
 		}
 		other_key->destroy(other_key);
 	}
@@ -126,8 +136,13 @@ METHOD(certificate_t, equals, bool,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_pubkey_cert_t *this, certificate_t *issuer)
+	private_pubkey_cert_t *this, certificate_t *issuer,
+	signature_scheme_t *scheme)
 {
+	if (scheme)
+	{
+		*scheme = SIGN_UNKNOWN;
+	}
 	return equals(this, issuer);
 }
 

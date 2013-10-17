@@ -17,21 +17,24 @@
 
 #include "cmac.h"
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <crypto/mac.h>
+#include <crypto/prfs/mac_prf.h>
+#include <crypto/signers/mac_signer.h>
 
-typedef struct private_cmac_t private_cmac_t;
+typedef struct private_mac_t private_mac_t;
 
 /**
- * Private data of a cmac_t object.
+ * Private data of a mac_t object.
  *
  * The variable names are the same as in the RFC.
  */
-struct private_cmac_t {
+struct private_mac_t {
 
 	/**
 	 * Public interface.
 	 */
-	cmac_t public;
+	mac_t public;
 
 	/**
 	 * Block size, in bytes
@@ -72,7 +75,7 @@ struct private_cmac_t {
 /**
  * process supplied data, but do not run final operation
  */
-static void update(private_cmac_t *this, chunk_t data)
+static bool update(private_mac_t *this, chunk_t data)
 {
 	chunk_t iv;
 
@@ -80,7 +83,7 @@ static void update(private_cmac_t *this, chunk_t data)
 	{	/* no complete block (or last block), just copy into remaining */
 		memcpy(this->remaining + this->remaining_bytes, data.ptr, data.len);
 		this->remaining_bytes += data.len;
-		return;
+		return TRUE;
 	}
 
 	iv = chunk_alloca(this->b);
@@ -97,7 +100,10 @@ static void update(private_cmac_t *this, chunk_t data)
 		   this->b - this->remaining_bytes);
 	data = chunk_skip(data, this->b - this->remaining_bytes);
 	memxor(this->t, this->remaining, this->b);
-	this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL);
+	if (!this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL))
+	{
+		return FALSE;
+	}
 
 	/* process blocks M_2 ... M_n-1 */
 	while (data.len > this->b)
@@ -105,18 +111,23 @@ static void update(private_cmac_t *this, chunk_t data)
 		memcpy(this->remaining, data.ptr, this->b);
 		data = chunk_skip(data, this->b);
 		memxor(this->t, this->remaining, this->b);
-		this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL);
+		if (!this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL))
+		{
+			return FALSE;
+		}
 	}
 
 	/* store remaining bytes of block M_n */
 	memcpy(this->remaining, data.ptr, data.len);
 	this->remaining_bytes = data.len;
+
+	return TRUE;
 }
 
 /**
  * process last block M_last
  */
-static void final(private_cmac_t *this, u_int8_t *out)
+static bool final(private_mac_t *this, u_int8_t *out)
 {
 	chunk_t iv;
 
@@ -153,29 +164,38 @@ static void final(private_cmac_t *this, u_int8_t *out)
 	 * T := AES-128(K,T);
 	 */
 	memxor(this->t, this->remaining, this->b);
-	this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL);
+	if (!this->k->encrypt(this->k, chunk_create(this->t, this->b), iv, NULL))
+	{
+		return FALSE;
+	}
 
 	memcpy(out, this->t, this->b);
 
 	/* reset state */
 	memset(this->t, 0, this->b);
 	this->remaining_bytes = 0;
+
+	return TRUE;
 }
 
-METHOD(cmac_t, get_mac, void,
-	private_cmac_t *this, chunk_t data, u_int8_t *out)
+METHOD(mac_t, get_mac, bool,
+	private_mac_t *this, chunk_t data, u_int8_t *out)
 {
 	/* update T, do not process last block */
-	update(this, data);
+	if (!update(this, data))
+	{
+		return FALSE;
+	}
 
 	if (out)
 	{	/* if not in append mode, process last block and output result */
-		final(this, out);
+		return final(this, out);
 	}
+	return TRUE;
 }
 
-METHOD(cmac_t, get_block_size, size_t,
-	private_cmac_t *this)
+METHOD(mac_t, get_mac_size, size_t,
+	private_mac_t *this)
 {
 	return this->b;
 }
@@ -222,8 +242,8 @@ static void derive_key(chunk_t chunk)
 	}
 }
 
-METHOD(cmac_t, set_key, void,
-	private_cmac_t *this, chunk_t key)
+METHOD(mac_t, set_key, bool,
+	private_mac_t *this, chunk_t key)
 {
 	chunk_t resized, iv, l;
 
@@ -236,8 +256,11 @@ METHOD(cmac_t, set_key, void,
 	{	/* use cmac recursively to resize longer or shorter keys */
 		resized = chunk_alloca(this->b);
 		memset(resized.ptr, 0, resized.len);
-		set_key(this, resized);
-		get_mac(this, key, resized.ptr);
+		if (!set_key(this, resized) ||
+			!get_mac(this, key, resized.ptr))
+		{
+			return FALSE;
+		}
 	}
 
 	/*
@@ -256,17 +279,22 @@ METHOD(cmac_t, set_key, void,
 	memset(iv.ptr, 0, iv.len);
 	l = chunk_alloca(this->b);
 	memset(l.ptr, 0, l.len);
-	this->k->set_key(this->k, resized);
-	this->k->encrypt(this->k, l, iv, NULL);
+	if (!this->k->set_key(this->k, resized) ||
+		!this->k->encrypt(this->k, l, iv, NULL))
+	{
+		return FALSE;
+	}
 	derive_key(l);
 	memcpy(this->k1, l.ptr, l.len);
 	derive_key(l);
 	memcpy(this->k2, l.ptr, l.len);
 	memwipe(l.ptr, l.len);
+
+	return TRUE;
 }
 
-METHOD(cmac_t, destroy, void,
-	private_cmac_t *this)
+METHOD(mac_t, destroy, void,
+	private_mac_t *this)
 {
 	this->k->destroy(this->k);
 	memwipe(this->k1, this->b);
@@ -281,9 +309,9 @@ METHOD(cmac_t, destroy, void,
 /*
  * Described in header
  */
-cmac_t *cmac_create(encryption_algorithm_t algo, size_t key_size)
+mac_t *cmac_create(encryption_algorithm_t algo, size_t key_size)
 {
-	private_cmac_t *this;
+	private_mac_t *this;
 	crypter_t *crypter;
 	u_int8_t b;
 
@@ -303,7 +331,7 @@ cmac_t *cmac_create(encryption_algorithm_t algo, size_t key_size)
 	INIT(this,
 		.public = {
 			.get_mac = _get_mac,
-			.get_block_size = _get_block_size,
+			.get_mac_size = _get_mac_size,
 			.set_key = _set_key,
 			.destroy = _destroy,
 		},
@@ -319,3 +347,48 @@ cmac_t *cmac_create(encryption_algorithm_t algo, size_t key_size)
 	return &this->public;
 }
 
+/*
+ * Described in header.
+ */
+prf_t *cmac_prf_create(pseudo_random_function_t algo)
+{
+	mac_t *cmac;
+
+	switch (algo)
+	{
+		case PRF_AES128_CMAC:
+			cmac = cmac_create(ENCR_AES_CBC, 16);
+			break;
+		default:
+			return NULL;
+	}
+	if (cmac)
+	{
+		return mac_prf_create(cmac);
+	}
+	return NULL;
+}
+
+/*
+ * Described in header
+ */
+signer_t *cmac_signer_create(integrity_algorithm_t algo)
+{
+	size_t truncation;
+	mac_t *cmac;
+
+	switch (algo)
+	{
+		case AUTH_AES_CMAC_96:
+			cmac = cmac_create(ENCR_AES_CBC, 16);
+			truncation = 12;
+			break;
+		default:
+			return NULL;
+	}
+	if (cmac)
+	{
+		return mac_signer_create(cmac, truncation);
+	}
+	return NULL;
+}

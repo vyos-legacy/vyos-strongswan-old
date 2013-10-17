@@ -1,3 +1,0 @@
-# we do pass hardening flags
-strongswan-ikev2: hardening-no-fortify-functions usr/lib/ipsec/plugins/libstrongswan-agent.so
-strongswan-ikev2: hardening-no-fortify-functions usr/lib/ipsec/plugins/libstrongswan-socket-raw.so

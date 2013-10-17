@@ -17,7 +17,7 @@
 
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 ENUM(pb_access_recommendation_code_names, PB_REC_ACCESS_ALLOWED, PB_REC_QUARANTINED,
 	"Access Allowed",
@@ -82,11 +82,13 @@ METHOD(pb_tnc_msg_t, build, void,
 {
 	bio_writer_t *writer;
 
-	/* build message */
+	if (this->encoding.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(ACCESS_RECOMMENDATION_MSG_SIZE);
 	writer->write_uint16(writer, ACCESS_RECOMMENDATION_RESERVED);
 	writer->write_uint16(writer, this->recommendation);
-	free(this->encoding.ptr);
 	this->encoding = writer->get_buf(writer);
 	this->encoding = chunk_clone(this->encoding);
 	writer->destroy(writer);
@@ -98,7 +100,6 @@ METHOD(pb_tnc_msg_t, process, status_t,
 	bio_reader_t *reader;
 	u_int16_t reserved;
 
-	/* process message */
 	reader = bio_reader_create(this->encoding);
 	reader->read_uint16(reader, &reserved);
 	reader->read_uint16(reader, &this->recommendation);
@@ -112,7 +113,7 @@ METHOD(pb_tnc_msg_t, process, status_t,
 		*offset = 2;
 		return FAILED;
 	}
-		
+
 	return SUCCESS;
 }
 

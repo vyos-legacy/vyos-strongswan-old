@@ -42,8 +42,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <debug.h>
-#include <utils/enumerator.h>
+#include <utils/debug.h>
+#include <collections/enumerator.h>
 #include <credentials/certificates/x509.h>
 
 typedef struct private_openssl_crl_t private_openssl_crl_t;
@@ -225,7 +225,8 @@ METHOD(certificate_t, has_subject_or_issuer, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_openssl_crl_t *this, certificate_t *issuer)
+	private_openssl_crl_t *this, certificate_t *issuer,
+	signature_scheme_t *scheme)
 {
 	chunk_t fingerprint, tbs;
 	public_key_t *key;
@@ -270,6 +271,10 @@ METHOD(certificate_t, issued_by, bool,
 						openssl_asn1_str2chunk(this->crl->signature));
 	free(tbs.ptr);
 	key->destroy(key);
+	if (valid && scheme)
+	{
+		*scheme = this->scheme;
+	}
 	return valid;
 }
 
@@ -458,6 +463,10 @@ static bool parse_extensions(private_openssl_crl_t *this)
 					break;
 				case NID_crl_number:
 					ok = parse_crlNumber_ext(this, ext);
+					break;
+				case NID_issuing_distribution_point:
+					/* TODO support of IssuingDistributionPoints */
+					ok = TRUE;
 					break;
 				default:
 					ok = X509_EXTENSION_get_critical(ext) == 0 ||

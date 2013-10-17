@@ -15,7 +15,8 @@
 
 #include "radius_message.h"
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <bio/bio_reader.h>
 #include <crypto/hashers/hasher.h>
 
 typedef struct private_radius_message_t private_radius_message_t;
@@ -64,6 +65,11 @@ struct private_radius_message_t {
 	 * message data, allocated
 	 */
 	rmsg_t *msg;
+
+	/**
+	 * User-Password to encrypt and encode, if any
+	 */
+	chunk_t password;
 };
 
 /**
@@ -271,10 +277,98 @@ METHOD(radius_message_t, create_enumerator, enumerator_t*,
 	return &e->public;
 }
 
+/**
+ * Vendor attribute enumerator implementation
+ */
+typedef struct {
+	/** implements enumerator interface */
+	enumerator_t public;
+	/** inner attribute enumerator */
+	enumerator_t *inner;
+	/** current vendor ID */
+	u_int32_t vendor;
+	/** reader for current vendor ID */
+	bio_reader_t *reader;
+} vendor_enumerator_t;
+
+METHOD(enumerator_t, vendor_enumerate, bool,
+	vendor_enumerator_t *this, int *vendor, int *type, chunk_t *data)
+{
+	chunk_t inner_data;
+	int inner_type;
+	u_int8_t type8, len;
+
+	while (TRUE)
+	{
+		if (this->reader)
+		{
+			if (this->reader->remaining(this->reader) >= 2 &&
+				this->reader->read_uint8(this->reader, &type8) &&
+				this->reader->read_uint8(this->reader, &len) && len >= 2 &&
+				this->reader->read_data(this->reader, len - 2, data))
+			{
+				*vendor = this->vendor;
+				*type = type8;
+				return TRUE;
+			}
+			this->reader->destroy(this->reader);
+			this->reader = NULL;
+		}
+		if (this->inner->enumerate(this->inner, &inner_type, &inner_data))
+		{
+			if (inner_type == RAT_VENDOR_SPECIFIC)
+			{
+				this->reader = bio_reader_create(inner_data);
+				if (!this->reader->read_uint32(this->reader, &this->vendor))
+				{
+					this->reader->destroy(this->reader);
+					this->reader = NULL;
+				}
+			}
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+}
+METHOD(enumerator_t, vendor_destroy, void,
+	vendor_enumerator_t *this)
+{
+	DESTROY_IF(this->reader);
+	this->inner->destroy(this->inner);
+	free(this);
+}
+
+METHOD(radius_message_t, create_vendor_enumerator, enumerator_t*,
+	private_radius_message_t *this)
+{
+	vendor_enumerator_t *e;
+
+	INIT(e,
+		.public = {
+			.enumerate = (void*)_vendor_enumerate,
+			.destroy = _vendor_destroy,
+		},
+		.inner = create_enumerator(this),
+	);
+
+	return &e->public;
+}
+
 METHOD(radius_message_t, add, void,
 	private_radius_message_t *this, radius_attribute_type_t type, chunk_t data)
 {
 	rattr_t *attribute;
+
+	if (type == RAT_USER_PASSWORD && !this->password.len)
+	{
+		/* store a null-padded password */
+		this->password = chunk_alloc(round_up(data.len, HASH_SIZE_MD5));
+		memset(this->password.ptr + data.len, 0, this->password.len - data.len);
+		memcpy(this->password.ptr, data.ptr, data.len);
+		return;
+	}
 
 	data.len = min(data.len, MAX_RADIUS_ATTRIBUTE_SIZE);
 	this->msg = realloc(this->msg,
@@ -286,14 +380,78 @@ METHOD(radius_message_t, add, void,
 	this->msg->length = htons(ntohs(this->msg->length) + attribute->length);
 }
 
-METHOD(radius_message_t, sign, void,
+METHOD(radius_message_t, crypt, bool,
+	private_radius_message_t *this, chunk_t salt, chunk_t in, chunk_t out,
+	chunk_t secret, hasher_t *hasher)
+{
+	char b[HASH_SIZE_MD5];
+
+	/**
+	 * From RFC2548 (encryption):
+	 * b(1) = MD5(S + R + A)    c(1) = p(1) xor b(1)   C = c(1)
+	 * b(2) = MD5(S + c(1))     c(2) = p(2) xor b(2)   C = C + c(2)
+	 *      . . .
+	 * b(i) = MD5(S + c(i-1))   c(i) = p(i) xor b(i)   C = C + c(i)
+	 *
+	 * P/C = Plain/Crypted => in/out
+	 * S = secret
+	 * R = authenticator
+	 * A = salt
+	 */
+	if (in.len != out.len)
+	{
+		return FALSE;
+	}
+	if (in.len % HASH_SIZE_MD5 || in.len < HASH_SIZE_MD5)
+	{
+		return FALSE;
+	}
+	if (out.ptr != in.ptr)
+	{
+		memcpy(out.ptr, in.ptr, in.len);
+	}
+	/* Preparse seed for first round:
+	 * b(1) = MD5(S + R + A) */
+	if (!hasher->get_hash(hasher, secret, NULL) ||
+		!hasher->get_hash(hasher,
+						  chunk_from_thing(this->msg->authenticator), NULL) ||
+		!hasher->get_hash(hasher, salt, b))
+	{
+		return FALSE;
+	}
+	while (in.len)
+	{
+		/* p(i) = b(i) xor c(1) */
+		memxor(out.ptr, b, HASH_SIZE_MD5);
+
+		out = chunk_skip(out, HASH_SIZE_MD5);
+		if (out.len)
+		{
+			/* Prepare seed for next round::
+			 * b(i) = MD5(S + c(i-1)) */
+			if (!hasher->get_hash(hasher, secret, NULL) ||
+				!hasher->get_hash(hasher,
+								  chunk_create(in.ptr, HASH_SIZE_MD5), b))
+			{
+				return FALSE;
+			}
+		}
+		in = chunk_skip(in, HASH_SIZE_MD5);
+	}
+	return TRUE;
+}
+
+METHOD(radius_message_t, sign, bool,
 	private_radius_message_t *this, u_int8_t *req_auth, chunk_t secret,
 	hasher_t *hasher, signer_t *signer, rng_t *rng, bool msg_auth)
 {
 	if (rng)
 	{
 		/* build Request-Authenticator */
-		rng->get_bytes(rng, HASH_SIZE_MD5, this->msg->authenticator);
+		if (!rng->get_bytes(rng, HASH_SIZE_MD5, this->msg->authenticator))
+		{
+			return FALSE;
+		}
 	}
 	else
 	{
@@ -308,6 +466,18 @@ METHOD(radius_message_t, sign, void,
 		}
 	}
 
+	if (this->password.len)
+	{
+		/* encrypt password inline */
+		if (!crypt(this, chunk_empty, this->password, this->password,
+				   secret, hasher))
+		{
+			return FALSE;
+		}
+		add(this, RAT_USER_PASSWORD, this->password);
+		chunk_clear(&this->password);
+	}
+
 	if (msg_auth)
 	{
 		char buf[HASH_SIZE_MD5];
@@ -315,9 +485,12 @@ METHOD(radius_message_t, sign, void,
 		/* build Message-Authenticator attribute, using 16 null bytes */
 		memset(buf, 0, sizeof(buf));
 		add(this, RAT_MESSAGE_AUTHENTICATOR, chunk_create(buf, sizeof(buf)));
-		signer->get_signature(signer,
+		if (!signer->get_signature(signer,
 				chunk_create((u_char*)this->msg, ntohs(this->msg->length)),
-				((u_char*)this->msg) + ntohs(this->msg->length) - HASH_SIZE_MD5);
+				((u_char*)this->msg) + ntohs(this->msg->length) - HASH_SIZE_MD5))
+		{
+			return FALSE;
+		}
 	}
 
 	if (!rng)
@@ -326,9 +499,13 @@ METHOD(radius_message_t, sign, void,
 
 		/* build Response-Authenticator */
 		msg = chunk_create((u_char*)this->msg, ntohs(this->msg->length));
-		hasher->get_hash(hasher, msg, NULL);
-		hasher->get_hash(hasher, secret, this->msg->authenticator);
+		if (!hasher->get_hash(hasher, msg, NULL) ||
+			!hasher->get_hash(hasher, secret, this->msg->authenticator))
+		{
+			return FALSE;
+		}
 	}
+	return TRUE;
 }
 
 METHOD(radius_message_t, verify, bool,
@@ -357,9 +534,9 @@ METHOD(radius_message_t, verify, bool,
 		}
 
 		/* verify Response-Authenticator */
-		hasher->get_hash(hasher, msg, NULL);
-		hasher->get_hash(hasher, secret, buf);
-		if (!memeq(buf, res_auth, HASH_SIZE_MD5))
+		if (!hasher->get_hash(hasher, msg, NULL) ||
+			!hasher->get_hash(hasher, secret, buf) ||
+			!memeq(buf, res_auth, HASH_SIZE_MD5))
 		{
 			DBG1(DBG_CFG, "RADIUS Response-Authenticator verification failed");
 			return FALSE;
@@ -450,6 +627,7 @@ METHOD(radius_message_t, get_encoding, chunk_t,
 METHOD(radius_message_t, destroy, void,
 	private_radius_message_t *this)
 {
+	chunk_clear(&this->password);
 	free(this->msg);
 	free(this);
 }
@@ -464,6 +642,7 @@ static private_radius_message_t *radius_message_create_empty()
 	INIT(this,
 		.public = {
 			.create_enumerator = _create_enumerator,
+			.create_vendor_enumerator = _create_vendor_enumerator,
 			.add = _add,
 			.get_code = _get_code,
 			.get_identifier = _get_identifier,
@@ -472,6 +651,7 @@ static private_radius_message_t *radius_message_create_empty()
 			.get_encoding = _get_encoding,
 			.sign = _sign,
 			.verify = _verify,
+			.crypt = _crypt,
 			.destroy = _destroy,
 		},
 	);

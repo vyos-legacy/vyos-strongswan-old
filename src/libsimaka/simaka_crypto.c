@@ -17,7 +17,7 @@
 
 #include "simaka_manager.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 /** length of the k_encr key */
 #define KENCR_LEN 16
@@ -115,90 +115,128 @@ static void call_hook(private_simaka_crypto_t *this, chunk_t encr, chunk_t auth)
 	mgr->key_hook(mgr, encr, auth);
 }
 
-METHOD(simaka_crypto_t, derive_keys_full, chunk_t,
+METHOD(simaka_crypto_t, derive_keys_full, bool,
 	private_simaka_crypto_t *this, identification_t *id,
-	chunk_t data, chunk_t *mk)
+	chunk_t data, chunk_t *mk, chunk_t *msk)
 {
-	chunk_t str, msk, k_encr, k_auth;
+	chunk_t str, k_encr, k_auth;
 	int i;
 
 	/* For SIM: MK = SHA1(Identity|n*Kc|NONCE_MT|Version List|Selected Version)
 	 * For AKA: MK = SHA1(Identity|IK|CK) */
-	this->hasher->get_hash(this->hasher, id->get_encoding(id), NULL);
-	this->hasher->allocate_hash(this->hasher, data, mk);
+	if (!this->hasher->get_hash(this->hasher, id->get_encoding(id), NULL) ||
+		!this->hasher->allocate_hash(this->hasher, data, mk))
+	{
+		return FALSE;
+	}
 	DBG3(DBG_LIB, "MK %B", mk);
 
 	/* K_encr | K_auth | MSK | EMSK = prf() | prf() | prf() | prf() */
-	this->prf->set_key(this->prf, *mk);
+	if (!this->prf->set_key(this->prf, *mk))
+	{
+		chunk_clear(mk);
+		return FALSE;
+	}
 	str = chunk_alloca(this->prf->get_block_size(this->prf) * 3);
 	for (i = 0; i < 3; i++)
 	{
-		this->prf->get_bytes(this->prf, chunk_empty, str.ptr + str.len / 3 * i);
+		if (!this->prf->get_bytes(this->prf, chunk_empty,
+								  str.ptr + str.len / 3 * i))
+		{
+			chunk_clear(mk);
+			return FALSE;
+		}
 	}
 
 	k_encr = chunk_create(str.ptr, KENCR_LEN);
 	k_auth = chunk_create(str.ptr + KENCR_LEN, KAUTH_LEN);
-	msk = chunk_create(str.ptr + KENCR_LEN + KAUTH_LEN, MSK_LEN);
-	DBG3(DBG_LIB, "K_encr %B\nK_auth %B\nMSK %B", &k_encr, &k_auth, &msk);
 
-	this->signer->set_key(this->signer, k_auth);
-	this->crypter->set_key(this->crypter, k_encr);
+	if (!this->signer->set_key(this->signer, k_auth) ||
+		!this->crypter->set_key(this->crypter, k_encr))
+	{
+		chunk_clear(mk);
+		return FALSE;
+	}
+
+	*msk = chunk_clone(chunk_create(str.ptr + KENCR_LEN + KAUTH_LEN, MSK_LEN));
+	DBG3(DBG_LIB, "K_encr %B\nK_auth %B\nMSK %B", &k_encr, &k_auth, msk);
 
 	call_hook(this, k_encr, k_auth);
 
 	this->derived = TRUE;
-	return chunk_clone(msk);
+	return TRUE;
 }
 
-METHOD(simaka_crypto_t, derive_keys_reauth, void,
+METHOD(simaka_crypto_t, derive_keys_reauth, bool,
 	private_simaka_crypto_t *this, chunk_t mk)
 {
 	chunk_t str, k_encr, k_auth;
 	int i;
 
 	/* K_encr | K_auth = prf() | prf() */
-	this->prf->set_key(this->prf, mk);
+	if (!this->prf->set_key(this->prf, mk))
+	{
+		return FALSE;
+	}
 	str = chunk_alloca(this->prf->get_block_size(this->prf) * 2);
 	for (i = 0; i < 2; i++)
 	{
-		this->prf->get_bytes(this->prf, chunk_empty, str.ptr + str.len / 2 * i);
+		if (!this->prf->get_bytes(this->prf, chunk_empty,
+								  str.ptr + str.len / 2 * i))
+		{
+			return FALSE;
+		}
 	}
 	k_encr = chunk_create(str.ptr, KENCR_LEN);
 	k_auth = chunk_create(str.ptr + KENCR_LEN, KAUTH_LEN);
 	DBG3(DBG_LIB, "K_encr %B\nK_auth %B", &k_encr, &k_auth);
 
-	this->signer->set_key(this->signer, k_auth);
-	this->crypter->set_key(this->crypter, k_encr);
+	if (!this->signer->set_key(this->signer, k_auth) ||
+		!this->crypter->set_key(this->crypter, k_encr))
+	{
+		return FALSE;
+	}
 
 	call_hook(this, k_encr, k_auth);
 
 	this->derived = TRUE;
+	return TRUE;
 }
 
-METHOD(simaka_crypto_t, derive_keys_reauth_msk, chunk_t,
+METHOD(simaka_crypto_t, derive_keys_reauth_msk, bool,
 	private_simaka_crypto_t *this, identification_t *id, chunk_t counter,
-	chunk_t nonce_s, chunk_t mk)
+	chunk_t nonce_s, chunk_t mk, chunk_t *msk)
 {
 	char xkey[HASH_SIZE_SHA1];
-	chunk_t str, msk;
+	chunk_t str;
 	int i;
 
-	this->hasher->get_hash(this->hasher, id->get_encoding(id), NULL);
-	this->hasher->get_hash(this->hasher, counter, NULL);
-	this->hasher->get_hash(this->hasher, nonce_s, NULL);
-	this->hasher->get_hash(this->hasher, mk, xkey);
+	if (!this->hasher->get_hash(this->hasher, id->get_encoding(id), NULL) ||
+		!this->hasher->get_hash(this->hasher, counter, NULL) ||
+		!this->hasher->get_hash(this->hasher, nonce_s, NULL) ||
+		!this->hasher->get_hash(this->hasher, mk, xkey))
+	{
+		return FALSE;
+	}
 
 	/* MSK | EMSK = prf() | prf() | prf() | prf() */
-	this->prf->set_key(this->prf, chunk_create(xkey, sizeof(xkey)));
+	if (!this->prf->set_key(this->prf, chunk_create(xkey, sizeof(xkey))))
+	{
+		return FALSE;
+	}
 	str = chunk_alloca(this->prf->get_block_size(this->prf) * 2);
 	for (i = 0; i < 2; i++)
 	{
-		this->prf->get_bytes(this->prf, chunk_empty, str.ptr + str.len / 2 * i);
+		if (!this->prf->get_bytes(this->prf, chunk_empty,
+								  str.ptr + str.len / 2 * i))
+		{
+			return FALSE;
+		}
 	}
-	msk = chunk_create(str.ptr, MSK_LEN);
-	DBG3(DBG_LIB, "MSK %B", &msk);
+	*msk = chunk_clone(chunk_create(str.ptr, MSK_LEN));
+	DBG3(DBG_LIB, "MSK %B", msk);
 
-	return chunk_clone(msk);
+	return TRUE;
 }
 
 METHOD(simaka_crypto_t, clear_keys, void,

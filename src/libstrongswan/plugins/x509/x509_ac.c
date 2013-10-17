@@ -22,12 +22,12 @@
 #include <time.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <utils/identification.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/ietf_attributes/ietf_attributes.h>
 #include <credentials/keys/private_key.h>
@@ -701,7 +701,7 @@ METHOD(certificate_t, has_issuer, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_x509_ac_t *this, certificate_t *issuer)
+	private_x509_ac_t *this, certificate_t *issuer, signature_scheme_t *schemep)
 {
 	public_key_t *key;
 	signature_scheme_t scheme;
@@ -750,6 +750,10 @@ METHOD(certificate_t, issued_by, bool,
 	}
 	valid = key->verify(key, scheme, this->certificateInfo, this->signature);
 	key->destroy(key);
+	if (valid && schemep)
+	{
+		*schemep = scheme;
+	}
 	return valid;
 }
 

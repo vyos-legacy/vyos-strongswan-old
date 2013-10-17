@@ -22,9 +22,22 @@
 #define MEM_POOL_H
 
 typedef struct mem_pool_t mem_pool_t;
+typedef enum mem_pool_op_t mem_pool_op_t;
 
-#include <utils/host.h>
+#include <networking/host.h>
 #include <utils/identification.h>
+
+/**
+ * In-memory IP pool acquire operation.
+ */
+enum mem_pool_op_t {
+	/** Check for an exsiting lease */
+	MEM_POOL_EXISTING,
+	/** Get a new lease */
+	MEM_POOL_NEW,
+	/** Replace an existing offline lease of another ID */
+	MEM_POOL_REASSIGN,
+};
 
 /**
  * An in-memory IP address pool.
@@ -37,6 +50,13 @@ struct mem_pool_t {
 	 * @return			the name of this pool
 	 */
 	const char* (*get_name)(mem_pool_t *this);
+
+	/**
+	 * Get the base (first) address of this pool.
+	 *
+	 * @return			base address, internal host
+	 */
+	host_t* (*get_base)(mem_pool_t *this);
 
 	/**
 	 * Get the size (i.e. number of addresses) of this pool.
@@ -62,12 +82,18 @@ struct mem_pool_t {
 	/**
 	 * Acquire an address for the given id from this pool.
 	 *
+	 * This call is usually invoked several times: The first time to find an
+	 * existing lease (MEM_POOL_EXISTING), if none found a second time to
+	 * acquire a new lease (MEM_POOL_NEW), and if the pool is full once again
+	 * to assign an existing offline lease (MEM_POOL_REASSIGN).
+	 *
 	 * @param id		the id to acquire an address for
 	 * @param requested	acquire this address, if possible
+	 * @param operation	acquire operation to perform, see above
 	 * @return			the acquired address
 	 */
 	host_t* (*acquire_address)(mem_pool_t *this, identification_t *id,
-							   host_t *requested);
+							   host_t *requested, mem_pool_op_t operation);
 
 	/**
 	 * Release a previously acquired address.
@@ -102,9 +128,19 @@ struct mem_pool_t {
  *
  * @param name		name of this pool
  * @param base		base address of this pool, NULL to create an empty pool
- * @param bits		net mask
+ * @param bits		number of non-network bits in base, as in CIDR notation
+ * @return			memory pool instance
  */
 mem_pool_t *mem_pool_create(char *name, host_t *base, int bits);
 
-#endif /** MEM_POOL_H_ @} */
+/**
+ * Create an in-memory IP address from a range.
+ *
+ * @param name		name of this pool
+ * @param from		start of ranged pool
+ * @param to		end of ranged pool
+ * @return			memory pool instance, NULL if range invalid
+ */
+mem_pool_t *mem_pool_create_range(char *name, host_t *from, host_t *to);
 
+#endif /** MEM_POOL_H_ @} */

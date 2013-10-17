@@ -25,7 +25,7 @@
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_pkcs11_public_key_t private_pkcs11_public_key_t;
 
@@ -235,13 +235,15 @@ METHOD(public_key_t, verify, bool,
 	}
 	if (hash_alg != HASH_UNKNOWN)
 	{
-		hasher_t *hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
-		if (!hasher)
+		hasher_t *hasher;
+
+		hasher = lib->crypto->create_hasher(lib->crypto, hash_alg);
+		if (!hasher || !hasher->allocate_hash(hasher, data, &hash))
 		{
+			DESTROY_IF(hasher);
 			this->lib->f->C_CloseSession(session);
 			return FALSE;
 		}
-		hasher->allocate_hash(hasher, data, &hash);
 		hasher->destroy(hasher);
 		data = hash;
 	}
@@ -374,12 +376,12 @@ static bool fingerprint_ecdsa(private_pkcs11_public_key_t *this,
 			return FALSE;
 	}
 	hasher = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-	if (!hasher)
+	if (!hasher || !hasher->allocate_hash(hasher, asn1, fp))
 	{
+		DESTROY_IF(hasher);
 		chunk_clear(&asn1);
 		return FALSE;
 	}
-	hasher->allocate_hash(hasher, asn1, fp);
 	hasher->destroy(hasher);
 	chunk_clear(&asn1);
 	lib->encoding->cache(lib->encoding, type, this, *fp);
@@ -880,20 +882,10 @@ static private_pkcs11_public_key_t *find_key_by_keyid(pkcs11_library_t *p11,
 }
 
 /**
- * Find a public key on the given token with a specific keyid.
- *
- * Used by pkcs11_private_key_t.
- *
- * TODO: if no public key is found, we should perhaps search for a certificate
- * with the given keyid and extract the key from there
- *
- * @param p11		PKCS#11 module
- * @param slot		slot id
- * @param type		type of the key
- * @param keyid		key id
+ * See header.
  */
-pkcs11_public_key_t *pkcs11_public_key_connect(pkcs11_library_t *p11,
-									int slot, key_type_t type, chunk_t keyid)
+public_key_t *pkcs11_public_key_connect(pkcs11_library_t *p11, int slot,
+										key_type_t type, chunk_t keyid)
 {
 	private_pkcs11_public_key_t *this;
 
@@ -902,5 +894,5 @@ pkcs11_public_key_t *pkcs11_public_key_connect(pkcs11_library_t *p11,
 	{
 		return NULL;
 	}
-	return &this->public;
+	return &this->public.key;
 }

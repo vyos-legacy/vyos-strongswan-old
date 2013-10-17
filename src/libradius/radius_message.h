@@ -27,6 +27,7 @@
 #define RADIUS_MESSAGE_H_
 
 #include <library.h>
+#include <pen/pen.h>
 
 #define MAX_RADIUS_ATTRIBUTE_SIZE	253
 
@@ -205,6 +206,16 @@ struct radius_message_t {
 	enumerator_t* (*create_enumerator)(radius_message_t *this);
 
 	/**
+	 * Create an enumerator over contained RADIUS Vendor-ID attributes.
+	 *
+	 * This enumerator parses only vendor specific attributes in the format
+	 * recommended in RFC2865.
+	 *
+	 * @return				enumerator over (int vendor, int type, chunk_t data)
+	 */
+	enumerator_t* (*create_vendor_enumerator)(radius_message_t *this);
+
+	/**
 	 * Add a RADIUS attribute to the message.
 	 *
 	 * @param type			type of attribute to add
@@ -257,8 +268,9 @@ struct radius_message_t {
 	 * @param hasher		MD5 hasher
 	 * @param rng			RNG to create Request-Authenticator, NULL to omit
 	 * @param msg_auth		calculate and add Message-Authenticator
+	 * @return				TRUE if signed successfully
 	 */
-	void (*sign)(radius_message_t *this, u_int8_t *req_auth, chunk_t secret,
+	bool (*sign)(radius_message_t *this, u_int8_t *req_auth, chunk_t secret,
 				 hasher_t *hasher, signer_t *signer, rng_t *rng, bool msg_auth);
 
 	/**
@@ -273,15 +285,26 @@ struct radius_message_t {
 				   hasher_t *hasher, signer_t *signer);
 
 	/**
+	 * Perform RADIUS attribute en-/decryption.
+	 *
+	 * Performs en-/decryption by XOring the hash-extended secret into data,
+	 * as specified in RFC 2865 5.2 and used by RFC 2548.
+	 *
+	 * @param salt			salt to append to message authenticator, if any
+	 * @param in			data to en-/decrypt, multiple of HASH_SIZE_MD5
+	 * @param out			en-/decrypted data, length equal to in
+	 * @param secret		RADIUS secret
+	 * @param hasher		MD5 hasher
+	 * @return				TRUE if en-/decryption successful
+	 */
+	bool (*crypt)(radius_message_t *this, chunk_t salt, chunk_t in, chunk_t out,
+				  chunk_t secret, hasher_t *hasher);
+
+	/**
 	 * Destroy the message.
 	 */
 	void (*destroy)(radius_message_t *this);
 };
-
-/**
- * Dummy libradius initialization function needed for integrity test
- */
-void libradius_init(void);
 
 /**
  * Create an empty RADIUS message.
@@ -298,5 +321,14 @@ radius_message_t *radius_message_create(radius_message_code_t code);
  * @return				radius_message_t object, NULL if length invalid
  */
 radius_message_t *radius_message_parse(chunk_t data);
+
+/**
+ * @}
+ * @addtogroup libradius
+ * @{
+ *
+ * Dummy libradius initialization function needed for integrity test
+ */
+void libradius_init(void);
 
 #endif /** RADIUS_MESSAGE_H_ @}*/

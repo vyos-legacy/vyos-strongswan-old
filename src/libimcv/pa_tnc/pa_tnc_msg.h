@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
+ * Copyright (C) 2011-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,7 +15,7 @@
 
 /**
  * @defgroup pa_tnc_msg pa_tnc_msg
- * @{ @ingroup libimcv
+ * @{ @ingroup pa_tnc
  */
 
 #ifndef PA_TNC_MSG_H_
@@ -46,13 +46,16 @@ struct pa_tnc_msg_t {
 	 * Add a PA-TNC attribute
 	 *
 	 * @param attr				PA-TNC attribute to be addedd
+	 * @return					TRUE if attribute fit into message and was added
 	 */
-	void (*add_attribute)(pa_tnc_msg_t *this, pa_tnc_attr_t* attr);
+	bool (*add_attribute)(pa_tnc_msg_t *this, pa_tnc_attr_t* attr);
 
 	/**
 	 * Build the PA-TNC message
+	 *
+	 * @return					TRUE if PA-TNC message was built successfully
 	 */
-	void (*build)(pa_tnc_msg_t *this);
+	bool (*build)(pa_tnc_msg_t *this);
 
 	/**
 	 * Process the PA-TNC message
@@ -62,7 +65,7 @@ struct pa_tnc_msg_t {
 	status_t (*process)(pa_tnc_msg_t *this);
 
 	/**
-	 * Process and remove all IETF standard error PA-TNC attributes
+	 * Process all IETF standard error PA-TNC attributes
 	 *
 	 * @return					TRUE if at least one error attribute processed
 	 */
@@ -91,7 +94,7 @@ struct pa_tnc_msg_t {
 /**
  * Create an empty PA-TNC message
  */
-pa_tnc_msg_t* pa_tnc_msg_create(void);
+pa_tnc_msg_t* pa_tnc_msg_create(size_t max_msg_len);
 
 /**
  * Create an unprocessed PA-TNC message from received data

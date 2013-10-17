@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010 Tobias Brunner
+ * Copyright (C) 2006-2013 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2010 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -22,6 +22,8 @@
 #define _XPG4_2
 #define __EXTENSIONS__
 #endif
+/* make sure to use the proper defs on Mac OS X */
+#define __APPLE_USE_RFC_3542
 
 #include "socket_default_socket.h"
 
@@ -38,9 +40,6 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <net/if.h>
-#ifdef __APPLE__
-#include <sys/sysctl.h>
-#endif
 
 #include <hydra.h>
 #include <daemon.h>
@@ -49,18 +48,6 @@
 /* Maximum size of a packet */
 #define MAX_PACKET 10000
 
-/* length of non-esp marker */
-#define MARKER_LEN sizeof(u_int32_t)
-
-/* from linux/udp.h */
-#ifndef UDP_ENCAP
-#define UDP_ENCAP 100
-#endif /*UDP_ENCAP*/
-
-#ifndef UDP_ENCAP_ESPINUDP
-#define UDP_ENCAP_ESPINUDP 2
-#endif /*UDP_ENCAP_ESPINUDP*/
-
 /* these are not defined on some platforms */
 #ifndef SOL_IP
 #define SOL_IP IPPROTO_IP
@@ -68,8 +55,8 @@
 #ifndef SOL_IPV6
 #define SOL_IPV6 IPPROTO_IPV6
 #endif
-#ifndef SOL_UDP
-#define SOL_UDP IPPROTO_UDP
+#ifndef IPV6_TCLASS
+#define IPV6_TCLASS 67
 #endif
 
 /* IPV6_RECVPKTINFO is defined in RFC 3542 which obsoletes RFC 2292 that
@@ -99,29 +86,64 @@ struct private_socket_default_socket_t {
 	socket_default_socket_t public;
 
 	/**
-	 * IPv4 socket (500)
+	 * Configured port (or random, if initially 0)
+	 */
+	u_int16_t port;
+
+	/**
+	 * Configured port for NAT-T (or random, if initially 0)
+	 */
+	u_int16_t natt;
+
+	/**
+	 * IPv4 socket (500 or port)
 	 */
 	int ipv4;
 
 	/**
-	 * IPv4 socket for NATT (4500)
+	 * IPv4 socket for NAT-T (4500 or natt)
 	 */
 	int ipv4_natt;
 
 	/**
-	 * IPv6 socket (500)
+	 * IPv6 socket (500 or port)
 	 */
 	int ipv6;
 
 	/**
-	 * IPv6 socket for NATT (4500)
+	 * IPv6 socket for NAT-T (4500 or natt)
 	 */
 	int ipv6_natt;
+
+	/**
+	 * DSCP value set on IPv4 socket
+	 */
+	u_int8_t dscp4;
+
+	/**
+	 * DSCP value set on IPv4 socket for NAT-T (4500 or natt)
+	 */
+	u_int8_t dscp4_natt;
+
+	/**
+	 * DSCP value set on IPv6 socket (500 or port)
+	 */
+	u_int8_t dscp6;
+
+	/**
+	 * DSCP value set on IPv6 socket for NAT-T (4500 or natt)
+	 */
+	u_int8_t dscp6_natt;
 
 	/**
 	 * Maximum packet size to receive
 	 */
 	int max_packet;
+
+	/**
+	 * TRUE if the source address should be set on outbound packets
+	 */
+	bool set_source;
 };
 
 METHOD(socket_t, receiver, status_t,
@@ -131,7 +153,7 @@ METHOD(socket_t, receiver, status_t,
 	chunk_t data;
 	packet_t *pkt;
 	host_t *source = NULL, *dest = NULL;
-	int bytes_read = 0, data_offset;
+	int bytes_read = 0;
 	bool oldstate;
 
 	fd_set rfds;
@@ -140,23 +162,26 @@ METHOD(socket_t, receiver, status_t,
 
 	FD_ZERO(&rfds);
 
-	if (this->ipv4)
+	if (this->ipv4 != -1)
 	{
 		FD_SET(this->ipv4, &rfds);
+		max_fd = max(max_fd, this->ipv4);
 	}
-	if (this->ipv4_natt)
+	if (this->ipv4_natt != -1)
 	{
 		FD_SET(this->ipv4_natt, &rfds);
+		max_fd = max(max_fd, this->ipv4_natt);
 	}
-	if (this->ipv6)
+	if (this->ipv6 != -1)
 	{
 		FD_SET(this->ipv6, &rfds);
+		max_fd = max(max_fd, this->ipv6);
 	}
-	if (this->ipv6_natt)
+	if (this->ipv6_natt != -1)
 	{
 		FD_SET(this->ipv6_natt, &rfds);
+		max_fd = max(max_fd, this->ipv6_natt);
 	}
-	max_fd = max(max(this->ipv4, this->ipv4_natt), max(this->ipv6, this->ipv6_natt));
 
 	DBG2(DBG_NET, "waiting for data on sockets");
 	oldstate = thread_cancelability(TRUE);
@@ -167,24 +192,24 @@ METHOD(socket_t, receiver, status_t,
 	}
 	thread_cancelability(oldstate);
 
-	if (FD_ISSET(this->ipv4, &rfds))
+	if (this->ipv4 != -1 && FD_ISSET(this->ipv4, &rfds))
 	{
-		port = IKEV2_UDP_PORT;
+		port = this->port;
 		selected = this->ipv4;
 	}
-	if (FD_ISSET(this->ipv4_natt, &rfds))
+	if (this->ipv4_natt != -1 && FD_ISSET(this->ipv4_natt, &rfds))
 	{
-		port = IKEV2_NATT_PORT;
+		port = this->natt;
 		selected = this->ipv4_natt;
 	}
-	if (FD_ISSET(this->ipv6, &rfds))
+	if (this->ipv6 != -1 && FD_ISSET(this->ipv6, &rfds))
 	{
-		port = IKEV2_UDP_PORT;
+		port = this->port;
 		selected = this->ipv6;
 	}
-	if (FD_ISSET(this->ipv6_natt, &rfds))
+	if (this->ipv6_natt != -1 && FD_ISSET(this->ipv6_natt, &rfds))
 	{
-		port = IKEV2_NATT_PORT;
+		port = this->natt;
 		selected = this->ipv6_natt;
 	}
 	if (selected)
@@ -219,13 +244,6 @@ METHOD(socket_t, receiver, status_t,
 			return FAILED;
 		}
 		DBG3(DBG_NET, "received packet %b", buffer, bytes_read);
-
-		if (bytes_read < MARKER_LEN)
-		{
-			DBG3(DBG_NET, "received packet too short (%d bytes)",
-				 bytes_read);
-			return FAILED;
-		}
 
 		/* read ancillary data to get destination address */
 		for (cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL;
@@ -295,17 +313,8 @@ METHOD(socket_t, receiver, status_t,
 		pkt->set_source(pkt, source);
 		pkt->set_destination(pkt, dest);
 		DBG2(DBG_NET, "received packet: from %#H to %#H", source, dest);
-		data_offset = 0;
-		/* remove non esp marker */
-		if (dest->get_port(dest) == IKEV2_NATT_PORT)
-		{
-			data_offset += MARKER_LEN;
-		}
-		/* fill in packet */
-		data.len = bytes_read - data_offset;
-		data.ptr = malloc(data.len);
-		memcpy(data.ptr, buffer + data_offset, data.len);
-		pkt->set_data(pkt, data);
+		data = chunk_create(buffer, bytes_read);
+		pkt->set_data(pkt, chunk_clone(data));
 	}
 	else
 	{
@@ -320,13 +329,14 @@ METHOD(socket_t, receiver, status_t,
 METHOD(socket_t, sender, status_t,
 	private_socket_default_socket_t *this, packet_t *packet)
 {
-	int sport, skt, family;
+	int sport, skt = -1, family;
 	ssize_t bytes_sent;
-	chunk_t data, marked;
+	chunk_t data;
 	host_t *src, *dst;
 	struct msghdr msg;
 	struct cmsghdr *cmsg;
 	struct iovec iov;
+	u_int8_t *dscp;
 
 	src = packet->get_source(packet);
 	dst = packet->get_destination(packet);
@@ -337,43 +347,80 @@ METHOD(socket_t, sender, status_t,
 	/* send data */
 	sport = src->get_port(src);
 	family = dst->get_family(dst);
-	if (sport == IKEV2_UDP_PORT)
+	if (sport == 0 || sport == this->port)
 	{
-		if (family == AF_INET)
+		switch (family)
 		{
-			skt = this->ipv4;
-		}
-		else
-		{
-			skt = this->ipv6;
+			case AF_INET:
+				skt = this->ipv4;
+				dscp = &this->dscp4;
+				break;
+			case AF_INET6:
+				skt = this->ipv6;
+				dscp = &this->dscp6;
+				break;
+			default:
+				return FAILED;
 		}
 	}
-	else if (sport == IKEV2_NATT_PORT)
+	else if (sport == this->natt)
 	{
-		if (family == AF_INET)
+		switch (family)
 		{
-			skt = this->ipv4_natt;
-		}
-		else
-		{
-			skt = this->ipv6_natt;
-		}
-		/* NAT keepalives without marker */
-		if (data.len != 1 || data.ptr[0] != 0xFF)
-		{
-			/* add non esp marker to packet */
-			marked = chunk_alloc(data.len + MARKER_LEN);
-			memset(marked.ptr, 0, MARKER_LEN);
-			memcpy(marked.ptr + MARKER_LEN, data.ptr, data.len);
-			/* let the packet do the clean up for us */
-			packet->set_data(packet, marked);
-			data = marked;
+			case AF_INET:
+				skt = this->ipv4_natt;
+				dscp = &this->dscp4_natt;
+				break;
+			case AF_INET6:
+				skt = this->ipv6_natt;
+				dscp = &this->dscp6_natt;
+				break;
+			default:
+				return FAILED;
 		}
 	}
-	else
+	if (skt == -1)
 	{
-		DBG1(DBG_NET, "unable to locate a send socket for port %d", sport);
+		DBG1(DBG_NET, "no socket found to send IPv%d packet from port %d",
+			 family == AF_INET ? 4 : 6, sport);
 		return FAILED;
+	}
+
+	/* setting DSCP values per-packet in a cmsg seems not to be supported
+	 * on Linux. We instead setsockopt() before sending it, this should be
+	 * safe as only a single thread calls send(). */
+	if (*dscp != packet->get_dscp(packet))
+	{
+		if (family == AF_INET)
+		{
+			u_int8_t ds4;
+
+			ds4 = packet->get_dscp(packet) << 2;
+			if (setsockopt(skt, SOL_IP, IP_TOS, &ds4, sizeof(ds4)) == 0)
+			{
+				*dscp = packet->get_dscp(packet);
+			}
+			else
+			{
+				DBG1(DBG_NET, "unable to set IP_TOS on socket: %s",
+					 strerror(errno));
+			}
+		}
+		else
+		{
+			u_int ds6;
+
+			ds6 = packet->get_dscp(packet) << 2;
+			if (setsockopt(skt, SOL_IPV6, IPV6_TCLASS, &ds6, sizeof(ds6)) == 0)
+			{
+				*dscp = packet->get_dscp(packet);
+			}
+			else
+			{
+				DBG1(DBG_NET, "unable to set IPV6_TCLASS on socket: %s",
+					 strerror(errno));
+			}
+		}
 	}
 
 	memset(&msg, 0, sizeof(struct msghdr));
@@ -385,7 +432,7 @@ METHOD(socket_t, sender, status_t,
 	msg.msg_iovlen = 1;
 	msg.msg_flags = 0;
 
-	if (!src->is_anyaddr(src))
+	if (this->set_source && !src->is_anyaddr(src))
 	{
 		if (family == AF_INET)
 		{
@@ -448,29 +495,53 @@ METHOD(socket_t, sender, status_t,
 	return SUCCESS;
 }
 
+METHOD(socket_t, get_port, u_int16_t,
+	private_socket_default_socket_t *this, bool nat_t)
+{
+	return nat_t ? this->natt : this->port;
+}
+
+METHOD(socket_t, supported_families, socket_family_t,
+	private_socket_default_socket_t *this)
+{
+	socket_family_t families = SOCKET_FAMILY_NONE;
+
+	if (this->ipv4 != -1 || this->ipv4_natt != -1)
+	{
+		families |= SOCKET_FAMILY_IPV4;
+	}
+	if (this->ipv6 != -1 || this->ipv6_natt != -1)
+	{
+		families |= SOCKET_FAMILY_IPV6;
+	}
+	return families;
+}
+
 /**
  * open a socket to send and receive packets
  */
 static int open_socket(private_socket_default_socket_t *this,
-					   int family, u_int16_t port)
+					   int family, u_int16_t *port)
 {
 	int on = TRUE;
-	struct sockaddr_storage addr;
+	union {
+		struct sockaddr sockaddr;
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} addr;
 	socklen_t addrlen;
 	u_int sol, pktinfo = 0;
 	int skt;
 
 	memset(&addr, 0, sizeof(addr));
-	addr.ss_family = family;
+	addr.sockaddr.sa_family = family;
 	/* precalculate constants depending on address family */
 	switch (family)
 	{
 		case AF_INET:
-		{
-			struct sockaddr_in *sin = (struct sockaddr_in *)&addr;
-			htoun32(&sin->sin_addr.s_addr, INADDR_ANY);
-			htoun16(&sin->sin_port, port);
-			addrlen = sizeof(struct sockaddr_in);
+			addr.sin.sin_addr.s_addr = htonl(INADDR_ANY);
+			addr.sin.sin_port = htons(*port);
+			addrlen = sizeof(addr.sin);
 			sol = SOL_IP;
 #ifdef IP_PKTINFO
 			pktinfo = IP_PKTINFO;
@@ -478,40 +549,56 @@ static int open_socket(private_socket_default_socket_t *this,
 			pktinfo = IP_RECVDSTADDR;
 #endif
 			break;
-		}
 		case AF_INET6:
-		{
-			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&addr;
-			memcpy(&sin6->sin6_addr, &in6addr_any, sizeof(in6addr_any));
-			htoun16(&sin6->sin6_port, port);
-			addrlen = sizeof(struct sockaddr_in6);
+			memcpy(&addr.sin6.sin6_addr, &in6addr_any, sizeof(in6addr_any));
+			addr.sin6.sin6_port = htons(*port);
+			addrlen = sizeof(addr.sin6);
 			sol = SOL_IPV6;
 			pktinfo = IPV6_RECVPKTINFO;
 			break;
-		}
 		default:
-			return 0;
+			return -1;
 	}
 
 	skt = socket(family, SOCK_DGRAM, IPPROTO_UDP);
 	if (skt < 0)
 	{
 		DBG1(DBG_NET, "could not open socket: %s", strerror(errno));
-		return 0;
+		return -1;
 	}
 	if (setsockopt(skt, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)) < 0)
 	{
 		DBG1(DBG_NET, "unable to set SO_REUSEADDR on socket: %s", strerror(errno));
 		close(skt);
-		return 0;
+		return -1;
 	}
 
 	/* bind the socket */
-	if (bind(skt, (struct sockaddr *)&addr, addrlen) < 0)
+	if (bind(skt, &addr.sockaddr, addrlen) < 0)
 	{
 		DBG1(DBG_NET, "unable to bind socket: %s", strerror(errno));
 		close(skt);
-		return 0;
+		return -1;
+	}
+
+	/* retrieve randomly allocated port if needed */
+	if (*port == 0)
+	{
+		if (getsockname(skt, &addr.sockaddr, &addrlen) < 0)
+		{
+			DBG1(DBG_NET, "unable to determine port: %s", strerror(errno));
+			close(skt);
+			return -1;
+		}
+		switch (family)
+		{
+			case AF_INET:
+				*port = ntohs(addr.sin.sin_port);
+				break;
+			case AF_INET6:
+				*port = ntohs(addr.sin6.sin6_port);
+				break;
+		}
 	}
 
 	/* get additional packet info on receive */
@@ -521,7 +608,7 @@ static int open_socket(private_socket_default_socket_t *this,
 		{
 			DBG1(DBG_NET, "unable to set IP_PKTINFO on socket: %s", strerror(errno));
 			close(skt);
-			return 0;
+			return -1;
 		}
 	}
 
@@ -531,36 +618,81 @@ static int open_socket(private_socket_default_socket_t *this,
 		DBG1(DBG_NET, "installing IKE bypass policy failed");
 	}
 
-#ifndef __APPLE__
+	/* enable UDP decapsulation for NAT-T sockets */
+	if (port == &this->natt &&
+		!hydra->kernel_interface->enable_udp_decap(hydra->kernel_interface,
+												   skt, family, this->natt))
 	{
-		/* enable UDP decapsulation globally, only for one socket needed */
-		int type = UDP_ENCAP_ESPINUDP;
-		if (family == AF_INET && port == IKEV2_NATT_PORT &&
-			setsockopt(skt, SOL_UDP, UDP_ENCAP, &type, sizeof(type)) < 0)
+		DBG1(DBG_NET, "enabling UDP decapsulation for %s on port %d failed",
+			 family == AF_INET ? "IPv4" : "IPv6", this->natt);
+	}
+
+	return skt;
+}
+
+/**
+ * Check if we should use the given family
+ */
+static bool use_family(int family)
+{
+	switch (family)
+	{
+		case AF_INET:
+			return lib->settings->get_bool(lib->settings,
+					"%s.plugins.socket-default.use_ipv4", TRUE, charon->name);
+		case AF_INET6:
+			return lib->settings->get_bool(lib->settings,
+					"%s.plugins.socket-default.use_ipv6", TRUE, charon->name);
+		default:
+			return FALSE;
+	}
+}
+
+/**
+ * Open a socket pair (normal and NAT traversal) for a given address family
+ */
+static void open_socketpair(private_socket_default_socket_t *this, int family,
+							int *skt, int *skt_natt, char *label)
+{
+	if (!use_family(family))
+	{
+		*skt = -1;
+		*skt_natt = -1;
+		return;
+	}
+
+	*skt = open_socket(this, family, &this->port);
+	if (*skt == -1)
+	{
+		*skt_natt = -1;
+		DBG1(DBG_NET, "could not open %s socket, %s disabled", label, label);
+	}
+	else
+	{
+		*skt_natt = open_socket(this, family, &this->natt);
+		if (*skt_natt == -1)
 		{
-			DBG1(DBG_NET, "unable to set UDP_ENCAP: %s", strerror(errno));
+			DBG1(DBG_NET, "could not open %s NAT-T socket", label);
 		}
 	}
-#endif
-	return skt;
 }
 
 METHOD(socket_t, destroy, void,
 	private_socket_default_socket_t *this)
 {
-	if (this->ipv4)
+	if (this->ipv4 != -1)
 	{
 		close(this->ipv4);
 	}
-	if (this->ipv4_natt)
+	if (this->ipv4_natt != -1)
 	{
 		close(this->ipv4_natt);
 	}
-	if (this->ipv6)
+	if (this->ipv6 != -1)
 	{
 		close(this->ipv6);
 	}
-	if (this->ipv6_natt)
+	if (this->ipv6_natt != -1)
 	{
 		close(this->ipv6_natt);
 	}
@@ -579,59 +711,58 @@ socket_default_socket_t *socket_default_socket_create()
 			.socket = {
 				.send = _sender,
 				.receive = _receiver,
+				.get_port = _get_port,
+				.supported_families = _supported_families,
 				.destroy = _destroy,
 			},
 		},
+		.port = lib->settings->get_int(lib->settings,
+							"%s.port", CHARON_UDP_PORT, charon->name),
+		.natt = lib->settings->get_int(lib->settings,
+							"%s.port_nat_t", CHARON_NATT_PORT, charon->name),
 		.max_packet = lib->settings->get_int(lib->settings,
-										"charon.max_packet", MAX_PACKET),
+							"%s.max_packet", MAX_PACKET, charon->name),
+		.set_source = lib->settings->get_bool(lib->settings,
+							"%s.plugins.socket-default.set_source", TRUE,
+							charon->name),
 	);
 
+	if (this->port && this->port == this->natt)
+	{
+		DBG1(DBG_NET, "IKE ports can't be equal, will allocate NAT-T "
+			 "port randomly");
+		this->natt = 0;
+	}
+
+	if ((this->port && this->port < 1024) || (this->natt && this->natt < 1024))
+	{
+		if (!lib->caps->check(lib->caps, CAP_NET_BIND_SERVICE))
+		{
+			/* required to bind ports < 1024 */
+			DBG1(DBG_NET, "socket-default plugin requires CAP_NET_BIND_SERVICE "
+				 "capability");
+			destroy(this);
+			return NULL;
+		}
+	}
+
+	/* we allocate IPv6 sockets first as that will reserve randomly allocated
+	 * ports also for IPv4. On OS X, we have to do it the other way round
+	 * for the same effect. */
 #ifdef __APPLE__
-	{
-		int natt_port = IKEV2_NATT_PORT;
-		if (sysctlbyname("net.inet.ipsec.esp_port", NULL, NULL, &natt_port,
-						 sizeof(natt_port)) != 0)
-		{
-			DBG1(DBG_NET, "could not set net.inet.ipsec.esp_port to %d: %s",
-				 natt_port, strerror(errno));
-		}
-	}
-#endif
+	open_socketpair(this, AF_INET, &this->ipv4, &this->ipv4_natt, "IPv4");
+	open_socketpair(this, AF_INET6, &this->ipv6, &this->ipv6_natt, "IPv6");
+#else /* !__APPLE__ */
+	open_socketpair(this, AF_INET6, &this->ipv6, &this->ipv6_natt, "IPv6");
+	open_socketpair(this, AF_INET, &this->ipv4, &this->ipv4_natt, "IPv4");
+#endif /* __APPLE__ */
 
-	this->ipv4 = open_socket(this, AF_INET, IKEV2_UDP_PORT);
-	if (this->ipv4 == 0)
-	{
-		DBG1(DBG_NET, "could not open IPv4 socket, IPv4 disabled");
-	}
-	else
-	{
-		this->ipv4_natt = open_socket(this, AF_INET, IKEV2_NATT_PORT);
-		if (this->ipv4_natt == 0)
-		{
-			DBG1(DBG_NET, "could not open IPv4 NAT-T socket");
-		}
-	}
-
-	this->ipv6 = open_socket(this, AF_INET6, IKEV2_UDP_PORT);
-	if (this->ipv6 == 0)
-	{
-		DBG1(DBG_NET, "could not open IPv6 socket, IPv6 disabled");
-	}
-	else
-	{
-		this->ipv6_natt = open_socket(this, AF_INET6, IKEV2_NATT_PORT);
-		if (this->ipv6_natt == 0)
-		{
-			DBG1(DBG_NET, "could not open IPv6 NAT-T socket");
-		}
-	}
-
-	if (!this->ipv4 && !this->ipv6)
+	if (this->ipv4 == -1 && this->ipv6 == -1)
 	{
 		DBG1(DBG_NET, "could not create any sockets");
 		destroy(this);
 		return NULL;
 	}
+
 	return &this->public;
 }
-

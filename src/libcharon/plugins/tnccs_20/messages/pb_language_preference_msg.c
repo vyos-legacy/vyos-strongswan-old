@@ -17,7 +17,7 @@
 
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_pb_language_preference_msg_t private_pb_language_preference_msg_t;
 
@@ -75,6 +75,10 @@ METHOD(pb_tnc_msg_t, get_encoding, chunk_t,
 METHOD(pb_tnc_msg_t, build, void,
 	private_pb_language_preference_msg_t *this)
 {
+	if (this->encoding.ptr)
+	{
+		return;
+	}
 	this->encoding = chunk_cat("cc",
 		 	 			chunk_create(PB_LANG_PREFIX, PB_LANG_PREFIX_LEN),
 						this->language_preference);

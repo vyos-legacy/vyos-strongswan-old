@@ -20,8 +20,8 @@
 
 #include "crypto_tester.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_crypto_tester_t private_crypto_tester_t;
 
@@ -151,7 +151,10 @@ static u_int bench_crypter(private_crypto_tester_t *this,
 
 		memset(iv, 0x56, sizeof(iv));
 		memset(key, 0x12, sizeof(key));
-		crypter->set_key(crypter, chunk_from_thing(key));
+		if (!crypter->set_key(crypter, chunk_from_thing(key)))
+		{
+			return 0;
+		}
 
 		buf = chunk_alloc(this->bench_size);
 		memset(buf.ptr, 0x34, buf.len);
@@ -160,10 +163,14 @@ static u_int bench_crypter(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			crypter->encrypt(crypter, buf, chunk_from_thing(iv), NULL);
-			runs++;
-			crypter->decrypt(crypter, buf, chunk_from_thing(iv), NULL);
-			runs++;
+			if (crypter->encrypt(crypter, buf, chunk_from_thing(iv), NULL))
+			{
+				runs++;
+			}
+			if (crypter->decrypt(crypter, buf, chunk_from_thing(iv), NULL))
+			{
+				runs++;
+			}
 		}
 		free(buf.ptr);
 		crypter->destroy(crypter);
@@ -186,7 +193,7 @@ METHOD(crypto_tester_t, test_crypter, bool,
 	while (enumerator->enumerate(enumerator, &vector))
 	{
 		crypter_t *crypter;
-		chunk_t key, plain, cipher, iv;
+		chunk_t key, iv, plain = chunk_empty, cipher = chunk_empty;
 
 		if (vector->alg != alg)
 		{
@@ -196,53 +203,72 @@ METHOD(crypto_tester_t, test_crypter, bool,
 		{	/* test only vectors with a specific key size, if key size given */
 			continue;
 		}
+
+		tested++;
+		failed = TRUE;
 		crypter = create(alg, vector->key_size);
 		if (!crypter)
 		{
 			DBG1(DBG_LIB, "%N[%s]: %u bit key size not supported",
 				 encryption_algorithm_names, alg, plugin_name,
 				 BITS_PER_BYTE * vector->key_size);
-			failed = TRUE;
 			continue;
 		}
 
-		failed = FALSE;
-		tested++;
-
 		key = chunk_create(vector->key, crypter->get_key_size(crypter));
-		crypter->set_key(crypter, key);
+		if (!crypter->set_key(crypter, key))
+		{
+			goto failure;
+		}
 		iv = chunk_create(vector->iv, crypter->get_iv_size(crypter));
 
 		/* allocated encryption */
 		plain = chunk_create(vector->plain, vector->len);
-		crypter->encrypt(crypter, plain, iv, &cipher);
+		if (!crypter->encrypt(crypter, plain, iv, &cipher))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->cipher, cipher.ptr, cipher.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* inline decryption */
-		crypter->decrypt(crypter, cipher, iv, NULL);
+		if (!crypter->decrypt(crypter, cipher, iv, NULL))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->plain, cipher.ptr, cipher.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		free(cipher.ptr);
 		/* allocated decryption */
-		cipher = chunk_create(vector->cipher, vector->len);
-		crypter->decrypt(crypter, cipher, iv, &plain);
+		if (!crypter->decrypt(crypter,
+						chunk_create(vector->cipher, vector->len), iv, &plain))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->plain, plain.ptr, plain.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* inline encryption */
-		crypter->encrypt(crypter, plain, iv, NULL);
+		if (!crypter->encrypt(crypter, plain, iv, NULL))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->cipher, plain.ptr, plain.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		free(plain.ptr);
 
+		failed = FALSE;
+failure:
 		crypter->destroy(crypter);
+		chunk_free(&cipher);
+		if (plain.ptr != vector->plain)
+		{
+			chunk_free(&plain);
+		}
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",
@@ -306,7 +332,10 @@ static u_int bench_aead(private_crypto_tester_t *this,
 		memset(iv, 0x56, sizeof(iv));
 		memset(key, 0x12, sizeof(key));
 		memset(assoc, 0x78, sizeof(assoc));
-		aead->set_key(aead, chunk_from_thing(key));
+		if (!aead->set_key(aead, chunk_from_thing(key)))
+		{
+			return 0;
+		}
 		icv = aead->get_icv_size(aead);
 
 		buf = chunk_alloc(this->bench_size + icv);
@@ -317,12 +346,16 @@ static u_int bench_aead(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			aead->encrypt(aead, buf, chunk_from_thing(assoc),
-						  chunk_from_thing(iv), NULL);
-			runs += 2;
-			aead->decrypt(aead, chunk_create(buf.ptr, buf.len + icv),
-						  chunk_from_thing(assoc), chunk_from_thing(iv), NULL);
-			runs += 2;
+			if (aead->encrypt(aead, buf, chunk_from_thing(assoc),
+						chunk_from_thing(iv), NULL))
+			{
+				runs += 2;
+			}
+			if (aead->decrypt(aead, chunk_create(buf.ptr, buf.len + icv),
+						chunk_from_thing(assoc), chunk_from_thing(iv), NULL))
+			{
+				runs += 2;
+			}
 		}
 		free(buf.ptr);
 		aead->destroy(aead);
@@ -345,7 +378,7 @@ METHOD(crypto_tester_t, test_aead, bool,
 	while (enumerator->enumerate(enumerator, &vector))
 	{
 		aead_t *aead;
-		chunk_t key, plain, cipher, iv, assoc;
+		chunk_t key, iv, assoc, plain = chunk_empty, cipher = chunk_empty;
 		size_t icv;
 
 		if (vector->alg != alg)
@@ -356,63 +389,75 @@ METHOD(crypto_tester_t, test_aead, bool,
 		{	/* test only vectors with a specific key size, if key size given */
 			continue;
 		}
+
+		tested++;
+		failed = TRUE;
 		aead = create(alg, vector->key_size);
 		if (!aead)
 		{
 			DBG1(DBG_LIB, "%N[%s]: %u bit key size not supported",
 				 encryption_algorithm_names, alg, plugin_name,
 				 BITS_PER_BYTE * vector->key_size);
-			failed = TRUE;
 			continue;
 		}
 
-		failed = FALSE;
-		tested++;
-
 		key = chunk_create(vector->key, aead->get_key_size(aead));
-		aead->set_key(aead, key);
+		if (!aead->set_key(aead, key))
+		{
+			goto failure;
+		}
 		iv = chunk_create(vector->iv, aead->get_iv_size(aead));
 		assoc = chunk_create(vector->adata, vector->alen);
 		icv = aead->get_icv_size(aead);
 
 		/* allocated encryption */
 		plain = chunk_create(vector->plain, vector->len);
-		aead->encrypt(aead, plain, assoc, iv, &cipher);
+		if (!aead->encrypt(aead, plain, assoc, iv, &cipher))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->cipher, cipher.ptr, cipher.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* inline decryption */
 		if (!aead->decrypt(aead, cipher, assoc, iv, NULL))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		if (!memeq(vector->plain, cipher.ptr, cipher.len - icv))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		free(cipher.ptr);
 		/* allocated decryption */
-		cipher = chunk_create(vector->cipher, vector->len + icv);
-		if (!aead->decrypt(aead, cipher, assoc, iv, &plain))
+		if (!aead->decrypt(aead, chunk_create(vector->cipher, vector->len + icv),
+						   assoc, iv, &plain))
 		{
-			plain = chunk_empty;
-			failed = TRUE;
+			goto failure;
 		}
-		else if (!memeq(vector->plain, plain.ptr, plain.len))
+		if (!memeq(vector->plain, plain.ptr, plain.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		plain.ptr = realloc(plain.ptr, plain.len + icv);
 		/* inline encryption */
-		aead->encrypt(aead, plain, assoc, iv, NULL);
+		if (!aead->encrypt(aead, plain, assoc, iv, NULL))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->cipher, plain.ptr, plain.len + icv))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		free(plain.ptr);
 
+		failed = FALSE;
+failure:
 		aead->destroy(aead);
+		chunk_free(&cipher);
+		if (plain.ptr != vector->plain)
+		{
+			chunk_free(&plain);
+		}
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",
@@ -458,7 +503,7 @@ METHOD(crypto_tester_t, test_aead, bool,
  * Benchmark a signer
  */
 static u_int bench_signer(private_crypto_tester_t *this,
-	encryption_algorithm_t alg, signer_constructor_t create)
+	integrity_algorithm_t alg, signer_constructor_t create)
 {
 	signer_t *signer;
 
@@ -472,7 +517,10 @@ static u_int bench_signer(private_crypto_tester_t *this,
 		u_int runs;
 
 		memset(key, 0x12, sizeof(key));
-		signer->set_key(signer, chunk_from_thing(key));
+		if (!signer->set_key(signer, chunk_from_thing(key)))
+		{
+			return 0;
+		}
 
 		buf = chunk_alloc(this->bench_size);
 		memset(buf.ptr, 0x34, buf.len);
@@ -481,10 +529,14 @@ static u_int bench_signer(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			signer->get_signature(signer, buf, mac);
-			runs++;
-			signer->verify_signature(signer, buf, chunk_from_thing(mac));
-			runs++;
+			if (signer->get_signature(signer, buf, mac))
+			{
+				runs++;
+			}
+			if (signer->verify_signature(signer, buf, chunk_from_thing(mac)))
+			{
+				runs++;
+			}
 		}
 		free(buf.ptr);
 		signer->destroy(signer);
@@ -507,7 +559,7 @@ METHOD(crypto_tester_t, test_signer, bool,
 	while (enumerator->enumerate(enumerator, &vector))
 	{
 		signer_t *signer;
-		chunk_t key, data, mac;
+		chunk_t key, data, mac = chunk_empty;
 
 		if (vector->alg != alg)
 		{
@@ -515,63 +567,79 @@ METHOD(crypto_tester_t, test_signer, bool,
 		}
 
 		tested++;
+		failed = TRUE;
 		signer = create(alg);
 		if (!signer)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: creating instance failed",
 				 integrity_algorithm_names, alg, plugin_name);
-			failed = TRUE;
 			break;
 		}
 
-		failed = FALSE;
-
 		key = chunk_create(vector->key, signer->get_key_size(signer));
-		signer->set_key(signer, key);
-
+		if (!signer->set_key(signer, key))
+		{
+			goto failure;
+		}
 		/* allocated signature */
 		data = chunk_create(vector->data, vector->len);
-		signer->allocate_signature(signer, data, &mac);
+		if (!signer->allocate_signature(signer, data, &mac))
+		{
+			goto failure;
+		}
 		if (mac.len != signer->get_block_size(signer))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		if (!memeq(vector->mac, mac.ptr, mac.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* signature to existing buffer */
 		memset(mac.ptr, 0, mac.len);
-		signer->get_signature(signer, data, mac.ptr);
+		if (!signer->get_signature(signer, data, mac.ptr))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->mac, mac.ptr, mac.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* signature verification, good case */
 		if (!signer->verify_signature(signer, data, mac))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* signature verification, bad case */
 		*(mac.ptr + mac.len - 1) += 1;
 		if (signer->verify_signature(signer, data, mac))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* signature to existing buffer, using append mode */
 		if (data.len > 2)
 		{
-			signer->allocate_signature(signer, chunk_create(data.ptr, 1), NULL);
-			signer->get_signature(signer, chunk_create(data.ptr + 1, 1), NULL);
+			if (!signer->allocate_signature(signer,
+											chunk_create(data.ptr, 1), NULL))
+			{
+				goto failure;
+			}
+			if (!signer->get_signature(signer,
+									   chunk_create(data.ptr + 1, 1), NULL))
+			{
+				goto failure;
+			}
 			if (!signer->verify_signature(signer, chunk_skip(data, 2),
 										  chunk_create(vector->mac, mac.len)))
 			{
-				failed = TRUE;
+				goto failure;
 			}
 		}
-		free(mac.ptr);
 
+		failed = FALSE;
+failure:
 		signer->destroy(signer);
+		chunk_free(&mac);
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",
@@ -627,8 +695,10 @@ static u_int bench_hasher(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			hasher->get_hash(hasher, buf, hash);
-			runs++;
+			if (hasher->get_hash(hasher, buf, hash))
+			{
+				runs++;
+			}
 		}
 		free(buf.ptr);
 		hasher->destroy(hasher);
@@ -659,50 +729,73 @@ METHOD(crypto_tester_t, test_hasher, bool,
 		}
 
 		tested++;
+		failed = TRUE;
 		hasher = create(alg);
 		if (!hasher)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: creating instance failed",
 				 hash_algorithm_names, alg, plugin_name);
-			failed = TRUE;
 			break;
 		}
 
-		failed = FALSE;
-
 		/* allocated hash */
 		data = chunk_create(vector->data, vector->len);
-		hasher->allocate_hash(hasher, data, &hash);
+		if (!hasher->allocate_hash(hasher, data, &hash))
+		{
+			goto failure;
+		}
 		if (hash.len != hasher->get_hash_size(hasher))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		if (!memeq(vector->hash, hash.ptr, hash.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		/* hash to existing buffer */
+		/* hash to existing buffer, with a reset */
 		memset(hash.ptr, 0, hash.len);
-		hasher->get_hash(hasher, data, hash.ptr);
+		if (!hasher->get_hash(hasher, data, NULL))
+		{
+			goto failure;
+		}
+		if (!hasher->reset(hasher))
+		{
+			goto failure;
+		}
+		if (!hasher->get_hash(hasher, data, hash.ptr))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->hash, hash.ptr, hash.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* hasher to existing buffer, using append mode */
 		if (data.len > 2)
 		{
 			memset(hash.ptr, 0, hash.len);
-			hasher->allocate_hash(hasher, chunk_create(data.ptr, 1), NULL);
-			hasher->get_hash(hasher, chunk_create(data.ptr + 1, 1), NULL);
-			hasher->get_hash(hasher, chunk_skip(data, 2), hash.ptr);
+			if (!hasher->allocate_hash(hasher, chunk_create(data.ptr, 1), NULL))
+			{
+				goto failure;
+			}
+			if (!hasher->get_hash(hasher, chunk_create(data.ptr + 1, 1), NULL))
+			{
+				goto failure;
+			}
+			if (!hasher->get_hash(hasher, chunk_skip(data, 2), hash.ptr))
+			{
+				goto failure;
+			}
 			if (!memeq(vector->hash, hash.ptr, hash.len))
 			{
-				failed = TRUE;
+				goto failure;
 			}
 		}
-		free(hash.ptr);
 
+		failed = FALSE;
+failure:
 		hasher->destroy(hasher);
+		chunk_free(&hash);
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",
@@ -746,10 +839,17 @@ static u_int bench_prf(private_crypto_tester_t *this,
 	prf = create(alg);
 	if (prf)
 	{
-		char bytes[prf->get_block_size(prf)];
+		char bytes[prf->get_block_size(prf)], key[prf->get_block_size(prf)];
 		chunk_t buf;
 		struct timespec start;
 		u_int runs;
+
+		memset(key, 0x56, prf->get_block_size(prf));
+		if (!prf->set_key(prf, chunk_create(key, prf->get_block_size(prf))))
+		{
+			prf->destroy(prf);
+			return 0;
+		}
 
 		buf = chunk_alloc(this->bench_size);
 		memset(buf.ptr, 0x34, buf.len);
@@ -758,8 +858,10 @@ static u_int bench_prf(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			prf->get_bytes(prf, buf, bytes);
-			runs++;
+			if (prf->get_bytes(prf, buf, bytes))
+			{
+				runs++;
+			}
 		}
 		free(buf.ptr);
 		prf->destroy(prf);
@@ -782,7 +884,7 @@ METHOD(crypto_tester_t, test_prf, bool,
 	while (enumerator->enumerate(enumerator, &vector))
 	{
 		prf_t *prf;
-		chunk_t key, seed, out;
+		chunk_t key, seed, out = chunk_empty;
 
 		if (vector->alg != alg)
 		{
@@ -790,41 +892,50 @@ METHOD(crypto_tester_t, test_prf, bool,
 		}
 
 		tested++;
+		failed = TRUE;
 		prf = create(alg);
 		if (!prf)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: creating instance failed",
 				 pseudo_random_function_names, alg, plugin_name);
-			failed = TRUE;
 			break;
 		}
 
-		failed = FALSE;
-
 		key = chunk_create(vector->key, vector->key_size);
-		prf->set_key(prf, key);
-
+		if (!prf->set_key(prf, key))
+		{
+			goto failure;
+		}
 		/* allocated bytes */
 		seed = chunk_create(vector->seed, vector->len);
-		prf->allocate_bytes(prf, seed, &out);
+		if (!prf->allocate_bytes(prf, seed, &out))
+		{
+			goto failure;
+		}
 		if (out.len != prf->get_block_size(prf))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		if (!memeq(vector->out, out.ptr, out.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* bytes to existing buffer */
 		memset(out.ptr, 0, out.len);
 		if (vector->stateful)
 		{
-			prf->set_key(prf, key);
+			if (!prf->set_key(prf, key))
+			{
+				goto failure;
+			}
 		}
-		prf->get_bytes(prf, seed, out.ptr);
+		if (!prf->get_bytes(prf, seed, out.ptr))
+		{
+			goto failure;
+		}
 		if (!memeq(vector->out, out.ptr, out.len))
 		{
-			failed = TRUE;
+			goto failure;
 		}
 		/* bytes to existing buffer, using append mode */
 		if (seed.len > 2)
@@ -832,19 +943,33 @@ METHOD(crypto_tester_t, test_prf, bool,
 			memset(out.ptr, 0, out.len);
 			if (vector->stateful)
 			{
-				prf->set_key(prf, key);
+				if (!prf->set_key(prf, key))
+				{
+					goto failure;
+				}
 			}
-			prf->allocate_bytes(prf, chunk_create(seed.ptr, 1), NULL);
-			prf->get_bytes(prf, chunk_create(seed.ptr + 1, 1), NULL);
-			prf->get_bytes(prf, chunk_skip(seed, 2), out.ptr);
+			if (!prf->allocate_bytes(prf, chunk_create(seed.ptr, 1), NULL))
+			{
+				goto failure;
+			}
+			if (!prf->get_bytes(prf, chunk_create(seed.ptr + 1, 1), NULL))
+			{
+				goto failure;
+			}
+			if (!prf->get_bytes(prf, chunk_skip(seed, 2), out.ptr))
+			{
+				goto failure;
+			}
 			if (!memeq(vector->out, out.ptr, out.len))
 			{
-				failed = TRUE;
+				goto failure;
 			}
 		}
-		free(out.ptr);
 
+		failed = FALSE;
+failure:
 		prf->destroy(prf);
+		chunk_free(&out);
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",
@@ -897,7 +1022,11 @@ static u_int bench_rng(private_crypto_tester_t *this,
 		start_timing(&start);
 		while (end_timing(&start) < this->bench_time)
 		{
-			rng->get_bytes(rng, buf.len, buf.ptr);
+			if (!rng->get_bytes(rng, buf.len, buf.ptr))
+			{
+				runs = 0;
+				break;
+			}
 			runs++;
 		}
 		free(buf.ptr);
@@ -927,8 +1056,8 @@ METHOD(crypto_tester_t, test_rng, bool,
 	enumerator = this->rng->create_enumerator(this->rng);
 	while (enumerator->enumerate(enumerator, &vector))
 	{
+		chunk_t data = chunk_empty;
 		rng_t *rng;
-		chunk_t data;
 
 		if (vector->quality != quality)
 		{
@@ -936,37 +1065,37 @@ METHOD(crypto_tester_t, test_rng, bool,
 		}
 
 		tested++;
+		failed = TRUE;
 		rng = create(quality);
 		if (!rng)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: creating instance failed",
 				 rng_quality_names, quality, plugin_name);
-			failed = TRUE;
 			break;
 		}
 
-		failed = FALSE;
-
 		/* allocated bytes */
-		rng->allocate_bytes(rng, vector->len, &data);
-		if (data.len != vector->len)
+		if (!rng->allocate_bytes(rng, vector->len, &data) ||
+			data.len != vector->len ||
+			!vector->test(vector->user, data))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		if (!vector->test(vector->user, data))
-		{
-			failed = TRUE;
-		}
-		/* bytes to existing buffer */
+		/* write bytes into existing buffer */
 		memset(data.ptr, 0, data.len);
-		rng->get_bytes(rng, vector->len, data.ptr);
+		if (!rng->get_bytes(rng, vector->len, data.ptr))
+		{
+			goto failure;
+		}
 		if (!vector->test(vector->user, data))
 		{
-			failed = TRUE;
+			goto failure;
 		}
-		free(data.ptr);
 
+		failed = FALSE;
+failure:
 		rng->destroy(rng);
+		chunk_free(&data);
 		if (failed)
 		{
 			DBG1(DBG_LIB, "disabled %N[%s]: %s test vector failed",

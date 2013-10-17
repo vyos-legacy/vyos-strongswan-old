@@ -48,7 +48,7 @@ METHOD(job_t, destroy, void,
 	free(this);
 }
 
-METHOD(job_t, execute, void,
+METHOD(job_t, execute, job_requeue_t,
 	private_delete_ike_sa_job_t *this)
 {
 	ike_sa_t *ike_sa;
@@ -60,7 +60,7 @@ METHOD(job_t, execute, void,
 		if (ike_sa->get_state(ike_sa) == IKE_PASSIVE)
 		{
 			charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
-			return destroy(this);
+			return JOB_REQUEUE_NONE;
 		}
 		if (this->delete_if_established)
 		{
@@ -76,20 +76,31 @@ METHOD(job_t, execute, void,
 		}
 		else
 		{
-			/* destroy IKE_SA did not complete connecting phase */
+			/* destroy IKE_SA only if it did not complete connecting phase */
 			if (ike_sa->get_state(ike_sa) != IKE_CONNECTING)
 			{
 				charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 			}
+			else if (ike_sa->get_version(ike_sa) == IKEV1 &&
+					 ike_sa->has_condition(ike_sa, COND_ORIGINAL_INITIATOR))
+			{	/* as initiator we waited for the peer to initiate e.g. an
+				 * XAuth exchange, reauth the SA to eventually trigger DPD */
+				DBG1(DBG_JOB, "peer did not initiate expected exchange, "
+					 "reestablishing IKE_SA");
+				ike_sa->reauth(ike_sa);
+				charon->ike_sa_manager->checkin_and_destroy(
+												charon->ike_sa_manager, ike_sa);
+			}
 			else
 			{
 				DBG1(DBG_JOB, "deleting half open IKE_SA after timeout");
+				charon->bus->alert(charon->bus, ALERT_HALF_OPEN_TIMEOUT);
 				charon->ike_sa_manager->checkin_and_destroy(
 												charon->ike_sa_manager, ike_sa);
 			}
 		}
 	}
-	destroy(this);
+	return JOB_REQUEUE_NONE;
 }
 
 METHOD(job_t, get_priority, job_priority_t,

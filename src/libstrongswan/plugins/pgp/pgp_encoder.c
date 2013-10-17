@@ -15,7 +15,7 @@
 
 #include "pgp_encoder.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 /**
  * Build a PGPv3 fingerprint
@@ -44,8 +44,12 @@ static bool build_v3_fingerprint(chunk_t *encoding, va_list args)
 		{
 			e = chunk_skip(e, 1);
 		}
-		hasher->allocate_hash(hasher, n, NULL);
-		hasher->allocate_hash(hasher, e, encoding);
+		if (!hasher->allocate_hash(hasher, n, NULL) ||
+			!hasher->allocate_hash(hasher, e, encoding))
+		{
+			hasher->destroy(hasher);
+			return FALSE;
+		}
 		hasher->destroy(hasher);
 		return TRUE;
 	}

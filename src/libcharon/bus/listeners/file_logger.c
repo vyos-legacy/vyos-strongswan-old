@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -16,9 +17,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #include "file_logger.h"
 
+#include <daemon.h>
+#include <threading/mutex.h>
+#include <threading/rwlock.h>
 
 typedef struct private_file_logger_t private_file_logger_t;
 
@@ -33,7 +40,12 @@ struct private_file_logger_t {
 	file_logger_t public;
 
 	/**
-	 * output file
+	 * File name of the target
+	 */
+	char *filename;
+
+	/**
+	 * Current output file
 	 */
 	FILE *out;
 
@@ -51,74 +63,99 @@ struct private_file_logger_t {
 	 * Print the name/# of the IKE_SA?
 	 */
 	bool ike_name;
+
+	/**
+	 * Mutex to ensure multi-line log messages are not torn apart
+	 */
+	mutex_t *mutex;
+
+	/**
+	 * Lock to read/write options (FD, levels, time_format, etc.)
+	 */
+	rwlock_t *lock;
 };
 
-METHOD(listener_t, log_, bool,
-	   private_file_logger_t *this, debug_t group, level_t level, int thread,
-	   ike_sa_t* ike_sa, char *format, va_list args)
+METHOD(logger_t, log_, void,
+	private_file_logger_t *this, debug_t group, level_t level, int thread,
+	ike_sa_t* ike_sa, const char *message)
 {
-	if (level <= this->levels[group])
-	{
-		char buffer[8192], timestr[128], namestr[128] = "";
-		char *current = buffer, *next;
-		struct tm tm;
-		time_t t;
+	char timestr[128], namestr[128] = "";
+	const char *current = message, *next;
+	struct tm tm;
+	time_t t;
 
-		if (this->time_format)
+	this->lock->read_lock(this->lock);
+	if (!this->out)
+	{	/* file is not open */
+		this->lock->unlock(this->lock);
+		return;
+	}
+	if (this->time_format)
+	{
+		t = time(NULL);
+		localtime_r(&t, &tm);
+		strftime(timestr, sizeof(timestr), this->time_format, &tm);
+	}
+	if (this->ike_name && ike_sa)
+	{
+		if (ike_sa->get_peer_cfg(ike_sa))
 		{
-			t = time(NULL);
-			localtime_r(&t, &tm);
-			strftime(timestr, sizeof(timestr), this->time_format, &tm);
-		}
-		if (this->ike_name && ike_sa)
-		{
-			if (ike_sa->get_peer_cfg(ike_sa))
-			{
-				snprintf(namestr, sizeof(namestr), " <%s|%d>",
-					ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
-			}
-			else
-			{
-				snprintf(namestr, sizeof(namestr), " <%d>",
-					ike_sa->get_unique_id(ike_sa));
-			}
+			snprintf(namestr, sizeof(namestr), " <%s|%d>",
+				ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
 		}
 		else
 		{
-			namestr[0] = '\0';
-		}
-
-		/* write in memory buffer first */
-		vsnprintf(buffer, sizeof(buffer), format, args);
-
-		/* prepend a prefix in front of every line */
-		while (current)
-		{
-			next = strchr(current, '\n');
-			if (next)
-			{
-				*(next++) = '\0';
-			}
-			if (this->time_format)
-			{
-				fprintf(this->out, "%s %.2d[%N]%s %s\n",
-						timestr, thread, debug_names, group, namestr, current);
-			}
-			else
-			{
-				fprintf(this->out, "%.2d[%N]%s %s\n",
-						thread, debug_names, group, namestr, current);
-			}
-			current = next;
+			snprintf(namestr, sizeof(namestr), " <%d>",
+				ike_sa->get_unique_id(ike_sa));
 		}
 	}
-	/* always stay registered */
-	return TRUE;
+	else
+	{
+		namestr[0] = '\0';
+	}
+
+	/* prepend a prefix in front of every line */
+	this->mutex->lock(this->mutex);
+	while (TRUE)
+	{
+		next = strchr(current, '\n');
+		if (this->time_format)
+		{
+			fprintf(this->out, "%s %.2d[%N]%s ",
+					timestr, thread, debug_names, group, namestr);
+		}
+		else
+		{
+			fprintf(this->out, "%.2d[%N]%s ",
+					thread, debug_names, group, namestr);
+		}
+		if (next == NULL)
+		{
+			fprintf(this->out, "%s\n", current);
+			break;
+		}
+		fprintf(this->out, "%.*s\n", (int)(next - current), current);
+		current = next + 1;
+	}
+	this->mutex->unlock(this->mutex);
+	this->lock->unlock(this->lock);
+}
+
+METHOD(logger_t, get_level, level_t,
+	private_file_logger_t *this, debug_t group)
+{
+	level_t level;
+
+	this->lock->read_lock(this->lock);
+	level = this->levels[group];
+	this->lock->unlock(this->lock);
+	return level;
 }
 
 METHOD(file_logger_t, set_level, void,
-	   private_file_logger_t *this, debug_t group, level_t level)
+	private_file_logger_t *this, debug_t group, level_t level)
 {
+	this->lock->write_lock(this->lock);
 	if (group < DBG_ANY)
 	{
 		this->levels[group] = level;
@@ -130,40 +167,101 @@ METHOD(file_logger_t, set_level, void,
 			this->levels[group] = level;
 		}
 	}
+	this->lock->unlock(this->lock);
+}
+
+METHOD(file_logger_t, set_options, void,
+	private_file_logger_t *this, char *time_format, bool ike_name)
+{
+	this->lock->write_lock(this->lock);
+	free(this->time_format);
+	this->time_format = strdupnull(time_format);
+	this->ike_name = ike_name;
+	this->lock->unlock(this->lock);
+}
+
+/**
+ * Close the current file, if any
+ */
+static void close_file(private_file_logger_t *this)
+{
+	if (this->out && this->out != stdout && this->out != stderr)
+	{
+		fclose(this->out);
+		this->out = NULL;
+	}
+}
+
+METHOD(file_logger_t, open_, void,
+	private_file_logger_t *this, bool flush_line, bool append)
+{
+	FILE *file;
+
+	if (streq(this->filename, "stderr"))
+	{
+		file = stderr;
+	}
+	else if (streq(this->filename, "stdout"))
+	{
+		file = stdout;
+	}
+	else
+	{
+		file = fopen(this->filename, append ? "a" : "w");
+		if (file == NULL)
+		{
+			DBG1(DBG_DMN, "opening file %s for logging failed: %s",
+				 this->filename, strerror(errno));
+			return;
+		}
+		if (flush_line)
+		{
+			setlinebuf(file);
+		}
+	}
+	this->lock->write_lock(this->lock);
+	close_file(this);
+	this->out = file;
+	this->lock->unlock(this->lock);
 }
 
 METHOD(file_logger_t, destroy, void,
-	   private_file_logger_t *this)
+	private_file_logger_t *this)
 {
-	if (this->out != stdout && this->out != stderr)
-	{
-		fclose(this->out);
-	}
+	this->lock->write_lock(this->lock);
+	close_file(this);
+	this->lock->unlock(this->lock);
+	this->mutex->destroy(this->mutex);
+	this->lock->destroy(this->lock);
+	free(this->time_format);
+	free(this->filename);
 	free(this);
 }
 
 /*
  * Described in header.
  */
-file_logger_t *file_logger_create(FILE *out, char *time_format, bool ike_name)
+file_logger_t *file_logger_create(char *filename)
 {
 	private_file_logger_t *this;
 
 	INIT(this,
 		.public = {
-			.listener = {
+			.logger = {
 				.log = _log_,
+				.get_level = _get_level,
 			},
 			.set_level = _set_level,
+			.set_options = _set_options,
+			.open = _open_,
 			.destroy = _destroy,
 		},
-		.out = out,
-		.time_format = time_format,
-		.ike_name = ike_name,
+		.filename = strdup(filename),
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 	);
 
 	set_level(this, DBG_ANY, LEVEL_SILENT);
 
 	return &this->public;
 }
-

@@ -1,7 +1,21 @@
+/*
+ * Copyright (C) 2008 Andreas Steffen
+ * Hochschule fuer Technik Rapperswil
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ */
 
 #include <stdio.h>
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <credentials/keys/private_key.h>
 #include <credentials/keys/public_key.h>
 
@@ -17,7 +31,7 @@ int main(int argc, char *argv[])
 	int read, n;
 
 	library_init(NULL);
-	lib->plugins->load(lib->plugins, NULL, PLUGINS);
+	lib->plugins->load(lib->plugins, PLUGINS);
 	atexit(library_deinit);
 
 	read = fread(buf, 1, sizeof(buf), stdin);

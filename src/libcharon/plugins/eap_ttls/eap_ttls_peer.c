@@ -16,10 +16,10 @@
 #include "eap_ttls_peer.h"
 #include "eap_ttls_avp.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <daemon.h>
 #include <radius_message.h>
-#include <sa/authenticators/eap/eap_method.h>
+#include <sa/eap/eap_method.h>
 
 typedef struct private_eap_ttls_peer_t private_eap_ttls_peer_t;
 
@@ -138,7 +138,7 @@ METHOD(tls_application_t, process, status_t,
 		chunk_free(&avp_data);
 	}
 	while (eap_pos < eap_data.len);
- 		
+
 	in = eap_payload_create_data(eap_data);
 	chunk_free(&eap_data);
 	payload = (payload_t*)in;
@@ -192,7 +192,8 @@ METHOD(tls_application_t, process, status_t,
 		if (!this->method)
 		{
 			DBG1(DBG_IKE, "EAP method not supported");
-			this->out = eap_payload_create_nak(in->get_identifier(in));
+			this->out = eap_payload_create_nak(in->get_identifier(in), 0, 0,
+											   in->is_expanded(in));
 			in->destroy(in);
 			return NEED_MORE;
 		}

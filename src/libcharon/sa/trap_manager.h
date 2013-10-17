@@ -22,7 +22,7 @@
 #define TRAP_MANAGER_H_
 
 #include <library.h>
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
 #include <config/peer_cfg.h>
 
 typedef struct trap_manager_t trap_manager_t;
@@ -37,10 +37,11 @@ struct trap_manager_t {
 	 *
 	 * @param peer		peer configuration to initiate on trap
 	 * @param child 	child configuration to install as a trap
+	 * @param reqid		optional reqid to use
 	 * @return			reqid of installed CHILD_SA, 0 if failed
 	 */
 	u_int32_t (*install)(trap_manager_t *this, peer_cfg_t *peer,
-						 child_cfg_t *child);
+						 child_cfg_t *child, u_int32_t reqid);
 
 	/**
 	 * Uninstall a trap policy.
@@ -56,6 +57,14 @@ struct trap_manager_t {
 	 * @return			enumerator over (peer_cfg_t, child_sa_t)
 	 */
 	enumerator_t* (*create_enumerator)(trap_manager_t *this);
+
+	/**
+	 * Find the reqid of a child config installed as a trap.
+	 *
+	 * @param child		CHILD_SA config to get the reqid for
+	 * @return			reqid of trap, 0 if not found
+	 */
+	u_int32_t (*find_reqid)(trap_manager_t *this, child_cfg_t *child);
 
 	/**
 	 * Acquire an SA triggered by an installed trap.

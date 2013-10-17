@@ -14,9 +14,10 @@
  */
 
 #include "pkcs11_creds.h"
+#include "pkcs11_manager.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_pkcs11_creds_t private_pkcs11_creds_t;
 
@@ -109,7 +110,8 @@ static void find_certificates(private_pkcs11_creds_t *this,
 		if (cert)
 		{
 			DBG1(DBG_CFG, "    loaded %strusted cert '%.*s'",
-				 entry->trusted ? "" : "un", entry->label.len, entry->label.ptr);
+				 entry->trusted ? "" : "un", (int)entry->label.len,
+				 entry->label.ptr);
 			/* trusted certificates are also returned as untrusted */
 			this->untrusted->insert_last(this->untrusted, cert);
 			if (entry->trusted)
@@ -120,7 +122,7 @@ static void find_certificates(private_pkcs11_creds_t *this,
 		else
 		{
 			DBG1(DBG_CFG, "    loading cert '%.*s' failed",
-				 entry->label.len, entry->label.ptr);
+				(int)entry->label.len, entry->label.ptr);
 		}
 		free(entry->value.ptr);
 		free(entry->label.ptr);
@@ -255,4 +257,113 @@ pkcs11_creds_t *pkcs11_creds_create(pkcs11_library_t *p11, CK_SLOT_ID slot)
 	}
 
 	return &this->public;
+}
+
+/**
+ * See header.
+ */
+certificate_t *pkcs11_creds_load(certificate_type_t type, va_list args)
+{
+	chunk_t keyid = chunk_empty, data = chunk_empty;
+	enumerator_t *enumerator, *certs;
+	pkcs11_manager_t *manager;
+	pkcs11_library_t *p11;
+	certificate_t *cert = NULL;
+	CK_SLOT_ID current, slot = -1;
+	char *module = NULL;
+
+	while (TRUE)
+	{
+		switch (va_arg(args, builder_part_t))
+		{
+			case BUILD_PKCS11_KEYID:
+				keyid = va_arg(args, chunk_t);
+				continue;
+			case BUILD_PKCS11_SLOT:
+				slot = va_arg(args, int);
+				continue;
+			case BUILD_PKCS11_MODULE:
+				module = va_arg(args, char*);
+				continue;
+			case BUILD_END:
+				break;
+			default:
+				return NULL;
+		}
+		break;
+	}
+	if (!keyid.len)
+	{
+		return NULL;
+	}
+
+	manager = lib->get(lib, "pkcs11-manager");
+	if (!manager)
+	{
+		return NULL;
+	}
+	enumerator = manager->create_token_enumerator(manager);
+	while (enumerator->enumerate(enumerator, &p11, &current))
+	{
+		CK_OBJECT_CLASS class = CKO_CERTIFICATE;
+		CK_CERTIFICATE_TYPE type = CKC_X_509;
+		CK_ATTRIBUTE tmpl[] = {
+			{CKA_CLASS, &class, sizeof(class)},
+			{CKA_CERTIFICATE_TYPE, &type, sizeof(type)},
+			{CKA_ID, keyid.ptr, keyid.len},
+		};
+		CK_ATTRIBUTE attr[] = {
+			{CKA_VALUE, NULL, 0},
+		};
+		CK_OBJECT_HANDLE object;
+		CK_SESSION_HANDLE session;
+		CK_RV rv;
+
+		if (slot != -1 && slot != current)
+		{
+			continue;
+		}
+		if (module && !streq(module, p11->get_name(p11)))
+		{
+			continue;
+		}
+
+		rv = p11->f->C_OpenSession(current, CKF_SERIAL_SESSION, NULL, NULL,
+								   &session);
+		if (rv != CKR_OK)
+		{
+			DBG1(DBG_CFG, "opening PKCS#11 session failed: %N", ck_rv_names, rv);
+			continue;
+		}
+		certs = p11->create_object_enumerator(p11, session,
+									tmpl, countof(tmpl), attr, countof(attr));
+		if (certs->enumerate(certs, &object))
+		{
+			data = chunk_clone(chunk_create(attr[0].pValue, attr[0].ulValueLen));
+		}
+		certs->destroy(certs);
+		p11->f->C_CloseSession(session);
+
+		if (data.ptr)
+		{
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (data.ptr)
+	{
+		cert = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
+								  BUILD_BLOB_ASN1_DER, data, BUILD_END);
+		free(data.ptr);
+		if (!cert)
+		{
+			DBG1(DBG_CFG, "parsing PKCS#11 certificate %#B failed", &keyid);
+		}
+	}
+	else
+	{
+		DBG1(DBG_CFG, "PKCS#11 certificate %#B not found", &keyid);
+	}
+	return cert;
 }

@@ -26,6 +26,12 @@
 #ifndef TLS_H_
 #define TLS_H_
 
+/**
+ * Maximum size of a TLS fragment
+ * as defined by section 6.2.1. "Fragmentation" of RFC 5246 TLS 1.2
+ */
+#define TLS_MAX_FRAGMENT_LEN	16384
+
 typedef enum tls_version_t tls_version_t;
 typedef enum tls_content_type_t tls_content_type_t;
 typedef enum tls_handshake_type_t tls_handshake_type_t;
@@ -185,6 +191,20 @@ struct tls_t {
 	 * @return			TRUE if server, FALSE if peer
 	 */
 	bool (*is_server)(tls_t *this);
+
+	/**
+	 * Return the server identity.
+	 *
+	 * @return			server identity
+	 */
+	identification_t* (*get_server_id)(tls_t *this);
+
+	/**
+	 * Return the peer identity.
+	 *
+	 * @return			peer identity
+	 */
+	identification_t* (*get_peer_id)(tls_t *this);
 
 	/**
 	 * Get the negotiated TLS/SSL version.

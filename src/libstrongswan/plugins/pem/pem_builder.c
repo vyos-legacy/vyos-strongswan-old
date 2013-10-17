@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2013 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
  * Copyright (C) 2001-2008 Andreas Steffen
  * Hochschule fuer Technik Rapperswil
@@ -27,7 +28,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <library.h>
 #include <utils/lexparser.h>
 #include <asn1/asn1.h>
@@ -104,15 +105,21 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 	}
 	hash.len = hasher->get_hash_size(hasher);
 	hash.ptr = alloca(hash.len);
-	hasher->get_hash(hasher, passphrase, NULL);
-	hasher->get_hash(hasher, salt, hash.ptr);
+	if (!hasher->get_hash(hasher, passphrase, NULL) ||
+		!hasher->get_hash(hasher, salt, hash.ptr))
+	{
+		return FAILED;
+	}
 	memcpy(key.ptr, hash.ptr, hash.len);
 
 	if (key.len > hash.len)
 	{
-		hasher->get_hash(hasher, hash, NULL);
-		hasher->get_hash(hasher, passphrase, NULL);
-		hasher->get_hash(hasher, salt, hash.ptr);
+		if (!hasher->get_hash(hasher, hash, NULL) ||
+			!hasher->get_hash(hasher, passphrase, NULL) ||
+			!hasher->get_hash(hasher, salt, hash.ptr))
+		{
+			return FAILED;
+		}
 		memcpy(key.ptr + hash.len, hash.ptr, key.len - hash.len);
 	}
 	hasher->destroy(hasher);
@@ -125,7 +132,6 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 			 encryption_algorithm_names, alg);
 		return NOT_SUPPORTED;
 	}
-	crypter->set_key(crypter, key);
 
 	if (iv.len != crypter->get_iv_size(crypter) ||
 		blob->len % crypter->get_block_size(crypter))
@@ -134,7 +140,12 @@ static status_t pem_decrypt(chunk_t *blob, encryption_algorithm_t alg,
 		DBG1(DBG_ASN, "  data size is not multiple of block size");
 		return PARSE_ERROR;
 	}
-	crypter->decrypt(crypter, *blob, iv, &decrypted);
+	if (!crypter->set_key(crypter, key) ||
+		!crypter->decrypt(crypter, *blob, iv, &decrypted))
+	{
+		crypter->destroy(crypter);
+		return FAILED;
+	}
 	crypter->destroy(crypter);
 	memcpy(blob->ptr, decrypted.ptr, blob->len);
 	chunk_free(&decrypted);
@@ -275,11 +286,14 @@ static status_t pem_to_bin(chunk_t *blob, bool *pgp)
 					else
 					{
 						DBG1(DBG_ASN, "  encryption algorithm '%.*s'"
-							 " not supported", dek.len, dek.ptr);
+							 " not supported", (int)dek.len, dek.ptr);
 						return NOT_SUPPORTED;
 					}
-					eat_whitespace(&value);
-					iv = chunk_from_hex(value, iv.ptr);
+					if (!eat_whitespace(&value) || value.len > 2*sizeof(iv_buf))
+					{
+						return PARSE_ERROR;
+					}
+					iv = chunk_from_hex(value, iv_buf);
 				}
 			}
 			else /* state is PEM_BODY */
@@ -551,3 +565,10 @@ certificate_t *pem_certificate_load(certificate_type_t type, va_list args)
 	return pem_load(CRED_CERTIFICATE, type, args);
 }
 
+/**
+ * Container PEM loader.
+ */
+container_t *pem_container_load(container_type_t type, va_list args)
+{
+	return pem_load(CRED_CONTAINER, type, args);
+}

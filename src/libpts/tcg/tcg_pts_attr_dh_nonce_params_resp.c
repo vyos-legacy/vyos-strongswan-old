@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,7 +18,7 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_tcg_pts_attr_dh_nonce_params_resp_t
 					private_tcg_pts_attr_dh_nonce_params_resp_t;
@@ -38,7 +38,7 @@ typedef struct private_tcg_pts_attr_dh_nonce_params_resp_t
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |					D-H Responder Public Value ...				|
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  
+ *
  */
 
 #define PTS_DH_NONCE_PARAMS_RESP_SIZE			16
@@ -55,14 +55,9 @@ struct private_tcg_pts_attr_dh_nonce_params_resp_t {
 	tcg_pts_attr_dh_nonce_params_resp_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
@@ -73,7 +68,7 @@ struct private_tcg_pts_attr_dh_nonce_params_resp_t {
 	 * Noskip flag
 	 */
 	bool noskip_flag;
-	
+
 	/**
 	 * Selected Diffie Hellman group
 	 */
@@ -100,13 +95,7 @@ struct private_tcg_pts_attr_dh_nonce_params_resp_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_tcg_pts_attr_dh_nonce_params_resp_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_tcg_pts_attr_dh_nonce_params_resp_t *this)
 {
 	return this->type;
@@ -135,6 +124,10 @@ METHOD(pa_tnc_attr_t, build, void,
 {
 	bio_writer_t *writer;
 
+	if (this->value.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(PTS_DH_NONCE_PARAMS_RESP_SIZE);
 	writer->write_uint24(writer, PTS_DH_NONCE_PARAMS_RESP_RESERVED);
 	writer->write_uint8 (writer, this->responder_nonce.len);
@@ -142,8 +135,8 @@ METHOD(pa_tnc_attr_t, build, void,
 	writer->write_uint16(writer, this->hash_algo_set);
 	writer->write_data  (writer, this->responder_nonce);
 	writer->write_data  (writer, this->responder_value);
-	
-	this->value = chunk_clone(writer->get_buf(writer));
+
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -233,7 +226,6 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_params_resp_create(pts_dh_group_t dh_group,
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -248,8 +240,7 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_params_resp_create(pts_dh_group_t dh_group,
 			.get_responder_nonce = _get_responder_nonce,
 			.get_responder_value = _get_responder_value,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_DH_NONCE_PARAMS_RESP,
+		.type = { PEN_TCG, TCG_PTS_DH_NONCE_PARAMS_RESP },
 		.dh_group = dh_group,
 		.hash_algo_set = hash_algo_set,
 		.responder_nonce = chunk_clone(responder_nonce),
@@ -270,7 +261,6 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_params_resp_create_from_data(chunk_t value)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -285,8 +275,7 @@ pa_tnc_attr_t *tcg_pts_attr_dh_nonce_params_resp_create_from_data(chunk_t value)
 			.get_responder_nonce = _get_responder_nonce,
 			.get_responder_value = _get_responder_value,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_DH_NONCE_PARAMS_RESP,
+		.type = { PEN_TCG, TCG_PTS_DH_NONCE_PARAMS_RESP },
 		.value = chunk_clone(value),
 		.ref = 1,
 	);

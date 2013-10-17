@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2013 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,6 +15,7 @@
 
 #include "imv_attestation_process.h"
 
+#include <imcv.h>
 #include <ietf/ietf_attr_pa_tnc_error.h>
 
 #include <pts/pts.h>
@@ -29,23 +30,27 @@
 #include <tcg/tcg_pts_attr_tpm_version_info.h>
 #include <tcg/tcg_pts_attr_unix_file_meta.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <crypto/hashers/hasher.h>
 
 #include <inttypes.h>
 
-bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
-							 imv_attestation_state_t *attestation_state,
+bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
+							 imv_state_t *state,
 							 pts_meas_algorithms_t supported_algorithms,
 							 pts_dh_group_t supported_dh_groups,
 							 pts_database_t *pts_db,
 							 credential_manager_t *pts_credmgr)
 {
+	imv_attestation_state_t *attestation_state;
+	pen_type_t attr_type;
 	pts_t *pts;
 
+	attestation_state = (imv_attestation_state_t*)state;
 	pts = attestation_state->get_pts(attestation_state);
- 
-	switch (attr->get_type(attr))
+	attr_type = attr->get_type(attr);
+
+	switch (attr_type.type)
 	{
 		case TCG_PTS_PROTO_CAPS:
 		{
@@ -71,6 +76,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 				return FALSE;
 			}
 			pts->set_meas_algorithm(pts, selected_algorithm);
+			state->set_action_flags(state, IMV_ATTESTATION_FLAG_ALGO);
 			break;
 		}
 		case TCG_PTS_DH_NONCE_PARAMS_RESP:
@@ -94,7 +100,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 				attr = pts_dh_nonce_error_create(
 									max(PTS_MIN_NONCE_LEN, min_nonce_len),
 										PTS_MAX_NONCE_LEN);
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 				break;
 			}
 
@@ -111,7 +117,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 			if (selected_algorithm == PTS_MEAS_ALGO_NONE)
 			{
 				attr = pts_hash_alg_error_create(supported_algorithms);
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 				break;
 			}
 			pts->set_dh_hash_algorithm(pts, selected_algorithm);
@@ -169,7 +175,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 							KEY_ANY, aik->get_issuer(aik), FALSE);
 				while (e->enumerate(e, &issuer))
 				{
-					if (aik->issued_by(aik, issuer))
+					if (aik->issued_by(aik, issuer, NULL))
 					{
 						trusted = TRUE;
 						break;
@@ -188,50 +194,134 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 		}
 		case TCG_PTS_FILE_MEAS:
 		{
+			TNC_IMV_Evaluation_Result eval;
+			TNC_IMV_Action_Recommendation rec;
 			tcg_pts_attr_file_meas_t *attr_cast;
 			u_int16_t request_id;
-			int file_count, file_id;
+			int arg_int, file_count;
 			pts_meas_algorithms_t algo;
 			pts_file_meas_t *measurements;
-			char *platform_info;
-			enumerator_t *e_hash;
-			bool is_dir;
+			imv_session_t *session;
+			imv_workitem_t *workitem, *found = NULL;
+			imv_workitem_type_t type;
+			char result_str[BUF_LEN], *platform_info;
+			bool is_dir, correct;
+			enumerator_t *enumerator;
 
+			eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
+			session = state->get_session(state);
+			algo = pts->get_meas_algorithm(pts);
 			platform_info = pts->get_platform_info(pts);
-			if (!pts_db || !platform_info)
-			{
-				DBG1(DBG_IMV, "%s%s%s not available",
-					(pts_db) ? "" : "pts database",
-					(!pts_db && !platform_info) ? "and" : "",
-					(platform_info) ? "" : "platform info");
-				break;
-			}
-
 			attr_cast = (tcg_pts_attr_file_meas_t*)attr;
 			measurements = attr_cast->get_measurements(attr_cast);
-			algo = pts->get_meas_algorithm(pts);
 			request_id = measurements->get_request_id(measurements);
 			file_count = measurements->get_file_count(measurements);
 
 			DBG1(DBG_IMV, "measurement request %d returned %d file%s:",
 				 request_id, file_count, (file_count == 1) ? "":"s");
 
-			if (!attestation_state->check_off_file_meas_request(attestation_state,
-				request_id, &file_id, &is_dir))
+			if (request_id)
 			{
-				DBG1(DBG_IMV, "  no entry found for file measurement request %d",
-					 request_id);
-				break;
-			}
+				enumerator = session->create_workitem_enumerator(session);
+				while (enumerator->enumerate(enumerator, &workitem))
+				{
+					/* request ID consist of lower 16 bits of workitem ID */
+					if ((workitem->get_id(workitem) & 0xffff) == request_id)
+					{
+						found = workitem;
+						break;
+					}
+				}
 
-			/* check hashes from database against measurements */
-			e_hash = pts_db->create_file_hash_enumerator(pts_db,
-							platform_info, algo, file_id, is_dir);
-			if (!measurements->verify(measurements, e_hash, is_dir))
-			{
-				attestation_state->set_measurement_error(attestation_state);
+				if (!found)
+				{
+					DBG1(DBG_IMV, "  no entry found for file measurement "
+								  "request %d", request_id);
+					enumerator->destroy(enumerator);
+					break;
+				}
+				type =    found->get_type(found);
+				arg_int = found->get_arg_int(found);
+ 
+				switch (type)
+				{
+					default:
+					case IMV_WORKITEM_FILE_REF_MEAS:
+					case IMV_WORKITEM_FILE_MEAS:
+						is_dir = FALSE;
+						break;
+					case IMV_WORKITEM_DIR_REF_MEAS:
+					case IMV_WORKITEM_DIR_MEAS:
+						is_dir = TRUE;
+				}
+
+				switch (type)
+				{
+					case IMV_WORKITEM_FILE_MEAS:
+					case IMV_WORKITEM_DIR_MEAS:
+					{
+						enumerator_t *e;
+
+						/* check hashes from database against measurements */
+						e = pts_db->create_file_hash_enumerator(pts_db,
+										platform_info, algo, is_dir, arg_int);
+						if (!e)
+						{
+							eval = TNC_IMV_EVALUATION_RESULT_ERROR;
+							break;
+						}
+						correct = measurements->verify(measurements, e, is_dir);
+						if (!correct)
+						{
+							attestation_state->set_measurement_error(
+										attestation_state,
+										IMV_ATTESTATION_ERROR_FILE_MEAS_FAIL);
+							eval = TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR;
+						}
+						e->destroy(e);
+
+						snprintf(result_str, BUF_LEN, "%s measurement%s correct",
+								 is_dir ? "directory" : "file",
+								 correct ? "" : " not");
+						break;
+					}
+					case IMV_WORKITEM_FILE_REF_MEAS:
+					case IMV_WORKITEM_DIR_REF_MEAS:
+					{
+						enumerator_t *e;
+						char *filename;
+						chunk_t measurement;
+
+						e = measurements->create_enumerator(measurements);
+						while (e->enumerate(e, &filename, &measurement))
+						{
+							if (pts_db->add_file_measurement(pts_db, 
+									platform_info, algo, measurement, filename,
+									is_dir, arg_int) != SUCCESS)
+							{
+								eval = TNC_IMV_EVALUATION_RESULT_ERROR;
+							}
+						}
+						e->destroy(e);
+						snprintf(result_str, BUF_LEN, "%s reference measurement "
+								"successful", is_dir ? "directory" : "file");
+						break;
+					}
+					default:
+						break;
+				}
+
+				session->remove_workitem(session, enumerator);
+				enumerator->destroy(enumerator);
+				rec = found->set_result(found, result_str, eval);
+				state->update_recommendation(state, rec, eval);
+				imcv_db->finalize_workitem(imcv_db, found);
+				found->destroy(found);
 			}
-			e_hash->destroy(e_hash);
+			else
+			{
+				measurements->check(measurements, pts_db, platform_info, algo);
+			}
 			break;
 		}
 		case TCG_PTS_UNIX_FILE_META:
@@ -276,34 +366,23 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 			pts_comp_evidence_t *evidence;
 			pts_component_t *comp;
 			u_int32_t depth;
-			status_t status;
 
 			attr_cast = (tcg_pts_attr_simple_comp_evid_t*)attr;
 			evidence = attr_cast->get_comp_evidence(attr_cast);
 			name = evidence->get_comp_func_name(evidence, &depth);
 
-			comp = attestation_state->check_off_component(attestation_state, name);
+			comp = attestation_state->get_component(attestation_state, name);
 			if (!comp)
 			{
 				DBG1(DBG_IMV, "  no entry found for component evidence request");
 				break;
 			}
-			status = comp->verify(comp, pts, evidence);
-			
-			switch (status)
+			if (comp->verify(comp, name->get_qualifier(name), pts,
+							 evidence) != SUCCESS)
 			{
-				default:
-				case FAILED:
-					attestation_state->set_measurement_error(attestation_state);
-					comp->destroy(comp);
-					break;
-				case SUCCESS:
-					name->log(name, "  successfully measured ");
-					comp->destroy(comp);
-					break;
-				case NEED_MORE:
-					/* re-enter component into list */
-					attestation_state->add_component(attestation_state, comp);
+				attestation_state->set_measurement_error(attestation_state,
+									IMV_ATTESTATION_ERROR_COMP_EVID_FAIL);
+				name->log(name, "  measurement mismatch for ");
 			}
 			break;
 		}
@@ -338,23 +417,30 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, linked_list_t *attr_list,
 				{
 					DBG1(DBG_IMV, "received PCR Composite does not match "
 								  "constructed one");
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					free(pcr_composite.ptr);
 					free(quote_info.ptr);
-					return FALSE;
+					break;
 				}
 				DBG2(DBG_IMV, "received PCR Composite matches constructed one");
 				free(pcr_composite.ptr);
 
 				if (!pts->verify_quote_signature(pts, quote_info, tpm_quote_sig))
 				{
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					free(quote_info.ptr);
-					return FALSE;
+					break;
 				}
 				DBG2(DBG_IMV, "TPM Quote Info signature verification successful");
 				free(quote_info.ptr);
 
-				/* Finalize any pending measurement registrations */
-				attestation_state->check_off_registrations(attestation_state);
+				/**
+				 * Finalize any pending measurement registrations and check
+				 * if all expected component measurements were received
+				 */
+				attestation_state->finalize_components(attestation_state);
 			}
 
 			if (attr_cast->get_evid_sig(attr_cast, &evid_sig))

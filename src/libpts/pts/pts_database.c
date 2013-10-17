@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -13,9 +13,12 @@
  * for more details.
  */
 
+#define _GNU_SOURCE
+#include <stdio.h>
+
 #include "pts_database.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <crypto/hashers/hasher.h>
 
 
@@ -39,60 +42,69 @@ struct private_pts_database_t {
 
 };
 
-METHOD(pts_database_t, create_file_meas_enumerator, enumerator_t*,
-	private_pts_database_t *this, char *product)
+METHOD(pts_database_t, get_pathname, char*,
+	private_pts_database_t *this, bool is_dir, int id)
 {
 	enumerator_t *e;
+	char *path, *name, *pathname;
 
-	/* look for all entries belonging to a product in the files table */
-	e = this->db->query(this->db,
-				"SELECT f.id, f.type, f.path FROM files AS f "
-				"JOIN product_file AS pf ON f.id = pf.file "
-				"JOIN products AS p ON p.id = pf.product "
-				"WHERE p.name = ? AND pf.measurement = 1",
-				DB_TEXT, product, DB_INT, DB_INT, DB_TEXT);
-	return e;
-}
+	if (is_dir)
+	{
+		e = this->db->query(this->db,
+				"SELECT path FROM directories WHERE id = ?",
+				 DB_INT, id, DB_TEXT);
+		if (!e || !e->enumerate(e, &path))
+		{
+			pathname = NULL;
+		}
+		else
+		{
+			pathname = strdup(path);
+		}
+	}
+	else
+	{
+		e = this->db->query(this->db,
+				"SELECT d.path, f.name FROM files AS f "
+				"JOIN directories AS d ON d.id = f.dir WHERE f.id = ?",
+				 DB_INT, id, DB_TEXT, DB_TEXT);
+		if (!e || !e->enumerate(e, &path, &name) ||
+			asprintf(&pathname, "%s%s%s",
+					 path, streq(path, "/") ? "" : "/", name) == -1)
+		{
+			pathname = NULL;
+		}
+	}
+	DESTROY_IF(e);
 
-METHOD(pts_database_t, create_file_meta_enumerator, enumerator_t*,
-	private_pts_database_t *this, char *product)
-{
-	enumerator_t *e;
-
-	/* look for all entries belonging to a product in the files table */
-	e = this->db->query(this->db,
-				"SELECT f.type, f.path FROM files AS f "
-				"JOIN product_file AS pf ON f.id = pf.file "
-				"JOIN products AS p ON p.id = pf.product "
-				"WHERE p.name = ? AND pf.metadata = 1",
-				DB_TEXT, product, DB_INT, DB_TEXT);
-	return e;
+	return pathname;
 }
 
 METHOD(pts_database_t, create_file_hash_enumerator, enumerator_t*,
 	private_pts_database_t *this, char *product, pts_meas_algorithms_t algo,
-	int id, bool is_dir)
+	bool is_dir, int id)
 {
 	enumerator_t *e;
 
 	if (is_dir)
 	{
 		e = this->db->query(this->db,
-				"SELECT f.path, fh.hash FROM file_hashes AS fh "
-				"JOIN files AS f ON fh.file = f.id "
-				"JOIN products AS p ON fh.product = p.id "
-				"WHERE p.name = ? AND fh.directory = ? AND fh.algo = ? "
-				"ORDER BY f.path",
-				DB_TEXT, product, DB_INT, id, DB_INT, algo, DB_TEXT, DB_BLOB);
+				"SELECT f.name, fh.hash FROM file_hashes AS fh "
+				"JOIN files AS f ON f.id = fh.file "
+				"JOIN products AS p ON p.id = fh.product "
+				"JOIN directories as d ON d.id = f.dir "
+				"WHERE p.name = ? AND fh.algo = ? AND d.id = ? "
+				"ORDER BY f.name",
+				DB_TEXT, product, DB_INT, algo, DB_INT, id, DB_TEXT, DB_BLOB);
 	}
 	else
 	{
 		e = this->db->query(this->db,
-				"SELECT f.path, fh.hash FROM file_hashes AS fh "
-				"JOIN files AS f ON fh.file = f.id "
-				"JOIN products AS p ON fh.product = p.id "
-				"WHERE p.name = ? AND fh.file = ? AND fh.algo = ?",
-				DB_TEXT, product, DB_INT, id, DB_INT, algo, DB_TEXT, DB_BLOB);
+				"SELECT f.name, fh.hash FROM file_hashes AS fh "
+				"JOIN files AS f ON f.id = fh.file "
+				"JOIN products AS p ON p.id = fh.product "
+				"WHERE p.name = ? AND fh.algo = ? AND fh.file = ?",
+				DB_TEXT, product, DB_INT, algo, DB_INT, id, DB_TEXT, DB_BLOB);
 	}
 	return e;
 }
@@ -121,6 +133,150 @@ METHOD(pts_database_t, check_aik_keyid, status_t,
 	return SUCCESS;
 }
 
+METHOD(pts_database_t, add_file_measurement, status_t,
+	private_pts_database_t *this, char *product, pts_meas_algorithms_t algo,
+	chunk_t measurement, char *filename, bool is_dir, int id)
+{
+	enumerator_t *e;
+	char *name;
+	chunk_t hash_value;
+	int hash_id, fid, pid = 0;
+	status_t status = SUCCESS;
+
+	/* get primary key of product string */
+	e = this->db->query(this->db,
+			"SELECT id FROM products WHERE name = ?", DB_TEXT, product, DB_INT);
+	if (e)
+	{
+		e->enumerate(e, &pid);
+		e->destroy(e);
+	}
+	if (pid == 0)
+	{
+		return FAILED;
+	}
+
+	if (is_dir)
+	{
+		/* does filename entry already exist? */
+		e = this->db->query(this->db,
+				"SELECT id FROM files WHERE name = ? AND dir = ?",
+				 DB_TEXT, filename, DB_INT, id, DB_INT);
+		if (!e)
+		{
+			return FAILED;
+		}
+		if (!e->enumerate(e, &fid))
+		{
+			/* create filename entry */
+			if (this->db->execute(this->db, &fid,
+					"INSERT INTO files (name, dir) VALUES (?, ?)",
+					 DB_TEXT, filename, DB_INT, id) != 1)
+			{
+				DBG1(DBG_PTS, "could not insert filename into database");
+				status = FAILED;
+			}
+		}
+		e->destroy(e);
+	}
+	else
+	{
+		fid = id;
+
+		/* verify filename */
+		e = this->db->query(this->db,
+				 "SELECT name FROM files WHERE id = ?", DB_INT, fid, DB_TEXT);
+		if (!e)
+		{
+			return FAILED;
+		}
+		if (!e->enumerate(e, &name) || !streq(name, filename))
+		{
+			DBG1(DBG_PTS, "filename of reference measurement does not match");
+			status = FAILED;
+		}
+		e->destroy(e);
+	}
+
+	if (status != SUCCESS)
+	{
+		return status;
+	}
+
+	/* does hash measurement value already exist? */
+	e = this->db->query(this->db,
+			"SELECT fh.id, fh.hash FROM file_hashes AS fh "
+			"WHERE fh.product = ? AND fh.algo = ? AND fh.file = ?",
+			 DB_INT, pid, DB_INT, algo, DB_INT, fid, DB_INT, DB_BLOB);
+	if (!e)
+	{
+		return FAILED;
+	}
+	if (e->enumerate(e, &hash_id, &hash_value))
+	{
+		if (!chunk_equals(measurement, hash_value))
+		{
+			/* update hash measurement value */
+			if (this->db->execute(this->db, &hash_id,
+					"UPDATE file_hashes SET hash = ? WHERE id = ?",
+					 DB_BLOB, measurement, DB_INT, hash_id) != 1)
+			{
+				status = FAILED;
+			}
+		}
+	}
+	else
+	{
+		/* insert hash measurement value */
+		if (this->db->execute(this->db, &hash_id,
+				"INSERT INTO file_hashes (file, product, algo, hash) "
+				"VALUES (?, ?, ?, ?)", DB_INT, fid, DB_INT, pid,
+				 DB_INT, algo, DB_BLOB, measurement) != 1)
+		{
+			status = FAILED;
+		}
+	}
+	e->destroy(e);
+
+	return status;
+}
+
+METHOD(pts_database_t, check_file_measurement, status_t,
+	private_pts_database_t *this, char *product, pts_meas_algorithms_t algo,
+	chunk_t measurement, char *filename)
+{
+	enumerator_t *e;
+	chunk_t hash;
+	status_t status = NOT_FOUND;
+
+	e = this->db->query(this->db,
+		"SELECT fh.hash FROM file_hashes AS fh "
+		"JOIN files AS f ON f.id = fh.file "
+		"JOIN products AS p ON p.id = fh.product "
+		"WHERE p.name = ? AND f.path = ? AND fh.algo = ?",
+		DB_TEXT, product, DB_TEXT, filename, DB_INT, algo, DB_BLOB);
+	if (!e)
+	{
+		return FAILED;
+	}
+	while (e->enumerate(e, &hash))
+	{
+		/* with relative filenames there might be multiple entries */
+		if (chunk_equals(measurement, hash))
+		{
+			status = SUCCESS;
+			break;
+		}
+		else
+		{
+			status = VERIFY_ERROR;
+		}
+	}
+	e->destroy(e);
+
+	return status;
+}
+
 METHOD(pts_database_t, create_comp_evid_enumerator, enumerator_t*,
 	private_pts_database_t *this, int kid)
 {
@@ -143,7 +299,7 @@ METHOD(pts_database_t, check_comp_measurement, status_t,
 	enumerator_t *e;
 	chunk_t hash;
 	status_t status = NOT_FOUND;
-	
+
 	e = this->db->query(this->db,
 					"SELECT hash FROM component_hashes "
 					"WHERE component = ?  AND key = ? "
@@ -152,7 +308,7 @@ METHOD(pts_database_t, check_comp_measurement, status_t,
 					DB_INT, pcr, DB_INT, algo, DB_BLOB);
 	if (!e)
 	{
-		DBG1(DBG_PTS, "no database query enumerator returned"); 
+		DBG1(DBG_PTS, "no database query enumerator returned");
 		return FAILED;
 	}
 
@@ -169,7 +325,7 @@ METHOD(pts_database_t, check_comp_measurement, status_t,
 						  "found in database", pcr, seq_no);
 			DBG1(DBG_PTS, "  expected: %#B", &hash);
 			DBG1(DBG_PTS, "  received: %#B", &measurement);
-			status = FAILED;
+			status = VERIFY_ERROR;
 			break;
 		}
 	}
@@ -189,7 +345,7 @@ METHOD(pts_database_t, insert_comp_measurement, status_t,
 	int seq_no, int pcr, pts_meas_algorithms_t algo)
 {
 	int id;
-	
+
 	if (this->db->execute(this->db, &id,
 					"INSERT INTO component_hashes "
 					"(component, key, seq_no, pcr, algo, hash) "
@@ -272,40 +428,37 @@ METHOD(pts_database_t, get_comp_measurement_count, status_t,
 METHOD(pts_database_t, destroy, void,
 	private_pts_database_t *this)
 {
-	this->db->destroy(this->db);
 	free(this);
 }
 
 /**
  * See header
  */
-pts_database_t *pts_database_create(char *uri)
+pts_database_t *pts_database_create(imv_database_t *imv_db)
 {
 	private_pts_database_t *this;
 
+	if (!imv_db)
+	{
+		return NULL;
+	}
+
 	INIT(this,
 		.public = {
-			.create_file_meas_enumerator = _create_file_meas_enumerator,
-			.create_file_meta_enumerator = _create_file_meta_enumerator,
+			.get_pathname = _get_pathname,
 			.create_comp_evid_enumerator = _create_comp_evid_enumerator,
 			.create_file_hash_enumerator = _create_file_hash_enumerator,
 			.check_aik_keyid = _check_aik_keyid,
+			.add_file_measurement = _add_file_measurement,
+			.check_file_measurement = _check_file_measurement,
 			.check_comp_measurement = _check_comp_measurement,
 			.insert_comp_measurement = _insert_comp_measurement,
 			.delete_comp_measurements = _delete_comp_measurements,
 			.get_comp_measurement_count = _get_comp_measurement_count,
 			.destroy = _destroy,
 		},
-		.db = lib->db->create(lib->db, uri),
+		.db = imv_db->get_database(imv_db),
 	);
-
-	if (!this->db)
-	{
-		DBG1(DBG_PTS,
-			 "failed to connect to PTS file measurement database '%s'", uri);
-		free(this);
-		return NULL;
-	}
 
 	return &this->public;
 }

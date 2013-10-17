@@ -17,8 +17,8 @@
 
 #include "simaka_manager.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 
 typedef struct private_simaka_message_t private_simaka_message_t;
 typedef struct hdr_t hdr_t;
@@ -499,8 +499,10 @@ static bool decrypt(private_simaka_message_t *this)
 			 eap_type_names, this->hdr->type);
 		return FALSE;
 	}
-
-	crypter->decrypt(crypter, this->encr, this->iv, &plain);
+	if (!crypter->decrypt(crypter, this->encr, this->iv, &plain))
+	{
+		return FALSE;
+	}
 
 	this->encrypted = TRUE;
 	success = parse_attributes(this, plain);
@@ -599,8 +601,8 @@ METHOD(simaka_message_t, verify, bool,
 	return TRUE;
 }
 
-METHOD(simaka_message_t, generate, chunk_t,
-	private_simaka_message_t *this, chunk_t sigdata)
+METHOD(simaka_message_t, generate, bool,
+	private_simaka_message_t *this, chunk_t sigdata, chunk_t *gen)
 {
 	/* buffers large enough for messages we generate */
 	char out_buf[1024], encr_buf[512];
@@ -771,13 +773,19 @@ METHOD(simaka_message_t, generate, chunk_t,
 		out = chunk_skip(out, 4);
 
 		rng = this->crypto->get_rng(this->crypto);
-		rng->get_bytes(rng, iv.len, out.ptr);
+		if (!rng->get_bytes(rng, iv.len, out.ptr))
+		{
+			return FALSE;
+		}
 
 		iv = chunk_clonea(chunk_create(out.ptr, iv.len));
 		out = chunk_skip(out, iv.len);
 
 		/* inline encryption */
-		crypter->encrypt(crypter, encr, iv, NULL);
+		if (!crypter->encrypt(crypter, encr, iv, NULL))
+		{
+			return FALSE;
+		}
 
 		/* add ENCR_DATA attribute */
 		hdr = (attr_hdr_t*)out.ptr;
@@ -822,12 +830,16 @@ METHOD(simaka_message_t, generate, chunk_t,
 	if (mac.len)
 	{
 		data = chunk_cata("cc", out, sigdata);
-		signer->get_signature(signer, data, mac.ptr);
+		if (!signer->get_signature(signer, data, mac.ptr))
+		{
+			return FALSE;
+		}
 	}
 
 	call_hook(this, FALSE, FALSE);
 
-	return chunk_clone(out);
+	*gen = chunk_clone(out);
+	return TRUE;
 }
 
 METHOD(simaka_message_t, destroy, void,

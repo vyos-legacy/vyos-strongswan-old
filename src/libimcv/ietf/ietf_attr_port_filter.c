@@ -17,8 +17,8 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 
 typedef struct private_ietf_attr_port_filter_t private_ietf_attr_port_filter_t;
@@ -36,8 +36,8 @@ struct port_entry_t {
 /**
  * PA-TNC Port Filter Type  (see section 4.2.6 of RFC 5792)
  *
- *                        1                   2                   3
- *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *                       1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |   Reserved  |B|    Protocol   |         Port Number           |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -58,14 +58,9 @@ struct private_ietf_attr_port_filter_t {
 	ietf_attr_port_filter_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
@@ -88,13 +83,7 @@ struct private_ietf_attr_port_filter_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_ietf_attr_port_filter_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_ietf_attr_port_filter_t *this)
 {
 	return this->type;
@@ -125,6 +114,10 @@ METHOD(pa_tnc_attr_t, build, void,
 	enumerator_t *enumerator;
 	port_entry_t *entry;
 
+	if (this->value.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(this->ports->get_count(this->ports) *
 							   PORT_FILTER_ENTRY_SIZE);
 
@@ -137,7 +130,7 @@ METHOD(pa_tnc_attr_t, build, void,
 	}
 	enumerator->destroy(enumerator);
 
-	this->value = chunk_clone(writer->get_buf(writer));
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -159,7 +152,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 
 	while (reader->remaining(reader))
 	{
-		entry = malloc_thing(port_entry_t);	
+		entry = malloc_thing(port_entry_t);
 		reader->read_uint8 (reader, &blocked);
 		entry->blocked = blocked & 0x01;
 		reader->read_uint8 (reader, &entry->protocol);
@@ -168,7 +161,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	}
 	reader->destroy(reader);
 
-	return SUCCESS;	
+	return SUCCESS;
 }
 
 METHOD(pa_tnc_attr_t, get_ref, pa_tnc_attr_t*,
@@ -199,7 +192,7 @@ METHOD(ietf_attr_port_filter_t, add_port, void,
 	entry->blocked = blocked;
 	entry->protocol = protocol;
 	entry->port = port;
-	this->ports->insert_last(this->ports, entry);	
+	this->ports->insert_last(this->ports, entry);
 }
 
 /**
@@ -232,7 +225,6 @@ pa_tnc_attr_t *ietf_attr_port_filter_create(void)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -245,8 +237,7 @@ pa_tnc_attr_t *ietf_attr_port_filter_create(void)
 			.add_port = _add_port,
 			.create_port_enumerator = _create_port_enumerator,
 		},
-		.vendor_id = PEN_IETF,
-		.type = IETF_ATTR_PORT_FILTER,
+		.type = { PEN_IETF, IETF_ATTR_PORT_FILTER },
 		.ports = linked_list_create(),
 		.ref = 1,
 	);
@@ -264,9 +255,10 @@ pa_tnc_attr_t *ietf_attr_port_filter_create_from_data(chunk_t data)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
+				.get_noskip_flag = _get_noskip_flag,
+				.set_noskip_flag = _set_noskip_flag,
 				.build = _build,
 				.process = _process,
 				.get_ref = _get_ref,
@@ -275,8 +267,7 @@ pa_tnc_attr_t *ietf_attr_port_filter_create_from_data(chunk_t data)
 			.add_port = _add_port,
 			.create_port_enumerator = _create_port_enumerator,
 		},
-		.vendor_id = PEN_IETF,
-		.type = IETF_ATTR_PORT_FILTER,
+		.type = {PEN_IETF, IETF_ATTR_PORT_FILTER },
 		.value = chunk_clone(data),
 		.ports = linked_list_create(),
 		.ref = 1,

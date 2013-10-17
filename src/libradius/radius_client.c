@@ -19,9 +19,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <debug.h>
-#include <utils/host.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <networking/host.h>
+#include <collections/linked_list.h>
 #include <threading/condvar.h>
 #include <threading/mutex.h>
 
@@ -81,13 +81,10 @@ static void save_state(private_radius_client_t *this, radius_message_t *msg)
 METHOD(radius_client_t, request, radius_message_t*,
 	private_radius_client_t *this, radius_message_t *req)
 {
-	char virtual[] = {0x00,0x00,0x00,0x05};
 	radius_socket_t *socket;
 	radius_message_t *res;
 	chunk_t data;
 
-	/* we add the "Virtual" NAS-Port-Type, as we SHOULD include one */
-	req->add(req, RAT_NAS_PORT_TYPE, chunk_create(virtual, sizeof(virtual)));
 	/* add our NAS-Identifier */
 	req->add(req, RAT_NAS_IDENTIFIER,
 			 this->config->get_nas_identifier(this->config));

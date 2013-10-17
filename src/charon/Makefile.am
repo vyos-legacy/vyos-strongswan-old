@@ -3,14 +3,15 @@ ipsec_PROGRAMS = charon
 charon_SOURCES = \
 charon.c
 
-INCLUDES = \
+charon.o :	$(top_builddir)/config.status
+
+AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
-	-I$(top_srcdir)/src/libcharon
-
-AM_CFLAGS = \
+	-I$(top_srcdir)/src/libcharon \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
-	-DIPSEC_PIDDIR=\"${piddir}\"
+	-DIPSEC_PIDDIR=\"${piddir}\" \
+	-DPLUGINS=\""${charon_plugins}\""
 
 charon_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
@@ -19,4 +20,3 @@ charon_LDADD = \
 	-lm $(PTHREADLIB) $(DLLIB)
 
 EXTRA_DIST = Android.mk
-

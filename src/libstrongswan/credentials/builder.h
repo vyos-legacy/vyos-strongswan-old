@@ -49,6 +49,8 @@ enum builder_part_t {
 	BUILD_FROM_FD,
 	/** unix socket of a ssh/pgp agent, char* */
 	BUILD_AGENT_SOCKET,
+	/** An arbitrary blob of data, chunk_t */
+	BUILD_BLOB,
 	/** DER encoded ASN.1 blob, chunk_t */
 	BUILD_BLOB_ASN1_DER,
 	/** PEM encoded ASN.1/PGP blob, chunk_t */
@@ -57,6 +59,8 @@ enum builder_part_t {
 	BUILD_BLOB_PGP,
 	/** DNS public key blob (RFC 4034, RSA specifc RFC 3110), chunk_t */
 	BUILD_BLOB_DNSKEY,
+	/** SSH public key blob (RFC 4253), chunk_t */
+	BUILD_BLOB_SSHKEY,
 	/** parameters from algorithmIdentifier (ASN.1 blob), chunk_t */
 	BUILD_BLOB_ALGID_PARAMS,
 	/** key size in bits, as used for key generation, u_int */
@@ -81,8 +85,10 @@ enum builder_part_t {
 	BUILD_NOT_AFTER_TIME,
 	/** a serial number in binary form, chunk_t */
 	BUILD_SERIAL,
-	/** digest algorithm to be used for signature, int */
+	/** digest algorithm to be used for signature, hash_algorithm_t */
 	BUILD_DIGEST_ALG,
+	/** encryption algorithm to use, encryption_algorithm_t */
+	BUILD_ENCRYPTION_ALG,
 	/** a comma-separated list of ietf group attributes, char* */
 	BUILD_IETF_GROUP_ATTR,
 	/** a ca certificate, certificate_t* */
@@ -117,6 +123,8 @@ enum builder_part_t {
 	BUILD_BASE_CRL,
 	/** PKCS#10 challenge password */
 	BUILD_CHALLENGE_PWD,
+	/** PKCS#7 attribute, int oid, chunk_t with ASN1 type encoded value */
+	BUILD_PKCS7_ATTRIBUTE,
 	/** friendly name of a PKCS#11 module, null terminated char* */
 	BUILD_PKCS11_MODULE,
 	/** slot specifier for a token in a PKCS#11 module, int */
@@ -139,6 +147,12 @@ enum builder_part_t {
 	BUILD_RSA_EXP2,
 	/** coefficient (coeff) of a RSA key, chunk_t */
 	BUILD_RSA_COEFF,
+	/** generate (p) and (q) as safe primes */
+	BUILD_SAFE_PRIMES,
+	/** number of private key shares */
+	BUILD_SHARES,
+	/** minimum number of participating private key shares */
+	BUILD_THRESHOLD,
 	/** end of variable argument builder list */
 	BUILD_END,
 };

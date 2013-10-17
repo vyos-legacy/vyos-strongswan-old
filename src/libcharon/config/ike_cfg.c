@@ -21,6 +21,12 @@
 #include <daemon.h>
 
 
+ENUM(ike_version_names, IKE_ANY, IKEV2,
+	"IKEv1/2",
+	"IKEv1",
+	"IKEv2",
+);
+
 typedef struct private_ike_cfg_t private_ike_cfg_t;
 
 /**
@@ -39,6 +45,11 @@ struct private_ike_cfg_t {
 	refcount_t refcount;
 
 	/**
+	 * IKE version to use
+	 */
+	ike_version_t version;
+
+	/**
 	 * Address of local host
 	 */
 	char *me;
@@ -47,6 +58,16 @@ struct private_ike_cfg_t {
 	 * Address of remote host
 	 */
 	char *other;
+
+	/**
+	 * Allow override of local address
+	 */
+	bool my_allow_any;
+
+	/**
+	 * Allow override of remote address
+	 */
+	bool other_allow_any;
 
 	/**
 	 * our source port
@@ -69,10 +90,26 @@ struct private_ike_cfg_t {
 	bool force_encap;
 
 	/**
+	 * use IKEv1 fragmentation
+	 */
+	fragmentation_t fragmentation;
+
+	/**
+	 * DSCP value to use on sent IKE packets
+	 */
+	u_int8_t dscp;
+
+	/**
 	 * List of proposals to use
 	 */
 	linked_list_t *proposals;
 };
+
+METHOD(ike_cfg_t, get_version, ike_version_t,
+	private_ike_cfg_t *this)
+{
+	return this->version;
+}
 
 METHOD(ike_cfg_t, send_certreq, bool,
 	private_ike_cfg_t *this)
@@ -86,15 +123,29 @@ METHOD(ike_cfg_t, force_encap_, bool,
 	return this->force_encap;
 }
 
-METHOD(ike_cfg_t, get_my_addr, char*,
+METHOD(ike_cfg_t, fragmentation, fragmentation_t,
 	private_ike_cfg_t *this)
 {
+	return this->fragmentation;
+}
+
+METHOD(ike_cfg_t, get_my_addr, char*,
+	private_ike_cfg_t *this, bool *allow_any)
+{
+	if (allow_any)
+	{
+		*allow_any = this->my_allow_any;
+	}
 	return this->me;
 }
 
 METHOD(ike_cfg_t, get_other_addr, char*,
-	private_ike_cfg_t *this)
+	private_ike_cfg_t *this, bool *allow_any)
 {
+	if (allow_any)
+	{
+		*allow_any = this->other_allow_any;
+	}
 	return this->other;
 }
 
@@ -108,6 +159,12 @@ METHOD(ike_cfg_t, get_other_port, u_int16_t,
 	private_ike_cfg_t *this)
 {
 	return this->other_port;
+}
+
+METHOD(ike_cfg_t, get_dscp, u_int8_t,
+	private_ike_cfg_t *this)
+{
+	return this->dscp;
 }
 
 METHOD(ike_cfg_t, add_proposal, void,
@@ -131,6 +188,8 @@ METHOD(ike_cfg_t, get_proposals, linked_list_t*,
 		proposals->insert_last(proposals, current);
 	}
 	enumerator->destroy(enumerator);
+
+	DBG2(DBG_CFG, "configured proposals: %#P", proposals);
 
 	return proposals;
 }
@@ -228,8 +287,10 @@ METHOD(ike_cfg_t, equals, bool,
 	e2->destroy(e2);
 
 	return (eq &&
+		this->version == other->version &&
 		this->certreq == other->certreq &&
 		this->force_encap == other->force_encap &&
+		this->fragmentation == other->fragmentation &&
 		streq(this->me, other->me) &&
 		streq(this->other, other->other) &&
 		this->my_port == other->my_port &&
@@ -259,19 +320,24 @@ METHOD(ike_cfg_t, destroy, void,
 /**
  * Described in header.
  */
-ike_cfg_t *ike_cfg_create(bool certreq, bool force_encap,
-				char *me, u_int16_t my_port, char *other, u_int16_t other_port)
+ike_cfg_t *ike_cfg_create(ike_version_t version, bool certreq, bool force_encap,
+						  char *me, bool my_allow_any, u_int16_t my_port,
+						  char *other, bool other_allow_any, u_int16_t other_port,
+						  fragmentation_t fragmentation, u_int8_t dscp)
 {
 	private_ike_cfg_t *this;
 
 	INIT(this,
 		.public = {
+			.get_version = _get_version,
 			.send_certreq = _send_certreq,
 			.force_encap = _force_encap_,
+			.fragmentation = _fragmentation,
 			.get_my_addr = _get_my_addr,
 			.get_other_addr = _get_other_addr,
 			.get_my_port = _get_my_port,
 			.get_other_port = _get_other_port,
+			.get_dscp = _get_dscp,
 			.add_proposal = _add_proposal,
 			.get_proposals = _get_proposals,
 			.select_proposal = _select_proposal,
@@ -281,12 +347,17 @@ ike_cfg_t *ike_cfg_create(bool certreq, bool force_encap,
 			.destroy = _destroy,
 		},
 		.refcount = 1,
+		.version = version,
 		.certreq = certreq,
 		.force_encap = force_encap,
+		.fragmentation = fragmentation,
 		.me = strdup(me),
 		.other = strdup(other),
+		.my_allow_any = my_allow_any,
+		.other_allow_any = other_allow_any,
 		.my_port = my_port,
 		.other_port = other_port,
+		.dscp = dscp,
 		.proposals = linked_list_create(),
 	);
 

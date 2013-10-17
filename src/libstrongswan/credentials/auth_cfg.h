@@ -22,7 +22,7 @@
 #ifndef AUTH_CFG_H_
 #define AUTH_CFG_H_
 
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
 
 typedef struct auth_cfg_t auth_cfg_t;
 typedef enum auth_rule_t auth_rule_t;
@@ -42,6 +42,8 @@ enum auth_class_t {
 	AUTH_CLASS_PSK = 2,
 	/** authentication using EAP */
 	AUTH_CLASS_EAP = 3,
+	/** authentication using IKEv1 XAUTH */
+	AUTH_CLASS_XAUTH = 4,
 };
 
 /**
@@ -65,6 +67,9 @@ extern enum_name_t *auth_class_names;
 enum auth_rule_t {
 	/** identity to use for IKEv2 authentication exchange, identification_t* */
 	AUTH_RULE_IDENTITY,
+	/** if TRUE don't send IDr as initiator, but verify the identity after
+	 * receiving IDr (but also verify it against subjectAltNames), bool */
+	AUTH_RULE_IDENTITY_LOOSE,
 	/** authentication class, auth_class_t */
 	AUTH_RULE_AUTH_CLASS,
 	/** AAA-backend identity for EAP methods supporting it, identification_t* */
@@ -75,6 +80,10 @@ enum auth_rule_t {
 	AUTH_RULE_EAP_TYPE,
 	/** EAP vendor for vendor specific type, u_int32_t */
 	AUTH_RULE_EAP_VENDOR,
+	/** XAUTH backend name to use, char* */
+	AUTH_RULE_XAUTH_BACKEND,
+	/** XAuth identity to use or require, identification_t* */
+	AUTH_RULE_XAUTH_IDENTITY,
 	/** certificate authority, certificate_t* */
 	AUTH_RULE_CA_CERT,
 	/** intermediate certificate in trustchain, certificate_t* */
@@ -93,6 +102,8 @@ enum auth_rule_t {
 	AUTH_RULE_RSA_STRENGTH,
 	/** required ECDSA public key strength, u_int in bits */
 	AUTH_RULE_ECDSA_STRENGTH,
+	/** required signature scheme, signature_scheme_t */
+	AUTH_RULE_SIGNATURE_SCHEME,
 	/** certificatePolicy constraint, numerical OID as char* */
 	AUTH_RULE_CERT_POLICY,
 
@@ -172,7 +183,7 @@ struct auth_cfg_t {
 	 * For rules we expect only once the latest value is returned.
 	 *
 	 * @param rule		rule type
-	 * @return			bool if item has been found
+	 * @return			rule or NULL (or an appropriate default) if not found
 	 */
 	void* (*get)(auth_cfg_t *this, auth_rule_t rule);
 

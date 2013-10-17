@@ -17,7 +17,7 @@
 
 #include "pki.h"
 
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <credentials/certificates/certificate.h>
 #include <credentials/certificates/x509.h>
 #include <asn1/asn1.h>
@@ -94,8 +94,8 @@ static int self()
 				}
 				continue;
 			case 'g':
-				digest = get_digest(arg);
-				if (digest == HASH_UNKNOWN)
+				digest = enum_from_name(hash_algorithm_short_names, arg);
+				if (digest == -1)
 				{
 					error = "invalid --digest type";
 					goto usage;
@@ -212,6 +212,10 @@ static int self()
 				{
 					flags |= X509_CLIENT_AUTH;
 				}
+				else if (streq(arg, "ikeIntermediate"))
+				{
+					flags |= X509_IKE_INTERMEDIATE;
+				}
 				else if (streq(arg, "crlSign"))
 				{
 					flags |= X509_CRL_SIGN;
@@ -294,11 +298,11 @@ static int self()
 			error = "no random number generator found";
 			goto end;
 		}
-		rng->allocate_bytes(rng, 8, &serial);
-		while (*serial.ptr == 0x00)
+		if (!rng_allocate_bytes_not_zero(rng, 8, &serial, FALSE))
 		{
-			/* we don't accept a serial number with leading zeroes */
-			rng->get_bytes(rng, 1, serial.ptr);
+			error = "failed to generate serial number";
+			rng->destroy(rng);
+			goto end;
 		}
 		rng->destroy(rng);
 	}

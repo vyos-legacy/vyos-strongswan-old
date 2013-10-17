@@ -21,9 +21,9 @@
 #include <dlfcn.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 typedef struct private_pkcs11_library_t private_pkcs11_library_t;
 
@@ -895,6 +895,7 @@ METHOD(pkcs11_library_t, destroy, void,
 {
 	this->public.f->C_Finalize(NULL);
 	dlclose(this->handle);
+	free(this->name);
 	free(this);
 }
 
@@ -1077,7 +1078,7 @@ pkcs11_library_t *pkcs11_library_create(char *name, char *file, bool os_locking)
 			.get_ck_attribute = _get_ck_attribute,
 			.destroy = _destroy,
 		},
-		.name = name,
+		.name = strdup(name),
 		.handle = dlopen(file, RTLD_LAZY),
 	);
 

@@ -22,7 +22,7 @@
 #include <errno.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "ldap_fetcher.h"
 
@@ -112,7 +112,7 @@ METHOD(fetcher_t, fetch, status_t,
 	status_t status = FAILED;
 	chunk_t *result = userdata;
 
-	if (!strneq(url, "ldap", 4))
+	if (!strpfx(url, "ldap"))
 	{
 		return NOT_SUPPORTED;
 	}
@@ -176,13 +176,14 @@ METHOD(fetcher_t, set_option, bool,
 	switch (option)
 	{
 		case FETCH_TIMEOUT:
-		{
 			this->timeout = va_arg(args, u_int);
-			return TRUE;
-		}
+			break;
 		default:
+			va_end(args);
 			return FALSE;
 	}
+	va_end(args);
+	return TRUE;
 }
 
 METHOD(fetcher_t, destroy, void,

@@ -19,11 +19,11 @@
 
 #include "mysql_database.h"
 
-#include <debug.h>
-#include <chunk.h>
+#include <utils/debug.h>
+#include <utils/chunk.h>
 #include <threading/thread_value.h>
 #include <threading/mutex.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 /* Older mysql.h headers do not define it, but we need it. It is not returned
  * in in MySQL 4 by default, but by MySQL 5. To avoid this problem, we catch
@@ -143,7 +143,7 @@ void mysql_database_deinit()
 {
 	initialized->destroy(initialized);
 	mysql_thread_end();
-	/* mysql_library_end(); would be the clean way, however, it hangs... */
+	mysql_library_end();
 }
 
 /**
@@ -472,6 +472,7 @@ static bool mysql_enumerator_enumerate(mysql_enumerator_t *this, ...)
 				break;
 		}
 	}
+	va_end(args);
 	return TRUE;
 }
 
@@ -665,7 +666,7 @@ mysql_database_t *mysql_database_create(char *uri)
 	conn_t *conn;
 	private_mysql_database_t *this;
 
-	if (!strneq(uri, "mysql://", 8))
+	if (!strpfx(uri, "mysql://"))
 	{
 		return NULL;
 	}

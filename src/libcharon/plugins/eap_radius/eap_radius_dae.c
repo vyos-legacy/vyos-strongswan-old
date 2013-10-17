@@ -53,11 +53,6 @@ struct private_eap_radius_dae_t {
 	int fd;
 
 	/**
-	 * Listen job
-	 */
-	callback_job_t *job;
-
-	/**
 	 * RADIUS shared secret for DAE exchanges
 	 */
 	chunk_t secret;
@@ -189,11 +184,16 @@ static void send_response(private_eap_radius_dae_t *this,
 
 	response = radius_message_create(code);
 	response->set_identifier(response, request->get_identifier(request));
-	response->sign(response, request->get_authenticator(request),
-				   this->secret, this->hasher, this->signer, NULL, FALSE);
-
-	send_message(this, response, client);
-	save_retransmit(this, response, client);
+	if (response->sign(response, request->get_authenticator(request),
+					   this->secret, this->hasher, this->signer, NULL, FALSE))
+	{
+		send_message(this, response, client);
+		save_retransmit(this, response, client);
+	}
+	else
+	{
+		response->destroy(response);
+	}
 }
 
 /**
@@ -379,21 +379,17 @@ static void process_coa(private_eap_radius_dae_t *this,
 /**
  * Receive RADIUS DAE requests
  */
-static job_requeue_t receive(private_eap_radius_dae_t *this)
+static bool receive(private_eap_radius_dae_t *this)
 {
 	struct sockaddr_storage addr;
 	socklen_t addr_len = sizeof(addr);
 	radius_message_t *request;
 	char buf[2048];
 	ssize_t len;
-	bool oldstate;
 	host_t *client;
 
-	oldstate = thread_cancelability(TRUE);
-	len = recvfrom(this->fd, buf, sizeof(buf), 0,
+	len = recvfrom(this->fd, buf, sizeof(buf), MSG_DONTWAIT,
 				   (struct sockaddr*)&addr, &addr_len);
-	thread_cancelability(oldstate);
-
 	if (len > 0)
 	{
 		request = radius_message_parse(chunk_create(buf, len));
@@ -433,11 +429,11 @@ static job_requeue_t receive(private_eap_radius_dae_t *this)
 			DBG1(DBG_NET, "ignoring invalid RADIUS DAE request");
 		}
 	}
-	else
+	else if (errno != EWOULDBLOCK)
 	{
 		DBG1(DBG_NET, "receiving RADIUS DAE request failed: %s", strerror(errno));
 	}
-	return JOB_REQUEUE_DIRECT;
+	return TRUE;
 }
 
 /**
@@ -456,9 +452,11 @@ static bool open_socket(private_eap_radius_dae_t *this)
 
 	host = host_create_from_string(
 				lib->settings->get_str(lib->settings,
-					"charon.plugins.eap-radius.dae.listen", "0.0.0.0"),
+						"%s.plugins.eap-radius.dae.listen", "0.0.0.0",
+						charon->name),
 				lib->settings->get_int(lib->settings,
-					"charon.plugins.eap-radius.dae.port", RADIUS_DAE_PORT));
+						"%s.plugins.eap-radius.dae.port", RADIUS_DAE_PORT,
+						charon->name));
 	if (!host)
 	{
 		DBG1(DBG_CFG, "invalid RADIUS DAE listen address");
@@ -479,12 +477,9 @@ static bool open_socket(private_eap_radius_dae_t *this)
 METHOD(eap_radius_dae_t, destroy, void,
 	private_eap_radius_dae_t *this)
 {
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	if (this->fd != -1)
 	{
+		lib->watcher->remove(lib->watcher, this->fd);
 		close(this->fd);
 	}
 	DESTROY_IF(this->signer);
@@ -508,7 +503,8 @@ eap_radius_dae_t *eap_radius_dae_create(eap_radius_accounting_t *accounting)
 		.fd = -1,
 		.secret = {
 			.ptr = lib->settings->get_str(lib->settings,
-							"charon.plugins.eap-radius.dae.secret", NULL),
+									"%s.plugins.eap-radius.dae.secret", NULL,
+									charon->name),
 		},
 		.hasher = lib->crypto->create_hasher(lib->crypto, HASH_MD5),
 		.signer = lib->crypto->create_signer(lib->crypto, AUTH_HMAC_MD5_128),
@@ -527,17 +523,15 @@ eap_radius_dae_t *eap_radius_dae_create(eap_radius_accounting_t *accounting)
 		return NULL;
 	}
 	this->secret.len = strlen(this->secret.ptr);
-	this->signer->set_key(this->signer, this->secret);
-
-	if (!open_socket(this))
+	if (!this->signer->set_key(this->signer, this->secret) ||
+		!open_socket(this))
 	{
 		destroy(this);
 		return NULL;
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->watcher->add(lib->watcher, this->fd, WATCHER_READ,
+					  (watcher_cb_t)receive, this);
 
 	return &this->public;
 }

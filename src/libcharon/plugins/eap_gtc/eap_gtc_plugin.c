@@ -19,9 +19,6 @@
 
 #include <daemon.h>
 
-/* missing in cababilities.h */
-#define CAP_AUDIT_WRITE 29
-
 METHOD(plugin_t, get_name, char*,
 	eap_gtc_plugin_t *this)
 {
@@ -61,14 +58,6 @@ plugin_t *eap_gtc_plugin_create()
 			.destroy = _destroy,
 		},
 	);
-
-	/* required for PAM authentication */
-	charon->keep_cap(charon, CAP_AUDIT_WRITE);
-
-	charon->eap->add_method(charon->eap, EAP_GTC, 0, EAP_SERVER,
-							(eap_constructor_t)eap_gtc_create_server);
-	charon->eap->add_method(charon->eap, EAP_GTC, 0, EAP_PEER,
-							(eap_constructor_t)eap_gtc_create_peer);
 
 	return &this->plugin;
 }

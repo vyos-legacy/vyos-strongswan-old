@@ -51,11 +51,11 @@ METHOD(job_t, destroy, void,
 	free(this);
 }
 
-METHOD(job_t, execute, void,
+METHOD(job_t, execute, job_requeue_t,
 	private_inactivity_job_t *this)
 {
 	ike_sa_t *ike_sa;
-	bool rescheduled = FALSE;
+	u_int32_t reschedule = 0;
 
 	ike_sa = charon->ike_sa_manager->checkout_by_id(charon->ike_sa_manager,
 													this->reqid, TRUE);
@@ -75,8 +75,8 @@ METHOD(job_t, execute, void,
 			{
 				time_t in, out, diff;
 
-				child_sa->get_usestats(child_sa, TRUE, &in, NULL);
-				child_sa->get_usestats(child_sa, FALSE, &out, NULL);
+				child_sa->get_usestats(child_sa, TRUE, &in, NULL, NULL);
+				child_sa->get_usestats(child_sa, FALSE, &out, NULL, NULL);
 
 				diff = time_monotonic(NULL) - max(in, out);
 
@@ -87,9 +87,7 @@ METHOD(job_t, execute, void,
 				}
 				else
 				{
-					lib->scheduler->schedule_job(lib->scheduler,
-							&this->public.job_interface, this->timeout - diff);
-					rescheduled = TRUE;
+					reschedule = this->timeout - diff;
 				}
 			}
 			children++;
@@ -108,7 +106,7 @@ METHOD(job_t, execute, void,
 			{
 				DBG1(DBG_JOB, "deleting CHILD_SA after %d seconds "
 					 "of inactivity", this->timeout);
-				status = ike_sa->delete_child_sa(ike_sa, proto, delete);
+				status = ike_sa->delete_child_sa(ike_sa, proto, delete, FALSE);
 			}
 		}
 		if (status == DESTROY_ME)
@@ -121,10 +119,11 @@ METHOD(job_t, execute, void,
 			charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 		}
 	}
-	if (!rescheduled)
+	if (reschedule)
 	{
-		destroy(this);
+		return JOB_RESCHEDULE(reschedule);
 	}
+	return JOB_REQUEUE_NONE;
 }
 
 METHOD(job_t, get_priority, job_priority_t,
@@ -156,4 +155,3 @@ inactivity_job_t *inactivity_job_create(u_int32_t reqid, u_int32_t timeout,
 
 	return &this->public;
 }
-

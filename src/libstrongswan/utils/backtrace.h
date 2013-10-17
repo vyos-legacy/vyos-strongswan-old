@@ -35,7 +35,10 @@ struct backtrace_t {
 	/**
 	 * Log the backtrace to a FILE stream.
 	 *
-	 * @param file		FILE to log backtrace to
+	 * If no file pointer is given, the backtrace is reported over the debug
+	 * framework to the registered dbg() callback function.
+	 *
+	 * @param file		FILE to log backtrace to, NULL for dbg() function
 	 * @param detailed	TRUE to resolve line/file using addr2line (slow)
 	 */
 	void (*log)(backtrace_t *this, FILE *file, bool detailed);
@@ -56,6 +59,14 @@ struct backtrace_t {
 	 * @return		TRUE if backtraces are equal
 	 */
 	bool (*equals)(backtrace_t *this, backtrace_t *other);
+
+	/**
+	 * Create a copy of this backtrace.
+	 *
+	 * @return		cloned copy
+	 */
+	backtrace_t* (*clone)(backtrace_t *this);
+
 	/**
 	 * Create an enumerator over the stack frame addresses.
 	 *
@@ -76,5 +87,24 @@ struct backtrace_t {
  * @return			backtrace
  */
 backtrace_t *backtrace_create(int skip);
+
+/**
+ * Create a backtrace, dump it and clean it up.
+ *
+ * @param label		description to print for this backtrace, or NULL
+ * @param file		FILE to log backtrace to, NULL to dbg() function
+ * @param detailed	TRUE to resolve line/file using addr2line (slow)
+ */
+void backtrace_dump(char *label, FILE *file, bool detailed);
+
+/**
+ * Initialize backtracing framework.
+ */
+void backtrace_init();
+
+/**
+ * Deinitialize backtracing framework.
+ */
+void backtrace_deinit();
 
 #endif /** BACKTRACE_H_ @}*/

@@ -15,7 +15,7 @@
 
 #include "hydra.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_hydra_t private_hydra_t;
 
@@ -28,12 +28,22 @@ struct private_hydra_t {
 	 * Public members of hydra_t.
 	 */
 	hydra_t public;
+
+	/**
+	 * Integrity check failed?
+	 */
+	bool integrity_failed;
+
+	/**
+	 * Number of times we have been initialized
+	 */
+	refcount_t ref;
 };
 
 /**
  * Single instance of hydra_t.
  */
-hydra_t *hydra;
+hydra_t *hydra = NULL;
 
 /**
  * Described in header.
@@ -41,6 +51,12 @@ hydra_t *hydra;
 void libhydra_deinit()
 {
 	private_hydra_t *this = (private_hydra_t*)hydra;
+
+	if (!this || !ref_put(&this->ref))
+	{	/* have more users */
+		return;
+	}
+
 	this->public.attributes->destroy(this->public.attributes);
 	this->public.kernel_interface->destroy(this->public.kernel_interface);
 	free((void*)this->public.daemon);
@@ -55,21 +71,29 @@ bool libhydra_init(const char *daemon)
 {
 	private_hydra_t *this;
 
+	if (hydra)
+	{	/* already initialized, increase refcount */
+		this = (private_hydra_t*)hydra;
+		ref_get(&this->ref);
+		return !this->integrity_failed;
+	}
+
 	INIT(this,
 		.public = {
 			.attributes = attribute_manager_create(),
-			.kernel_interface = kernel_interface_create(),
 			.daemon = strdup(daemon ?: "libhydra"),
 		},
+		.ref = 1,
 	);
 	hydra = &this->public;
+
+	this->public.kernel_interface = kernel_interface_create();
 
 	if (lib->integrity &&
 		!lib->integrity->check(lib->integrity, "libhydra", libhydra_init))
 	{
 		DBG1(DBG_LIB, "integrity check of libhydra failed");
-		return FALSE;
+		this->integrity_failed = TRUE;
 	}
-	return TRUE;
+	return !this->integrity_failed;
 }
-

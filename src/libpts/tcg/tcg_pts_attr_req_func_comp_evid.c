@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,8 +18,8 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_tcg_pts_attr_req_func_comp_evid_t private_tcg_pts_attr_req_func_comp_evid_t;
 
@@ -47,7 +47,7 @@ typedef struct private_tcg_pts_attr_req_func_comp_evid_t private_tcg_pts_attr_re
  */
 
 /**
- * Component Functional Name Structure 
+ * Component Functional Name Structure
  * (see section 5.1 of PTS Protocol: Binding to TNC IF-M Specification)
  *
  *					   1				   2				   3
@@ -58,7 +58,7 @@ typedef struct private_tcg_pts_attr_req_func_comp_evid_t private_tcg_pts_attr_re
  *  |                   Component Functional Name                   |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
- 
+
 #define PTS_REQ_FUNC_COMP_EVID_SIZE		12
 #define PTS_REQ_FUNC_COMP_FAMILY_MASK	0xC0
 
@@ -73,20 +73,15 @@ struct private_tcg_pts_attr_req_func_comp_evid_t {
 	tcg_pts_attr_req_func_comp_evid_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
 	 */
 	chunk_t value;
-	
+
 	/**
 	 * Noskip flag
 	 */
@@ -140,13 +135,7 @@ static void free_entry(entry_t *this)
 	}
 }
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_tcg_pts_attr_req_func_comp_evid_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_tcg_pts_attr_req_func_comp_evid_t *this)
 {
 	return this->type;
@@ -177,6 +166,10 @@ METHOD(pa_tnc_attr_t, build, void,
 	enumerator_t *enumerator;
 	entry_t *entry;
 
+	if (this->value.ptr)
+	{
+		return;
+	}
 	writer = bio_writer_create(PTS_REQ_FUNC_COMP_EVID_SIZE);
 
 	enumerator = this->list->create_enumerator(this->list);
@@ -190,7 +183,7 @@ METHOD(pa_tnc_attr_t, build, void,
 	}
 	enumerator->destroy(enumerator);
 
-	this->value = chunk_clone(writer->get_buf(writer));
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -256,7 +249,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 		entry->flags = flags;
 		entry->depth = depth;
 		entry->name = pts_comp_func_name_create(vendor_id, name, qualifier);
-		
+
 		this->list->insert_last(this->list, entry);
 	}
 	status = SUCCESS;
@@ -320,7 +313,6 @@ pa_tnc_attr_t *tcg_pts_attr_req_func_comp_evid_create(void)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -334,8 +326,7 @@ pa_tnc_attr_t *tcg_pts_attr_req_func_comp_evid_create(void)
 			.get_count = _get_count,
 			.create_enumerator = _create_enumerator,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_REQ_FUNC_COMP_EVID,
+		.type = { PEN_TCG, TCG_PTS_REQ_FUNC_COMP_EVID },
 		.list = linked_list_create(),
 		.ref = 1,
 	);
@@ -353,7 +344,6 @@ pa_tnc_attr_t *tcg_pts_attr_req_func_comp_evid_create_from_data(chunk_t data)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -367,8 +357,7 @@ pa_tnc_attr_t *tcg_pts_attr_req_func_comp_evid_create_from_data(chunk_t data)
 			.get_count = _get_count,
 			.create_enumerator = _create_enumerator,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_REQ_FUNC_COMP_EVID,
+		.type = { PEN_TCG, TCG_PTS_REQ_FUNC_COMP_EVID },
 		.list = linked_list_create(),
 		.value = chunk_clone(data),
 		.ref = 1,

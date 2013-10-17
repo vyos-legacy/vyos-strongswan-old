@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2010 Tobias Brunner
+ * Copyright (C) 2006-2013 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2010 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -40,22 +40,10 @@
 #include <daemon.h>
 #include <threading/thread.h>
 #include <threading/rwlock.h>
-#include <utils/hashtable.h>
+#include <collections/hashtable.h>
 
 /* Maximum size of a packet */
 #define MAX_PACKET 10000
-
-/* length of non-esp marker */
-#define MARKER_LEN sizeof(u_int32_t)
-
-/* from linux/udp.h */
-#ifndef UDP_ENCAP
-#define UDP_ENCAP 100
-#endif /*UDP_ENCAP*/
-
-#ifndef UDP_ENCAP_ESPINUDP
-#define UDP_ENCAP_ESPINUDP 2
-#endif /*UDP_ENCAP_ESPINUDP*/
 
 /* these are not defined on some platforms */
 #ifndef SOL_IP
@@ -63,9 +51,6 @@
 #endif
 #ifndef SOL_IPV6
 #define SOL_IPV6 IPPROTO_IPV6
-#endif
-#ifndef SOL_UDP
-#define SOL_UDP IPPROTO_UDP
 #endif
 
 /* IPV6_RECVPKTINFO is defined in RFC 3542 which obsoletes RFC 2292 that
@@ -237,12 +222,6 @@ static packet_t *receive_packet(private_socket_dynamic_socket_t *this,
 	}
 	DBG3(DBG_NET, "received packet %b", buffer, (u_int)len);
 
-	if (len < MARKER_LEN)
-	{
-		DBG3(DBG_NET, "received packet too short (%d bytes)", len);
-		return NULL;
-	}
-
 	/* read ancillary data to get destination address */
 	for (cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL;
 		 cmsgptr = CMSG_NXTHDR(&msg, cmsgptr))
@@ -297,12 +276,6 @@ static packet_t *receive_packet(private_socket_dynamic_socket_t *this,
 	packet = packet_create();
 	packet->set_source(packet, source);
 	packet->set_destination(packet, dest);
-	/* we assume a non-ESP marker if none of the ports is on 500 */
-	if (dest->get_port(dest) != IKEV2_UDP_PORT &&
-		source->get_port(source) != IKEV2_UDP_PORT)
-	{
-		data = chunk_skip(data, MARKER_LEN);
-	}
 	packet->set_data(packet, chunk_clone(data));
 	return packet;
 }
@@ -353,13 +326,60 @@ METHOD(socket_t, receiver, status_t,
 }
 
 /**
+ * Get the port allocated dynamically using bind()
+ */
+static bool get_dynamic_port(int fd, int family, u_int16_t *port)
+{
+	union {
+		struct sockaddr_storage ss;
+		struct sockaddr s;
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} addr;
+	socklen_t addrlen;
+
+	addrlen = sizeof(addr);
+	if (getsockname(fd, &addr.s, &addrlen) != 0)
+	{
+		DBG1(DBG_NET, "unable to getsockname: %s", strerror(errno));
+		return FALSE;
+	}
+	switch (family)
+	{
+		case AF_INET:
+			if (addrlen != sizeof(addr.sin) || addr.sin.sin_family != family)
+			{
+				break;
+			}
+			*port = ntohs(addr.sin.sin_port);
+			return TRUE;
+		case AF_INET6:
+			if (addrlen != sizeof(addr.sin6) || addr.sin6.sin6_family != family)
+			{
+				break;
+			}
+			*port = ntohs(addr.sin6.sin6_port);
+			return TRUE;
+		default:
+			return FALSE;
+	}
+	DBG1(DBG_NET, "received invalid getsockname() result");
+	return FALSE;
+}
+
+/**
  * open a socket to send and receive packets
  */
 static int open_socket(private_socket_dynamic_socket_t *this,
-					   int family, u_int16_t port)
+					   int family, u_int16_t *port)
 {
-	int on = TRUE, type = UDP_ENCAP_ESPINUDP;
-	struct sockaddr_storage addr;
+	union {
+		struct sockaddr_storage ss;
+		struct sockaddr s;
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} addr;
+	int on = TRUE;
 	socklen_t addrlen;
 	u_int sol, pktinfo = 0;
 	int fd;
@@ -369,27 +389,21 @@ static int open_socket(private_socket_dynamic_socket_t *this,
 	switch (family)
 	{
 		case AF_INET:
-		{
-			struct sockaddr_in *sin = (struct sockaddr_in *)&addr;
-			sin->sin_family = AF_INET;
-			sin->sin_addr.s_addr = INADDR_ANY;
-			sin->sin_port = htons(port);
-			addrlen = sizeof(struct sockaddr_in);
+			addr.sin.sin_family = AF_INET;
+			addr.sin.sin_addr.s_addr = INADDR_ANY;
+			addr.sin.sin_port = htons(*port);
+			addrlen = sizeof(addr.sin);
 			sol = SOL_IP;
 			pktinfo = IP_PKTINFO;
 			break;
-		}
 		case AF_INET6:
-		{
-			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&addr;
-			sin6->sin6_family = AF_INET6;
-			memset(&sin6->sin6_addr, 0, sizeof(sin6->sin6_addr));
-			sin6->sin6_port = htons(port);
-			addrlen = sizeof(struct sockaddr_in6);
+			addr.sin6.sin6_family = AF_INET6;
+			memset(&addr.sin6.sin6_addr, 0, sizeof(addr.sin6.sin6_addr));
+			addr.sin6.sin6_port = htons(*port);
+			addrlen = sizeof(addr.sin6);
 			sol = SOL_IPV6;
 			pktinfo = IPV6_RECVPKTINFO;
 			break;
-		}
 		default:
 			return 0;
 	}
@@ -407,10 +421,14 @@ static int open_socket(private_socket_dynamic_socket_t *this,
 		return 0;
 	}
 
-	/* bind the socket */
-	if (bind(fd, (struct sockaddr *)&addr, addrlen) < 0)
+	if (bind(fd, &addr.s, addrlen) < 0)
 	{
 		DBG1(DBG_NET, "unable to bind socket: %s", strerror(errno));
+		close(fd);
+		return 0;
+	}
+	if (*port == 0 && !get_dynamic_port(fd, family, port))
+	{
 		close(fd);
 		return 0;
 	}
@@ -430,11 +448,39 @@ static int open_socket(private_socket_dynamic_socket_t *this,
 	}
 
 	/* enable UDP decapsulation on each socket */
-	if (setsockopt(fd, SOL_UDP, UDP_ENCAP, &type, sizeof(type)) < 0)
+	if (!hydra->kernel_interface->enable_udp_decap(hydra->kernel_interface,
+												   fd, family, *port))
 	{
-		DBG1(DBG_NET, "unable to set UDP_ENCAP: %s", strerror(errno));
+		DBG1(DBG_NET, "enabling UDP decapsulation for %s on port %d failed",
+			 family == AF_INET ? "IPv4" : "IPv6", *port);
 	}
+
 	return fd;
+}
+
+/**
+ * Get the first usable socket for an address family
+ */
+static dynsock_t *get_any_socket(private_socket_dynamic_socket_t *this,
+								 int family)
+{
+	dynsock_t *key, *value, *found = NULL;
+	enumerator_t *enumerator;
+
+	this->lock->read_lock(this->lock);
+	enumerator = this->sockets->create_enumerator(this->sockets);
+	while (enumerator->enumerate(enumerator, &key, &value))
+	{
+		if (value->family == family)
+		{
+			found = value;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
+
+	return found;
 }
 
 /**
@@ -457,7 +503,15 @@ static dynsock_t *find_socket(private_socket_dynamic_socket_t *this,
 	{
 		return skt;
 	}
-	fd = open_socket(this, family, port);
+	if (!port)
+	{
+		skt = get_any_socket(this, family);
+		if (skt)
+		{
+			return skt;
+		}
+	}
+	fd = open_socket(this, family, &port);
 	if (!fd)
 	{
 		return NULL;
@@ -481,9 +535,9 @@ METHOD(socket_t, sender, status_t,
 {
 	dynsock_t *skt;
 	host_t *src, *dst;
-	int port, family;
+	int family;
 	ssize_t len;
-	chunk_t data, marked;
+	chunk_t data;
 	struct msghdr msg;
 	struct cmsghdr *cmsg;
 	struct iovec iov;
@@ -491,8 +545,7 @@ METHOD(socket_t, sender, status_t,
 	src = packet->get_source(packet);
 	dst = packet->get_destination(packet);
 	family = src->get_family(src);
-	port = src->get_port(src);
-	skt = find_socket(this, family, port);
+	skt = find_socket(this, family, src->get_port(src));
 	if (!skt)
 	{
 		return FAILED;
@@ -500,19 +553,6 @@ METHOD(socket_t, sender, status_t,
 
 	data = packet->get_data(packet);
 	DBG2(DBG_NET, "sending packet: from %#H to %#H", src, dst);
-
-	/* use non-ESP marker if none of the ports is 500, not for keep alives */
-	if (port != IKEV2_UDP_PORT && dst->get_port(dst) != IKEV2_UDP_PORT &&
-		!(data.len == 1 && data.ptr[0] == 0xFF))
-	{
-		/* add non esp marker to packet */
-		marked = chunk_alloc(data.len + MARKER_LEN);
-		memset(marked.ptr, 0, MARKER_LEN);
-		memcpy(marked.ptr + MARKER_LEN, data.ptr, data.len);
-		/* let the packet do the clean up for us */
-		packet->set_data(packet, marked);
-		data = marked;
-	}
 
 	memset(&msg, 0, sizeof(struct msghdr));
 	msg.msg_name = dst->get_sockaddr(dst);;
@@ -572,6 +612,22 @@ METHOD(socket_t, sender, status_t,
 	return SUCCESS;
 }
 
+METHOD(socket_t, get_port, u_int16_t,
+	private_socket_dynamic_socket_t *this, bool nat_t)
+{
+	/* we return 0 here for users that have no explicit port configured, the
+	 * sender will default to the default port in this case */
+	return 0;
+}
+
+METHOD(socket_t, supported_families, socket_family_t,
+	private_socket_dynamic_socket_t *this)
+{
+	/* we could return only the families of the opened sockets, but it could
+	 * be that both families are supported even if no socket is yet open */
+	return SOCKET_FAMILY_BOTH;
+}
+
 METHOD(socket_t, destroy, void,
 	private_socket_dynamic_socket_t *this)
 {
@@ -605,12 +661,14 @@ socket_dynamic_socket_t *socket_dynamic_socket_create()
 			.socket = {
 				.send = _sender,
 				.receive = _receiver,
+				.get_port = _get_port,
+				.supported_families = _supported_families,
 				.destroy = _destroy,
 			},
 		},
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
 		.max_packet = lib->settings->get_int(lib->settings,
-										"charon.max_packet", MAX_PACKET),
+									"%s.max_packet", MAX_PACKET, charon->name),
 	);
 
 	if (pipe(this->notify) != 0)
@@ -624,4 +682,3 @@ socket_dynamic_socket_t *socket_dynamic_socket_create()
 
 	return &this->public;
 }
-

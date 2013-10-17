@@ -14,11 +14,15 @@
  * for more details.
  */
 
+#include <openssl/opensslconf.h>
+
+#ifndef OPENSSL_NO_DH
+
 #include <openssl/dh.h>
 
 #include "openssl_diffie_hellman.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_openssl_diffie_hellman_t private_openssl_diffie_hellman_t;
 
@@ -193,3 +197,5 @@ openssl_diffie_hellman_t *openssl_diffie_hellman_create(
 
 	return &this->public;
 }
+
+#endif /* OPENSSL_NO_DH */

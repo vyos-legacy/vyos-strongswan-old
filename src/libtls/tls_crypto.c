@@ -15,7 +15,7 @@
 
 #include "tls_crypto.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 ENUM_BEGIN(tls_cipher_suite_names, TLS_NULL_WITH_NULL_NULL,
 								   TLS_DH_anon_WITH_3DES_EDE_CBC_SHA,
@@ -1110,6 +1110,7 @@ METHOD(tls_crypto_t, get_signature_algorithms, void,
 	}
 	enumerator->destroy(enumerator);
 
+	supported->wrap16(supported);
 	writer->write_data16(writer, supported->get_buf(supported));
 	supported->destroy(supported);
 }
@@ -1196,12 +1197,12 @@ static bool hash_data(private_tls_crypto_t *this, chunk_t data, chunk_t *hash)
 			return FALSE;
 		}
 		hasher = lib->crypto->create_hasher(lib->crypto, alg->hash);
-		if (!hasher)
+		if (!hasher || !hasher->allocate_hash(hasher, data, hash))
 		{
 			DBG1(DBG_TLS, "%N not supported", hash_algorithm_names, alg->hash);
+			DESTROY_IF(hasher);
 			return FALSE;
 		}
-		hasher->allocate_hash(hasher, data, hash);
 		hasher->destroy(hasher);
 	}
 	else
@@ -1210,20 +1211,20 @@ static bool hash_data(private_tls_crypto_t *this, chunk_t data, chunk_t *hash)
 		char buf[HASH_SIZE_MD5 + HASH_SIZE_SHA1];
 
 		md5 = lib->crypto->create_hasher(lib->crypto, HASH_MD5);
-		if (!md5)
+		if (!md5 || !md5->get_hash(md5, data, buf))
 		{
 			DBG1(DBG_TLS, "%N not supported", hash_algorithm_names, HASH_MD5);
+			DESTROY_IF(md5);
 			return FALSE;
 		}
-		md5->get_hash(md5, data, buf);
 		md5->destroy(md5);
 		sha1 = lib->crypto->create_hasher(lib->crypto, HASH_SHA1);
-		if (!sha1)
+		if (!sha1 || !sha1->get_hash(sha1, data, buf + HASH_SIZE_MD5))
 		{
 			DBG1(DBG_TLS, "%N not supported", hash_algorithm_names, HASH_SHA1);
+			DESTROY_IF(sha1);
 			return FALSE;
 		}
-		sha1->get_hash(sha1, data, buf + HASH_SIZE_MD5);
 		sha1->destroy(sha1);
 
 		*hash = chunk_clone(chunk_from_thing(buf));
@@ -1462,7 +1463,11 @@ METHOD(tls_crypto_t, calculate_finished, bool,
 	{
 		return FALSE;
 	}
-	this->prf->get_bytes(this->prf, label, seed, 12, out);
+	if (!this->prf->get_bytes(this->prf, label, seed, 12, out))
+	{
+		free(seed.ptr);
+		return FALSE;
+	}
 	free(seed.ptr);
 	return TRUE;
 }
@@ -1470,7 +1475,7 @@ METHOD(tls_crypto_t, calculate_finished, bool,
 /**
  * Derive master secret from premaster, optionally save session
  */
-static void derive_master(private_tls_crypto_t *this, chunk_t premaster,
+static bool derive_master(private_tls_crypto_t *this, chunk_t premaster,
 						  chunk_t session, identification_t *id,
 						  chunk_t client_random, chunk_t server_random)
 {
@@ -1479,23 +1484,28 @@ static void derive_master(private_tls_crypto_t *this, chunk_t premaster,
 
 	/* derive master secret */
 	seed = chunk_cata("cc", client_random, server_random);
-	this->prf->set_key(this->prf, premaster);
-	this->prf->get_bytes(this->prf, "master secret", seed,
-						 sizeof(master), master);
 
-	this->prf->set_key(this->prf, chunk_from_thing(master));
+	if (!this->prf->set_key(this->prf, premaster) ||
+		!this->prf->get_bytes(this->prf, "master secret", seed,
+							  sizeof(master), master) ||
+		!this->prf->set_key(this->prf, chunk_from_thing(master)))
+	{
+		return FALSE;
+	}
+
 	if (this->cache && session.len)
 	{
 		this->cache->create(this->cache, session, id, chunk_from_thing(master),
 							this->suite);
 	}
 	memwipe(master, sizeof(master));
+	return TRUE;
 }
 
 /**
  * Expand key material from master secret
  */
-static void expand_keys(private_tls_crypto_t *this,
+static bool expand_keys(private_tls_crypto_t *this,
 						chunk_t client_random, chunk_t server_random)
 {
 	chunk_t seed, block, client_write, server_write;
@@ -1513,7 +1523,11 @@ static void expand_keys(private_tls_crypto_t *this,
 	}
 	seed = chunk_cata("cc", server_random, client_random);
 	block = chunk_alloca((mks + eks + ivs) * 2);
-	this->prf->get_bytes(this->prf, "key expansion", seed, block.len, block.ptr);
+	if (!this->prf->get_bytes(this->prf, "key expansion", seed,
+							  block.len, block.ptr))
+	{
+		return FALSE;
+	}
 
 	/* signer keys */
 	client_write = chunk_create(block.ptr, mks);
@@ -1522,13 +1536,19 @@ static void expand_keys(private_tls_crypto_t *this,
 	block = chunk_skip(block, mks);
 	if (this->tls->is_server(this->tls))
 	{
-		this->signer_in->set_key(this->signer_in, client_write);
-		this->signer_out->set_key(this->signer_out, server_write);
+		if (!this->signer_in->set_key(this->signer_in, client_write) ||
+			!this->signer_out->set_key(this->signer_out, server_write))
+		{
+			return FALSE;
+		}
 	}
 	else
 	{
-		this->signer_out->set_key(this->signer_out, client_write);
-		this->signer_in->set_key(this->signer_in, server_write);
+		if (!this->signer_out->set_key(this->signer_out, client_write) ||
+			!this->signer_in->set_key(this->signer_in, server_write))
+		{
+			return FALSE;
+		}
 	}
 
 	/* crypter keys, and IVs if < TLSv1.2 */
@@ -1541,13 +1561,19 @@ static void expand_keys(private_tls_crypto_t *this,
 
 		if (this->tls->is_server(this->tls))
 		{
-			this->crypter_in->set_key(this->crypter_in, client_write);
-			this->crypter_out->set_key(this->crypter_out, server_write);
+			if (!this->crypter_in->set_key(this->crypter_in, client_write) ||
+				!this->crypter_out->set_key(this->crypter_out, server_write))
+			{
+				return FALSE;
+			}
 		}
 		else
 		{
-			this->crypter_out->set_key(this->crypter_out, client_write);
-			this->crypter_in->set_key(this->crypter_in, server_write);
+			if (!this->crypter_out->set_key(this->crypter_out, client_write) ||
+				!this->crypter_in->set_key(this->crypter_in, server_write))
+			{
+				return FALSE;
+			}
 		}
 		if (ivs)
 		{
@@ -1574,17 +1600,22 @@ static void expand_keys(private_tls_crypto_t *this,
 	{
 		seed = chunk_cata("cc", client_random, server_random);
 		this->msk = chunk_alloc(64);
-		this->prf->get_bytes(this->prf, this->msk_label, seed,
-							 this->msk.len, this->msk.ptr);
+		if (!this->prf->get_bytes(this->prf, this->msk_label, seed,
+								  this->msk.len, this->msk.ptr))
+		{
+			return FALSE;
+		}
 	}
+	return TRUE;
 }
 
-METHOD(tls_crypto_t, derive_secrets, void,
+METHOD(tls_crypto_t, derive_secrets, bool,
 	private_tls_crypto_t *this, chunk_t premaster, chunk_t session,
 	identification_t *id, chunk_t client_random, chunk_t server_random)
 {
-	derive_master(this, premaster, session, id, client_random, server_random);
-	expand_keys(this, client_random, server_random);
+	return derive_master(this, premaster, session, id,
+						 client_random, server_random) &&
+		   expand_keys(this, client_random, server_random);
 }
 
 METHOD(tls_crypto_t, resume_session, tls_cipher_suite_t,
@@ -1601,8 +1632,11 @@ METHOD(tls_crypto_t, resume_session, tls_cipher_suite_t,
 			this->suite = select_cipher_suite(this, &this->suite, 1, KEY_ANY);
 			if (this->suite)
 			{
-				this->prf->set_key(this->prf, master);
-				expand_keys(this, client_random, server_random);
+				if (!this->prf->set_key(this->prf, master) ||
+					!expand_keys(this, client_random, server_random))
+				{
+					this->suite = 0;
+				}
 			}
 			chunk_clear(&master);
 		}
@@ -1719,10 +1753,13 @@ tls_crypto_t *tls_crypto_create(tls_t *tls, tls_cache_t *cache)
 	switch (tls->get_purpose(tls))
 	{
 		case TLS_PURPOSE_EAP_TLS:
-		case TLS_PURPOSE_EAP_PEAP:
 			/* MSK PRF ASCII constant label according to EAP-TLS RFC 5216 */
 			this->msk_label = "client EAP encryption";
 			build_cipher_suite_list(this, FALSE);
+			break;
+		case TLS_PURPOSE_EAP_PEAP:
+			this->msk_label = "client EAP encryption";
+			build_cipher_suite_list(this, TRUE);
 			break;
 		case TLS_PURPOSE_EAP_TTLS:
 			/* MSK PRF ASCII constant label according to EAP-TTLS RFC 5281 */

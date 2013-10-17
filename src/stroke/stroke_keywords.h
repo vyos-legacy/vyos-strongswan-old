@@ -23,7 +23,9 @@ typedef enum {
 	STROKE_ROUTE,
 	STROKE_UNROUTE,
 	STROKE_UP,
+	STROKE_UP_NOBLK,
 	STROKE_DOWN,
+	STROKE_DOWN_NOBLK,
 	STROKE_DOWN_SRCIP,
 	STROKE_REKEY,
 	STROKE_LOGLEVEL,
@@ -55,9 +57,13 @@ typedef enum {
 	STROKE_PURGE_CERTS,
 	STROKE_PURGE_IKE,
 	STROKE_EXPORT_X509,
+	STROKE_EXPORT_CONN_CERT,
+	STROKE_EXPORT_CONN_CHAIN,
 	STROKE_LEASES,
 	STROKE_MEMUSAGE,
 	STROKE_USER_CREDS,
+	STROKE_COUNTERS,
+	STROKE_COUNTERS_RESET,
 } stroke_keyword_t;
 
 #define STROKE_LIST_FIRST		STROKE_LIST_PUBKEYS
@@ -70,4 +76,3 @@ typedef struct stroke_token stroke_token_t;
 extern const stroke_token_t* in_word_set(register const char *str, register unsigned int len);
 
 #endif /* _STROKE_KEYWORDS_H_ */
-

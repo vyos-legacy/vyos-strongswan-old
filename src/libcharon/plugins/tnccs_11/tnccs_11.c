@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2013 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -31,7 +31,8 @@
 #include <tnc/tnccs/tnccs.h>
 #include <tnc/tnccs/tnccs_manager.h>
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <daemon.h>
 #include <threading/mutex.h>
 
 typedef struct private_tnccs_11_t private_tnccs_11_t;
@@ -42,14 +43,34 @@ typedef struct private_tnccs_11_t private_tnccs_11_t;
 struct private_tnccs_11_t {
 
 	/**
-	 * Public tls_t interface.
+	 * Public tnccs_t interface.
 	 */
-	tls_t public;
+	tnccs_t public;
 
 	/**
 	 * TNCC if TRUE, TNCS if FALSE
 	 */
 	bool is_server;
+
+	/**
+	 * Server identity
+	 */
+	identification_t *server;
+
+	/**
+	 * Client identity
+	 */
+	identification_t *peer;
+
+	/**
+	 * Underlying TNC IF-T transport protocol
+	 */
+	tnc_ift_type_t transport;
+
+	/**
+	 * Type of TNC client authentication
+	 */
+	u_int32_t auth_type;
 
 	/**
 	 * Connection ID assigned to this TNCCS connection
@@ -65,6 +86,11 @@ struct private_tnccs_11_t {
 	 * TNCCS batch being constructed
 	 */
 	tnccs_batch_t *batch;
+
+	/**
+	 * Maximum PA-TNC message size
+	 */
+	size_t max_msg_len;
 
 	/**
 	 * Mutex locking the batch in construction
@@ -122,7 +148,7 @@ METHOD(tnccs_t, send_msg, TNC_Result,
 		return TNC_RESULT_NO_LONG_MESSAGE_TYPES;
 	}
 	msg_type = (msg_vid << 8) | msg_subtype;
- 
+
 	pa_subtype_names = get_pa_subtype_names(msg_vid);
 	if (pa_subtype_names)
 	{
@@ -266,10 +292,10 @@ static void handle_message(private_tnccs_11_t *this, tnccs_msg_t *msg)
 
 			reason_msg = (tnccs_reason_strings_msg_t*)msg;
 			reason_string = reason_msg->get_reason(reason_msg, &reason_lang);
-			DBG2(DBG_TNC, "reason string is '%.*s'",   reason_string.len,
-													  reason_string.ptr);
-			DBG2(DBG_TNC, "reason language is '%.*s'", reason_lang.len,
-													  reason_lang.ptr);
+			DBG2(DBG_TNC, "reason string is '%.*s'", (int)reason_string.len,
+													 reason_string.ptr);
+			DBG2(DBG_TNC, "language code is '%.*s'", (int)reason_lang.len,
+													 reason_lang.ptr);
 			break;
 		}
 		default:
@@ -289,8 +315,9 @@ METHOD(tls_t, process, status_t,
 	if (this->is_server && !this->connection_id)
 	{
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
-								TNCCS_1_1, (tnccs_t*)this, _send_msg,
-								&this->request_handshake_retry, &this->recs);
+									TNCCS_1_1, (tnccs_t*)this, _send_msg,
+									&this->request_handshake_retry,
+									this->max_msg_len, &this->recs);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -304,7 +331,7 @@ METHOD(tls_t, process, status_t,
 	data = chunk_create(buf, buflen);
 	DBG1(DBG_TNC, "received TNCCS Batch (%u bytes) for Connection ID %u",
 				   data.len, this->connection_id);
-	DBG3(DBG_TNC, "%.*s", data.len, data.ptr);
+	DBG3(DBG_TNC, "%.*s", (int)data.len, data.ptr);
 	batch = tnccs_batch_create_from_data(this->is_server, ++this->batch_id, data);
 	status = batch->process(batch);
 
@@ -396,7 +423,6 @@ static void check_and_build_recommendation(private_tnccs_11_t *this)
 			this->batch->add_msg(this->batch, msg);
 		}
 		enumerator->destroy(enumerator);
-		this->recs->clear_reasons(this->recs);
 
 		/* we have reache the final state */
 		this->delete_state = TRUE;
@@ -416,7 +442,8 @@ METHOD(tls_t, build, status_t,
 
 		this->connection_id = tnc->tnccs->create_connection(tnc->tnccs,
 										TNCCS_1_1, (tnccs_t*)this, _send_msg,
-										&this->request_handshake_retry, NULL);
+										&this->request_handshake_retry,
+										this->max_msg_len, NULL);
 		if (!this->connection_id)
 		{
 			return FAILED;
@@ -456,8 +483,8 @@ METHOD(tls_t, build, status_t,
 		data = this->batch->get_encoding(this->batch);
 		DBG1(DBG_TNC, "sending TNCCS Batch (%d bytes) for Connection ID %u",
 					   data.len, this->connection_id);
-		DBG3(DBG_TNC, "%.*s", data.len, data.ptr);
-		*msglen = data.len;
+		DBG3(DBG_TNC, "%.*s", (int)data.len, data.ptr);
+		*msglen = 0;
 
 		if (data.len > *buflen)
 		{
@@ -486,6 +513,18 @@ METHOD(tls_t, is_server, bool,
 	private_tnccs_11_t *this)
 {
 	return this->is_server;
+}
+
+METHOD(tls_t, get_server_id, identification_t*,
+	private_tnccs_11_t *this)
+{
+	return this->server;
+}
+
+METHOD(tls_t, get_peer_id, identification_t*,
+	private_tnccs_11_t *this)
+{
+	return this->peer;
 }
 
 METHOD(tls_t, get_purpose, tls_purpose_t,
@@ -521,30 +560,73 @@ METHOD(tls_t, destroy, void,
 {
 	tnc->tnccs->remove_connection(tnc->tnccs, this->connection_id,
 											  this->is_server);
+	this->server->destroy(this->server);
+	this->peer->destroy(this->peer);
 	this->mutex->destroy(this->mutex);
 	DESTROY_IF(this->batch);
 	free(this);
 }
 
+METHOD(tnccs_t, get_transport, tnc_ift_type_t,
+	private_tnccs_11_t *this)
+{
+	return this->transport;
+}
+
+METHOD(tnccs_t, set_transport, void,
+	private_tnccs_11_t *this, tnc_ift_type_t transport)
+{
+	this->transport = transport;
+}
+
+METHOD(tnccs_t, get_auth_type, u_int32_t,
+	private_tnccs_11_t *this)
+{
+	return this->auth_type;
+}
+
+METHOD(tnccs_t, set_auth_type, void,
+	private_tnccs_11_t *this, u_int32_t auth_type)
+{
+	this->auth_type = auth_type;
+}
+
 /**
  * See header
  */
-tls_t *tnccs_11_create(bool is_server)
+tnccs_t* tnccs_11_create(bool is_server,
+						 identification_t *server,
+						 identification_t *peer,
+						 tnc_ift_type_t transport)
 {
 	private_tnccs_11_t *this;
 
 	INIT(this,
 		.public = {
-			.process = _process,
-			.build = _build,
-			.is_server = _is_server,
-			.get_purpose = _get_purpose,
-			.is_complete = _is_complete,
-			.get_eap_msk = _get_eap_msk,
-			.destroy = _destroy,
+			.tls = {
+				.process = _process,
+				.build = _build,
+				.is_server = _is_server,
+				.get_server_id = _get_server_id,
+				.get_peer_id = _get_peer_id,
+				.get_purpose = _get_purpose,
+				.is_complete = _is_complete,
+				.get_eap_msk = _get_eap_msk,
+				.destroy = _destroy,
+			},
+			.get_transport = _get_transport,
+			.set_transport = _set_transport,
+			.get_auth_type = _get_auth_type,
+			.set_auth_type = _set_auth_type,
 		},
 		.is_server = is_server,
+		.server = server->clone(server),
+		.peer = peer->clone(peer),
+		.transport = transport,
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
+		.max_msg_len = lib->settings->get_int(lib->settings,
+								"%s.plugins.tnccs-11.max_message_size", 45000,
+								charon->name),
 	);
 
 	return &this->public;

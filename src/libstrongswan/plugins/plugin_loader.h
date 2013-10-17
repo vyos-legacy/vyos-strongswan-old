@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Tobias Brunner
+ * Copyright (C) 2012-2013 Tobias Brunner
  * Copyright (C) 2007 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -24,7 +24,11 @@
 
 typedef struct plugin_loader_t plugin_loader_t;
 
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
+#include <utils/debug.h>
+
+/* to avoid circular references we can't include plugin_feature.h */
+struct plugin_feature_t;
 
 /**
  * The plugin_loader loads plugins from a directory and initializes them
@@ -32,17 +36,54 @@ typedef struct plugin_loader_t plugin_loader_t;
 struct plugin_loader_t {
 
 	/**
-	 * Load a list of plugins from a directory.
+	 * Add static plugin features, not loaded via plugins.
 	 *
-	 * Each plugin in list may have a ending exclamation mark (!) to mark it
+	 * Similar to features provided by plugins they are evaluated during load(),
+	 * and unloaded when unload() is called.
+	 *
+	 * If critical is TRUE load() will fail if any of the added features could
+	 * not be loaded.
+	 *
+	 * @note The name should be unique otherwise a plugin with the same name is
+	 * not loaded.
+	 *
+	 * @param name			name of the component adding the features
+	 * @param features		array of plugin features
+	 * @param count			number of features in the array
+	 * @param critical		TRUE if the features are critical
+	 */
+	void (*add_static_features) (plugin_loader_t *this, const char *name,
+								 struct plugin_feature_t *features, int count,
+								 bool critical);
+
+	/**
+	 * Load a list of plugins.
+	 *
+	 * Each plugin in list may have an ending exclamation mark (!) to mark it
 	 * as a critical plugin. If loading a critical plugin fails, plugin loading
 	 * is aborted and FALSE is returned.
 	 *
-	 * @param path			path containing loadable plugins, NULL for default
+	 * Additional paths can be added with add_path(), these will be searched
+	 * for the plugins first, in the order they were added, then the default
+	 * path follows.
+	 *
+	 * @note Even though this method could be called multiple times this is
+	 * currently not really supported in regards to plugin features and their
+	 * dependencies (in particular soft dependencies).
+	 *
 	 * @param list			space separated list of plugins to load
 	 * @return				TRUE if all critical plugins loaded successfully
 	 */
-	bool (*load)(plugin_loader_t *this, char *path, char *list);
+	bool (*load)(plugin_loader_t *this, char *list);
+
+	/**
+	 * Add an additional search path for plugins.
+	 *
+	 * These will be searched in the order they were added.
+	 *
+	 * @param path			path containing loadable plugins
+	 */
+	void (*add_path)(plugin_loader_t *this, char *path);
 
 	/**
 	 * Reload the configuration of one or multiple plugins.
@@ -60,13 +101,21 @@ struct plugin_loader_t {
 	/**
 	 * Create an enumerator over all loaded plugins.
 	 *
-	 * In addition to the plugin, the enumerator returns a list of pointers to
-	 * plugin features currently loaded (if the argument is not NULL).
-	 * This list is to be read only.
+	 * In addition to the plugin, the enumerator optionally provides a list of
+	 * pointers to plugin features currently loaded.
+	 * This list has to be destroyed.
 	 *
 	 * @return				enumerator over plugin_t*, linked_list_t*
 	 */
 	enumerator_t* (*create_plugin_enumerator)(plugin_loader_t *this);
+
+	/**
+	 * Check if the given feature is available and loaded.
+	 *
+	 * @param feature		feature to check
+	 * @return				TRUE if feature available
+	 */
+	bool (*has_feature)(plugin_loader_t *this, struct plugin_feature_t feature);
 
 	/**
 	 * Get a simple list the names of all loaded plugins.
@@ -76,6 +125,13 @@ struct plugin_loader_t {
 	 * @return				list of the names of all loaded plugins
 	 */
 	char* (*loaded_plugins)(plugin_loader_t *this);
+
+	/**
+	 * Log status about loaded plugins and features.
+	 *
+	 * @param level			log level to use
+	 */
+	void (*status)(plugin_loader_t *this, level_t level);
 
 	/**
 	 * Unload loaded plugins, destroy plugin_loader instance.

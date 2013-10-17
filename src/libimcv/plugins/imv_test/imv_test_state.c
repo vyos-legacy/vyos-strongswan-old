@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2013 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -13,10 +14,14 @@
  */
 
 #include "imv_test_state.h"
+#include "imv/imv_lang_string.h"
+#include "imv/imv_reason_string.h"
+
+#include <tncif_policy.h>
 
 #include <utils/lexparser.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_imv_test_state_t private_imv_test_state_t;
 
@@ -51,6 +56,26 @@ struct private_imv_test_state_t {
 	bool has_excl;
 
 	/**
+	 * Maximum PA-TNC message size for this TNCCS connection
+	 */
+	u_int32_t max_msg_len;
+
+	/**
+	 * Access Requestor ID Type
+	 */
+	u_int32_t ar_id_type;
+
+	/**
+	 * Access Requestor ID Value
+	 */
+	chunk_t ar_id_value;
+
+	/**
+	 * IMV database session associated with TNCCS connection
+	 */
+	imv_session_t *session;
+
+	/**
 	 * IMV action recommendation
 	 */
 	TNC_IMV_Action_Recommendation rec;
@@ -59,6 +84,11 @@ struct private_imv_test_state_t {
 	 * IMV evaluation result
 	 */
 	TNC_IMV_Evaluation_Result eval;
+
+	/**
+	 * TNC Reason String
+	 */
+	imv_reason_string_t *reason_string;
 
 	/**
 	 * List of IMCs
@@ -77,24 +107,20 @@ struct imc_entry_t {
 	int rounds;
 };
 
-typedef struct entry_t entry_t;
+/**
+ * Supported languages
+ */
+static char* languages[] = { "en", "de", "fr", "pl" };
 
 /**
- * Define an internal reason string entry
+ * Table of reason strings
  */
-struct entry_t {
-	char *lang;
-	char *string;
-};
-
-/**
- * Table of multi-lingual reason string entries 
- */
-static entry_t reasons[] = {
+static imv_lang_string_t reasons[] = {
 	{ "en", "IMC Test was not configured with \"command = allow\"" },
 	{ "de", "IMC Test wurde nicht mit \"command = allow\" konfiguriert" },
 	{ "fr", "IMC Test n'etait pas configuré avec \"command = allow\"" },
-	{ "pl", "IMC Test nie zostało skonfigurowany z \"command = allow\"" }
+	{ "pl", "IMC Test nie zostało skonfigurowany z \"command = allow\"" },
+	{ NULL, NULL }
 };
 
 METHOD(imv_state_t, get_connection_id, TNC_ConnectionID,
@@ -122,6 +148,47 @@ METHOD(imv_state_t, set_flags, void,
 	this->has_excl = has_excl;
 }
 
+METHOD(imv_state_t, set_max_msg_len, void,
+	private_imv_test_state_t *this, u_int32_t max_msg_len)
+{
+	this->max_msg_len = max_msg_len;
+}
+
+METHOD(imv_state_t, get_max_msg_len, u_int32_t,
+	private_imv_test_state_t *this)
+{
+	return this->max_msg_len;
+}
+
+METHOD(imv_state_t, set_ar_id, void,
+	private_imv_test_state_t *this, u_int32_t id_type, chunk_t id_value)
+{
+	this->ar_id_type = id_type;
+	this->ar_id_value = chunk_clone(id_value);
+}
+
+METHOD(imv_state_t, get_ar_id, chunk_t,
+	private_imv_test_state_t *this, u_int32_t *id_type)
+{
+	if (id_type)
+	{
+		*id_type = this->ar_id_type;
+	}
+	return this->ar_id_value;
+}
+
+METHOD(imv_state_t, set_session, void,
+	private_imv_test_state_t *this, imv_session_t *session)
+{
+	this->session = session;
+}
+
+METHOD(imv_state_t, get_session, imv_session_t*,
+	private_imv_test_state_t *this)
+{
+	return this->session;
+}
+
 METHOD(imv_state_t, change_state, void,
 	private_imv_test_state_t *this, TNC_ConnectionState new_state)
 {
@@ -144,54 +211,44 @@ METHOD(imv_state_t, set_recommendation, void,
 	this->eval = eval;
 }
 
-METHOD(imv_state_t, get_reason_string, bool,
-	private_imv_test_state_t *this, chunk_t preferred_language,
-	chunk_t *reason_string, chunk_t *reason_language)
+METHOD(imv_state_t, update_recommendation, void,
+	private_imv_test_state_t *this, TNC_IMV_Action_Recommendation rec,
+									TNC_IMV_Evaluation_Result eval)
 {
-	chunk_t pref_lang, lang;
-	u_char *pos;
-	int i;
+	this->rec  = tncif_policy_update_recommendation(this->rec, rec);
+	this->eval = tncif_policy_update_evaluation(this->eval, eval);
+}
 
-	while (eat_whitespace(&preferred_language))
-	{
-		if (!extract_token(&pref_lang, ',', &preferred_language))
-		{
-			/* last entry in a comma-separated list or single entry */
-			pref_lang = preferred_language;
-		}
+METHOD(imv_state_t, get_reason_string, bool,
+	private_imv_test_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *reason_string, char **reason_language)
+{
+	*reason_language = imv_lang_string_select_lang(language_enumerator,
+											  languages, countof(languages));
 
-		/* eat trailing whitespace */
-		pos = pref_lang.ptr + pref_lang.len - 1;
-		while (pref_lang.len && *pos-- == ' ')
-		{
-			pref_lang.len--;
-		}
+	/* Instantiate a TNC Reason String object */
+	DESTROY_IF(this->reason_string);
+	this->reason_string = imv_reason_string_create(*reason_language);
+	this->reason_string->add_reason(this->reason_string, reasons);
+	*reason_string = this->reason_string->get_encoding(this->reason_string);
 
-		for (i = 0 ; i < countof(reasons); i++)
-		{
-			lang = chunk_create(reasons[i].lang, strlen(reasons[i].lang));
-			if (chunk_equals(lang, pref_lang))
-			{
-				*reason_language = lang;
-				*reason_string = chunk_create(reasons[i].string, 
-										strlen(reasons[i].string));
-				return TRUE;
-			}
-		}
-	}
-
-	/* no preferred language match found - use the default language */
-	*reason_string =   chunk_create(reasons[0].string,
-									strlen(reasons[0].string));
-	*reason_language = chunk_create(reasons[0].lang, 
-									strlen(reasons[0].lang));
 	return TRUE;
+}
+
+METHOD(imv_state_t, get_remediation_instructions, bool,
+	private_imv_test_state_t *this, enumerator_t *language_enumerator,
+	chunk_t *string, char **lang_code, char **uri)
+{
+	return FALSE;
 }
 
 METHOD(imv_state_t, destroy, void,
 	private_imv_test_state_t *this)
 {
+	DESTROY_IF(this->session);
+	DESTROY_IF(this->reason_string);
 	this->imcs->destroy_function(this->imcs, free);
+	free(this->ar_id_value.ptr);
 	free(this);
 }
 
@@ -256,8 +313,8 @@ METHOD(imv_test_state_t, another_round, bool,
 		}
 	}
 	enumerator->destroy(enumerator);
-	
-	return not_finished;	
+
+	return not_finished;
 }
 
 /**
@@ -274,10 +331,18 @@ imv_state_t *imv_test_state_create(TNC_ConnectionID connection_id)
 				.has_long = _has_long,
 				.has_excl = _has_excl,
 				.set_flags = _set_flags,
+				.set_max_msg_len = _set_max_msg_len,
+				.get_max_msg_len = _get_max_msg_len,
+				.set_ar_id = _set_ar_id,
+				.get_ar_id = _get_ar_id,
+				.set_session = _set_session,
+				.get_session = _get_session,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
+				.update_recommendation = _update_recommendation,
 				.get_reason_string = _get_reason_string,
+				.get_remediation_instructions = _get_remediation_instructions,
 				.destroy = _destroy,
 			},
 			.add_imc = _add_imc,
@@ -290,7 +355,7 @@ imv_state_t *imv_test_state_create(TNC_ConnectionID connection_id)
 		.connection_id = connection_id,
 		.imcs = linked_list_create(),
 	);
-	
+
 	return &this->public.interface;
 }
 

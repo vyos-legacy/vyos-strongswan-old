@@ -19,8 +19,11 @@
 
 #include <tncifimc.h>
 
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <daemon.h>
+#include <utils/debug.h>
+#include <threading/rwlock.h>
+#include <threading/mutex.h>
+#include <collections/linked_list.h>
 
 typedef struct private_tnc_imc_manager_t private_tnc_imc_manager_t;
 
@@ -40,36 +43,56 @@ struct private_tnc_imc_manager_t {
 	linked_list_t *imcs;
 
 	/**
+	 * Lock to access IMC list
+	 */
+	rwlock_t *lock;
+
+	/**
 	 * Next IMC ID to be assigned
 	 */
 	TNC_IMCID next_imc_id;
+
+	/**
+	 * Mutex to access next IMC ID
+	 */
+	mutex_t *id_mutex;
 };
 
 METHOD(imc_manager_t, add, bool,
 	private_tnc_imc_manager_t *this, imc_t *imc)
 {
 	TNC_Version version;
+	TNC_IMCID imc_id;
 
-	/* Initialize the module */
-	imc->set_id(imc, this->next_imc_id);
-	if (imc->initialize(imc->get_id(imc), TNC_IFIMC_VERSION_1,
-			TNC_IFIMC_VERSION_1, &version) != TNC_RESULT_SUCCESS)
+	this->id_mutex->lock(this->id_mutex);
+	imc_id = this->next_imc_id++;
+	this->id_mutex->unlock(this->id_mutex);
+
+	imc->set_id(imc, imc_id);
+	if (imc->initialize(imc_id, TNC_IFIMC_VERSION_1,
+						TNC_IFIMC_VERSION_1, &version) != TNC_RESULT_SUCCESS)
 	{
 		DBG1(DBG_TNC, "IMC \"%s\" failed to initialize", imc->get_name(imc));
 		return FALSE;
 	}
+	this->lock->write_lock(this->lock);
 	this->imcs->insert_last(this->imcs, imc);
-	this->next_imc_id++;
+	this->lock->unlock(this->lock);
 
-	if (imc->provide_bind_function(imc->get_id(imc), TNC_TNCC_BindFunction)
-			!= TNC_RESULT_SUCCESS)
+	if (imc->provide_bind_function(imc->get_id(imc),
+								   TNC_TNCC_BindFunction) != TNC_RESULT_SUCCESS)
 	{
+		if (imc->terminate)
+		{
+			imc->terminate(imc->get_id(imc));
+		}
 		DBG1(DBG_TNC, "IMC \"%s\" failed to obtain bind function",
-					   imc->get_name(imc));
+			 imc->get_name(imc));
+		this->lock->write_lock(this->lock);
 		this->imcs->remove_last(this->imcs, (void**)&imc);
+		this->lock->unlock(this->lock);
 		return FALSE;
 	}
-
 	return TRUE;
 }
 
@@ -79,6 +102,7 @@ METHOD(imc_manager_t, remove_, imc_t*,
 	enumerator_t *enumerator;
 	imc_t *imc, *removed_imc = NULL;
 
+	this->lock->write_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -90,6 +114,7 @@ METHOD(imc_manager_t, remove_, imc_t*,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 
 	return removed_imc;
 }
@@ -102,22 +127,45 @@ METHOD(imc_manager_t, load, bool,
 	imc = tnc_imc_create(name, path);
 	if (!imc)
 	{
-		free(name);
-		free(path);
 		return FALSE;
 	}
 	if (!add(this, imc))
 	{
-		if (imc->terminate &&
-			imc->terminate(imc->get_id(imc)) != TNC_RESULT_SUCCESS)
-		{
-			DBG1(DBG_TNC, "IMC \"%s\" not terminated successfully",
-						   imc->get_name(imc));
-		}
 		imc->destroy(imc);
 		return FALSE;
 	}
 	DBG1(DBG_TNC, "IMC %u \"%s\" loaded from '%s'", imc->get_id(imc), name, path);
+	return TRUE;
+}
+
+METHOD(imc_manager_t, load_from_functions, bool,
+	private_tnc_imc_manager_t *this, char *name,
+	TNC_IMC_InitializePointer initialize,
+	TNC_IMC_NotifyConnectionChangePointer notify_connection_change,
+	TNC_IMC_BeginHandshakePointer begin_handshake,
+	TNC_IMC_ReceiveMessagePointer receive_message,
+	TNC_IMC_ReceiveMessageLongPointer receive_message_long,
+	TNC_IMC_BatchEndingPointer batch_ending,
+	TNC_IMC_TerminatePointer terminate,
+	TNC_IMC_ProvideBindFunctionPointer provide_bind_function)
+{
+	imc_t *imc;
+
+	imc = tnc_imc_create_from_functions(name,
+										initialize, notify_connection_change,
+										begin_handshake, receive_message,
+										receive_message_long, batch_ending,
+										terminate, provide_bind_function);
+	if (!imc)
+	{
+		return FALSE;
+	}
+	if (!add(this, imc))
+	{
+		imc->destroy(imc);
+		return FALSE;
+	}
+	DBG1(DBG_TNC, "IMC %u \"%s\" loaded", imc->get_id(imc), name);
 	return TRUE;
 }
 
@@ -128,6 +176,7 @@ METHOD(imc_manager_t, is_registered, bool,
 	imc_t *imc;
 	bool found = FALSE;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -138,6 +187,7 @@ METHOD(imc_manager_t, is_registered, bool,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 
 	return found;
 }
@@ -149,13 +199,16 @@ METHOD(imc_manager_t, reserve_id, bool,
 	imc_t *imc;
 	bool found = FALSE;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
-		if (imc->get_id(imc))
+		if (id == imc->get_id(imc))
 		{
 			found = TRUE;
+			this->id_mutex->lock(this->id_mutex);
 			*new_id = this->next_imc_id++;
+			this->id_mutex->unlock(this->id_mutex);
 			imc->add_id(imc, *new_id);
 			DBG2(DBG_TNC, "additional ID %u reserved for IMC with primary ID %u",
 						  *new_id, id);
@@ -163,6 +216,7 @@ METHOD(imc_manager_t, reserve_id, bool,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 
 	return found;
 }
@@ -171,7 +225,7 @@ METHOD(imc_manager_t, get_preferred_language, char*,
 	private_tnc_imc_manager_t *this)
 {
 	return lib->settings->get_str(lib->settings,
-					"charon.plugins.tnc-imc.preferred_language", "en");
+				"%s.plugins.tnc-imc.preferred_language", "en", charon->name);
 }
 
 METHOD(imc_manager_t, notify_connection_change, void,
@@ -181,6 +235,7 @@ METHOD(imc_manager_t, notify_connection_change, void,
 	enumerator_t *enumerator;
 	imc_t *imc;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -190,6 +245,7 @@ METHOD(imc_manager_t, notify_connection_change, void,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 }
 
 METHOD(imc_manager_t, begin_handshake, void,
@@ -198,12 +254,14 @@ METHOD(imc_manager_t, begin_handshake, void,
 	enumerator_t *enumerator;
 	imc_t *imc;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
 		imc->begin_handshake(imc->get_id(imc), id);
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 }
 
 METHOD(imc_manager_t, set_message_types, TNC_Result,
@@ -215,6 +273,7 @@ METHOD(imc_manager_t, set_message_types, TNC_Result,
 	imc_t *imc;
 	TNC_Result result = TNC_RESULT_FATAL;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -226,6 +285,7 @@ METHOD(imc_manager_t, set_message_types, TNC_Result,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 	return result;
 }
 
@@ -239,6 +299,7 @@ METHOD(imc_manager_t, set_message_types_long, TNC_Result,
 	imc_t *imc;
 	TNC_Result result = TNC_RESULT_FATAL;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -251,6 +312,7 @@ METHOD(imc_manager_t, set_message_types_long, TNC_Result,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 	return result;
 }
 
@@ -270,11 +332,12 @@ METHOD(imc_manager_t, receive_message, void,
 	enumerator_t *enumerator;
 	imc_t *imc;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
 		if (imc->type_supported(imc, msg_vid, msg_subtype) &&
-		   (!excl || (excl && imc->has_id(imc, dst_imc_id)) ))
+			(!excl || (excl && imc->has_id(imc, dst_imc_id))))
 		{
 			if (imc->receive_message_long && src_imv_id)
 			{
@@ -296,6 +359,8 @@ METHOD(imc_manager_t, receive_message, void,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
+
 	if (!type_supported)
 	{
 		DBG2(DBG_TNC, "message type 0x%06x/0x%08x not supported by any IMC",
@@ -309,6 +374,7 @@ METHOD(imc_manager_t, batch_ending, void,
 	enumerator_t *enumerator;
 	imc_t *imc;
 
+	this->lock->read_lock(this->lock);
 	enumerator = this->imcs->create_enumerator(this->imcs);
 	while (enumerator->enumerate(enumerator, &imc))
 	{
@@ -318,6 +384,7 @@ METHOD(imc_manager_t, batch_ending, void,
 		}
 	}
 	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
 }
 
 METHOD(imc_manager_t, destroy, void,
@@ -336,6 +403,8 @@ METHOD(imc_manager_t, destroy, void,
 		imc->destroy(imc);
 	}
 	this->imcs->destroy(this->imcs);
+	this->lock->destroy(this->lock);
+	this->id_mutex->destroy(this->id_mutex);
 	free(this);
 }
 
@@ -351,6 +420,7 @@ imc_manager_t* tnc_imc_manager_create(void)
 			.add = _add,
 			.remove = _remove_, /* avoid name conflict with stdio.h */
 			.load = _load,
+			.load_from_functions = _load_from_functions,
 			.is_registered = _is_registered,
 			.reserve_id = _reserve_id,
 			.get_preferred_language = _get_preferred_language,
@@ -363,6 +433,8 @@ imc_manager_t* tnc_imc_manager_create(void)
 			.destroy = _destroy,
 		},
 		.imcs = linked_list_create(),
+		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
+		.id_mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.next_imc_id = 1,
 	);
 

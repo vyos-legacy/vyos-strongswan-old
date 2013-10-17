@@ -12,12 +12,12 @@ Build-Depends: debhelper (>= 9), dpkg-dev (>= 1.16.2), libtool, libgmp3-dev,
   hardening-wrapper, libfcgi-dev, clearsilver-dev,
   libxml2-dev, libsqlite3-dev, network-manager-dev (>= 0.7) [linux-any], 
   libnm-glib-vpn-dev (>= 0.7) [linux-any], libnm-util-dev (>= 0.7) [linux-any], 
-  gperf, libcap-dev [linux-any], autotools-dev
+  gperf, libcap-dev [linux-any], dh-autoreconf
 Homepage: http://www.strongswan.org
 
 Package: strongswan
-Architecture: any
-Depends: ${misc:Depends}, strongswan-ikev1 [linux-any], strongswan-ikev2
+Architecture: all
+Depends: ${misc:Depends}, strongswan-ike
 Suggests: network-manager-strongswan
 Description: IPsec VPN solution metapackage
  The strongSwan VPN suite is based on the IPsec stack in standard Linux 2.6
@@ -61,40 +61,19 @@ Description: strongSwan library and binaries - debugging symbols
 Package: strongswan-starter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan-ikev1 [linux-any] | strongswan-ikev2, 
+  libstrongswan (= ${binary:Version}), strongswan-ike,
   adduser
 Conflicts: strongswan (<< 4.2.12-1)
 Description: strongSwan daemon starter and configuration file parser
- StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
- native IPsec stack and runs on any recent 2.6 kernel (no patching required).
+ StrongSwan is an IPsec-based VPN solution for Linux and other Unixes. It uses
+ the native IPsec stack and runs on any recent kernel (no patching required).
  It supports both IKEv1 and the newer IKEv2 protocols.
  .
- The starter and the associated "ipsec" script control both pluto and charon
+ The starter and the associated "ipsec" script control the charon daemon
  from the command line. It parses ipsec.conf and loads the configurations to
- the daemons. While the IKEv2 daemon can use other configuration backends, the
- IKEv1 daemon is limited to configurations from ipsec.conf.
+ the daemon.
 
-Package: strongswan-ikev1
-Architecture: linux-any
-Pre-Depends: debconf | debconf-2.0
-Depends: ${shlibs:Depends}, ${misc:Depends}, 
-  libstrongswan (= ${binary:Version}), strongswan-starter, bsdmainutils,
-  debianutils (>=1.7), ipsec-tools, host, iproute [linux-any]
-Suggests: curl
-Provides: ike-server
-Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
-Replaces: openswan
-Description: strongSwan Internet Key Exchange (v1) daemon
- StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
- native IPsec stack and runs on any recent 2.6 kernel (no patching required).
- It supports both IKEv1 and the newer IKEv2 protocols.
- .
- Pluto is an IPsec IKEv1 daemon. It was inherited from the FreeS/WAN
- project, but provides improved X.509 certificate support and other features.
- .
- Pluto can run in parallel with charon, the newer IKEv2 daemon.
-
-Package: strongswan-ikev2
+Package: strongswan-ike
 Architecture: any
 Pre-Depends: debconf | debconf-2.0
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
@@ -103,6 +82,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
 Suggests: curl
 Provides: ike-server
 Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
+Replaces: strongswan-ikev1, strongswan-ikev2
 Description: strongSwan Internet Key Exchange (v2) daemon
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
  native IPsec stack and runs on any recent 2.6 kernel (no patching required).
@@ -111,12 +91,10 @@ Description: strongSwan Internet Key Exchange (v2) daemon
  Charon is an IPsec IKEv2 daemon. It is
  written from scratch using a fully multi-threaded design and a modular
  architecture. Various plugins provide additional functionality.
- .
- This build of charon can run in parallel with pluto, the IKEv1 daemon.
 
 Package: strongswan-nm
 Architecture: linux-any
-Depends: ${shlibs:Depends}, ${misc:Depends}, strongswan-ikev2
+Depends: ${shlibs:Depends}, ${misc:Depends}, strongswan-ike
 Recommends: network-manager-strongswan
 Description: strongSwan plugin to interact with NetworkManager
  StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
@@ -127,3 +105,29 @@ Description: strongSwan plugin to interact with NetworkManager
  and control the IKEv2 daemon directly through D-Bus. It is designed to work
  in conjunction with the network-manager-strongswan package, providing
  a simple graphical frontend to configure IPsec based VPNs.
+
+Package: strongswan-ikev1
+Architecture: all
+Depends: ${misc:Depends}, strongswan-ike
+Section: oldlibs
+Priority: extra
+Description: strongswan IKEv1 daemon, transitional package
+ StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
+ native IPsec stack and runs on any recent 2.6 kernel (no patching required).
+ It supports both IKEv1 and the newer IKEv2 protocols.
+ .
+ This package used to install the pluto daemon, implementing the IKEv1
+ protocol. It has been replaced by charon in the strongswan-ike package.
+
+Package: strongswan-ikev2
+Architecture: all
+Depends: ${misc:Depends}, strongswan-ike
+Section: oldlibs
+Priority: extra
+Description: strongswan IKEv2 daemon, transitional package
+ StrongSwan is an IPsec-based VPN solution for the Linux kernel. It uses the
+ native IPsec stack and runs on any recent 2.6 kernel (no patching required).
+ It supports both IKEv1 and the newer IKEv2 protocols.
+ .
+ This package used to install the charon daemon, implementing the IKEv2
+ protocol. It has been replaced the strongswan-ike package.

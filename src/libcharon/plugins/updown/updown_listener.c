@@ -38,6 +38,11 @@ struct private_updown_listener_t {
 	 * List of cached interface names
 	 */
 	linked_list_t *iface_cache;
+
+	/**
+	 * DNS attribute handler
+	 */
+	updown_handler_t *handler;
 };
 
 typedef struct cache_entry_t cache_entry_t;
@@ -90,6 +95,85 @@ static char* uncache_iface(private_updown_listener_t *this, u_int32_t reqid)
 	return iface;
 }
 
+/**
+ * Create variables for handled DNS attributes
+ */
+static char *make_dns_vars(private_updown_listener_t *this, ike_sa_t *ike_sa)
+{
+	enumerator_t *enumerator;
+	host_t *host;
+	int v4 = 0, v6 = 0;
+	char total[512] = "", current[64];
+
+	if (!this->handler)
+	{
+		return strdup("");
+	}
+
+	enumerator = this->handler->create_dns_enumerator(this->handler,
+												ike_sa->get_unique_id(ike_sa));
+	while (enumerator->enumerate(enumerator, &host))
+	{
+		switch (host->get_family(host))
+		{
+			case AF_INET:
+				snprintf(current, sizeof(current),
+						 "PLUTO_DNS4_%d='%H' ", ++v4, host);
+				break;
+			case AF_INET6:
+				snprintf(current, sizeof(current),
+						 "PLUTO_DNS6_%d='%H' ", ++v6, host);
+				break;
+			default:
+				continue;
+		}
+		strncat(total, current, sizeof(total) - strlen(total) - 1);
+	}
+	enumerator->destroy(enumerator);
+
+	return strdup(total);
+}
+
+/**
+ * Create variables for local virtual IPs
+ */
+static char *make_vip_vars(private_updown_listener_t *this, ike_sa_t *ike_sa)
+{
+	enumerator_t *enumerator;
+	host_t *host;
+	int v4 = 0, v6 = 0;
+	char total[512] = "", current[64];
+	bool first = TRUE;
+
+	enumerator = ike_sa->create_virtual_ip_enumerator(ike_sa, TRUE);
+	while (enumerator->enumerate(enumerator, &host))
+	{
+		if (first)
+		{	/* legacy variable for first VIP */
+			snprintf(current, sizeof(current),
+						 "PLUTO_MY_SOURCEIP='%H' ", host);
+			strncat(total, current, sizeof(total) - strlen(total) - 1);
+		}
+		switch (host->get_family(host))
+		{
+			case AF_INET:
+				snprintf(current, sizeof(current),
+						 "PLUTO_MY_SOURCEIP4_%d='%H' ", ++v4, host);
+				break;
+			case AF_INET6:
+				snprintf(current, sizeof(current),
+						 "PLUTO_MY_SOURCEIP6_%d='%H' ", ++v6, host);
+				break;
+			default:
+				continue;
+		}
+		strncat(total, current, sizeof(total) - strlen(total) - 1);
+	}
+	enumerator->destroy(enumerator);
+
+	return strdup(total);
+}
+
 METHOD(listener_t, child_updown, bool,
 	private_updown_listener_t *this, ike_sa_t *ike_sa, child_sa_t *child_sa,
 	bool up)
@@ -97,11 +181,10 @@ METHOD(listener_t, child_updown, bool,
 	traffic_selector_t *my_ts, *other_ts;
 	enumerator_t *enumerator;
 	child_cfg_t *config;
-	host_t *vip, *me, *other;
+	host_t *me, *other;
 	char *script;
 
 	config = child_sa->get_config(child_sa);
-	vip = ike_sa->get_virtual_ip(ike_sa, TRUE);
 	script = config->get_updown(config);
 	me = ike_sa->get_my_host(ike_sa);
 	other = ike_sa->get_other_host(ike_sa);
@@ -117,7 +200,7 @@ METHOD(listener_t, child_updown, bool,
 		char command[1024];
 		host_t *my_client, *other_client;
 		u_int8_t my_client_mask, other_client_mask;
-		char *virtual_ip, *iface, *mark_in, *mark_out, *udp_enc;
+		char *virtual_ip, *iface, *mark_in, *mark_out, *udp_enc, *dns, *xauth;
 		mark_t mark;
 		bool is_host, is_ipv6;
 		FILE *shell;
@@ -125,20 +208,7 @@ METHOD(listener_t, child_updown, bool,
 		my_ts->to_subnet(my_ts, &my_client, &my_client_mask);
 		other_ts->to_subnet(other_ts, &other_client, &other_client_mask);
 
-		if (vip)
-		{
-			if (asprintf(&virtual_ip, "PLUTO_MY_SOURCEIP='%H' ", vip) < 0)
-			{
-				virtual_ip = NULL;
-			}
-		}
-		else
-		{
-			if (asprintf(&virtual_ip, "") < 0)
-			{
-				virtual_ip = NULL;
-			}
-		}
+		virtual_ip = make_vip_vars(this, ike_sa);
 
 		/* check for the presence of an inbound mark */
 		mark = config->get_mark(config, TRUE);
@@ -195,11 +265,27 @@ METHOD(listener_t, child_updown, bool,
 
 		}
 
+		if (ike_sa->has_condition(ike_sa, COND_EAP_AUTHENTICATED) ||
+			ike_sa->has_condition(ike_sa, COND_XAUTH_AUTHENTICATED))
+		{
+			if (asprintf(&xauth, "PLUTO_XAUTH_ID='%Y' ",
+						 ike_sa->get_other_eap_id(ike_sa)) < 0)
+			{
+				xauth = NULL;
+			}
+		}
+		else
+		{
+			if (asprintf(&xauth, "") < 0)
+			{
+				xauth = NULL;
+			}
+		}
+
 		if (up)
 		{
-			iface = hydra->kernel_interface->get_interface(
-												hydra->kernel_interface, me);
-			if (iface)
+			if (hydra->kernel_interface->get_interface(hydra->kernel_interface,
+													   me, &iface))
 			{
 				cache_iface(this, child_sa->get_reqid(child_sa), iface);
 			}
@@ -208,6 +294,8 @@ METHOD(listener_t, child_updown, bool,
 		{
 			iface = uncache_iface(this, child_sa->get_reqid(child_sa));
 		}
+
+		dns = make_dns_vars(this, ike_sa);
 
 		/* determine IPv4/IPv6 and client/host situation */
 		is_host = my_ts->is_host(my_ts, me);
@@ -224,6 +312,7 @@ METHOD(listener_t, child_updown, bool,
 				"PLUTO_CONNECTION='%s' "
 				"PLUTO_INTERFACE='%s' "
 				"PLUTO_REQID='%u' "
+				"PLUTO_UNIQUEID='%u' "
 				"PLUTO_ME='%H' "
 				"PLUTO_MY_ID='%Y' "
 				"PLUTO_MY_CLIENT='%H/%u' "
@@ -239,6 +328,8 @@ METHOD(listener_t, child_updown, bool,
 				"%s"
 				"%s"
 				"%s"
+				"%s"
+				"%s"
 				"%s",
 				 up ? "up" : "down",
 				 is_host ? "-host" : "-client",
@@ -246,6 +337,7 @@ METHOD(listener_t, child_updown, bool,
 				 config->get_name(config),
 				 iface ? iface : "unknown",
 				 child_sa->get_reqid(child_sa),
+				 ike_sa->get_unique_id(ike_sa),
 				 me, ike_sa->get_my_id(ike_sa),
 				 my_client, my_client_mask,
 				 my_ts->get_from_port(my_ts),
@@ -254,11 +346,13 @@ METHOD(listener_t, child_updown, bool,
 				 other_client, other_client_mask,
 				 other_ts->get_from_port(other_ts),
 				 other_ts->get_protocol(other_ts),
+				 xauth,
 				 virtual_ip,
 				 mark_in,
 				 mark_out,
 				 udp_enc,
 				 config->get_hostaccess(config) ? "PLUTO_HOST_ACCESS='1' " : "",
+				 dns,
 				 script);
 		my_client->destroy(my_client);
 		other_client->destroy(other_client);
@@ -266,7 +360,9 @@ METHOD(listener_t, child_updown, bool,
 		free(mark_in);
 		free(mark_out);
 		free(udp_enc);
+		free(dns);
 		free(iface);
+		free(xauth);
 
 		DBG3(DBG_CHD, "running updown script: %s", command);
 		shell = popen(command, "r");
@@ -315,7 +411,7 @@ METHOD(updown_listener_t, destroy, void,
 /**
  * See header
  */
-updown_listener_t *updown_listener_create()
+updown_listener_t *updown_listener_create(updown_handler_t *handler)
 {
 	private_updown_listener_t *this;
 
@@ -327,8 +423,8 @@ updown_listener_t *updown_listener_create()
 			.destroy = _destroy,
 		},
 		.iface_cache = linked_list_create(),
+		.handler = handler,
 	);
 
 	return &this->public;
 }
-

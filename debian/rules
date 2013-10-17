@@ -1,11 +1,11 @@
 #!/usr/bin/make -f
+export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1
 #export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1 -Wl,-z,defs
-export DEB_BUILD_MAINT_OPTIONS=hardening=+pie,+bindnow
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ldap --enable-curl \
-		--enable-smartcard --enable-pkcs11 \
-		--with-default-pkcs11=/usr/lib/$(DEB_HOST_MULTIARCH)/opensc-pkcs11.so \
+		--enable-pkcs11 \
 		--enable-mediation --enable-medsrv --enable-medcli \
 		--enable-openssl --enable-agent \
 		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
@@ -15,7 +15,10 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-sql --enable-integrity-test \
 		--enable-ha \
 		--enable-led --enable-gcrypt \
-		--enable-test-vectors --enable-nat-transport \
+		--enable-test-vectors \
+		--enable-xauth-eap --enable-xauth-pam \
+		--enable-attr-sql \
+		--enable-cmd \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -26,10 +29,14 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# sends these Cisco options.
 
 # the padlock plugin only makes sense on i386 
-# but it actually doesn't do much, so maybe we don't need it
+# RdRand only makes sense on i386 and amd64
 DEB_BUILD_ARCH_CPU ?=$(shell dpkg-architecture -qDEB_BUILD_ARCH_CPU)
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-  CONFIGUREARGS += --enable-padlock
+  CONFIGUREARGS += --enable-padlock --enable-rdrand
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU),amd64)
+  CONFIGUREARGS += --enable-rdrand
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
@@ -46,7 +53,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
 	# http://wiki.strongswan.org/projects/strongswan/wiki/FreeBSD
 	CONFIGUREARGS += --disable-kernel-netlink \
 		--enable-kernel-pfkey --enable-kernel-pfroute \
-		--disable-pluto --with-group=wheel
+		--with-group=wheel
 endif
 
 override_dh_auto_configure:
@@ -76,7 +83,6 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	# handle Linux-only plugins
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-dhcp.so
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-farp.so
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-xauth.so
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-netlink.so
 endif
 
@@ -89,6 +95,11 @@ endif
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	# special handling for padlock, as it is only built on i386
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-padlock.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
+endif
+
+ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 endif
 
 	# then install the rest, ignoring the above
@@ -98,8 +109,8 @@ endif
 		-Xlibstrongswan-kernel \
 		-Xlibstrongswan-dhcp.so \
 		-Xlibstrongswan-farp.so \
-		-Xlibstrongswan-xauth.so \
-	 	-Xlibstrongswan-padlock.so
+	 	-Xlibstrongswan-padlock.so \
+	 	-Xlibstrongswan-rdrand.so
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
@@ -107,7 +118,7 @@ endif
 	echo >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 	echo "include /var/lib/strongswan/ipsec.conf.inc" >> $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 	# and to enable both IKEv1 and IKEv2 by default
-	sed -r 's/^[ \t]+# *plutostart=(yes|no) */\tplutostart=yes/;s/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
+	sed -r 's/^[ \t]+# *charonstart=(yes|no) */\tcharonstart=yes/' < $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf > $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp
 	mv $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf.tmp $(CURDIR)/debian/strongswan-starter/etc/ipsec.conf
 
 	# set permissions on ipsec.secrets
@@ -145,4 +156,4 @@ override_dh_installlogcheck:
 	dh_installlogcheck --name strongswan
 
 %:
-	dh $@ --parallel --with autotools-dev
+	dh $@ --parallel --with autoreconf

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Sansar Choinyanbuu
- * Copyright (C) 2010 Andreas Steffen
+ * Copyright (C) 2010-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,11 +20,11 @@
 
 #include <tnc/tnccs/tnccs.h>
 
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
 #include <pen/pen.h>
-#include <debug.h>
+#include <utils/debug.h>
 
 ENUM(pb_tnc_batch_type_names, PB_BATCH_CDATA, PB_BATCH_CLOSE,
 	"CDATA",
@@ -96,6 +96,16 @@ struct private_pb_tnc_batch_t {
 	pb_tnc_batch_type_t type;
 
 	/**
+	 * Current PB-TNC Batch size
+	 */
+	size_t batch_len;
+
+	/**
+	 * Maximum PB-TNC Batch size
+	 */
+	size_t max_batch_len;
+
+	/**
 	 * linked list of PB-TNC messages
 	 */
 	linked_list_t *messages;
@@ -128,42 +138,46 @@ METHOD(pb_tnc_batch_t, get_encoding, chunk_t,
 	return this->encoding;
 }
 
-METHOD(pb_tnc_batch_t, add_msg, void,
+METHOD(pb_tnc_batch_t, add_msg, bool,
 	private_pb_tnc_batch_t *this, pb_tnc_msg_t* msg)
 {
+	chunk_t msg_value;
+	size_t msg_len;
+
+	msg->build(msg);
+	msg_value = msg->get_encoding(msg);
+	msg_len = PB_TNC_HEADER_SIZE + msg_value.len;
+
+	if (this->batch_len + msg_len > this->max_batch_len)
+	{
+		/* message just does not fit into this batch */
+		return FALSE;
+	}
+	this->batch_len += msg_len;
+
 	DBG2(DBG_TNC, "adding %N message", pb_tnc_msg_type_names,
 									   msg->get_type(msg));
 	this->messages->insert_last(this->messages, msg);
+	return TRUE;
 }
 
 METHOD(pb_tnc_batch_t, build, void,
 	private_pb_tnc_batch_t *this)
 {
-	u_int32_t batch_len, msg_len;
+	u_int32_t msg_len;
 	chunk_t msg_value;
 	enumerator_t *enumerator;
 	pb_tnc_msg_type_t msg_type;
 	pb_tnc_msg_t *msg;
 	bio_writer_t *writer;
 
-	/* compute total PB-TNC batch size by summing over all messages */
-	batch_len = PB_TNC_BATCH_HEADER_SIZE;
-	enumerator = this->messages->create_enumerator(this->messages);
-	while (enumerator->enumerate(enumerator, &msg))
-	{
-		msg->build(msg);
-		msg_value = msg->get_encoding(msg);
-		batch_len += PB_TNC_HEADER_SIZE + msg_value.len;
-	}
-	enumerator->destroy(enumerator);
-
 	/* build PB-TNC batch header */
-	writer = bio_writer_create(batch_len);	
+	writer = bio_writer_create(this->batch_len);
 	writer->write_uint8 (writer, PB_TNC_VERSION);
 	writer->write_uint8 (writer, this->is_server ?
 								 PB_TNC_BATCH_FLAG_D : PB_TNC_BATCH_FLAG_NONE);
 	writer->write_uint16(writer, this->type);
-	writer->write_uint32(writer, batch_len); 
+	writer->write_uint32(writer, this->batch_len);
 
 	/* build PB-TNC messages */
 	enumerator = this->messages->create_enumerator(this->messages);
@@ -187,7 +201,7 @@ METHOD(pb_tnc_batch_t, build, void,
 	}
 	enumerator->destroy(enumerator);
 
-	this->encoding = chunk_clone(writer->get_buf(writer));
+	this->encoding = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -221,7 +235,7 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	/* Version */
 	if (version != PB_TNC_VERSION)
 	{
-		DBG1(DBG_TNC, "unsupported TNCCS batch version 0x%01x", version);
+		DBG1(DBG_TNC, "unsupported TNCCS batch version 0x%02x", version);
 		msg = pb_error_msg_create(TRUE, PEN_IETF,
 								  PB_ERROR_VERSION_NOT_SUPPORTED);
 		err_msg = (pb_error_msg_t*)msg;
@@ -258,6 +272,8 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 								  PB_ERROR_UNEXPECTED_BATCH_TYPE);
 		goto fatal;
 	}
+	DBG1(DBG_TNC, "processing PB-TNC %N batch", pb_tnc_batch_type_names,
+												this->type);
 
 	/* Batch Length */
 	if (this->encoding.len != batch_len)
@@ -270,11 +286,18 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	}
 
 	this->offset = PB_TNC_BATCH_HEADER_SIZE;
+
+	/* Register an empty CDATA batch with the state machine */
+	if (this->type == PB_BATCH_CDATA)
+	{
+		state_machine->set_empty_cdata(state_machine,
+									   this->offset == this->encoding.len);
+	}
 	return SUCCESS;
 
 fatal:
 	this->errors->insert_last(this->errors, msg);
-	return FAILED;	
+	return FAILED;
 }
 
 static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
@@ -306,7 +329,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	reader->destroy(reader);
 
 	noskip_flag = (flags & PB_TNC_FLAG_NOSKIP) != PB_TNC_FLAG_NONE;
-	
+
 	if (msg_len > data.len)
 	{
 		DBG1(DBG_TNC, "%u bytes insufficient to parse PB-TNC message", data.len);
@@ -363,6 +386,13 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 	}
 	else
 	{
+		if (msg_type == PB_MSG_EXPERIMENTAL && noskip_flag)
+		{
+			DBG1(DBG_TNC, "reject PB-Experimental message with NOSKIP flag set");
+			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
+							PB_ERROR_UNSUPPORTED_MANDATORY_MSG, this->offset);
+			goto fatal;
+		}
 		if (pb_tnc_msg_infos[msg_type].has_noskip_flag != TRUE_OR_FALSE &&
 			pb_tnc_msg_infos[msg_type].has_noskip_flag != noskip_flag)
 		{
@@ -432,7 +462,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 
 fatal:
 	this->errors->insert_last(this->errors, msg);
-	return FAILED;	
+	return FAILED;
 }
 
 METHOD(pb_tnc_batch_t, process, status_t,
@@ -445,8 +475,7 @@ METHOD(pb_tnc_batch_t, process, status_t,
 	{
 		return FAILED;
 	}
-	DBG1(DBG_TNC, "processing PB-TNC %N batch", pb_tnc_batch_type_names,
-												this->type);
+
 	while (this->offset < this->encoding.len)
 	{
 		switch (process_tnc_msg(this))
@@ -490,7 +519,8 @@ METHOD(pb_tnc_batch_t, destroy, void,
 /**
  * See header
  */
-pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type)
+pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type,
+									size_t max_batch_len)
 {
 	private_pb_tnc_batch_t *this;
 
@@ -507,6 +537,8 @@ pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type)
 		},
 		.is_server = is_server,
 		.type = type,
+		.max_batch_len = max_batch_len,
+		.batch_len = PB_TNC_BATCH_HEADER_SIZE,
 		.messages = linked_list_create(),
 		.errors = linked_list_create(),
 	);

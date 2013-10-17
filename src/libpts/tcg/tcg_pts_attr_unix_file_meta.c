@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,15 +18,17 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
+
+#include <string.h>
 
 typedef struct private_tcg_pts_attr_file_meta_t private_tcg_pts_attr_file_meta_t;
 
 /**
  * Unix-Style File Metadata
  * see section 3.17.3 of PTS Protocol: Binding to TNC IF-M Specification
- * 
+ *
  *					   1				   2				   3
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -80,25 +82,20 @@ struct private_tcg_pts_attr_file_meta_t {
 	tcg_pts_attr_file_meta_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
 	 */
 	chunk_t value;
-	
+
 	/**
 	 * Noskip flag
 	 */
 	bool noskip_flag;
-	
+
 	/**
 	 * PTS File Metadata
 	 */
@@ -110,13 +107,7 @@ struct private_tcg_pts_attr_file_meta_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_tcg_pts_attr_file_meta_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_tcg_pts_attr_file_meta_t *this)
 {
 	return this->type;
@@ -147,7 +138,11 @@ METHOD(pa_tnc_attr_t, build, void,
 	enumerator_t *enumerator;
 	pts_file_metadata_t *entry;
 	u_int64_t number_of_files;
-	
+
+	if (this->value.ptr)
+	{
+		return;
+	}
 	number_of_files = this->metadata->get_file_count(this->metadata);
 	writer = bio_writer_create(PTS_FILE_META_SIZE);
 
@@ -170,8 +165,8 @@ METHOD(pa_tnc_attr_t, build, void,
 												  strlen(entry->filename)));
 	}
 	enumerator->destroy(enumerator);
-	
-	this->value = chunk_clone(writer->get_buf(writer));
+
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -186,7 +181,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	u_int64_t owner, group;
 	chunk_t filename;
 	status_t status = FAILED;
-	
+
 	if (this->value.len < PTS_FILE_META_SIZE)
 	{
 		DBG1(DBG_TNC, "insufficient data for PTS Unix-Style file metadata header");
@@ -197,7 +192,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	reader->read_uint64(reader, &number_of_files);
 
 	this->metadata = pts_file_meta_create();
-	
+
 	while (number_of_files--)
 	{
 		if (!reader->read_uint16(reader, &len))
@@ -250,7 +245,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 			DBG1(DBG_TNC, "insufficient data for filename");
 			goto end;
 		}
-		
+
 		entry = malloc_thing(pts_file_metadata_t);
 		entry->type = type;
 		entry->filesize = filesize;
@@ -259,9 +254,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 		entry->accessed = accessed;
 		entry->owner = owner;
 		entry->group = group;
-		entry->filename = malloc(filename.len + 1);
-		entry->filename[filename.len] = '\0';
-		memcpy(entry->filename, filename.ptr, filename.len);
+		entry->filename = strndup(filename.ptr, filename.len);
 
 		this->metadata->add(this->metadata, entry);
 	}
@@ -284,7 +277,7 @@ METHOD(pa_tnc_attr_t, destroy, void,
 {
 	if (ref_put(&this->ref))
 	{
-		this->metadata->destroy(this->metadata);
+		DESTROY_IF(this->metadata);
 		free(this->value.ptr);
 		free(this);
 	}
@@ -306,7 +299,6 @@ pa_tnc_attr_t *tcg_pts_attr_unix_file_meta_create(pts_file_meta_t *metadata)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -318,8 +310,7 @@ pa_tnc_attr_t *tcg_pts_attr_unix_file_meta_create(pts_file_meta_t *metadata)
 			},
 			.get_metadata = _get_metadata,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_UNIX_FILE_META,
+		.type = { PEN_TCG, TCG_PTS_UNIX_FILE_META },
 		.metadata = metadata,
 		.ref = 1,
 	);
@@ -338,7 +329,6 @@ pa_tnc_attr_t *tcg_pts_attr_unix_file_meta_create_from_data(chunk_t data)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -350,8 +340,7 @@ pa_tnc_attr_t *tcg_pts_attr_unix_file_meta_create_from_data(chunk_t data)
 			},
 			.get_metadata = _get_metadata,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_UNIX_FILE_META,
+		.type = { PEN_TCG, TCG_PTS_UNIX_FILE_META },
 		.value = chunk_clone(data),
 		.ref = 1,
 	);

@@ -36,7 +36,7 @@ METHOD(job_t, destroy, void,
 	free(this);
 }
 
-METHOD(job_t, execute, void,
+METHOD(job_t, execute, job_requeue_t,
 	private_start_action_job_t *this)
 {
 	enumerator_t *enumerator, *children;
@@ -46,14 +46,9 @@ METHOD(job_t, execute, void,
 	char *name;
 
 	enumerator = charon->backends->create_peer_cfg_enumerator(charon->backends,
-													NULL, NULL, NULL, NULL);
+											NULL, NULL, NULL, NULL, IKE_ANY);
 	while (enumerator->enumerate(enumerator, &peer_cfg))
 	{
-		if (peer_cfg->get_ike_version(peer_cfg) != 2)
-		{
-			continue;
-		}
-
 		children = peer_cfg->create_child_cfg_enumerator(peer_cfg);
 		while (children->enumerate(children, &child_cfg))
 		{
@@ -78,7 +73,7 @@ METHOD(job_t, execute, void,
 					else
 					{
 						charon->traps->install(charon->traps, peer_cfg,
-															  child_cfg);
+											   child_cfg, 0);
 					}
 					break;
 				case ACTION_NONE:
@@ -88,7 +83,7 @@ METHOD(job_t, execute, void,
 		children->destroy(children);
 	}
 	enumerator->destroy(enumerator);
-	destroy(this);
+	return JOB_REQUEUE_NONE;
 }
 
 METHOD(job_t, get_priority, job_priority_t,

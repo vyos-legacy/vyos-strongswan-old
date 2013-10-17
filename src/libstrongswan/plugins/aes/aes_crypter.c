@@ -1331,7 +1331,7 @@ static void decrypt_block(const private_aes_crypter_t *this, const unsigned char
     state_out(out_blk, b0);
 }
 
-METHOD(crypter_t, decrypt, void,
+METHOD(crypter_t, decrypt, bool,
 	private_aes_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *decrypted)
 {
 	int pos;
@@ -1371,9 +1371,10 @@ METHOD(crypter_t, decrypt, void,
 		out-=16;
 		pos-=16;
 	}
+	return TRUE;
 }
 
-METHOD(crypter_t, encrypt, void,
+METHOD(crypter_t, encrypt, bool,
 	private_aes_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *encrypted)
 {
 	int pos;
@@ -1408,6 +1409,7 @@ METHOD(crypter_t, encrypt, void,
 		out+=16;
 		pos+=16;
 	}
+	return TRUE;
 }
 
 METHOD(crypter_t, get_block_size, size_t,
@@ -1428,7 +1430,7 @@ METHOD(crypter_t, get_key_size, size_t,
 	return this->key_size;
 }
 
-METHOD(crypter_t, set_key, void,
+METHOD(crypter_t, set_key, bool,
 	private_aes_crypter_t *this, chunk_t key)
 {
 	u_int32_t    *kf, *kt, rci, f = 0;
@@ -1513,6 +1515,7 @@ METHOD(crypter_t, set_key, void,
 		}
 		cpy(kt, kf);
 	}
+	return TRUE;
 }
 
 METHOD(crypter_t, destroy, void,

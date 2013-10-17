@@ -209,6 +209,30 @@ typedef TNC_Result (*TNC_IMV_ProvideBindFunctionPointer)(
 #define TNC_ATTRIBUTEID_SOH ((TNC_AttributeID) 0x00559706)
 #define TNC_ATTRIBUTEID_SSOH ((TNC_AttributeID) 0x00559707)
 #define TNC_ATTRIBUTEID_PRIMARY_IMV_ID ((TNC_AttributeID) 0x00559710)
+#define TNC_ATTRIBUTEID_AR_IDENTITIES ((TNC_AttributeID) 0x00559712)
+
+/* TNC Identity Types */
+
+#define TNC_ID_UNKNOWN 0
+#define TNC_ID_IPV4_ADDR 1
+#define TNC_ID_IPV6_ADDR 2
+#define TNC_ID_FQDN 3
+#define TNC_ID_EMAIL_ADDR 4
+#define TNC_ID_USERNAME 5
+#define TNC_ID_X500_DN 6
+
+/* TNC Subject Types */
+
+#define TNC_SUBJECT_UNKNOWN 0
+#define TNC_SUBJECT_MACHINE 1
+#define TNC_SUBJECT_USER 2
+
+/* TNC Authentication Types */
+
+#define TNC_AUTH_UNKNOWN 0
+#define TNC_AUTH_X509_CERT 1
+#define TNC_AUTH_PASSWORD 2
+#define TNC_AUTH_SIM 3
 
 /* IMV Functions */
 

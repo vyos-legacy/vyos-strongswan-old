@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,6 +55,13 @@ struct pts_comp_func_name_t {
 	u_int8_t (*get_qualifier)(pts_comp_func_name_t *this);
 
 	/**
+	 * Set the PTS Component Functional Name Qualifier
+	 *
+	 * @param qualifier		PTS Component Functional Name Qualifier to be set
+	 */
+	void (*set_qualifier)(pts_comp_func_name_t *this, u_int8_t qualifier);
+
+	/**
 	 * Check to PTS Component Functional Names for equality
 	 *
 	 * @param other			Other PTS Component Functional Name
@@ -88,7 +95,7 @@ struct pts_comp_func_name_t {
  *
  * @param vid				PTS Component Functional Name Vendor ID
  * @param name				PTS Component Functional Name
- * @param					PTS Component Functional Name Qualifier
+ * @param qualifier			PTS Component Functional Name Qualifier
  */
 pts_comp_func_name_t* pts_comp_func_name_create(u_int32_t vid, u_int32_t name,
 												u_int8_t qualifier);

@@ -29,7 +29,7 @@ typedef enum task_queue_t task_queue_t;
 #include <library.h>
 #include <encoding/message.h>
 #include <sa/ike_sa.h>
-#include <sa/tasks/task.h>
+#include <sa/task.h>
 
 /**
  * First retransmit timeout in seconds.
@@ -125,6 +125,69 @@ struct task_manager_t {
 	void (*queue_task) (task_manager_t *this, task_t *task);
 
 	/**
+	 * Queue IKE_SA establishing tasks.
+	 */
+	void (*queue_ike)(task_manager_t *this);
+
+	/**
+	 * Queue IKE_SA rekey tasks.
+	 */
+	void (*queue_ike_rekey)(task_manager_t *this);
+
+	/**
+	 * Queue IKE_SA reauth tasks.
+	 */
+	void (*queue_ike_reauth)(task_manager_t *this);
+
+	/**
+	 * Queue MOBIKE task
+	 *
+	 * @param roam			TRUE to switch to new address
+	 * @param address		TRUE to include address list update
+	 */
+	void (*queue_mobike)(task_manager_t *this, bool roam, bool address);
+
+	/**
+	 * Queue IKE_SA delete tasks.
+	 */
+	void (*queue_ike_delete)(task_manager_t *this);
+
+	/**
+	 * Queue CHILD_SA establishing tasks.
+	 *
+	 * @param cfg			CHILD_SA config to establish
+	 * @param reqid			reqid to use for CHILD_SA
+	 * @param tsi			initiator traffic selector, if packet-triggered
+	 * @param tsr			responder traffic selector, if packet-triggered
+	 */
+	void (*queue_child)(task_manager_t *this, child_cfg_t *cfg, u_int32_t reqid,
+						traffic_selector_t *tsi, traffic_selector_t *tsr);
+
+	/**
+	 * Queue CHILD_SA rekeying tasks.
+	 *
+	 * @param protocol		CHILD_SA protocol, AH|ESP
+	 * @param spi			CHILD_SA SPI to rekey
+	 */
+	void (*queue_child_rekey)(task_manager_t *this, protocol_id_t protocol,
+							  u_int32_t spi);
+
+	/**
+	 * Queue CHILD_SA delete tasks.
+	 *
+	 * @param protocol		CHILD_SA protocol, AH|ESP
+	 * @param spi			CHILD_SA SPI to rekey
+	 * @param expired		TRUE if SA already expired
+	 */
+	void (*queue_child_delete)(task_manager_t *this, protocol_id_t protocol,
+							   u_int32_t spi, bool expired);
+
+	/**
+	 * Queue liveness checking tasks.
+	 */
+	void (*queue_dpd)(task_manager_t *this);
+
+	/**
 	 * Retransmit a request if it hasn't been acknowledged yet.
 	 *
 	 * A return value of INVALID_STATE means that the message was already
@@ -139,7 +202,7 @@ struct task_manager_t {
 	status_t (*retransmit) (task_manager_t *this, u_int32_t message_id);
 
 	/**
-	 * Migrate all tasks from other to this.
+	 * Migrate all queued tasks from other to this.
 	 *
 	 * To rekey or reestablish an IKE_SA completely, all queued or active
 	 * tasks should get migrated to the new IKE_SA.
@@ -147,6 +210,13 @@ struct task_manager_t {
 	 * @param other			manager which gives away its tasks
 	 */
 	void (*adopt_tasks) (task_manager_t *this, task_manager_t *other);
+
+	/**
+	 * Migrate all active or queued CHILD_SA-creating tasks from other to this.
+	 *
+	 * @param other			manager which gives away its tasks
+	 */
+	void (*adopt_child_tasks) (task_manager_t *this, task_manager_t *other);
 
 	/**
 	 * Increment a message ID counter, in- or outbound.
@@ -166,9 +236,11 @@ struct task_manager_t {
 	 * resets the message IDs and resets all active tasks using the migrate()
 	 * method.
 	 * Use a value of UINT_MAX to keep the current message ID.
+	 * For IKEv1, the arguments do not set the message ID, but the DPD sequence
+	 * number counters.
 	 *
-	 * @param initiate		message ID to initiate exchanges (send)
-	 * @param respond		message ID to respond to exchanges (expect)
+	 * @param initiate		message ID / DPD seq to initiate exchanges (send)
+	 * @param respond		message ID / DPD seq to respond to exchanges (expect)
 	 */
 	void (*reset) (task_manager_t *this, u_int32_t initiate, u_int32_t respond);
 
@@ -189,15 +261,23 @@ struct task_manager_t {
 											task_queue_t queue);
 
 	/**
+	 * Flush a queue, cancelling all tasks.
+	 *
+	 * @param queue			queue to flush
+	 */
+	void (*flush_queue)(task_manager_t *this, task_queue_t queue);
+
+	/**
 	 * Destroy the task_manager_t.
 	 */
 	void (*destroy) (task_manager_t *this);
 };
 
 /**
- * Create an instance of the task manager.
+ * Create a task manager instance for the correct IKE version.
  *
- * @param ike_sa		IKE_SA to manage.
+ * @param ike_sa			IKE_SA to create a task manager for
+ * @return					task manager implementation for IKE version
  */
 task_manager_t *task_manager_create(ike_sa_t *ike_sa);
 

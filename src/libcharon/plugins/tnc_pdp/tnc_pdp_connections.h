@@ -25,7 +25,7 @@ typedef struct tnc_pdp_connections_t tnc_pdp_connections_t;
 
 #include <library.h>
 #include <sa/ike_sa.h>
-#include <sa/authenticators/eap/eap_method.h>
+#include <sa/eap/eap_method.h>
 
 /**
  * Public interface of a tnc_pdp_connections object
@@ -53,7 +53,10 @@ struct tnc_pdp_connections_t {
 				   chunk_t user_name);
 
 	/**
-	 * Get the EAP method and IKE_SA of a registered TNC PEP RADIUS Connection
+	 * Get the EAP method and IKE_SA of a registered TNC PEP RADIUS Connection.
+	 *
+	 * If this call succeeds, the connection manager is locked. Call unlock
+	 * after using the return objects.
 	 *
 	 * @param nas_id		NAS identifier of Policy Enforcement Point
 	 * @param user_name		User name of TNC Client
@@ -62,6 +65,11 @@ struct tnc_pdp_connections_t {
 	 */
 	eap_method_t* (*get_state)(tnc_pdp_connections_t *this, chunk_t nas_id,
 							   chunk_t user_name, ike_sa_t **ike_sa);
+
+	/**
+	 * Unlock connections after successfully calling get_state().
+	 */
+	void (*unlock)(tnc_pdp_connections_t *this);
 
 	/**
 	 * Destroys a tnc_pdp_connections_t object.

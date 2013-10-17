@@ -16,18 +16,25 @@
 #include "ietf/ietf_attr.h"
 #include "ita/ita_attr.h"
 
-#include <utils.h>
-#include <debug.h>
+#include <utils/debug.h>
+#include <utils/utils.h>
 #include <pen/pen.h>
 
 #include <syslog.h>
 
-#define IMCV_DEBUG_LEVEL	1
+#define IMCV_DEBUG_LEVEL			1
+#define IMCV_DEFAULT_POLICY_SCRIPT	"ipsec _imv_policy"
+
 
 /**
  * PA-TNC attribute manager
  */
 pa_tnc_attr_manager_t *imcv_pa_tnc_attributes;
+
+/**
+ * Global IMV database
+ */
+imv_database_t *imcv_db;
 
 /**
  * Reference count for libimcv
@@ -88,7 +95,7 @@ static void imcv_dbg(debug_t group, level_t level, char *fmt, ...)
 /**
  * Described in header.
  */
-bool libimcv_init(void)
+bool libimcv_init(bool is_imv)
 {
 	/* initialize libstrongswan library only once */
 	if (lib)
@@ -107,33 +114,49 @@ bool libimcv_init(void)
 			return FALSE;
 		}
 
-		if (!lib->plugins->load(lib->plugins, NULL,
-							"sha1 sha2 random gmp pubkey x509"))
-		{
-			library_deinit();
-			return FALSE;
-		}
-
 		/* set the debug level and stderr output */
 		imcv_debug_level =  lib->settings->get_int(lib->settings,
 									"libimcv.debug_level", IMCV_DEBUG_LEVEL);
 		imcv_stderr_quiet = lib->settings->get_int(lib->settings,
 									"libimcv.stderr_quiet", FALSE);
-		
+
 		/* activate the imcv debugging hook */
 		dbg = imcv_dbg;
 		openlog("imcv", 0, LOG_DAEMON);
+
+		if (!lib->plugins->load(lib->plugins,
+				lib->settings->get_str(lib->settings, "libimcv.load",
+					"random nonce gmp pubkey x509")))
+		{
+			library_deinit();
+			return FALSE;
+		}
 	}
 	ref_get(&libstrongswan_ref);
 
 	if (libimcv_ref == 0)
 	{
+		char *uri, *script;
+
 		/* initialize the PA-TNC attribute manager */
 	 	imcv_pa_tnc_attributes = pa_tnc_attr_manager_create();
 		imcv_pa_tnc_attributes->add_vendor(imcv_pa_tnc_attributes, PEN_IETF,
 							ietf_attr_create_from_data, ietf_attr_names);
 		imcv_pa_tnc_attributes->add_vendor(imcv_pa_tnc_attributes, PEN_ITA,
 							ita_attr_create_from_data, ita_attr_names);
+
+		/* attach global IMV database */
+		if (is_imv)
+		{
+			uri = lib->settings->get_str(lib->settings,
+						"libimcv.database", NULL);
+			script = lib->settings->get_str(lib->settings,
+						"libimcv.policy_script", IMCV_DEFAULT_POLICY_SCRIPT);
+			if (uri)
+			{
+				imcv_db = imv_database_create(uri, script);
+			}
+		}
 		DBG1(DBG_LIB, "libimcv initialized");
 	}
 	ref_get(&libimcv_ref);
@@ -151,11 +174,13 @@ void libimcv_deinit(void)
 		imcv_pa_tnc_attributes->remove_vendor(imcv_pa_tnc_attributes, PEN_IETF);
 		imcv_pa_tnc_attributes->remove_vendor(imcv_pa_tnc_attributes, PEN_ITA);
 		DESTROY_IF(imcv_pa_tnc_attributes);
+		imcv_pa_tnc_attributes = NULL;
+		DESTROY_IF(imcv_db);
 		DBG1(DBG_LIB, "libimcv terminated");
 	}
 	if (ref_put(&libstrongswan_ref))
 	{
-		library_deinit();		
+		library_deinit();
 	}
 }
 

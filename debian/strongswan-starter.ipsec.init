@@ -15,9 +15,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="strongswan IPsec services"
 NAME=ipsec
 STARTER=/usr/sbin/$NAME
-PIDFILE1=/var/run/pluto.pid
-PIDFILE2=/var/run/charon.pid
-PLUTO=/usr/lib/ipsec/pluto
+PIDFILE=/var/run/charon.pid
 CHARON=/usr/lib/ipsec/charon
 SCRIPTNAME=/etc/init.d/$NAME
 
@@ -47,13 +45,9 @@ do_start()
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
 
-	# test if either charon or pluto are currently running (PIDFILE1 or PIDFILE2)
-	if [ -e $PLUTO ]; then
-	  start-stop-daemon --start --quiet --pidfile $PIDFILE1 --exec $STARTER --test > /dev/null \
-		|| return 1
-	fi
+	# test if charon is currently running
 	if [ -e $CHARON ]; then
-	  start-stop-daemon --start --quiet --pidfile $PIDFILE2 --exec $STARTER --test > /dev/null \
+	  start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $STARTER --test > /dev/null \
 		|| return 1
 	fi
 
@@ -75,13 +69,8 @@ do_stop()
 
 	RETVAL=0
 	# but kill if that didn't work
-	if [ -e $PIDFILE1 ]; then
-		start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE1 --name $NAME
-		RETVAL="$?"
-		[ "$RETVAL" = 2 ] && return 2
-	fi
-	if [ -e $PIDFILE2 ]; then
-		start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE2 --name $NAME
+	if [ -e $PIDFILE ]; then
+		start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
 		RETVAL="$?"
 		[ "$RETVAL" = 2 ] && return 2
 	fi
@@ -92,19 +81,14 @@ do_stop()
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	if [ -e $PLUTO ]; then
-	  start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $PLUTO
-	  [ "$?" = 2 ] && return 2
-	fi
 	if [ -e $CHARON ]; then
 	  start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $CHARON
 	  [ "$?" = 2 ] && return 2
 	fi
 
 	# strongswan is known to leave PID files behind when something goes wrong, cleanup here
-	rm -f $PIDFILE1 $PIDFILE2
+	rm -f $PIDFILE
 	# and just to make sure they are really really dead at this point...
-	killall -9 $PLUTO 2>/dev/null
 	killall -9 $CHARON 2>/dev/null
 
 	return "$RETVAL"

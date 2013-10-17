@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,7 +16,7 @@
 /**
  *
  * @defgroup imc_agent_t imc_agent
- * @{ @ingroup imc_agent
+ * @{ @ingroup libimcv_imc
  */
 
 #ifndef IMC_AGENT_H_
@@ -26,6 +27,7 @@
 
 #include <tncifimc.h>
 #include <pen/pen.h>
+#include <collections/linked_list.h>
 
 #include <library.h>
 
@@ -47,6 +49,44 @@ struct imc_agent_t {
 	TNC_Result (*request_handshake_retry)(TNC_IMCID imc_id,
 										  TNC_ConnectionID connection_id,
 										  TNC_RetryReason reason);
+
+	/**
+	 * Call when an IMC-IMC message is to be sent
+	 *
+	 * @param imc_id			IMC ID assigned by TNCC
+	 * @param connection_id		network connection ID assigned by TNCC
+	 * @param msg				message to send
+	 * @param msg_len			message length in bytes
+	 * @param msg_type			message type
+	 * @return					TNC result code
+	 */
+	TNC_Result (*send_message)(TNC_IMCID imc_id,
+							   TNC_ConnectionID connection_id,
+							   TNC_BufferReference msg,
+							   TNC_UInt32 msg_len,
+							   TNC_MessageType msg_type);
+
+	/**
+	 * Call when an IMC-IMC message is to be sent with long message types
+	 *
+	 * @param imc_id			IMC ID assigned by TNCC
+	 * @param connection_id		network connection ID assigned by TNCC
+	 * @param msg_flags			message flags
+	 * @param msg				message to send
+	 * @param msg_len			message length in bytes
+	 * @param msg_vid			message vendor ID
+	 * @param msg_subtype		message subtype
+	 * @param dst_imc_id		destination IMV ID
+	 * @return					TNC result code
+	 */
+	TNC_Result (*send_message_long)(TNC_IMCID imc_id,
+									TNC_ConnectionID connection_id,
+									TNC_UInt32 msg_flags,
+									TNC_BufferReference msg,
+									TNC_UInt32 msg_len,
+									TNC_VendorID msg_vid,
+									TNC_MessageSubtype msg_subtype,
+									TNC_UInt32 dst_imv_id);
 
 	/**
 	 * Bind TNCC functions
@@ -98,39 +138,18 @@ struct imc_agent_t {
 					  TNC_ConnectionID connection_id, imc_state_t **state);
 
 	/**
-	 * Call when an PA-TNC message is to be sent
+	 * Get IMC name
 	 *
-	 * @param connection_id		network connection ID assigned by TNCC
-	 * @param excl				exclusive flag
-	 * @param src_imc_id		IMC ID to be set as source
-	 * @param dst_imv_id		IMV ID to be set as destination
-	 * @param msg				message to send
-	 * @return					TNC result code
+	 * return					IMC name
 	 */
-	TNC_Result (*send_message)(imc_agent_t *this,
-							   TNC_ConnectionID connection_id, bool excl,
-							   TNC_UInt32 src_imc_id, TNC_UInt32 dst_imv_id,
-							   chunk_t msg);
+	const char* (*get_name)(imc_agent_t *this);
 
 	/**
-	 * Call when a PA-TNC message was received
+	 * Get base IMC ID
 	 *
-	 * @param state				state for current connection
-	 * @param msg				received unparsed message
-	 * @param msg_vid			message vendorID of the received message
-	 * @param msg_subtype		message subtype of the received message
-	 * @param src_imv_id		source IMV ID
-	 * @param dst_imc_id		destination IMC ID
-	 * @param pa_tnc_message	parsed PA-TNC message or NULL if an error occurred
-	 * @return					TNC result code
+	 * return					base IMC ID
 	 */
-	TNC_Result (*receive_message)(imc_agent_t *this,
-								  imc_state_t *state, chunk_t msg,
-								  TNC_VendorID msg_vid,
-								  TNC_MessageSubtype msg_subtype,
-								  TNC_UInt32 src_imv_id,
-								  TNC_UInt32 dst_imc_id,
-								  pa_tnc_msg_t **pa_tnc_msg);
+	TNC_IMCID (*get_id)(imc_agent_t *this);
 
 	/**
 	 * Reserve additional IMC IDs from TNCC
@@ -162,14 +181,14 @@ struct imc_agent_t {
  * Create an imc_agent_t object
  *
  * @param name				name of the IMC
- * @param vendor_id			vendor ID of the IMC
- * @param subtype			message subtype of the IMC
+ * @param supported_types	list of message types registered by the IMC
+ * @param type_count		number of registered message types
  * @param id				ID of the IMC as assigned by the TNCS
  * @param actual_version	actual version of the IF-IMC API
  *
  */
 imc_agent_t *imc_agent_create(const char *name,
-							  pen_t vendor_id, u_int32_t subtype,
+							  pen_type_t *supported_types, u_int32_t type_count,
 							  TNC_IMCID id, TNC_Version *actual_version);
 
 #endif /** IMC_AGENT_H_ @}*/

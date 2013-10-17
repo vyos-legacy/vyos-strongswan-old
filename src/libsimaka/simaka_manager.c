@@ -15,8 +15,8 @@
 
 #include "simaka_manager.h"
 
-#include <debug.h>
-#include <utils/linked_list.h>
+#include <utils/debug.h>
+#include <collections/linked_list.h>
 #include <threading/rwlock.h>
 
 typedef struct private_simaka_manager_t private_simaka_manager_t;

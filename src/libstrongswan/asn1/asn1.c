@@ -19,7 +19,7 @@
 #include <string.h>
 #include <time.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "oid.h"
 #include "asn1.h"
@@ -28,7 +28,7 @@
 /**
  * Commonly used ASN1 values.
  */
-const chunk_t ASN1_INTEGER_0 = chunk_from_chars(0x02, 0x00);
+const chunk_t ASN1_INTEGER_0 = chunk_from_chars(0x02, 0x01, 0x00);
 const chunk_t ASN1_INTEGER_1 = chunk_from_chars(0x02, 0x01, 0x01);
 const chunk_t ASN1_INTEGER_2 = chunk_from_chars(0x02, 0x01, 0x02);
 
@@ -228,7 +228,8 @@ size_t asn1_length(chunk_t *blob)
 
 	/* read length field, skip tag and length */
 	n = blob->ptr[1];
-	*blob = chunk_skip(*blob, 2);
+	blob->ptr += 2;
+	blob->len -= 2;
 
 	if ((n & 0x80) == 0)
 	{	/* single length octet */
@@ -548,6 +549,22 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
 	return TRUE;
 }
 
+/*
+ * Described in header
+ */
+u_int64_t asn1_parse_integer_uint64(chunk_t blob)
+{
+	u_int64_t val = 0;
+	int i;
+
+	for (i = 0; i < blob.len; i++)
+	{	/* if it is longer than 8 bytes, we just use the 8 LSBs */
+		val <<= 8;
+		val |= (u_int64_t)blob.ptr[i];
+	}
+	return val;
+}
+
 /**
  * ASN.1 definition of an algorithmIdentifier
  */
@@ -624,6 +641,11 @@ bool is_asn1(chunk_t blob)
 	}
 
 	len = asn1_length(&blob);
+
+	if (len == ASN1_INVALID_LENGTH)
+	{
+		return FALSE;
+	}
 
 	/* exact match */
 	if (len == blob.len)
@@ -760,16 +782,13 @@ chunk_t asn1_integer(const char *mode, chunk_t content)
 	size_t len;
 	u_char *pos;
 
-	if (content.len == 0 || (content.len == 1 && *content.ptr == 0x00))
-	{
-		/* a zero ASN.1 integer does not have a value field */
-		len = 0;
+	if (content.len == 0)
+	{	/* make sure 0 is encoded properly */
+		content = chunk_from_chars(0x00);
 	}
-	else
-	{
-		/* ASN.1 integers must be positive numbers in two's complement */
-		len = content.len + ((*content.ptr & 0x80) ? 1 : 0);
-	}
+
+	/* ASN.1 integers must be positive numbers in two's complement */
+	len = content.len + ((*content.ptr & 0x80) ? 1 : 0);
 	pos = asn1_build_object(&object, ASN1_INTEGER, len);
 	if (len > content.len)
 	{

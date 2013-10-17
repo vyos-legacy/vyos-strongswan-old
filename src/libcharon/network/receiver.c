@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Tobias Brunner
+ * Copyright (C) 2008-2012 Tobias Brunner
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -20,13 +20,15 @@
 
 #include "receiver.h"
 
+#include <hydra.h>
 #include <daemon.h>
 #include <network/socket.h>
-#include <network/packet.h>
 #include <processing/jobs/job.h>
 #include <processing/jobs/process_message_job.h>
 #include <processing/jobs/callback_job.h>
 #include <crypto/hashers/hasher.h>
+#include <threading/mutex.h>
+#include <networking/packet.h>
 
 /** lifetime of a cookie, in seconds */
 #define COOKIE_LIFETIME 10
@@ -40,6 +42,8 @@
 #define BLOCK_THRESHOLD_DEFAULT 5
 /** length of the secret to use for cookie calculation */
 #define SECRET_LENGTH 16
+/** Length of a notify payload header */
+#define NOTIFY_PAYLOAD_HEADER_LENGTH 8
 
 typedef struct private_receiver_t private_receiver_t;
 
@@ -53,9 +57,17 @@ struct private_receiver_t {
 	receiver_t public;
 
 	/**
-	 * Threads job receiving packets
+	 * Registered callback for ESP packets
 	 */
-	callback_job_t *job;
+	struct {
+		receiver_esp_cb_t cb;
+		void *data;
+	} esp_cb;
+
+	/**
+	 * Mutex for ESP callback
+	 */
+	mutex_t *esp_cb_mutex;
 
 	/**
 	 * current secret to use for cookie calculation
@@ -136,46 +148,52 @@ struct private_receiver_t {
 	 * Delay response messages?
 	 */
 	bool receive_delay_response;
+
+	/**
+	 * Endpoint is allowed to act as an initiator only
+	 */
+	bool initiator_only;
+
 };
 
 /**
  * send a notify back to the sender
  */
-static void send_notify(message_t *request, notify_type_t type, chunk_t data)
+static void send_notify(message_t *request, int major, exchange_type_t exchange,
+						notify_type_t type, chunk_t data)
 {
-	if (request->get_request(request) &&
-		request->get_exchange_type(request) == IKE_SA_INIT)
-	{
-		message_t *response;
-		host_t *src, *dst;
-		packet_t *packet;
-		ike_sa_id_t *ike_sa_id;
+	ike_sa_id_t *ike_sa_id;
+	message_t *response;
+	host_t *src, *dst;
+	packet_t *packet;
 
-		response = message_create();
-		dst = request->get_source(request);
-		src = request->get_destination(request);
-		response->set_source(response, src->clone(src));
-		response->set_destination(response, dst->clone(dst));
-		response->set_exchange_type(response, request->get_exchange_type(request));
+	response = message_create(major, 0);
+	response->set_exchange_type(response, exchange);
+	response->add_notify(response, FALSE, type, data);
+	dst = request->get_source(request);
+	src = request->get_destination(request);
+	response->set_source(response, src->clone(src));
+	response->set_destination(response, dst->clone(dst));
+	if (major == IKEV2_MAJOR_VERSION)
+	{
 		response->set_request(response, FALSE);
-		response->set_message_id(response, 0);
-		ike_sa_id = request->get_ike_sa_id(request);
-		ike_sa_id->switch_initiator(ike_sa_id);
-		response->set_ike_sa_id(response, ike_sa_id);
-		response->add_notify(response, FALSE, type, data);
-		if (response->generate(response, NULL, &packet) == SUCCESS)
-		{
-			charon->sender->send(charon->sender, packet);
-			response->destroy(response);
-		}
 	}
+	response->set_message_id(response, 0);
+	ike_sa_id = request->get_ike_sa_id(request);
+	ike_sa_id->switch_initiator(ike_sa_id);
+	response->set_ike_sa_id(response, ike_sa_id);
+	if (response->generate(response, NULL, &packet) == SUCCESS)
+	{
+		charon->sender->send(charon->sender, packet);
+	}
+	response->destroy(response);
 }
 
 /**
  * build a cookie
  */
-static chunk_t cookie_build(private_receiver_t *this, message_t *message,
-							u_int32_t t, chunk_t secret)
+static bool cookie_build(private_receiver_t *this, message_t *message,
+						 u_int32_t t, chunk_t secret, chunk_t *cookie)
 {
 	u_int64_t spi = message->get_initiator_spi(message);
 	host_t *ip = message->get_source(message);
@@ -185,8 +203,12 @@ static chunk_t cookie_build(private_receiver_t *this, message_t *message,
 	input = chunk_cata("cccc", ip->get_address(ip), chunk_from_thing(spi),
 					  chunk_from_thing(t), secret);
 	hash = chunk_alloca(this->hasher->get_hash_size(this->hasher));
-	this->hasher->get_hash(this->hasher, input, hash.ptr);
-	return chunk_cat("cc", chunk_from_thing(t), hash);
+	if (!this->hasher->get_hash(this->hasher, input, hash.ptr))
+	{
+		return FALSE;
+	}
+	*cookie = chunk_cat("cc", chunk_from_thing(t), hash);
+	return TRUE;
 }
 
 /**
@@ -221,7 +243,10 @@ static bool cookie_verify(private_receiver_t *this, message_t *message,
 	}
 
 	/* compare own calculation against received */
-	reference = cookie_build(this, message, t, secret);
+	if (!cookie_build(this, message, t, secret, &reference))
+	{
+		return FALSE;
+	}
 	if (chunk_equals(reference, cookie))
 	{
 		chunk_free(&reference);
@@ -236,15 +261,13 @@ static bool cookie_verify(private_receiver_t *this, message_t *message,
  */
 static bool check_cookie(private_receiver_t *this, message_t *message)
 {
-	packet_t *packet;
 	chunk_t data;
 
 	/* check for a cookie. We don't use our parser here and do it
 	 * quick and dirty for performance reasons.
 	 * we assume the cookie is the first payload (which is a MUST), and
 	 * the cookie's SPI length is zero. */
-	packet = message->get_packet(message);
-	data = packet->get_data(packet);
+	data = message->get_packet_data(message);
 	if (data.len <
 		 IKE_HEADER_LENGTH + NOTIFY_PAYLOAD_HEADER_LENGTH +
 		 sizeof(u_int32_t) + this->hasher->get_hash_size(this->hasher) ||
@@ -252,7 +275,6 @@ static bool check_cookie(private_receiver_t *this, message_t *message)
 		*(u_int16_t*)(data.ptr + IKE_HEADER_LENGTH + 6) != htons(COOKIE))
 	{
 		/* no cookie found */
-		packet->destroy(packet);
 		return FALSE;
 	}
 	data.ptr += IKE_HEADER_LENGTH + NOTIFY_PAYLOAD_HEADER_LENGTH;
@@ -260,7 +282,6 @@ static bool check_cookie(private_receiver_t *this, message_t *message)
 	if (!cookie_verify(this, message, data))
 	{
 		DBG2(DBG_NET, "found cookie, but content invalid");
-		packet->destroy(packet);
 		return FALSE;
 	}
 	return TRUE;
@@ -277,7 +298,7 @@ static bool cookie_required(private_receiver_t *this,
 		this->last_cookie = now;
 		return TRUE;
 	}
-	if (now < this->last_cookie + COOKIE_CALMDOWN_DELAY)
+	if (this->last_cookie && now < this->last_cookie + COOKIE_CALMDOWN_DELAY)
 	{
 		/* We don't disable cookies unless we haven't seen IKE_SA_INITs
 		 * for COOKIE_CALMDOWN_DELAY seconds. This avoids jittering between
@@ -308,29 +329,42 @@ static bool drop_ike_sa_init(private_receiver_t *this, message_t *message)
 	half_open = charon->ike_sa_manager->get_half_open_count(
 										charon->ike_sa_manager, NULL);
 
-	/* check for cookies */
-	if (cookie_required(this, half_open, now) && !check_cookie(this, message))
+	/* check for cookies in IKEv2 */
+	if (message->get_major_version(message) == IKEV2_MAJOR_VERSION &&
+		cookie_required(this, half_open, now) && !check_cookie(this, message))
 	{
 		chunk_t cookie;
 
-		cookie = cookie_build(this, message, now - this->secret_offset,
-							  chunk_from_thing(this->secret));
 		DBG2(DBG_NET, "received packet from: %#H to %#H",
 			 message->get_source(message),
 			 message->get_destination(message));
+		if (!cookie_build(this, message, now - this->secret_offset,
+						  chunk_from_thing(this->secret), &cookie))
+		{
+			return TRUE;
+		}
 		DBG2(DBG_NET, "sending COOKIE notify to %H",
 			 message->get_source(message));
-		send_notify(message, COOKIE, cookie);
+		send_notify(message, IKEV2_MAJOR_VERSION, IKE_SA_INIT, COOKIE, cookie);
 		chunk_free(&cookie);
 		if (++this->secret_used > COOKIE_REUSE)
 		{
-			/* create new cookie */
+			char secret[SECRET_LENGTH];
+
 			DBG1(DBG_NET, "generating new cookie secret after %d uses",
 				 this->secret_used);
-			memcpy(this->secret_old, this->secret, SECRET_LENGTH);
-			this->rng->get_bytes(this->rng,	SECRET_LENGTH, this->secret);
-			this->secret_switch = now;
-			this->secret_used = 0;
+			if (this->rng->get_bytes(this->rng, SECRET_LENGTH, secret))
+			{
+				memcpy(this->secret_old, this->secret, SECRET_LENGTH);
+				memcpy(this->secret, secret, SECRET_LENGTH);
+				memwipe(secret, SECRET_LENGTH);
+				this->secret_switch = now;
+				this->secret_used = 0;
+			}
+			else
+			{
+				DBG1(DBG_NET, "failed to allocated cookie secret, keeping old");
+			}
 		}
 		return TRUE;
 	}
@@ -380,16 +414,18 @@ static bool drop_ike_sa_init(private_receiver_t *this, message_t *message)
  */
 static job_requeue_t receive_packets(private_receiver_t *this)
 {
+	ike_sa_id_t *id;
 	packet_t *packet;
 	message_t *message;
+	host_t *src, *dst;
 	status_t status;
+	bool supported = TRUE;
+	chunk_t data, marker = chunk_from_chars(0x00, 0x00, 0x00, 0x00);
 
 	/* read in a packet */
 	status = charon->socket->receive(charon->socket, &packet);
 	if (status == NOT_SUPPORTED)
 	{
-		/* the processor destroys this job  */
-		this->job = NULL;
 		return JOB_REQUEUE_NONE;
 	}
 	else if (status != SUCCESS)
@@ -398,36 +434,133 @@ static job_requeue_t receive_packets(private_receiver_t *this)
 		return JOB_REQUEUE_FAIR;
 	}
 
+	data = packet->get_data(packet);
+	if (data.len == 1 && data.ptr[0] == 0xFF)
+	{	/* silently drop NAT-T keepalives */
+		packet->destroy(packet);
+		return JOB_REQUEUE_DIRECT;
+	}
+	else if (data.len < marker.len)
+	{	/* drop packets that are too small */
+		DBG3(DBG_NET, "received packet is too short (%d bytes)", data.len);
+		packet->destroy(packet);
+		return JOB_REQUEUE_DIRECT;
+	}
+
+	dst = packet->get_destination(packet);
+	src = packet->get_source(packet);
+	if (!hydra->kernel_interface->all_interfaces_usable(hydra->kernel_interface)
+		&& !hydra->kernel_interface->get_interface(hydra->kernel_interface,
+												   dst, NULL))
+	{
+		DBG3(DBG_NET, "received packet from %#H to %#H on ignored interface",
+			 src, dst);
+		packet->destroy(packet);
+		return JOB_REQUEUE_DIRECT;
+	}
+
+	/* if neither source nor destination port is 500 we assume an IKE packet
+	 * with Non-ESP marker or an ESP packet */
+	if (dst->get_port(dst) != IKEV2_UDP_PORT &&
+		src->get_port(src) != IKEV2_UDP_PORT)
+	{
+		if (memeq(data.ptr, marker.ptr, marker.len))
+		{	/* remove Non-ESP marker */
+			packet->skip_bytes(packet, marker.len);
+		}
+		else
+		{	/* this seems to be an ESP packet */
+			this->esp_cb_mutex->lock(this->esp_cb_mutex);
+			if (this->esp_cb.cb)
+			{
+				this->esp_cb.cb(this->esp_cb.data, packet);
+			}
+			else
+			{
+				packet->destroy(packet);
+			}
+			this->esp_cb_mutex->unlock(this->esp_cb_mutex);
+			return JOB_REQUEUE_DIRECT;
+		}
+	}
+
 	/* parse message header */
 	message = message_create_from_packet(packet);
 	if (message->parse_header(message) != SUCCESS)
 	{
 		DBG1(DBG_NET, "received invalid IKE header from %H - ignored",
 			 packet->get_source(packet));
+		charon->bus->alert(charon->bus, ALERT_PARSE_ERROR_HEADER, message);
 		message->destroy(message);
 		return JOB_REQUEUE_DIRECT;
 	}
 
 	/* check IKE major version */
-	if (message->get_major_version(message) != IKE_MAJOR_VERSION)
+	switch (message->get_major_version(message))
 	{
-		DBG1(DBG_NET, "received unsupported IKE version %d.%d from %H, "
-			 "sending INVALID_MAJOR_VERSION", message->get_major_version(message),
+		case IKEV2_MAJOR_VERSION:
+#ifndef USE_IKEV2
+			if (message->get_exchange_type(message) == IKE_SA_INIT &&
+				message->get_request(message))
+			{
+				send_notify(message, IKEV1_MAJOR_VERSION, INFORMATIONAL_V1,
+							INVALID_MAJOR_VERSION, chunk_empty);
+				supported = FALSE;
+			}
+#endif /* USE_IKEV2 */
+			break;
+		case IKEV1_MAJOR_VERSION:
+#ifndef USE_IKEV1
+			if (message->get_exchange_type(message) == ID_PROT ||
+				message->get_exchange_type(message) == AGGRESSIVE)
+			{
+				send_notify(message, IKEV2_MAJOR_VERSION, INFORMATIONAL,
+							INVALID_MAJOR_VERSION, chunk_empty);
+				supported = FALSE;
+			}
+#endif /* USE_IKEV1 */
+			break;
+		default:
+#ifdef USE_IKEV2
+			send_notify(message, IKEV2_MAJOR_VERSION, INFORMATIONAL,
+						INVALID_MAJOR_VERSION, chunk_empty);
+#endif /* USE_IKEV2 */
+#ifdef USE_IKEV1
+			send_notify(message, IKEV1_MAJOR_VERSION, INFORMATIONAL_V1,
+						INVALID_MAJOR_VERSION, chunk_empty);
+#endif /* USE_IKEV1 */
+			supported = FALSE;
+			break;
+	}
+	if (!supported)
+	{
+		DBG1(DBG_NET, "received unsupported IKE version %d.%d from %H, sending "
+			 "INVALID_MAJOR_VERSION", message->get_major_version(message),
 			 message->get_minor_version(message), packet->get_source(packet));
-		send_notify(message, INVALID_MAJOR_VERSION, chunk_empty);
 		message->destroy(message);
 		return JOB_REQUEUE_DIRECT;
 	}
-
 	if (message->get_request(message) &&
 		message->get_exchange_type(message) == IKE_SA_INIT)
 	{
-		if (drop_ike_sa_init(this, message))
+		if (this->initiator_only || drop_ike_sa_init(this, message))
 		{
 			message->destroy(message);
 			return JOB_REQUEUE_DIRECT;
 		}
 	}
+	if (message->get_exchange_type(message) == ID_PROT ||
+		message->get_exchange_type(message) == AGGRESSIVE)
+	{
+		id = message->get_ike_sa_id(message);
+		if (id->get_responder_spi(id) == 0 &&
+		   (this->initiator_only || drop_ike_sa_init(this, message)))
+		{
+			message->destroy(message);
+			return JOB_REQUEUE_DIRECT;
+		}
+	}
+
 	if (this->receive_delay)
 	{
 		if (this->receive_delay_type == 0 ||
@@ -450,15 +583,33 @@ static job_requeue_t receive_packets(private_receiver_t *this)
 	return JOB_REQUEUE_DIRECT;
 }
 
+METHOD(receiver_t, add_esp_cb, void,
+	private_receiver_t *this, receiver_esp_cb_t callback, void *data)
+{
+	this->esp_cb_mutex->lock(this->esp_cb_mutex);
+	this->esp_cb.cb = callback;
+	this->esp_cb.data = data;
+	this->esp_cb_mutex->unlock(this->esp_cb_mutex);
+}
+
+METHOD(receiver_t, del_esp_cb, void,
+	private_receiver_t *this, receiver_esp_cb_t callback)
+{
+	this->esp_cb_mutex->lock(this->esp_cb_mutex);
+	if (this->esp_cb.cb == callback)
+	{
+		this->esp_cb.cb = NULL;
+		this->esp_cb.data = NULL;
+	}
+	this->esp_cb_mutex->unlock(this->esp_cb_mutex);
+}
+
 METHOD(receiver_t, destroy, void,
 	private_receiver_t *this)
 {
-	if (this->job)
-	{
-		this->job->cancel(this->job);
-	}
 	this->rng->destroy(this->rng);
 	this->hasher->destroy(this->hasher);
+	this->esp_cb_mutex->destroy(this->esp_cb_mutex);
 	free(this);
 }
 
@@ -472,53 +623,64 @@ receiver_t *receiver_create()
 
 	INIT(this,
 		.public = {
+			.add_esp_cb = _add_esp_cb,
+			.del_esp_cb = _del_esp_cb,
 			.destroy = _destroy,
 		},
+		.esp_cb_mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.secret_switch = now,
 		.secret_offset = random() % now,
 	);
 
-	if (lib->settings->get_bool(lib->settings, "charon.dos_protection", TRUE))
+	if (lib->settings->get_bool(lib->settings,
+				"%s.dos_protection", TRUE, charon->name))
 	{
 		this->cookie_threshold = lib->settings->get_int(lib->settings,
-						"charon.cookie_threshold", COOKIE_THRESHOLD_DEFAULT);
+				"%s.cookie_threshold", COOKIE_THRESHOLD_DEFAULT, charon->name);
 		this->block_threshold = lib->settings->get_int(lib->settings,
-						"charon.block_threshold", BLOCK_THRESHOLD_DEFAULT);
+				"%s.block_threshold", BLOCK_THRESHOLD_DEFAULT, charon->name);
 	}
 	this->init_limit_job_load = lib->settings->get_int(lib->settings,
-						"charon.init_limit_job_load", 0);
+				"%s.init_limit_job_load", 0, charon->name);
 	this->init_limit_half_open = lib->settings->get_int(lib->settings,
-						"charon.init_limit_half_open", 0);
+				"%s.init_limit_half_open", 0, charon->name);
 	this->receive_delay = lib->settings->get_int(lib->settings,
-						"charon.receive_delay", 0);
+				"%s.receive_delay", 0, charon->name);
 	this->receive_delay_type = lib->settings->get_int(lib->settings,
-						"charon.receive_delay_type", 0),
+				"%s.receive_delay_type", 0, charon->name),
 	this->receive_delay_request = lib->settings->get_bool(lib->settings,
-						"charon.receive_delay_request", TRUE),
-	this->receive_delay_response = lib->settings->get_int(lib->settings,
-						"charon.receive_delay_response", TRUE),
+				"%s.receive_delay_request", TRUE, charon->name),
+	this->receive_delay_response = lib->settings->get_bool(lib->settings,
+				"%s.receive_delay_response", TRUE, charon->name),
+	this->initiator_only = lib->settings->get_bool(lib->settings,
+				"%s.initiator_only", FALSE, charon->name),
 
 	this->hasher = lib->crypto->create_hasher(lib->crypto, HASH_PREFERRED);
-	if (this->hasher == NULL)
+	if (!this->hasher)
 	{
 		DBG1(DBG_NET, "creating cookie hasher failed, no hashers supported");
 		free(this);
 		return NULL;
 	}
 	this->rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
-	if (this->rng == NULL)
+	if (!this->rng)
 	{
 		DBG1(DBG_NET, "creating cookie RNG failed, no RNG supported");
 		this->hasher->destroy(this->hasher);
 		free(this);
 		return NULL;
 	}
-	this->rng->get_bytes(this->rng, SECRET_LENGTH, this->secret);
+	if (!this->rng->get_bytes(this->rng, SECRET_LENGTH, this->secret))
+	{
+		DBG1(DBG_NET, "creating cookie secret failed");
+		destroy(this);
+		return NULL;
+	}
 	memcpy(this->secret_old, this->secret, SECRET_LENGTH);
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_packets,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->processor->queue_job(lib->processor,
+		(job_t*)callback_job_create_with_prio((callback_job_cb_t)receive_packets,
+			this, NULL, (callback_job_cancel_t)return_false, JOB_PRIO_CRITICAL));
 
 	return &this->public;
 }

@@ -21,7 +21,7 @@
 #ifndef X509_H_
 #define X509_H_
 
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
 #include <credentials/certificates/certificate.h>
 
 /* constraints are currently restricted to the range 0..127 */
@@ -56,6 +56,8 @@ enum x509_flag_t {
 	X509_IP_ADDR_BLOCKS =	(1<<6),
 	/** cert has CRL sign key usage */
 	X509_CRL_SIGN =			(1<<7),
+	/** cert has iKEIntermediate key usage */
+	X509_IKE_INTERMEDIATE =	(1<<8),
 };
 
 /**

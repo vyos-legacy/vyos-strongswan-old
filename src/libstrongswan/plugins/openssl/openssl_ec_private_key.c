@@ -16,13 +16,13 @@
 
 #include <openssl/opensslconf.h>
 
-#ifndef OPENSSL_NO_EC
+#ifndef OPENSSL_NO_ECDSA
 
 #include "openssl_ec_private_key.h"
 #include "openssl_ec_public_key.h"
 #include "openssl_util.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 #include <openssl/evp.h>
 #include <openssl/ecdsa.h>
@@ -423,5 +423,4 @@ error:
 	destroy(this);
 	return NULL;
 }
-#endif /* OPENSSL_NO_EC */
-
+#endif /* OPENSSL_NO_ECDSA */

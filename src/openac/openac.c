@@ -31,7 +31,7 @@
 #include <time.h>
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/asn1.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/certificates/ac.h>
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "integrity check of openac failed\n");
 		exit(SS_RC_DAEMON_INTEGRITY);
 	}
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			lib->settings->get_str(lib->settings, "openac.load", PLUGINS)))
 	{
 		exit(SS_RC_INITIALIZATION_FAILED);

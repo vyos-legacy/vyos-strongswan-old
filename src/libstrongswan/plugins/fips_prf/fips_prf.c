@@ -17,7 +17,7 @@
 
 #include <arpa/inet.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
 typedef struct private_fips_prf_t private_fips_prf_t;
 
@@ -48,7 +48,7 @@ struct private_fips_prf_t {
 	/**
 	 * G function, either SHA1 or DES
 	 */
-	void (*g)(private_fips_prf_t *this, chunk_t c, u_int8_t res[]);
+	bool (*g)(private_fips_prf_t *this, chunk_t c, u_int8_t res[]);
 };
 
 /**
@@ -106,7 +106,7 @@ static void chunk_mod(size_t length, chunk_t chunk, u_int8_t buffer[])
  * 0xcb, 0x0f, 0x6c, 0x55, 0xba, 0xbb, 0x13, 0x78,
  * 0x8e, 0x20, 0xd7, 0x37, 0xa3, 0x27, 0x51, 0x16
  */
-METHOD(prf_t, get_bytes, void,
+METHOD(prf_t, get_bytes, bool,
 	private_fips_prf_t *this, chunk_t seed, u_int8_t w[])
 {
 	int i;
@@ -138,6 +138,8 @@ METHOD(prf_t, get_bytes, void,
 	}
 
 	/* 3.3 done already, mod q not used */
+
+	return TRUE;
 }
 
 METHOD(prf_t, get_block_size, size_t,
@@ -145,11 +147,11 @@ METHOD(prf_t, get_block_size, size_t,
 {
 	return 2 * this->b;
 }
-METHOD(prf_t, allocate_bytes, void,
+METHOD(prf_t, allocate_bytes, bool,
 	private_fips_prf_t *this, chunk_t seed, chunk_t *chunk)
 {
 	*chunk = chunk_alloc(get_block_size(this));
-	get_bytes(this, seed, chunk->ptr);
+	return get_bytes(this, seed, chunk->ptr);
 }
 
 METHOD(prf_t, get_key_size, size_t,
@@ -158,17 +160,18 @@ METHOD(prf_t, get_key_size, size_t,
 	return this->b;
 }
 
-METHOD(prf_t, set_key, void,
+METHOD(prf_t, set_key, bool,
 	private_fips_prf_t *this, chunk_t key)
 {
 	/* save key as "key mod 2^b" */
 	chunk_mod(this->b, key, this->key);
+	return TRUE;
 }
 
 /**
  * Implementation of the G() function based on SHA1
  */
-void g_sha1(private_fips_prf_t *this, chunk_t c, u_int8_t res[])
+static bool g_sha1(private_fips_prf_t *this, chunk_t c, u_int8_t res[])
 {
 	u_int8_t buf[64];
 
@@ -187,8 +190,12 @@ void g_sha1(private_fips_prf_t *this, chunk_t c, u_int8_t res[])
 	}
 
 	/* use the keyed hasher, but use an empty key to use SHA1 IV */
-	this->keyed_prf->set_key(this->keyed_prf, chunk_empty);
-	this->keyed_prf->get_bytes(this->keyed_prf, c, res);
+	if (!this->keyed_prf->set_key(this->keyed_prf, chunk_empty) ||
+		!this->keyed_prf->get_bytes(this->keyed_prf, c, res))
+	{
+		return FALSE;
+	}
+	return TRUE;
 }
 
 METHOD(prf_t, destroy, void,

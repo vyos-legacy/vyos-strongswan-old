@@ -18,12 +18,12 @@
 #include "x509_pkcs10.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <credentials/keys/private_key.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 #include <utils/identification.h>
 
 typedef struct private_x509_pkcs10_t private_x509_pkcs10_t;
@@ -123,10 +123,12 @@ METHOD(certificate_t, has_subject, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_x509_pkcs10_t *this, certificate_t *issuer)
+	private_x509_pkcs10_t *this, certificate_t *issuer,
+	signature_scheme_t *schemep)
 {
 	public_key_t *key;
 	signature_scheme_t scheme;
+	bool valid;
 
 	if (&this->public.interface.interface != issuer)
 	{
@@ -150,8 +152,13 @@ METHOD(certificate_t, issued_by, bool,
 	{
 		return FALSE;
 	}
-	return key->verify(key, scheme, this->certificationRequestInfo,
-									this->signature);
+	valid = key->verify(key, scheme, this->certificationRequestInfo,
+						this->signature);
+	if (valid && schemep)
+	{
+		*schemep = scheme;
+	}
+	return valid;
 }
 
 METHOD(certificate_t, get_public_key, public_key_t*,
@@ -327,7 +334,7 @@ static bool parse_challengePassword(private_x509_pkcs10_t *this, chunk_t blob, i
 		return FALSE;
 	}
 	DBG2(DBG_ASN, "L%d - challengePassword:", level);
-	DBG4(DBG_ASN, "  '%.*s'", blob.len, blob.ptr);
+	DBG4(DBG_ASN, "  '%.*s'", (int)blob.len, blob.ptr);
 	return TRUE;
 }
 
@@ -441,7 +448,7 @@ end:
 	if (success)
 	{
 		/* check if the certificate request is self-signed */
-		if (issued_by(this, &this->public.interface.interface))
+		if (issued_by(this, &this->public.interface.interface, NULL))
 		{
 			this->self_signed = TRUE;
 		}

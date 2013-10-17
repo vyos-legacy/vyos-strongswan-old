@@ -19,7 +19,7 @@
 
 #include "scheduler.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 #include <processing/processor.h>
 #include <processing/jobs/callback_job.h>
 #include <threading/thread.h>
@@ -66,11 +66,6 @@ struct private_scheduler_t {
 	 * Public part of a scheduler_t object.
 	 */
 	 scheduler_t public;
-
-	/**
-	 * Job which queues scheduled jobs to the processor.
-	 */
-	callback_job_t *job;
 
 	/**
 	 * The heap in which the events are stored.
@@ -250,6 +245,7 @@ METHOD(scheduler_t, schedule_job_tv, void,
 
 	event = malloc_thing(event_t);
 	event->job = job;
+	event->job->status = JOB_STATUS_QUEUED;
 	event->time = tv;
 
 	this->mutex->lock(this->mutex);
@@ -308,7 +304,6 @@ METHOD(scheduler_t, destroy, void,
 	private_scheduler_t *this)
 {
 	event_t *event;
-	this->job->cancel(this->job);
 	this->condvar->destroy(this->condvar);
 	this->mutex->destroy(this->mutex);
 	while ((event = remove_event(this)) != NULL)
@@ -325,6 +320,7 @@ METHOD(scheduler_t, destroy, void,
 scheduler_t * scheduler_create()
 {
 	private_scheduler_t *this;
+	callback_job_t *job;
 
 	INIT(this,
 		.public = {
@@ -341,9 +337,9 @@ scheduler_t * scheduler_create()
 
 	this->heap = (event_t**)calloc(this->heap_size + 1, sizeof(event_t*));
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)schedule,
-										this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	job = callback_job_create_with_prio((callback_job_cb_t)schedule, this,
+										NULL, return_false, JOB_PRIO_CRITICAL);
+	lib->processor->queue_job(lib->processor, (job_t*)job);
 
 	return &this->public;
 }

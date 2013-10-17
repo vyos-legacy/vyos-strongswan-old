@@ -22,6 +22,9 @@
  * @defgroup bio bio
  * @ingroup libstrongswan
  *
+ * @defgroup collections collections
+ * @ingroup libstrongswan
+ *
  * @defgroup credentials credentials
  * @ingroup libstrongswan
  *
@@ -29,6 +32,9 @@
  * @ingroup credentials
  *
  * @defgroup certificates certificates
+ * @ingroup credentials
+ *
+ * @defgroup containers containers
  * @ingroup credentials
  *
  * @defgroup sets sets
@@ -42,6 +48,18 @@
  *
  * @defgroup fetcher fetcher
  * @ingroup libstrongswan
+ *
+ * @defgroup resolver resolver
+ * @ingroup libstrongswan
+ *
+ * @defgroup ipsec ipsec
+ * @ingroup libstrongswan
+ *
+ * @defgroup networking networking
+ * @ingroup libstrongswan
+ *
+ * @defgroup streams streams
+ * @ingroup networking
  *
  * @defgroup plugins plugins
  * @ingroup libstrongswan
@@ -67,20 +85,31 @@
 #ifndef LIBRARY_H_
 #define LIBRARY_H_
 
-#include "printf_hook.h"
-#include "utils.h"
-#include "chunk.h"
-#include "settings.h"
-#include "integrity_checker.h"
+#ifndef CONFIG_H_INCLUDED
+# error config.h not included, pass "-include [...]/config.h" to gcc
+#endif
+
+/* make sure we include printf_hook.h and utils.h first */
+#include "utils/printf_hook.h"
+#include "utils/utils.h"
+#include "networking/host_resolver.h"
+#include "networking/streams/stream_manager.h"
 #include "processing/processor.h"
 #include "processing/scheduler.h"
+#include "processing/watcher.h"
 #include "crypto/crypto_factory.h"
+#include "crypto/proposal/proposal_keywords.h"
 #include "fetcher/fetcher_manager.h"
+#include "resolver/resolver_manager.h"
 #include "database/database_factory.h"
 #include "credentials/credential_factory.h"
 #include "credentials/credential_manager.h"
 #include "credentials/cred_encoding.h"
+#include "utils/chunk.h"
+#include "utils/capabilities.h"
+#include "utils/integrity_checker.h"
 #include "utils/leak_detective.h"
+#include "utils/settings.h"
 #include "plugins/plugin_loader.h"
 
 typedef struct library_t library_t;
@@ -113,6 +142,16 @@ struct library_t {
 	printf_hook_t *printf_hook;
 
 	/**
+	 * Proposal keywords registry
+	 */
+	proposal_keywords_t *proposal;
+
+	/**
+	 * POSIX capability dropping
+	 */
+	capabilities_t *caps;
+
+	/**
 	 * crypto algorithm registry and factory
 	 */
 	crypto_factory_t *crypto;
@@ -138,6 +177,11 @@ struct library_t {
 	fetcher_manager_t *fetcher;
 
 	/**
+	 * Manager for DNS resolvers
+	 */
+	 resolver_manager_t *resolver;
+
+	/**
 	 * database construction factory
 	 */
 	database_factory_t *db;
@@ -158,6 +202,21 @@ struct library_t {
 	scheduler_t *scheduler;
 
 	/**
+	 * File descriptor monitoring
+	 */
+	watcher_t *watcher;
+
+	/**
+	 * Streams and Services
+	 */
+	stream_manager_t *streams;
+
+	/**
+	 * resolve hosts by DNS name
+	 */
+	host_resolver_t *hosts;
+
+	/**
 	 * various settings loaded from settings file
 	 */
 	settings_t *settings;
@@ -175,6 +234,9 @@ struct library_t {
 
 /**
  * Initialize library, creates "lib" instance.
+ *
+ * library_init() may be called multiple times in a single process, but each
+ * caller should call library_deinit() for each call to library_init().
  *
  * @param settings		file to read settings from, may be NULL for default
  * @return				FALSE if integrity check failed

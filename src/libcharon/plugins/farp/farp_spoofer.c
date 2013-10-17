@@ -45,11 +45,6 @@ struct private_farp_spoofer_t {
 	farp_listener_t *listener;
 
 	/**
-	 * Callback job to read ARP requests
-	 */
-	callback_job_t *job;
-
-	/**
 	 * RAW socket for ARP requests
 	 */
 	int skt;
@@ -101,20 +96,16 @@ static void send_arp(private_farp_spoofer_t *this,
 /**
  * ARP request receiving
  */
-static job_requeue_t receive_arp(private_farp_spoofer_t *this)
+static bool receive_arp(private_farp_spoofer_t *this)
 {
 	struct sockaddr_ll addr;
 	socklen_t addr_len = sizeof(addr);
 	arp_t arp;
-	int oldstate;
 	ssize_t len;
 	host_t *local, *remote;
 
-	oldstate = thread_cancelability(TRUE);
-	len = recvfrom(this->skt, &arp, sizeof(arp), 0,
+	len = recvfrom(this->skt, &arp, sizeof(arp), MSG_DONTWAIT,
 				   (struct sockaddr*)&addr, &addr_len);
-	thread_cancelability(oldstate);
-
 	if (len == sizeof(arp))
 	{
 		local = host_create_from_chunk(AF_INET,
@@ -129,13 +120,13 @@ static job_requeue_t receive_arp(private_farp_spoofer_t *this)
 		remote->destroy(remote);
 	}
 
-	return JOB_REQUEUE_DIRECT;
+	return TRUE;
 }
 
 METHOD(farp_spoofer_t, destroy, void,
 	private_farp_spoofer_t *this)
 {
-	this->job->cancel(this->job);
+	lib->watcher->remove(lib->watcher, this->skt);
 	close(this->skt);
 	free(this);
 }
@@ -189,10 +180,8 @@ farp_spoofer_t *farp_spoofer_create(farp_listener_t *listener)
 		return NULL;
 	}
 
-	this->job = callback_job_create_with_prio((callback_job_cb_t)receive_arp,
-									this, NULL, NULL, JOB_PRIO_CRITICAL);
-	lib->processor->queue_job(lib->processor, (job_t*)this->job);
+	lib->watcher->add(lib->watcher, this->skt, WATCHER_READ,
+					  (watcher_cb_t)receive_arp, this);
 
 	return &this->public;
 }
-

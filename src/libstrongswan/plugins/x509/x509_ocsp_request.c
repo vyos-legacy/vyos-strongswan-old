@@ -21,8 +21,8 @@
 #include <asn1/oid.h>
 #include <asn1/asn1.h>
 #include <utils/identification.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 #include <credentials/certificates/x509.h>
 #include <credentials/keys/private_key.h>
 
@@ -159,22 +159,24 @@ static chunk_t build_requestList(private_x509_ocsp_request_t *this)
 				enumerator_t *enumerator;
 
 				issuer = cert->get_subject(cert);
-				hasher->allocate_hash(hasher, issuer->get_encoding(issuer),
-									  &issuerNameHash);
-				hasher->destroy(hasher);
-
-				enumerator = this->candidates->create_enumerator(this->candidates);
-				while (enumerator->enumerate(enumerator, &x509))
+				if (hasher->allocate_hash(hasher, issuer->get_encoding(issuer),
+										  &issuerNameHash))
 				{
-					chunk_t request, serialNumber;
+					enumerator = this->candidates->create_enumerator(
+															this->candidates);
+					while (enumerator->enumerate(enumerator, &x509))
+					{
+						chunk_t request, serialNumber;
 
-					serialNumber = x509->get_serial(x509);
-					request = build_Request(this, issuerNameHash, issuerKeyHash,
-											serialNumber);
-					list = chunk_cat("mm", list, request);
+						serialNumber = x509->get_serial(x509);
+						request = build_Request(this, issuerNameHash,
+												issuerKeyHash, serialNumber);
+						list = chunk_cat("mm", list, request);
+					}
+					enumerator->destroy(enumerator);
+					chunk_free(&issuerNameHash);
 				}
-				enumerator->destroy(enumerator);
-				chunk_free(&issuerNameHash);
+				hasher->destroy(hasher);
 			}
 		}
 		else
@@ -199,15 +201,15 @@ static chunk_t build_nonce(private_x509_ocsp_request_t *this)
 	rng_t *rng;
 
 	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (rng)
+	if (!rng || !rng->allocate_bytes(rng, NONCE_LEN, &this->nonce))
 	{
-		rng->allocate_bytes(rng, NONCE_LEN, &this->nonce);
-		rng->destroy(rng);
-		return asn1_wrap(ASN1_SEQUENCE, "cm", ASN1_nonce_oid,
-					asn1_simple_object(ASN1_OCTET_STRING, this->nonce));
+		DBG1(DBG_LIB, "creating OCSP request nonce failed, no RNG found");
+		DESTROY_IF(rng);
+		return chunk_empty;
 	}
-	DBG1(DBG_LIB, "creating OCSP request nonce failed, no RNG found");
-	return chunk_empty;
+	rng->destroy(rng);
+	return asn1_wrap(ASN1_SEQUENCE, "cm", ASN1_nonce_oid,
+				asn1_simple_object(ASN1_OCTET_STRING, this->nonce));
 }
 
 /**
@@ -364,7 +366,8 @@ METHOD(certificate_t, has_issuer, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_x509_ocsp_request_t *this, certificate_t *issuer)
+	private_x509_ocsp_request_t *this, certificate_t *issuer,
+	signature_scheme_t *scheme)
 {
 	DBG1(DBG_LIB, "OCSP request validation not implemented!");
 	return FALSE;

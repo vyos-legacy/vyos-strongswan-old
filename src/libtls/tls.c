@@ -15,7 +15,7 @@
 
 #include "tls.h"
 
-#include <debug.h>
+#include <utils/debug.h>
 
 #include "tls_protection.h"
 #include "tls_compression.h"
@@ -105,16 +105,6 @@ struct private_tls_t {
 	 * Role this TLS stack acts as.
 	 */
 	bool is_server;
-
-	/**
-	 * Server identity
-	 */
-	identification_t *server;
-
-	/**
-	 * Peer identity
-	 */
-	identification_t *peer;
 
 	/**
 	 * Negotiated TLS version
@@ -359,6 +349,18 @@ METHOD(tls_t, is_server, bool,
 	return this->is_server;
 }
 
+METHOD(tls_t, get_server_id, identification_t*,
+	private_tls_t *this)
+{
+	return this->handshake->get_server_id(this->handshake);
+}
+
+METHOD(tls_t, get_peer_id, identification_t*,
+	private_tls_t *this)
+{
+	return this->handshake->get_peer_id(this->handshake);
+}
+
 METHOD(tls_t, get_version, tls_version_t,
 	private_tls_t *this)
 {
@@ -421,8 +423,6 @@ METHOD(tls_t, destroy, void,
 	this->fragmentation->destroy(this->fragmentation);
 	this->crypto->destroy(this->crypto);
 	this->handshake->destroy(this->handshake);
-	DESTROY_IF(this->peer);
-	this->server->destroy(this->server);
 	DESTROY_IF(this->application);
 	this->alert->destroy(this->alert);
 
@@ -457,6 +457,8 @@ tls_t *tls_create(bool is_server, identification_t *server,
 			.process = _process,
 			.build = _build,
 			.is_server = _is_server,
+			.get_server_id = _get_server_id,
+			.get_peer_id = _get_peer_id,
 			.get_version = _get_version,
 			.set_version = _set_version,
 			.get_purpose = _get_purpose,
@@ -466,8 +468,6 @@ tls_t *tls_create(bool is_server, identification_t *server,
 		},
 		.is_server = is_server,
 		.version = TLS_1_2,
-		.server = server->clone(server),
-		.peer = peer ? peer->clone(peer) : NULL,
 		.application = application,
 		.purpose = purpose,
 	);
@@ -477,12 +477,12 @@ tls_t *tls_create(bool is_server, identification_t *server,
 	if (is_server)
 	{
 		this->handshake = &tls_server_create(&this->public, this->crypto,
-							this->alert, this->server, this->peer)->handshake;
+										this->alert, server, peer)->handshake;
 	}
 	else
 	{
 		this->handshake = &tls_peer_create(&this->public, this->crypto,
-							this->alert, this->peer, this->server)->handshake;
+										this->alert, peer, server)->handshake;
 	}
 	this->fragmentation = tls_fragmentation_create(this->handshake, this->alert,
 												   this->application);

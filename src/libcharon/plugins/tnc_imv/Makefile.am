@@ -1,12 +1,13 @@
-
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra \
 	-I$(top_srcdir)/src/libcharon \
 	-I$(top_srcdir)/src/libtncif \
-	-I$(top_srcdir)/src/libtnccs
+	-I$(top_srcdir)/src/libtnccs \
+	-I$(top_srcdir)/src/libtls
 
-AM_CFLAGS = -rdynamic
+AM_CFLAGS = \
+	-rdynamic
 
 if MONOLITHIC
 noinst_LTLIBRARIES = libstrongswan-tnc-imv.la
@@ -23,4 +24,3 @@ libstrongswan_tnc_imv_la_SOURCES = \
 	tnc_imv_recommendations.h tnc_imv_recommendations.c
 
 libstrongswan_tnc_imv_la_LDFLAGS = -module -avoid-version
-

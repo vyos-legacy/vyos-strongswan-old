@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 
-#include <dispatcher.h>
-#include <debug.h>
+#include <fast_dispatcher.h>
+#include <utils/debug.h>
 #include <database/database.h>
 
 #include "filter/auth_filter.h"
@@ -26,7 +26,7 @@
 
 int main(int arc, char *argv[])
 {
-	dispatcher_t *dispatcher;
+	fast_dispatcher_t *dispatcher;
 	database_t *db;
 	char *socket;
 	bool debug;
@@ -34,7 +34,7 @@ int main(int arc, char *argv[])
 	int timeout, threads;
 
 	library_init(NULL);
-	if (!lib->plugins->load(lib->plugins, NULL,
+	if (!lib->plugins->load(lib->plugins,
 			lib->settings->get_str(lib->settings, "medsrv.load", PLUGINS)))
 	{
 		return 1;
@@ -58,14 +58,14 @@ int main(int arc, char *argv[])
 		return 1;
 	}
 
-	dispatcher = dispatcher_create(socket, debug, timeout,
-								   (context_constructor_t)user_create, db);
+	dispatcher = fast_dispatcher_create(socket, debug, timeout,
+					(fast_context_constructor_t)user_create, db);
 	dispatcher->add_filter(dispatcher,
-						(filter_constructor_t)auth_filter_create, db);
+					(fast_filter_constructor_t)auth_filter_create, db);
 	dispatcher->add_controller(dispatcher,
-						(controller_constructor_t)user_controller_create, db);
+					(fast_controller_constructor_t)user_controller_create, db);
 	dispatcher->add_controller(dispatcher,
-						(controller_constructor_t)peer_controller_create, db);
+					(fast_controller_constructor_t)peer_controller_create, db);
 
 	dispatcher->run(dispatcher, threads);
 
@@ -76,4 +76,3 @@ int main(int arc, char *argv[])
 	library_deinit();
 	return 0;
 }
-

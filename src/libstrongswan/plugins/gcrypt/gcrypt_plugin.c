@@ -23,7 +23,7 @@
 #include "gcrypt_rsa_public_key.h"
 
 #include <library.h>
-#include <debug.h>
+#include <utils/debug.h>
 #include <threading/mutex.h>
 
 #include <errno.h>
@@ -132,9 +132,9 @@ METHOD(plugin_t, get_features, int,
 			PLUGIN_PROVIDE(CRYPTER, ENCR_TWOFISH_CBC, 32),
 		/* hashers */
 		PLUGIN_REGISTER(HASHER, gcrypt_hasher_create),
+			PLUGIN_PROVIDE(HASHER, HASH_SHA1),
 			PLUGIN_PROVIDE(HASHER, HASH_MD4),
 			PLUGIN_PROVIDE(HASHER, HASH_MD5),
-			PLUGIN_PROVIDE(HASHER, HASH_SHA1),
 			PLUGIN_PROVIDE(HASHER, HASH_SHA224),
 			PLUGIN_PROVIDE(HASHER, HASH_SHA256),
 			PLUGIN_PROVIDE(HASHER, HASH_SHA384),

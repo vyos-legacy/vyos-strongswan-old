@@ -22,15 +22,47 @@
 #define CREDENTIAL_MANAGER_H_
 
 typedef struct credential_manager_t credential_manager_t;
+typedef enum credential_hook_type_t credential_hook_type_t;
 
 #include <utils/identification.h>
-#include <utils/enumerator.h>
+#include <collections/enumerator.h>
 #include <credentials/auth_cfg.h>
 #include <credentials/credential_set.h>
 #include <credentials/keys/private_key.h>
 #include <credentials/keys/shared_key.h>
 #include <credentials/certificates/certificate.h>
 #include <credentials/cert_validator.h>
+
+/**
+ * Type of a credential hook error/event.
+ */
+enum credential_hook_type_t {
+	/** The certificate has expired (or is not yet valid) */
+	CRED_HOOK_EXPIRED,
+	/** The certificate has been revoked */
+	CRED_HOOK_REVOKED,
+	/** Checking certificate revocation failed. This does not necessarily mean
+	 *  the certificate is rejected, just that revocation checking failed. */
+	CRED_HOOK_VALIDATION_FAILED,
+	/** No trusted issuer certificate has been found for this certificate */
+	CRED_HOOK_NO_ISSUER,
+	/** Encountered a self-signed (root) certificate, but it is not trusted */
+	CRED_HOOK_UNTRUSTED_ROOT,
+	/** Maximum trust chain length exceeded for certificate */
+	CRED_HOOK_EXCEEDED_PATH_LEN,
+	/** The certificate violates some other kind of policy and gets rejected */
+	CRED_HOOK_POLICY_VIOLATION,
+};
+
+/**
+ * Hook function to invoke on certificate validation errors.
+ *
+ * @param data			user data supplied during hook registration
+ * @param type			type of validation error/event
+ * @param cert			associated certificate
+ */
+typedef void (*credential_hook_t)(void *data, credential_hook_type_t type,
+								  certificate_t *cert);
 
 /**
  * Manages credentials using credential_sets.
@@ -89,7 +121,7 @@ struct credential_manager_t {
 	 * @param type		kind of requested shared key
 	 * @param first		first subject between key is shared
 	 * @param second	second subject between key is shared
-	 * @return			enumerator over shared keys
+	 * @return			enumerator over (shared_key_t*,id_match_t,id_match_t)
 	 */
 	enumerator_t *(*create_shared_enumerator)(credential_manager_t *this,
 								shared_key_type_t type,
@@ -204,10 +236,12 @@ struct credential_manager_t {
 	 *
 	 * @param subject	subject certificate to check
 	 * @param issuer	issuer certificate that potentially has signed subject
+	 * @param scheme	receives used signature scheme, if given
 	 * @return			TRUE if issuer signed subject
 	 */
 	bool (*issued_by)(credential_manager_t *this,
-					  certificate_t *subject, certificate_t *issuer);
+					  certificate_t *subject, certificate_t *issuer,
+					  signature_scheme_t *scheme);
 
 	/**
 	 * Register a credential set to the manager.
@@ -230,10 +264,14 @@ struct credential_manager_t {
 	 * operation, sets may be added for the calling thread only. This
 	 * does not require a write lock and is therefore a much cheaper
 	 * operation.
+	 * The exclusive option allows to disable all other credential sets
+	 * until the set is deregistered.
 	 *
 	 * @param set		set to register
+	 * @param exclusive	TRUE to disable all other sets for this thread
 	 */
-	void (*add_local_set)(credential_manager_t *this, credential_set_t *set);
+	void (*add_local_set)(credential_manager_t *this, credential_set_t *set,
+						  bool exclusive);
 
 	/**
 	 * Unregister a thread local credential set from the manager.
@@ -255,6 +293,28 @@ struct credential_manager_t {
 	 * @param vdtr		validator to unregister
 	 */
 	void (*remove_validator)(credential_manager_t *this, cert_validator_t *vdtr);
+
+	/**
+	 * Set a hook to call on certain credential validation errors.
+	 *
+	 * @param hook		hook to register, NULL to unregister
+	 * @param data		data to pass to hook
+	 */
+	void (*set_hook)(credential_manager_t *this, credential_hook_t hook,
+					 void *data);
+
+	/**
+	 * Call the registered credential hook, if any.
+	 *
+	 * While hooks are usually called by the credential manager itself, some
+	 * validator plugins might raise hooks as well if they consider certificates
+	 * invalid.
+	 *
+	 * @param type		type of the event
+	 * @param cert		associated certificate
+	 */
+	void (*call_hook)(credential_manager_t *this, credential_hook_type_t type,
+					  certificate_t *cert);
 
 	/**
 	 * Destroy a credential_manager instance.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,14 +18,16 @@
 #include <pa_tnc/pa_tnc_msg.h>
 #include <bio/bio_writer.h>
 #include <bio/bio_reader.h>
-#include <debug.h>
+#include <utils/debug.h>
+
+#include <string.h>
 
 typedef struct private_tcg_pts_attr_req_file_meas_t private_tcg_pts_attr_req_file_meas_t;
 
 /**
  * Request File Measurement
  * see section 3.19.1 of PTS Protocol: Binding to TNC IF-M Specification
- * 
+ *
  *					   1				   2				   3
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -54,25 +56,20 @@ struct private_tcg_pts_attr_req_file_meas_t {
 	tcg_pts_attr_req_file_meas_t public;
 
 	/**
-	 * Attribute vendor ID
+	 * Vendor-specific attribute type
 	 */
-	pen_t vendor_id;
-
-	/**
-	 * Attribute type
-	 */
-	u_int32_t type;
+	pen_type_t type;
 
 	/**
 	 * Attribute value
 	 */
 	chunk_t value;
-	
+
 	/**
 	 * Noskip flag
 	 */
 	bool noskip_flag;
-	
+
 	/**
 	 * Directory Contents flag
 	 */
@@ -82,12 +79,12 @@ struct private_tcg_pts_attr_req_file_meas_t {
 	 * Request ID
 	 */
 	u_int16_t request_id;
-	
+
 	/**
 	 * UTF8 Encoding of Delimiter Character
 	 */
 	u_int32_t delimiter;
-	
+
 	/**
 	 * Fully Qualified File Pathname
 	 */
@@ -99,13 +96,7 @@ struct private_tcg_pts_attr_req_file_meas_t {
 	refcount_t ref;
 };
 
-METHOD(pa_tnc_attr_t, get_vendor_id, pen_t,
-	private_tcg_pts_attr_req_file_meas_t *this)
-{
-	return this->vendor_id;
-}
-
-METHOD(pa_tnc_attr_t, get_type, u_int32_t,
+METHOD(pa_tnc_attr_t, get_type, pen_type_t,
 	private_tcg_pts_attr_req_file_meas_t *this)
 {
 	return this->type;
@@ -135,7 +126,11 @@ METHOD(pa_tnc_attr_t, build, void,
 	u_int8_t flags = PTS_REQ_FILE_MEAS_NO_FLAGS;
 	chunk_t pathname;
 	bio_writer_t *writer;
-	
+
+	if (this->value.ptr)
+	{
+		return;
+	}
 	if (this->directory_flag)
 	{
 		flags |= DIRECTORY_CONTENTS_FLAG;
@@ -148,7 +143,7 @@ METHOD(pa_tnc_attr_t, build, void,
 	writer->write_uint16(writer, this->request_id);
 	writer->write_uint32(writer, this->delimiter);
 	writer->write_data  (writer, pathname);
-	this->value = chunk_clone(writer->get_buf(writer));
+	this->value = writer->extract_buf(writer);
 	writer->destroy(writer);
 }
 
@@ -159,7 +154,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 	u_int8_t flags;
 	u_int8_t reserved;
 	chunk_t pathname;
-	
+
 	if (this->value.len < PTS_REQ_FILE_MEAS_SIZE)
 	{
 		DBG1(DBG_TNC, "insufficient data for Request File Measurement");
@@ -176,10 +171,7 @@ METHOD(pa_tnc_attr_t, process, status_t,
 
 	this->directory_flag = (flags & DIRECTORY_CONTENTS_FLAG) !=
 							PTS_REQ_FILE_MEAS_NO_FLAGS;
-
-	this->pathname = malloc(pathname.len + 1);
-	memcpy(this->pathname, pathname.ptr, pathname.len);
-	this->pathname[pathname.len] = '\0';
+	this->pathname = strndup(pathname.ptr, pathname.len);
 
 	reader->destroy(reader);
 	return SUCCESS;
@@ -240,7 +232,6 @@ pa_tnc_attr_t *tcg_pts_attr_req_file_meas_create(bool directory_flag,
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -255,8 +246,7 @@ pa_tnc_attr_t *tcg_pts_attr_req_file_meas_create(bool directory_flag,
 			.get_delimiter = _get_delimiter,
 			.get_pathname = _get_pathname,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_REQ_FILE_MEAS,
+		.type = { PEN_TCG, TCG_PTS_REQ_FILE_MEAS },
 		.directory_flag = directory_flag,
 		.request_id = request_id,
 		.delimiter = delimiter,
@@ -278,7 +268,6 @@ pa_tnc_attr_t *tcg_pts_attr_req_file_meas_create_from_data(chunk_t data)
 	INIT(this,
 		.public = {
 			.pa_tnc_attribute = {
-				.get_vendor_id = _get_vendor_id,
 				.get_type = _get_type,
 				.get_value = _get_value,
 				.get_noskip_flag = _get_noskip_flag,
@@ -293,8 +282,7 @@ pa_tnc_attr_t *tcg_pts_attr_req_file_meas_create_from_data(chunk_t data)
 			.get_delimiter = _get_delimiter,
 			.get_pathname = _get_pathname,
 		},
-		.vendor_id = PEN_TCG,
-		.type = TCG_PTS_REQ_FILE_MEAS,
+		.type = { PEN_TCG, TCG_PTS_REQ_FILE_MEAS },
 		.value = chunk_clone(data),
 		.ref = 1,
 	);

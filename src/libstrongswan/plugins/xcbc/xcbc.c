@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -17,21 +18,24 @@
 
 #include "xcbc.h"
 
-#include <debug.h>
+#include <utils/debug.h>
+#include <crypto/mac.h>
+#include <crypto/prfs/mac_prf.h>
+#include <crypto/signers/mac_signer.h>
 
-typedef struct private_xcbc_t private_xcbc_t;
+typedef struct private_mac_t private_mac_t;
 
 /**
- * Private data of a xcbc_t object.
+ * Private data of a mac_t object.
  *
  * The variable names are the same as in the RFC.
  */
-struct private_xcbc_t {
+struct private_mac_t {
 
 	/**
-	 * Public xcbc_t interface.
+	 * Public mac_t interface.
 	 */
-	xcbc_t public;
+	mac_t public;
 
 	/**
 	 * Block size, in bytes
@@ -77,7 +81,7 @@ struct private_xcbc_t {
 /**
  * xcbc supplied data, but do not run final operation
  */
-static void update(private_xcbc_t *this, chunk_t data)
+static bool update(private_mac_t *this, chunk_t data)
 {
 	chunk_t iv;
 
@@ -90,7 +94,7 @@ static void update(private_xcbc_t *this, chunk_t data)
 	{	/* no complete block, just copy into remaining */
 		memcpy(this->remaining + this->remaining_bytes, data.ptr, data.len);
 		this->remaining_bytes += data.len;
-		return;
+		return TRUE;
 	}
 
 	iv = chunk_alloca(this->b);
@@ -106,7 +110,10 @@ static void update(private_xcbc_t *this, chunk_t data)
 		   this->b - this->remaining_bytes);
 	data = chunk_skip(data, this->b - this->remaining_bytes);
 	memxor(this->e, this->remaining, this->b);
-	this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL);
+	if (!this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL))
+	{
+		return FALSE;
+	}
 
 	/* process blocks M[2] ... M[n-1] */
 	while (data.len > this->b)
@@ -114,18 +121,24 @@ static void update(private_xcbc_t *this, chunk_t data)
 		memcpy(this->remaining, data.ptr, this->b);
 		data = chunk_skip(data, this->b);
 		memxor(this->e, this->remaining, this->b);
-		this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL);
+		if (!this->k1->encrypt(this->k1, chunk_create(this->e, this->b),
+							   iv, NULL))
+		{
+			return FALSE;
+		}
 	}
 
 	/* store remaining bytes of block M[n] */
 	memcpy(this->remaining, data.ptr, data.len);
 	this->remaining_bytes = data.len;
+
+	return TRUE;
 }
 
 /**
  * run last round, data is in this->e
  */
-static void final(private_xcbc_t *this, u_int8_t *out)
+static bool final(private_mac_t *this, u_int8_t *out)
 {
 	chunk_t iv;
 
@@ -141,7 +154,6 @@ static void final(private_xcbc_t *this, u_int8_t *out)
 		 */
 		memxor(this->e, this->remaining, this->b);
 		memxor(this->e, this->k2, this->b);
-		this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL);
 	}
 	else
 	{
@@ -164,7 +176,10 @@ static void final(private_xcbc_t *this, u_int8_t *out)
 		 */
 		memxor(this->e, this->remaining, this->b);
 		memxor(this->e, this->k3, this->b);
-		this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL);
+	}
+	if (!this->k1->encrypt(this->k1, chunk_create(this->e, this->b), iv, NULL))
+	{
+		return FALSE;
 	}
 
 	memcpy(out, this->e, this->b);
@@ -173,28 +188,34 @@ static void final(private_xcbc_t *this, u_int8_t *out)
 	memset(this->e, 0, this->b);
 	this->remaining_bytes = 0;
 	this->zero = TRUE;
+
+	return TRUE;
 }
 
-METHOD(xcbc_t, get_mac, void,
-	private_xcbc_t *this, chunk_t data, u_int8_t *out)
+METHOD(mac_t, get_mac, bool,
+	private_mac_t *this, chunk_t data, u_int8_t *out)
 {
 	/* update E, do not process last block */
-	update(this, data);
+	if (!update(this, data))
+	{
+		return FALSE;
+	}
 
 	if (out)
 	{	/* if not in append mode, process last block and output result */
-		final(this, out);
+		return final(this, out);
 	}
+	return TRUE;
 }
 
-METHOD(xcbc_t, get_block_size, size_t,
-	private_xcbc_t *this)
+METHOD(mac_t, get_mac_size, size_t,
+	private_mac_t *this)
 {
 	return this->b;
 }
 
-METHOD(xcbc_t, set_key, void,
-	private_xcbc_t *this, chunk_t key)
+METHOD(mac_t, set_key, bool,
+	private_mac_t *this, chunk_t key)
 {
 	chunk_t iv, k1, lengthened;
 
@@ -213,8 +234,11 @@ METHOD(xcbc_t, set_key, void,
 	{	/* shorten key using xcbc */
 		lengthened = chunk_alloca(this->b);
 		memset(lengthened.ptr, 0, lengthened.len);
-		set_key(this, lengthened);
-		get_mac(this, key, lengthened.ptr);
+		if (!set_key(this, lengthened) ||
+			!get_mac(this, key, lengthened.ptr))
+		{
+			return FALSE;
+		}
 	}
 
 	k1 = chunk_alloca(this->b);
@@ -228,20 +252,26 @@ METHOD(xcbc_t, set_key, void,
 	 *     K2 = 0x02020202020202020202020202020202 encrypted with Key K
 	 *     K3 = 0x03030303030303030303030303030303 encrypted with Key K
 	 */
-	this->k1->set_key(this->k1, lengthened);
-	memset(this->k2, 0x02, this->b);
-	this->k1->encrypt(this->k1, chunk_create(this->k2, this->b), iv, NULL);
-	memset(this->k3, 0x03, this->b);
-	this->k1->encrypt(this->k1, chunk_create(this->k3, this->b), iv, NULL);
-	memset(k1.ptr, 0x01, this->b);
-	this->k1->encrypt(this->k1, k1, iv, NULL);
-	this->k1->set_key(this->k1, k1);
 
+	memset(k1.ptr, 0x01, this->b);
+	memset(this->k2, 0x02, this->b);
+	memset(this->k3, 0x03, this->b);
+
+	if (!this->k1->set_key(this->k1, lengthened) ||
+		!this->k1->encrypt(this->k1, chunk_create(this->k2, this->b), iv, NULL) ||
+		!this->k1->encrypt(this->k1, chunk_create(this->k3, this->b), iv, NULL) ||
+		!this->k1->encrypt(this->k1, k1, iv, NULL) ||
+		!this->k1->set_key(this->k1, k1))
+	{
+		memwipe(k1.ptr, k1.len);
+		return FALSE;
+	}
 	memwipe(k1.ptr, k1.len);
+	return TRUE;
 }
 
-METHOD(xcbc_t, destroy, void,
-	private_xcbc_t *this)
+METHOD(mac_t, destroy, void,
+	private_mac_t *this)
 {
 	this->k1->destroy(this->k1);
 	memwipe(this->k2, this->b);
@@ -256,9 +286,9 @@ METHOD(xcbc_t, destroy, void,
 /*
  * Described in header
  */
-xcbc_t *xcbc_create(encryption_algorithm_t algo, size_t key_size)
+static mac_t *xcbc_create(encryption_algorithm_t algo, size_t key_size)
 {
-	private_xcbc_t *this;
+	private_mac_t *this;
 	crypter_t *crypter;
 	u_int8_t b;
 
@@ -278,7 +308,7 @@ xcbc_t *xcbc_create(encryption_algorithm_t algo, size_t key_size)
 	INIT(this,
 		.public = {
 			.get_mac = _get_mac,
-			.get_block_size = _get_block_size,
+			.get_mac_size = _get_mac_size,
 			.set_key = _set_key,
 			.destroy = _destroy,
 		},
@@ -295,3 +325,55 @@ xcbc_t *xcbc_create(encryption_algorithm_t algo, size_t key_size)
 	return &this->public;
 }
 
+/*
+ * Described in header.
+ */
+prf_t *xcbc_prf_create(pseudo_random_function_t algo)
+{
+	mac_t *xcbc;
+
+	switch (algo)
+	{
+		case PRF_AES128_XCBC:
+			xcbc = xcbc_create(ENCR_AES_CBC, 16);
+			break;
+		case PRF_CAMELLIA128_XCBC:
+			xcbc = xcbc_create(ENCR_CAMELLIA_CBC, 16);
+			break;
+		default:
+			return NULL;
+	}
+	if (xcbc)
+	{
+		return mac_prf_create(xcbc);
+	}
+	return NULL;
+}
+
+/*
+ * Described in header
+ */
+signer_t *xcbc_signer_create(integrity_algorithm_t algo)
+{
+	size_t trunc;
+	mac_t *xcbc;
+
+	switch (algo)
+	{
+		case AUTH_AES_XCBC_96:
+			xcbc = xcbc_create(ENCR_AES_CBC, 16);
+			trunc = 12;
+			break;
+		case AUTH_CAMELLIA_XCBC_96:
+			xcbc = xcbc_create(ENCR_CAMELLIA_CBC, 16);
+			trunc = 12;
+			break;
+		default:
+			return NULL;
+	}
+	if (xcbc)
+	{
+		return mac_signer_create(xcbc, trunc);
+	}
+	return NULL;
+}

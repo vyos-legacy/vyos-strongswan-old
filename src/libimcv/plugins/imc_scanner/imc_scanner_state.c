@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011 Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2011-2012 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -14,7 +15,9 @@
 
 #include "imc_scanner_state.h"
 
-#include <debug.h>
+#include <tncif_names.h>
+
+#include <utils/debug.h>
 
 typedef struct private_imc_scanner_state_t private_imc_scanner_state_t;
 
@@ -39,6 +42,11 @@ struct private_imc_scanner_state_t {
 	TNC_ConnectionState state;
 
 	/**
+	 * Assessment/Evaluation Result
+	 */
+	TNC_IMV_Evaluation_Result result;
+
+	/**
 	 * Does the TNCCS connection support long message types?
 	 */
 	bool has_long;
@@ -48,6 +56,10 @@ struct private_imc_scanner_state_t {
 	 */
 	bool has_excl;
 
+	/**
+	 * Maximum PA-TNC message size for this TNCCS connection
+	 */
+	u_int32_t max_msg_len;
 };
 
 METHOD(imc_state_t, get_connection_id, TNC_ConnectionID,
@@ -75,10 +87,40 @@ METHOD(imc_state_t, set_flags, void,
 	this->has_excl = has_excl;
 }
 
+METHOD(imc_state_t, set_max_msg_len, void,
+	private_imc_scanner_state_t *this, u_int32_t max_msg_len)
+{
+	this->max_msg_len = max_msg_len;
+}
+
+METHOD(imc_state_t, get_max_msg_len, u_int32_t,
+	private_imc_scanner_state_t *this)
+{
+	return this->max_msg_len;
+}
+
 METHOD(imc_state_t, change_state, void,
 	private_imc_scanner_state_t *this, TNC_ConnectionState new_state)
 {
 	this->state = new_state;
+}
+
+METHOD(imc_state_t, set_result, void,
+	private_imc_scanner_state_t *this, TNC_IMCID id,
+	TNC_IMV_Evaluation_Result result)
+{
+	this->result = result;
+}
+
+METHOD(imc_state_t, get_result, bool,
+	private_imc_scanner_state_t *this, TNC_IMCID id,
+	TNC_IMV_Evaluation_Result *result)
+{
+	if (result)
+	{
+		*result = this->result;
+	}
+	return this->result != TNC_IMV_EVALUATION_RESULT_DONT_KNOW;
 }
 
 METHOD(imc_state_t, destroy, void,
@@ -101,14 +143,19 @@ imc_state_t *imc_scanner_state_create(TNC_ConnectionID connection_id)
 				.has_long = _has_long,
 				.has_excl = _has_excl,
 				.set_flags = _set_flags,
+				.set_max_msg_len = _set_max_msg_len,
+				.get_max_msg_len = _get_max_msg_len,
 				.change_state = _change_state,
+				.set_result = _set_result,
+				.get_result = _get_result,
 				.destroy = _destroy,
 			},
 		},
 		.state = TNC_CONNECTION_STATE_CREATE,
+		.result = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
 		.connection_id = connection_id,
 	);
-	
+
 	return &this->public.interface;
 }
 

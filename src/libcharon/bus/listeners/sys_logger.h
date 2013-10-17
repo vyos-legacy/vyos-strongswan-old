@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2012 Tobias Brunner
  * Copyright (C) 2006 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -21,7 +22,7 @@
 #ifndef SYS_LOGGER_H_
 #define SYS_LOGGER_H_
 
-#include <bus/listeners/listener.h>
+#include <bus/listeners/logger.h>
 
 typedef struct sys_logger_t sys_logger_t;
 
@@ -31,9 +32,9 @@ typedef struct sys_logger_t sys_logger_t;
 struct sys_logger_t {
 
 	/**
-	 * Implements the listener_t interface.
+	 * Implements the logger_t interface.
 	 */
-	listener_t listener;
+	logger_t logger;
 
 	/**
 	 * Set the loglevel for a debug group.
@@ -42,6 +43,13 @@ struct sys_logger_t {
 	 * @param level		max level to log (0..4)
 	 */
 	void (*set_level) (sys_logger_t *this, debug_t group, level_t level);
+
+	/**
+	 * Set options used by this logger.
+	 *
+	 * @param ike_name	TRUE to prefix the name of the IKE_SA
+	 */
+	void (*set_options) (sys_logger_t *this, bool ike_name);
 
 	/**
 	 * Destroys a sys_logger_t object.
@@ -53,9 +61,8 @@ struct sys_logger_t {
  * Constructor to create a sys_logger_t object.
  *
  * @param facility	syslog facility to use
- * @param ike_name	TRUE to prefix the name of the IKE_SA
  * @return			sys_logger_t object
  */
-sys_logger_t *sys_logger_create(int facility, bool ike_name);
+sys_logger_t *sys_logger_create(int facility);
 
 #endif /** SYS_LOGGER_H_ @}*/

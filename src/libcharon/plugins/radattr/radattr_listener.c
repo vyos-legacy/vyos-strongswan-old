@@ -172,9 +172,9 @@ static void add_radius_attribute(private_radattr_listener_t *this,
 
 METHOD(listener_t, message, bool,
 	private_radattr_listener_t *this,
-	ike_sa_t *ike_sa, message_t *message, bool incoming)
+	ike_sa_t *ike_sa, message_t *message, bool incoming, bool plain)
 {
-	if (ike_sa->supports_extension(ike_sa, EXT_STRONGSWAN) &&
+	if (plain && ike_sa->supports_extension(ike_sa, EXT_STRONGSWAN) &&
 		message->get_exchange_type(message) == IKE_AUTH &&
 		message->get_payload(message, EXTENSIBLE_AUTHENTICATION))
 	{
@@ -212,9 +212,9 @@ radattr_listener_t *radattr_listener_create()
 			.destroy = _destroy,
 		},
 		.dir = lib->settings->get_str(lib->settings,
-									  "charon.plugins.radattr.dir", NULL),
+							"%s.plugins.radattr.dir", NULL, charon->name),
 		.mid = lib->settings->get_int(lib->settings,
-									  "charon.plugins.radattr.message_id", -1),
+							"%s.plugins.radattr.message_id", -1, charon->name),
 	);
 
 	return &this->public;

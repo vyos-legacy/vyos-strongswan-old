@@ -5,56 +5,43 @@ include $(CLEAR_VARS)
 # to PRODUCT_PACKAGES in
 #   build/target/product/core.mk
 # possible executables are
-#   starter - allows to control and configure the daemons from the command line
-#   charon - the IKEv2 daemon
-#   pluto - the IKEv1 daemon
+#   starter - allows to control and configure the daemon from the command line
+#   charon - the IKE daemon
+#   scepclient - SCEP client
 
-# if you enable starter and/or pluto (see above) uncomment the proper lines here
+# if you enable starter or scepclient (see above) uncomment the proper
+# lines here
 # strongswan_BUILD_STARTER := true
-# strongswan_BUILD_PLUTO := true
+# strongswan_BUILD_SCEPCLIENT := true
 
 # this is the list of plugins that are built into libstrongswan and charon
 # also these plugins are loaded by default (if not changed in strongswan.conf)
-strongswan_CHARON_PLUGINS := openssl fips-prf random pubkey pkcs1 \
-	pem xcbc hmac kernel-netlink socket-default android \
-	stroke eap-identity eap-mschapv2 eap-md5
+strongswan_CHARON_PLUGINS := android-log openssl fips-prf random nonce pubkey \
+	pkcs1 pkcs8 pem xcbc hmac kernel-netlink socket-default android-dns \
+	stroke eap-identity eap-mschapv2 eap-md5 eap-gtc
 
-ifneq ($(strongswan_BUILD_PLUTO),)
-# if both daemons are enabled we use raw sockets in charon
-strongswan_CHARON_PLUGINS := $(subst socket-default,socket-raw, \
-				$(strongswan_CHARON_PLUGINS))
-# plugins loaded by pluto
-strongswan_PLUTO_PLUGINS := openssl fips-prf random pubkey pkcs1 \
-	pem xcbc hmac kernel-netlink xauth
+ifneq ($(strongswan_BUILD_SCEPCLIENT),)
+# plugins loaded by scepclient
+strongswan_SCEPCLIENT_PLUGINS := openssl curl fips-prf random pkcs1 pkcs7 pem
 endif
 
 strongswan_STARTER_PLUGINS := kernel-netlink
 
 # list of all plugins - used to enable them with the function below
 strongswan_PLUGINS := $(sort $(strongswan_CHARON_PLUGINS) \
-			     $(strongswan_PLUTO_PLUGINS) \
-			     $(strongswan_STARTER_PLUGINS))
+			     $(strongswan_STARTER_PLUGINS) \
+			     $(strongswan_SCEPCLIENT_PLUGINS))
 
-# helper macros to only add source files for plugins included in the list above
-# source files are relative to the android.mk that called the macro
-plugin_enabled = $(findstring $(1), $(strongswan_PLUGINS))
-add_plugin = $(if $(call plugin_enabled,$(1)), \
-               $(patsubst $(LOCAL_PATH)/%,%, \
-                 $(wildcard \
-                   $(subst %,$(subst -,_,$(strip $(1))), \
-                     $(LOCAL_PATH)/plugins/%/%*.c \
-                    ) \
-                  ) \
-                ) \
-              )
+include $(LOCAL_PATH)/Android.common.mk
 
 # includes
 strongswan_PATH := $(LOCAL_PATH)
 libvstr_PATH := external/strongswan-support/vstr/include
+libcurl_PATH := external/strongswan-support/libcurl/include
 libgmp_PATH := external/strongswan-support/gmp
+openssl_PATH := external/openssl/include
 
 # some definitions
-strongswan_VERSION := "4.6.4"
 strongswan_DIR := "/system/bin"
 strongswan_SBINDIR := "/system/bin"
 strongswan_PIDDIR := "/data/misc/vpn"
@@ -84,9 +71,12 @@ strongswan_CFLAGS := \
 	-DOPENSSL_NO_ECDSA \
 	-DOPENSSL_NO_ECDH \
 	-DOPENSSL_NO_ENGINE \
+	-DCONFIG_H_INCLUDED \
 	-DCAPABILITIES \
 	-DCAPABILITIES_NATIVE \
 	-DMONOLITHIC \
+	-DUSE_IKEV1 \
+	-DUSE_IKEV2 \
 	-DUSE_VSTR \
 	-DDEBUG \
 	-DROUTING_TABLE=0 \
@@ -110,21 +100,19 @@ strongswan_BUILD := \
 	libhydra \
 	libstrongswan \
 	libtncif \
-	libtnccs
+	libtnccs \
+	libimcv
 
 ifneq ($(strongswan_BUILD_STARTER),)
 strongswan_BUILD += \
-	libfreeswan \
 	starter \
 	stroke \
 	ipsec
 endif
 
-ifneq ($(strongswan_BUILD_PLUTO),)
+ifneq ($(strongswan_BUILD_SCEPCLIENT),)
 strongswan_BUILD += \
-	libfreeswan \
-	pluto \
-	whack
+	scepclient
 endif
 
 include $(addprefix $(LOCAL_PATH)/src/,$(addsuffix /Android.mk, \

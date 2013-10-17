@@ -1,7 +1,9 @@
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan \
+	-DFIPS_MODE=${fips_mode}
 
-INCLUDES = -I$(top_srcdir)/src/libstrongswan
-
-AM_CFLAGS = -rdynamic
+AM_CFLAGS = \
+	-rdynamic
 
 if MONOLITHIC
 noinst_LTLIBRARIES = libstrongswan-openssl.la
@@ -22,8 +24,12 @@ libstrongswan_openssl_la_SOURCES = \
 	openssl_ec_private_key.c openssl_ec_private_key.h \
 	openssl_ec_public_key.c openssl_ec_public_key.h \
 	openssl_x509.c openssl_x509.h \
-	openssl_crl.c openssl_crl.h
+	openssl_crl.c openssl_crl.h \
+	openssl_pkcs7.c openssl_pkcs7.h \
+	openssl_pkcs12.c openssl_pkcs12.h \
+	openssl_rng.c openssl_rng.h \
+	openssl_hmac.c openssl_hmac.h \
+	openssl_gcm.c openssl_gcm.h
 
 libstrongswan_openssl_la_LDFLAGS = -module -avoid-version
 libstrongswan_openssl_la_LIBADD  = -lcrypto
-

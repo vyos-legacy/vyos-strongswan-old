@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 Andreas Steffen
- *
+ * Copyright (C) 2011-2012 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,8 +15,8 @@
 
 #include "pts/components/pts_component_manager.h"
 
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_pts_component_manager_t private_pts_component_manager_t;
 typedef struct vendor_entry_t vendor_entry_t;
@@ -57,7 +56,7 @@ struct vendor_entry_t {
 
 	/**
 	 * List of vendor-specific registered Functional Components
-	 */	
+	 */
 	linked_list_t *components;
 };
 
@@ -104,7 +103,7 @@ struct private_pts_component_manager_t {
 };
 
 METHOD(pts_component_manager_t, add_vendor, void,
-	private_pts_component_manager_t *this, pen_t vendor_id, 
+	private_pts_component_manager_t *this, pen_t vendor_id,
 	enum_name_t *comp_func_names, int qualifier_type_size,
 	char *qualifier_flag_names, enum_name_t *qualifier_type_names)
 {
@@ -270,8 +269,7 @@ METHOD(pts_component_manager_t, create, pts_component_t*,
 			{
 				if (entry2->name == name->get_name(name) && entry2->create)
 				{
-					component = entry2->create(name->get_qualifier(name),
-											   depth, pts_db);
+					component = entry2->create(depth, pts_db);
 					break;
 				}
 			}
@@ -287,7 +285,7 @@ METHOD(pts_component_manager_t, create, pts_component_t*,
 METHOD(pts_component_manager_t, destroy, void,
 	private_pts_component_manager_t *this)
 {
-	this->list->destroy_function(this->list, (void *)vendor_entry_destroy); 
+	this->list->destroy_function(this->list, (void *)vendor_entry_destroy);
 	free(this);
 }
 

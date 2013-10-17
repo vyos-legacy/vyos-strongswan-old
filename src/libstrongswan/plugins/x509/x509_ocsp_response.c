@@ -23,8 +23,8 @@
 #include <asn1/asn1.h>
 #include <asn1/asn1_parser.h>
 #include <utils/identification.h>
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 #include <library.h>
 #include <credentials/certificates/x509.h>
@@ -201,19 +201,22 @@ METHOD(ocsp_response_t, get_status, cert_validation_t,
 		/* check issuerNameHash, if available */
 		else if (response->issuerNameHash.ptr)
 		{
+			id = issuercert->get_subject(issuercert);
 			hasher = lib->crypto->create_hasher(lib->crypto,
 							hasher_algorithm_from_oid(response->hashAlgorithm));
-			if (!hasher)
+			if (!hasher ||
+				!hasher->allocate_hash(hasher, id->get_encoding(id), &hash))
 			{
+				DESTROY_IF(hasher);
 				continue;
 			}
-			id = issuercert->get_subject(issuercert);
-			hasher->allocate_hash(hasher, id->get_encoding(id), &hash);
 			hasher->destroy(hasher);
 			if (!chunk_equals(hash, response->issuerNameHash))
 			{
+				free(hash.ptr);
 				continue;
 			}
+			free(hash.ptr);
 		}
 		else
 		{
@@ -670,7 +673,8 @@ METHOD(certificate_t, has_issuer, id_match_t,
 }
 
 METHOD(certificate_t, issued_by, bool,
-	private_x509_ocsp_response_t *this, certificate_t *issuer)
+	private_x509_ocsp_response_t *this, certificate_t *issuer,
+	signature_scheme_t *schemep)
 {
 	public_key_t *key;
 	signature_scheme_t scheme;
@@ -722,6 +726,10 @@ METHOD(certificate_t, issued_by, bool,
 	}
 	valid = key->verify(key, scheme, this->tbsResponseData, this->signature);
 	key->destroy(key);
+	if (valid && schemep)
+	{
+		*schemep = scheme;
+	}
 	return valid;
 }
 

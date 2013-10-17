@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,7 +16,6 @@
 #include "imv_attestation_build.h"
 #include "imv_attestation_state.h"
 
-#include <libpts.h>
 #include <tcg/tcg_pts_attr_proto_caps.h>
 #include <tcg/tcg_pts_attr_meas_algo.h>
 #include <tcg/tcg_pts_attr_dh_nonce_params_req.h>
@@ -25,12 +24,10 @@
 #include <tcg/tcg_pts_attr_get_aik.h>
 #include <tcg/tcg_pts_attr_req_func_comp_evid.h>
 #include <tcg/tcg_pts_attr_gen_attest_evid.h>
-#include <tcg/tcg_pts_attr_req_file_meas.h>
-#include <tcg/tcg_pts_attr_req_file_meta.h>
 
-#include <debug.h>
+#include <utils/debug.h>
 
-bool imv_attestation_build(linked_list_t *attr_list,
+bool imv_attestation_build(imv_msg_t *out_msg,
 						   imv_attestation_state_t *attestation_state,
 						   pts_meas_algorithms_t supported_algorithms,
 						   pts_dh_group_t supported_dh_groups,
@@ -50,8 +47,7 @@ bool imv_attestation_build(linked_list_t *attr_list,
 	if (handshake_state == IMV_ATTESTATION_STATE_NONCE_REQ &&
 		!(pts->get_proto_caps(pts) & PTS_PROTO_CAPS_D))
 	{
-		DBG2(DBG_IMV, "PTS-IMC does not support DH Nonce negotiation - "
-					  "advancing to TPM Initialization");
+		DBG2(DBG_IMV, "PTS-IMC does not support DH Nonce negotiation");
 		handshake_state = IMV_ATTESTATION_STATE_TPM_INIT;
 	}
 
@@ -62,9 +58,8 @@ bool imv_attestation_build(linked_list_t *attr_list,
 	if (handshake_state == IMV_ATTESTATION_STATE_TPM_INIT &&
 		!(pts->get_proto_caps(pts) & PTS_PROTO_CAPS_T))
 	{
-		DBG2(DBG_IMV, "PTS-IMC made no TPM available - "
-					  "advancing to File Measurements");
-		handshake_state = IMV_ATTESTATION_STATE_MEAS;
+		DBG2(DBG_IMV, "PTS-IMC made no TPM available");
+		handshake_state = IMV_ATTESTATION_STATE_END;
 	}
 
 	switch (handshake_state)
@@ -77,12 +72,12 @@ bool imv_attestation_build(linked_list_t *attr_list,
 			flags = pts->get_proto_caps(pts);
 			attr = tcg_pts_attr_proto_caps_create(flags, TRUE);
 			attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
+			out_msg->add_attribute(out_msg, attr);
 
 			/* Send Measurement Algorithms attribute */
 			attr = tcg_pts_attr_meas_algo_create(supported_algorithms, FALSE);
 			attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
+			out_msg->add_attribute(out_msg, attr);
 
 			attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_NONCE_REQ);
@@ -98,7 +93,7 @@ bool imv_attestation_build(linked_list_t *attr_list,
 			attr = tcg_pts_attr_dh_nonce_params_req_create(min_nonce_len,
 													 supported_dh_groups);
 			attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
+			out_msg->add_attribute(out_msg, attr);
 
 			attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_TPM_INIT);
@@ -117,87 +112,21 @@ bool imv_attestation_build(linked_list_t *attr_list,
 				attr = tcg_pts_attr_dh_nonce_finish_create(selected_algorithm,
 											initiator_value, initiator_nonce);
 				attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 			}
 
 			/* Send Get TPM Version attribute */
 			attr = tcg_pts_attr_get_tpm_version_info_create();
 			attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
+			out_msg->add_attribute(out_msg, attr);
 
 			/* Send Get AIK attribute */
 			attr = tcg_pts_attr_get_aik_create();
 			attr->set_noskip_flag(attr, TRUE);
-			attr_list->insert_last(attr_list, attr);
-
-			attestation_state->set_handshake_state(attestation_state,
-										IMV_ATTESTATION_STATE_MEAS);
-			break;
-		}
-		case IMV_ATTESTATION_STATE_MEAS:
-		{
-			enumerator_t *enumerator;
-			u_int32_t delimiter = SOLIDUS_UTF;
-			char *platform_info, *pathname;
-			u_int16_t request_id;
-			int id, type;
-			bool is_dir;
+			out_msg->add_attribute(out_msg, attr);
 
 			attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_COMP_EVID);
-
-			/* Get Platform and OS of the PTS-IMC */
-			platform_info = pts->get_platform_info(pts);
-
-			if (!pts_db || !platform_info)
-			{
-				DBG1(DBG_IMV, "%s%s%s not available",
-					(pts_db) ? "" : "pts database",
-					(!pts_db && !platform_info) ? "and" : "",
-					(platform_info) ? "" : "platform info");
-				break;
-			}
-			DBG1(DBG_IMV, "platform is '%s'", platform_info);
-
-			/* Send Request File Metadata attribute */
-			enumerator = pts_db->create_file_meta_enumerator(pts_db,
-															 platform_info);
-			if (!enumerator)
-			{
-				break;
-			}
-			while (enumerator->enumerate(enumerator, &type, &pathname))
-			{
-				is_dir = (type != 0);
-				DBG2(DBG_IMV, "metadata request for %s '%s'",
-					 is_dir ? "directory" : "file", pathname);
-				attr = tcg_pts_attr_req_file_meta_create(is_dir, delimiter,
-														 pathname);
-				attr->set_noskip_flag(attr, TRUE);
-				attr_list->insert_last(attr_list, attr);
-			}
-			enumerator->destroy(enumerator);
-			
-			/* Send Request File Measurement attribute */
-			enumerator = pts_db->create_file_meas_enumerator(pts_db,
-															 platform_info);
-			if (!enumerator)
-			{
-				break;
-			}
-			while (enumerator->enumerate(enumerator, &id, &type, &pathname))
-			{
-				is_dir = (type != 0);
-				request_id = attestation_state->add_file_meas_request(
-							attestation_state, id, is_dir);
-				DBG2(DBG_IMV, "measurement request %d for %s '%s'",
-					 request_id, is_dir ? "directory" : "file", pathname);
-				attr = tcg_pts_attr_req_file_meas_create(is_dir, request_id,
-													 delimiter, pathname);
-				attr->set_noskip_flag(attr, TRUE);
-				attr_list->insert_last(attr_list, attr);
-			}
-			enumerator->destroy(enumerator);
 			break;
 		}
 		case IMV_ATTESTATION_STATE_COMP_EVID:
@@ -252,15 +181,15 @@ bool imv_attestation_build(linked_list_t *attr_list,
 				comp_name = pts_comp_func_name_create(vid, name, qualifier);
 				comp_name->log(comp_name, "  ");
 
-				comp = pts_components->create(pts_components, comp_name,
-											  depth, pts_db);
+				comp = attestation_state->create_component(attestation_state,
+													comp_name, depth, pts_db);
 				if (!comp)
 				{
-					DBG2(DBG_IMV, "    not registered: removed from request");
+					DBG2(DBG_IMV, "    not registered or duplicate"
+								  " - removed from request");
 					comp_name->destroy(comp_name);
 					continue;
 				}
-				attestation_state->add_component(attestation_state, comp);
 				if (first_component)
 				{
 					attr = tcg_pts_attr_req_func_comp_evid_create();
@@ -277,12 +206,12 @@ bool imv_attestation_build(linked_list_t *attr_list,
 			if (attr)
 			{
 				/* Send Request Functional Component Evidence attribute */
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 
 				/* Send Generate Attestation Evidence attribute */
 				attr = tcg_pts_attr_gen_attest_evid_create();
 				attr->set_noskip_flag(attr, TRUE);
-				attr_list->insert_last(attr_list, attr);
+				out_msg->add_attribute(out_msg, attr);
 
 				attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_EVID_FINAL);
@@ -290,10 +219,15 @@ bool imv_attestation_build(linked_list_t *attr_list,
 			break;
 		}
 		case IMV_ATTESTATION_STATE_EVID_FINAL:
-			attestation_state->set_handshake_state(attestation_state,
+			if (attestation_state->components_finalized(attestation_state))
+			{
+				attestation_state->set_handshake_state(attestation_state,
 										IMV_ATTESTATION_STATE_END);
+			}
 			break;
 		case IMV_ATTESTATION_STATE_END:
+			attestation_state->set_handshake_state(attestation_state,
+										IMV_ATTESTATION_STATE_END);
 			break;
 	}
 	return TRUE;

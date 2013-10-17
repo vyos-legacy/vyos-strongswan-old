@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Sansar Choinyambuu
+ * Copyright (C) 2011-2012 Sansar Choinyambuu, Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -15,10 +15,15 @@
 
 #include "imc_attestation_state.h"
 
-#include <utils/linked_list.h>
-#include <debug.h>
+#include <libpts.h>
+
+#include <tncif_names.h>
+
+#include <collections/linked_list.h>
+#include <utils/debug.h>
 
 typedef struct private_imc_attestation_state_t private_imc_attestation_state_t;
+typedef struct func_comp_t func_comp_t;
 
 /**
  * Private data of an imc_attestation_state_t object.
@@ -41,6 +46,11 @@ struct private_imc_attestation_state_t {
 	TNC_ConnectionState state;
 
 	/**
+	 * Assessment/Evaluation Result
+	 */
+	TNC_IMV_Evaluation_Result result;
+
+	/**
 	 * Does the TNCCS connection support long message types?
 	 */
 	bool has_long;
@@ -51,12 +61,22 @@ struct private_imc_attestation_state_t {
 	bool has_excl;
 
 	/**
+	 * Maximum PA-TNC message size for this TNCCS connection
+	 */
+	u_int32_t max_msg_len;
+
+	/**
 	 * PTS object
 	 */
 	pts_t *pts;
 
 	/**
-	 * PTS Component Evidence list
+	 * List of Functional Components
+	 */
+	linked_list_t *components;
+
+	/**
+	 * Functional Component Evidence cache list
 	 */
 	linked_list_t *list;
 
@@ -87,18 +107,50 @@ METHOD(imc_state_t, set_flags, void,
 	this->has_excl = has_excl;
 }
 
+METHOD(imc_state_t, set_max_msg_len, void,
+	private_imc_attestation_state_t *this, u_int32_t max_msg_len)
+{
+	this->max_msg_len = max_msg_len;
+}
+
+METHOD(imc_state_t, get_max_msg_len, u_int32_t,
+	private_imc_attestation_state_t *this)
+{
+	return this->max_msg_len;
+}
+
 METHOD(imc_state_t, change_state, void,
 	private_imc_attestation_state_t *this, TNC_ConnectionState new_state)
 {
 	this->state = new_state;
 }
 
+METHOD(imc_state_t, set_result, void,
+	private_imc_attestation_state_t *this, TNC_IMCID id,
+	TNC_IMV_Evaluation_Result result)
+{
+	this->result = result;
+}
+
+METHOD(imc_state_t, get_result, bool,
+	private_imc_attestation_state_t *this, TNC_IMCID id,
+	TNC_IMV_Evaluation_Result *result)
+{
+	if (result)
+	{
+		*result = this->result;
+	}
+	return this->result != TNC_IMV_EVALUATION_RESULT_DONT_KNOW;
+}
 
 METHOD(imc_state_t, destroy, void,
 	private_imc_attestation_state_t *this)
 {
 	this->pts->destroy(this->pts);
-	this->list->destroy_offset(this->list, offsetof(pts_comp_evidence_t, destroy));
+	this->components->destroy_offset(this->components,
+							offsetof(pts_component_t, destroy));
+	this->list->destroy_offset(this->list,
+							offsetof(pts_comp_evidence_t, destroy));
 	free(this);
 }
 
@@ -108,10 +160,42 @@ METHOD(imc_attestation_state_t, get_pts, pts_t*,
 	return this->pts;
 }
 
-METHOD(imc_attestation_state_t, add_evidence, void,
-	private_imc_attestation_state_t *this, pts_comp_evidence_t *evidence)
+METHOD(imc_attestation_state_t, create_component, pts_component_t*,
+	private_imc_attestation_state_t *this, pts_comp_func_name_t *name,
+	u_int32_t depth)
 {
-	this->list->insert_last(this->list, evidence);
+	enumerator_t *enumerator;
+	pts_component_t *component;
+	bool found = FALSE;
+
+	enumerator = this->components->create_enumerator(this->components);
+	while (enumerator->enumerate(enumerator, &component))
+	{
+		if (name->equals(name, component->get_comp_func_name(component)))
+		{
+			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (!found)
+	{
+		component = pts_components->create(pts_components, name, depth, NULL);
+		if (!component)
+		{
+			return NULL;
+		}
+		this->components->insert_last(this->components, component);
+
+	}
+	return component;
+}
+
+METHOD(imc_attestation_state_t, add_evidence, void,
+	private_imc_attestation_state_t *this, pts_comp_evidence_t *evid)
+{
+	this->list->insert_last(this->list, evid);
 }
 
 METHOD(imc_attestation_state_t, next_evidence, bool,
@@ -126,7 +210,6 @@ METHOD(imc_attestation_state_t, next_evidence, bool,
 imc_state_t *imc_attestation_state_create(TNC_ConnectionID connection_id)
 {
 	private_imc_attestation_state_t *this;
-	char *platform_info;
 
 	INIT(this,
 		.public = {
@@ -135,26 +218,26 @@ imc_state_t *imc_attestation_state_create(TNC_ConnectionID connection_id)
 				.has_long = _has_long,
 				.has_excl = _has_excl,
 				.set_flags = _set_flags,
+				.set_max_msg_len = _set_max_msg_len,
+				.get_max_msg_len = _get_max_msg_len,
 				.change_state = _change_state,
+				.set_result = _set_result,
+				.get_result = _get_result,
 				.destroy = _destroy,
 			},
 			.get_pts = _get_pts,
+			.create_component = _create_component,
 			.add_evidence = _add_evidence,
 			.next_evidence = _next_evidence,
 		},
 		.connection_id = connection_id,
 		.state = TNC_CONNECTION_STATE_CREATE,
+		.result = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
 		.pts = pts_create(TRUE),
+		.components = linked_list_create(),
 		.list = linked_list_create(),
 	);
 
-	platform_info = lib->settings->get_str(lib->settings,
-						 "libimcv.plugins.imc-attestation.platform_info", NULL);
-	if (platform_info)
-	{
-		this->pts->set_platform_info(this->pts, platform_info);
-	}
-	
 	return &this->public.interface;
 }
 

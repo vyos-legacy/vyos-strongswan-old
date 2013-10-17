@@ -1,5 +1,7 @@
-moon::echo 1 > /proc/sys/net/ipv4/ip_forward
-carol::ipsec start
+moon::iptables-restore < /etc/iptables.rules
+carol::iptables-restore < /etc/iptables.rules
 moon::ipsec start
-carol::sleep 2 
+carol::ipsec start
+carol::sleep 1
 carol::ipsec up home
+carol::sleep 1

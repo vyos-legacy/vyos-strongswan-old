@@ -27,7 +27,7 @@
 #include <stroke_msg.h>
 #include <credentials/credential_set.h>
 #include <credentials/certificates/certificate.h>
-#include <utils/linked_list.h>
+#include <collections/linked_list.h>
 
 typedef struct stroke_cred_t stroke_cred_t;
 
@@ -68,13 +68,12 @@ struct stroke_cred_t {
 	/**
 	 * Load a raw public key and serve it through the credential_set.
 	 *
-	 * @param type			type of the raw public key (RSA or ECDSA)
-	 * @param filename		file to load raw public key from
+	 * @param filename		encoding or file to load raw public key from
 	 * @param identity		identity of the raw public key owner
 	 * @return				reference to loaded raw public key, or NULL
 	 */
-	certificate_t* (*load_pubkey)(stroke_cred_t *this, key_type_t type,
-								  char *filename, identification_t *identity);
+	certificate_t* (*load_pubkey)(stroke_cred_t *this, char *filename,
+								  identification_t *identity);
 
 	/**
 	 * Add a shared secret to serve through the credential_set.

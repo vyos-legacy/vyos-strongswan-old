@@ -14,9 +14,11 @@
  */
 
 /**
+ * @defgroup imc_attestation imc_attestation
+ * @ingroup libpts_plugins
  *
  * @defgroup imc_attestation_state_t imc_attestation_state
- * @{ @ingroup imc_attestation_state
+ * @{ @ingroup imc_attestation
  */
 
 #ifndef IMC_ATTESTATION_STATE_H_
@@ -24,6 +26,7 @@
 
 #include <imc/imc_state.h>
 #include <pts/pts.h>
+#include <pts/components/pts_component.h>
 #include <pts/components/pts_comp_evidence.h>
 #include <library.h>
 
@@ -47,14 +50,24 @@ struct imc_attestation_state_t {
 	pts_t* (*get_pts)(imc_attestation_state_t *this);
 
 	/**
-	 * Add an entry to the Component Evidence list
+	 * Create and add an entry to the list of Functional Components
 	 *
-	 * @param entry				Component Evidence entry
+	 * @param name				Component Functional Name
+	 * @param depth				Sub-component Depth
+	 * @return					created functional component instance or NULL
 	 */
-	void (*add_evidence)(imc_attestation_state_t *this, pts_comp_evidence_t *entry);
+	pts_component_t* (*create_component)(imc_attestation_state_t *this,
+							 pts_comp_func_name_t *name, u_int32_t depth);
 
 	/**
-	 * Removes next Component Evidence entry from list and returns it
+	 * Add an entry to the Component Evidence cache list
+	 *
+	 * @param evid				Component Evidence entry
+	 */
+	void (*add_evidence)(imc_attestation_state_t *this, pts_comp_evidence_t *evid);
+
+	/**
+	 * Removes next entry from the Component Evidence cache list and returns it
 	 *
 	 * @param evid				Next Component Evidence entry
 	 * @return					TRUE if next entry is available

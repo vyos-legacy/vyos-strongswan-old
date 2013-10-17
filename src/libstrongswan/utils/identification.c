@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Tobias Brunner
+ * Copyright (C) 2009-2012 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -49,10 +49,10 @@ ENUM_BEGIN(id_type_names, ID_ANY, ID_KEY_ID,
 	"ID_DER_ASN1_DN",
 	"ID_DER_ASN1_GN",
 	"ID_KEY_ID");
-ENUM_NEXT(id_type_names, ID_DER_ASN1_GN_URI, ID_MYID, ID_KEY_ID,
+ENUM_NEXT(id_type_names, ID_DER_ASN1_GN_URI, ID_USER_ID, ID_KEY_ID,
 	"ID_DER_ASN1_GN_URI",
-	"ID_MYID");
-ENUM_END(id_type_names, ID_MYID);
+	"ID_USER_ID");
+ENUM_END(id_type_names, ID_USER_ID);
 
 /**
  * coding of X.501 distinguished name
@@ -277,6 +277,23 @@ METHOD(identification_t, create_part_enumerator, enumerator_t*,
 }
 
 /**
+ * Print a separator between two RDNs
+ */
+static inline bool print_separator(char **buf, size_t *len)
+{
+	int written;
+
+	written = snprintf(*buf, *len, ", ");
+	if (written < 0 || written >= *len)
+	{
+		return FALSE;
+	}
+	*buf += written;
+	*len -= written;
+	return TRUE;
+}
+
+/**
  * Print a DN with all its RDN in a buffer to present it to the user
  */
 static void dntoa(chunk_t dn, char *buf, size_t len)
@@ -292,8 +309,14 @@ static void dntoa(chunk_t dn, char *buf, size_t len)
 	{
 		empty = FALSE;
 
-		oid = asn1_known_oid(oid_data);
+		/* previous RDN was empty but it wasn't the last one */
+		if (finished && !print_separator(&buf, &len))
+		{
+			break;
+		}
+		finished = FALSE;
 
+		oid = asn1_known_oid(oid_data);
 		if (oid == OID_UNKNOWN)
 		{
 			written = snprintf(buf, len, "%#B=", &oid_data);
@@ -310,7 +333,7 @@ static void dntoa(chunk_t dn, char *buf, size_t len)
 		len -= written;
 
 		chunk_printable(data, &printable, '?');
-		written = snprintf(buf, len, "%.*s", printable.len, printable.ptr);
+		written = snprintf(buf, len, "%.*s", (int)printable.len, printable.ptr);
 		chunk_free(&printable);
 		if (written < 0 || written >= len)
 		{
@@ -319,19 +342,17 @@ static void dntoa(chunk_t dn, char *buf, size_t len)
 		buf += written;
 		len -= written;
 
-		if (data.ptr + data.len != dn.ptr + dn.len)
-		{
-			written = snprintf(buf, len, ", ");
-			if (written < 0 || written >= len)
-			{
-				break;
-			}
-			buf += written;
-			len -= written;
+		if (!data.ptr)
+		{	/* we can't calculate if we're finished, assume we are */
+			finished = TRUE;
 		}
-		else
+		else if (data.ptr + data.len == dn.ptr + dn.len)
 		{
 			finished = TRUE;
+			break;
+		}
+		else if (!print_separator(&buf, &len))
+		{
 			break;
 		}
 	}
@@ -377,7 +398,7 @@ static status_t atodn(char *src, chunk_t *dn)
 		switch (state)
 		{
 			case SEARCH_OID:
-				if (*src != ' ' && *src != '/' && *src !=  ',')
+				if (*src != ' ' && *src != '/' && *src !=  ',' && *src != '\0')
 				{
 					oid.ptr = src;
 					oid.len = 1;
@@ -414,14 +435,22 @@ static status_t atodn(char *src, chunk_t *dn)
 				}
 				break;
 			case SEARCH_NAME:
-				if (*src != ' ' && *src != '=')
+				if (*src == ' ' || *src == '=')
+				{
+					break;
+				}
+				else if (*src != ',' && *src != '/' && *src != '\0')
 				{
 					name.ptr = src;
 					name.len = 1;
 					whitespace = 0;
 					state = READ_NAME;
+					break;
 				}
-				break;
+				name = chunk_empty;
+				whitespace = 0;
+				state = READ_NAME;
+				/* fall-through */
 			case READ_NAME:
 				if (*src != ',' && *src != '/' && *src != '\0')
 				{
@@ -473,6 +502,11 @@ static status_t atodn(char *src, chunk_t *dn)
 		}
 	} while (*src++ != '\0');
 
+	if (state == READ_OID)
+	{	/* unterminated OID */
+		status = INVALID_ARG;
+	}
+
 	/* build the distinguished name sequence */
 	{
 		int i;
@@ -485,7 +519,6 @@ static status_t atodn(char *src, chunk_t *dn)
 			free(rdns[i].ptr);
 		}
 	}
-
 	if (status != SUCCESS)
 	{
 		free(dn->ptr);
@@ -748,8 +781,8 @@ METHOD(identification_t, matches_dn, id_match_t,
 /**
  * Described in header.
  */
-int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
-							   const void *const *args)
+int identification_printf_hook(printf_hook_data_t *data,
+							printf_hook_spec_t *spec, const void *const *args)
 {
 	private_identification_t *this = *((private_identification_t**)(args[0]));
 	chunk_t proper;
@@ -757,7 +790,7 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 
 	if (this == NULL)
 	{
-		return print_in_hook(dst, len, "%*s", spec->width, "(null)");
+		return print_in_hook(data, "%*s", spec->width, "(null)");
 	}
 
 	switch (this->type)
@@ -782,30 +815,28 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 		case ID_FQDN:
 		case ID_RFC822_ADDR:
 		case ID_DER_ASN1_GN_URI:
+		case ID_USER_ID:
 			chunk_printable(this->encoded, &proper, '?');
-			snprintf(buf, sizeof(buf), "%.*s", proper.len, proper.ptr);
+			snprintf(buf, sizeof(buf), "%.*s", (int)proper.len, proper.ptr);
 			chunk_free(&proper);
 			break;
 		case ID_DER_ASN1_DN:
 			dntoa(this->encoded, buf, sizeof(buf));
 			break;
 		case ID_DER_ASN1_GN:
-			snprintf(buf, sizeof(buf), "(ASN.1 general Name");
+			snprintf(buf, sizeof(buf), "(ASN.1 general name)");
 			break;
 		case ID_KEY_ID:
 			if (chunk_printable(this->encoded, NULL, '?') &&
 				this->encoded.len != HASH_SIZE_SHA1)
 			{	/* fully printable, use ascii version */
-				snprintf(buf, sizeof(buf), "%.*s",
-						 this->encoded.len, this->encoded.ptr);
+				snprintf(buf, sizeof(buf), "%.*s", (int)this->encoded.len,
+						 this->encoded.ptr);
 			}
 			else
 			{	/* not printable, hex dump */
 				snprintf(buf, sizeof(buf), "%#B", &this->encoded);
 			}
-			break;
-		case ID_MYID:
-			snprintf(buf, sizeof(buf), "%%myid");
 			break;
 		default:
 			snprintf(buf, sizeof(buf), "(unknown ID type: %d)", this->type);
@@ -813,9 +844,9 @@ int identification_printf_hook(char *dst, size_t len, printf_hook_spec_t *spec,
 	}
 	if (spec->minus)
 	{
-		return print_in_hook(dst, len, "%-*s", spec->width, buf);
+		return print_in_hook(data, "%-*s", spec->width, buf);
 	}
-	return print_in_hook(dst, len, "%*s", spec->width, buf);
+	return print_in_hook(data, "%*s", spec->width, buf);
 }
 
 METHOD(identification_t, clone_, identification_t*,
@@ -865,6 +896,7 @@ static private_identification_t *identification_create(id_type_t type)
 			break;
 		case ID_FQDN:
 		case ID_RFC822_ADDR:
+		case ID_USER_ID:
 			this->public.matches = _matches_string;
 			this->public.equals = _equals_strcasecmp;
 			this->public.contains_wildcards = _contains_wildcards_memchr;
@@ -908,14 +940,15 @@ identification_t *identification_create_from_string(char *string)
 		else
 		{
 			this = identification_create(ID_KEY_ID);
-			this->encoded = chunk_clone(chunk_create(string, strlen(string)));
+			this->encoded = chunk_from_str(strdup(string));
 		}
 		return &this->public;
 	}
 	else if (strchr(string, '@') == NULL)
 	{
-		if (streq(string, "%any")
-		||  streq(string, "%any6")
+		if (streq(string, "")
+		||	streq(string, "%any")
+		||	streq(string, "%any6")
 		||	streq(string, "0.0.0.0")
 		||	streq(string, "*")
 		||	streq(string, "::")
@@ -940,11 +973,7 @@ identification_t *identification_create_from_string(char *string)
 				else
 				{	/* not IPv4, mostly FQDN */
 					this = identification_create(ID_FQDN);
-					this->encoded.len = strlen(string);
-					if (this->encoded.len)
-					{
-						this->encoded.ptr = strdup(string);
-					}
+					this->encoded = chunk_from_str(strdup(string));
 				}
 				return &this->public;
 			}
@@ -961,11 +990,7 @@ identification_t *identification_create_from_string(char *string)
 				else
 				{	/* not IPv4/6 fallback to KEY_ID */
 					this = identification_create(ID_KEY_ID);
-					this->encoded.len = strlen(string);
-					if (this->encoded.len)
-					{
-						this->encoded.ptr = strdup(string);
-					}
+					this->encoded = chunk_from_str(strdup(string));
 				}
 				return &this->public;
 			}
@@ -975,34 +1000,30 @@ identification_t *identification_create_from_string(char *string)
 	{
 		if (*string == '@')
 		{
-			if (*(string + 1) == '#')
+			string++;
+			if (*string == '#')
 			{
 				this = identification_create(ID_KEY_ID);
-				string += 2;
-				this->encoded = chunk_from_hex(
-									chunk_create(string, strlen(string)), NULL);
+				this->encoded = chunk_from_hex(chunk_from_str(string + 1), NULL);
+				return &this->public;
+			}
+			else if (*string == '@')
+			{
+				this = identification_create(ID_USER_FQDN);
+				this->encoded = chunk_clone(chunk_from_str(string + 1));
 				return &this->public;
 			}
 			else
 			{
 				this = identification_create(ID_FQDN);
-				string += 1;
-				this->encoded.len = strlen(string);
-				if (this->encoded.len)
-				{
-					this->encoded.ptr = strdup(string);
-				}
+				this->encoded = chunk_clone(chunk_from_str(string));
 				return &this->public;
 			}
 		}
 		else
 		{
 			this = identification_create(ID_RFC822_ADDR);
-			this->encoded.len = strlen(string);
-			if (this->encoded.len)
-			{
-				this->encoded.ptr = strdup(string);
-			}
+			this->encoded = chunk_from_str(strdup(string));
 			return &this->public;
 		}
 	}
@@ -1015,9 +1036,16 @@ identification_t * identification_create_from_data(chunk_t data)
 {
 	char buf[data.len + 1];
 
-	/* use string constructor */
-	snprintf(buf, sizeof(buf), "%.*s", data.len, data.ptr);
-	return identification_create_from_string(buf);
+	if (is_asn1(data))
+	{
+		return identification_create_from_encoding(ID_DER_ASN1_DN, data);
+	}
+	else
+	{
+		/* use string constructor */
+		snprintf(buf, sizeof(buf), "%.*s", (int)data.len, data.ptr);
+		return identification_create_from_string(buf);
+	}
 }
 
 /*
@@ -1065,4 +1093,3 @@ identification_t *identification_create_from_sockaddr(sockaddr_t *sockaddr)
 		}
 	}
 }
-

@@ -21,6 +21,8 @@
 #include <threading/mutex.h>
 #include <utils/lexparser.h>
 
+#include <netdb.h>
+
 typedef struct private_stroke_config_t private_stroke_config_t;
 
 /**
@@ -52,6 +54,11 @@ struct private_stroke_config_t {
 	 * credentials
 	 */
 	stroke_cred_t *cred;
+
+	/**
+	 * Virtual IP pool / DNS backend
+	 */
+	stroke_attribute_t *attributes;
 };
 
 METHOD(backend_t, create_peer_cfg_enumerator, enumerator_t*,
@@ -186,48 +193,51 @@ static ike_cfg_t *build_ike_cfg(private_stroke_config_t *this, stroke_msg_t *msg
 {
 	stroke_end_t tmp_end;
 	ike_cfg_t *ike_cfg;
-	char *interface;
 	host_t *host;
+	u_int16_t ikeport;
 
 	host = host_create_from_dns(msg->add_conn.other.address, 0, 0);
 	if (host)
 	{
-		interface = hydra->kernel_interface->get_interface(
-												hydra->kernel_interface, host);
-		host->destroy(host);
-		if (interface)
+		if (hydra->kernel_interface->get_interface(hydra->kernel_interface,
+												   host, NULL))
 		{
 			DBG2(DBG_CFG, "left is other host, swapping ends");
 			tmp_end = msg->add_conn.me;
 			msg->add_conn.me = msg->add_conn.other;
 			msg->add_conn.other = tmp_end;
-			free(interface);
+			host->destroy(host);
 		}
 		else
 		{
+			host->destroy(host);
 			host = host_create_from_dns(msg->add_conn.me.address, 0, 0);
 			if (host)
 			{
-				interface = hydra->kernel_interface->get_interface(
-												hydra->kernel_interface, host);
-				host->destroy(host);
-				if (!interface)
+				if (!hydra->kernel_interface->get_interface(
+										hydra->kernel_interface, host, NULL))
 				{
 					DBG1(DBG_CFG, "left nor right host is our side, "
 						 "assuming left=local");
 				}
-				else
-				{
-					free(interface);
-				}
-
+				host->destroy(host);
 			}
 		}
 	}
-	ike_cfg = ike_cfg_create(msg->add_conn.other.sendcert != CERT_NEVER_SEND,
-					msg->add_conn.force_encap,
-					msg->add_conn.me.address, msg->add_conn.me.ikeport,
-					msg->add_conn.other.address, msg->add_conn.other.ikeport);
+	ikeport = msg->add_conn.me.ikeport;
+	ikeport = (ikeport == IKEV2_UDP_PORT) ?
+			   charon->socket->get_port(charon->socket, FALSE) : ikeport;
+	ike_cfg = ike_cfg_create(msg->add_conn.version,
+							 msg->add_conn.other.sendcert != CERT_NEVER_SEND,
+							 msg->add_conn.force_encap,
+							 msg->add_conn.me.address,
+							 msg->add_conn.me.allow_any,
+							 ikeport,
+							 msg->add_conn.other.address,
+							 msg->add_conn.other.allow_any,
+							 msg->add_conn.other.ikeport,
+							 msg->add_conn.fragmentation,
+							 msg->add_conn.ikedscp);
 	add_proposals(this, msg->add_conn.algorithms.ike, ike_cfg, NULL);
 	return ike_cfg;
 }
@@ -257,6 +267,103 @@ static void build_crl_policy(auth_cfg_t *cfg, bool local, int policy)
 }
 
 /**
+ * Parse public key / signature strength constraints
+ */
+static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
+{
+	enumerator_t *enumerator;
+	bool rsa = FALSE, ecdsa = FALSE, rsa_len = FALSE, ecdsa_len = FALSE;
+	int strength;
+	char *token;
+
+	enumerator = enumerator_create_token(auth, "-", "");
+	while (enumerator->enumerate(enumerator, &token))
+	{
+		bool found = FALSE;
+		int i;
+		struct {
+			char *name;
+			signature_scheme_t scheme;
+			key_type_t key;
+		} schemes[] = {
+			{ "md5",		SIGN_RSA_EMSA_PKCS1_MD5,		KEY_RSA,	},
+			{ "sha1",		SIGN_RSA_EMSA_PKCS1_SHA1,		KEY_RSA,	},
+			{ "sha224",		SIGN_RSA_EMSA_PKCS1_SHA224,		KEY_RSA,	},
+			{ "sha256",		SIGN_RSA_EMSA_PKCS1_SHA256,		KEY_RSA,	},
+			{ "sha384",		SIGN_RSA_EMSA_PKCS1_SHA384,		KEY_RSA,	},
+			{ "sha512",		SIGN_RSA_EMSA_PKCS1_SHA512,		KEY_RSA,	},
+			{ "sha1",		SIGN_ECDSA_WITH_SHA1_DER,		KEY_ECDSA,	},
+			{ "sha256",		SIGN_ECDSA_WITH_SHA256_DER,		KEY_ECDSA,	},
+			{ "sha384",		SIGN_ECDSA_WITH_SHA384_DER,		KEY_ECDSA,	},
+			{ "sha512",		SIGN_ECDSA_WITH_SHA512_DER,		KEY_ECDSA,	},
+			{ "sha256",		SIGN_ECDSA_256,					KEY_ECDSA,	},
+			{ "sha384",		SIGN_ECDSA_384,					KEY_ECDSA,	},
+			{ "sha512",		SIGN_ECDSA_521,					KEY_ECDSA,	},
+		};
+
+		if (rsa_len || ecdsa_len)
+		{	/* expecting a key strength token */
+			strength = atoi(token);
+			if (strength)
+			{
+				if (rsa_len)
+				{
+					cfg->add(cfg, AUTH_RULE_RSA_STRENGTH, (uintptr_t)strength);
+				}
+				else if (ecdsa_len)
+				{
+					cfg->add(cfg, AUTH_RULE_ECDSA_STRENGTH, (uintptr_t)strength);
+				}
+			}
+			rsa_len = ecdsa_len = FALSE;
+			if (strength)
+			{
+				continue;
+			}
+		}
+		if (streq(token, "rsa"))
+		{
+			rsa = rsa_len = TRUE;
+			continue;
+		}
+		if (streq(token, "ecdsa"))
+		{
+			ecdsa = ecdsa_len = TRUE;
+			continue;
+		}
+		if (streq(token, "pubkey"))
+		{
+			continue;
+		}
+
+		for (i = 0; i < countof(schemes); i++)
+		{
+			if (streq(schemes[i].name, token))
+			{
+				/* for each matching string, allow the scheme, if:
+				 * - it is an RSA scheme, and we enforced RSA
+				 * - it is an ECDSA scheme, and we enforced ECDSA
+				 * - it is not a key type specific scheme
+				 */
+				if ((rsa && schemes[i].key == KEY_RSA) ||
+					(ecdsa && schemes[i].key == KEY_ECDSA) ||
+					(!rsa && !ecdsa))
+				{
+					cfg->add(cfg, AUTH_RULE_SIGNATURE_SCHEME,
+							 (uintptr_t)schemes[i].scheme);
+				}
+				found = TRUE;
+			}
+		}
+		if (!found)
+		{
+			DBG1(DBG_CFG, "ignoring invalid auth token: '%s'", token);
+		}
+	}
+	enumerator->destroy(enumerator);
+}
+
+/**
  * build authentication config
  */
 static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
@@ -264,10 +371,10 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 {
 	identification_t *identity;
 	certificate_t *certificate;
-	char *auth, *id, *pubkey, *cert, *ca;
+	char *auth, *id, *pubkey, *cert, *ca, *groups;
 	stroke_end_t *end, *other_end;
 	auth_cfg_t *cfg;
-	char eap_buf[32];
+	bool loose = FALSE;
 
 	/* select strings */
 	if (local)
@@ -310,52 +417,17 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 			ca = other_end->ca2;
 		}
 	}
+	if (id && *id == '%' && !streq(id, "%any") && !streq(id, "%any6"))
+	{	/* has only an effect on rightid/2 */
+		loose = !local;
+		id++;
+	}
 
 	if (!auth)
 	{
 		if (primary)
 		{
-			if (local)
-			{	/* "leftauth" not defined, fall back to deprecated "authby" */
-				switch (msg->add_conn.auth_method)
-				{
-					default:
-					case AUTH_CLASS_PUBKEY:
-						auth = "pubkey";
-						break;
-					case AUTH_CLASS_PSK:
-						auth = "psk";
-						break;
-					case AUTH_CLASS_EAP:
-						auth = "eap";
-						break;
-					case AUTH_CLASS_ANY:
-						auth = "any";
-						break;
-				}
-			}
-			else
-			{	/* "rightauth" not defined, fall back to deprecated "eap" */
-				if (msg->add_conn.eap_type)
-				{
-					if (msg->add_conn.eap_vendor)
-					{
-						snprintf(eap_buf, sizeof(eap_buf), "eap-%d-%d",
-								 msg->add_conn.eap_type,
-								 msg->add_conn.eap_vendor);
-					}
-					else
-					{
-						snprintf(eap_buf, sizeof(eap_buf), "eap-%d",
-								 msg->add_conn.eap_type);
-					}
-					auth = eap_buf;
-				}
-				else
-				{	/* not EAP => no constraints for this peer */
-					auth = "any";
-				}
-			}
+			auth = "pubkey";
 		}
 		else
 		{	/* no second authentication round, fine. But load certificates
@@ -374,42 +446,68 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 
 	cfg = auth_cfg_create();
 
-	/* add identity and peer certifcate */
+	/* add identity and peer certificate */
 	identity = identification_create_from_string(id);
 	if (cert)
 	{
-		certificate = this->cred->load_peer(this->cred, cert);
-		if (certificate)
+		enumerator_t *enumerator;
+		bool has_subject = FALSE;
+		certificate_t *first = NULL;
+
+		enumerator = enumerator_create_token(cert, ",", " ");
+		while (enumerator->enumerate(enumerator, &cert))
 		{
-			if (local)
+			certificate = this->cred->load_peer(this->cred, cert);
+			if (certificate)
 			{
-				this->ca->check_for_hash_and_url(this->ca, certificate);
-			}
-			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
-			if (identity->get_type(identity) == ID_ANY ||
-				!certificate->has_subject(certificate, identity))
-			{
-				DBG1(DBG_CFG, "  id '%Y' not confirmed by certificate, "
-					 "defaulting to '%Y'", identity,
-					 certificate->get_subject(certificate));
-				identity->destroy(identity);
-				identity = certificate->get_subject(certificate);
-				identity = identity->clone(identity);
+				if (local)
+				{
+					this->ca->check_for_hash_and_url(this->ca, certificate);
+				}
+				cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
+				if (!first)
+				{
+					first = certificate;
+				}
+				if (identity->get_type(identity) != ID_ANY &&
+					certificate->has_subject(certificate, identity))
+				{
+					has_subject = TRUE;
+				}
 			}
 		}
-	}
-	cfg->add(cfg, AUTH_RULE_IDENTITY, identity);
+		enumerator->destroy(enumerator);
 
+		if (first && !has_subject)
+		{
+			DBG1(DBG_CFG, "  id '%Y' not confirmed by certificate, "
+				 "defaulting to '%Y'", identity, first->get_subject(first));
+			identity->destroy(identity);
+			identity = first->get_subject(first);
+			identity = identity->clone(identity);
+		}
+	}
 	/* add raw RSA public key */
 	pubkey = end->rsakey;
 	if (pubkey && !streq(pubkey, "") && !streq(pubkey, "%cert"))
 	{
-		certificate = this->cred->load_pubkey(this->cred, KEY_RSA, pubkey,
-											  identity);
+		certificate = this->cred->load_pubkey(this->cred, pubkey, identity);
 		if (certificate)
 		{
 			cfg->add(cfg, AUTH_RULE_SUBJECT_CERT, certificate);
 		}
+	}
+	if (identity->get_type(identity) != ID_ANY)
+	{
+		cfg->add(cfg, AUTH_RULE_IDENTITY, identity);
+		if (loose)
+		{
+			cfg->add(cfg, AUTH_RULE_IDENTITY_LOOSE, TRUE);
+		}
+	}
+	else
+	{
+		identity->destroy(identity);
 	}
 
 	/* CA constraint */
@@ -431,12 +529,13 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	}
 
 	/* groups */
-	if (end->groups)
+	groups = primary ? end->groups : end->groups2;
+	if (groups)
 	{
 		enumerator_t *enumerator;
 		char *group;
 
-		enumerator = enumerator_create_token(end->groups, ",", " ");
+		enumerator = enumerator_create_token(groups, ",", " ");
 		while (enumerator->enumerate(enumerator, &group))
 		{
 			cfg->add(cfg, AUTH_RULE_GROUP,
@@ -460,75 +559,51 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	}
 
 	/* authentication metod (class, actually) */
-	if (streq(auth, "pubkey") ||
-		strneq(auth, "rsa", strlen("rsa")) ||
-		strneq(auth, "ecdsa", strlen("ecdsa")))
+	if (strpfx(auth, "pubkey") ||
+		strpfx(auth, "rsa") ||
+		strpfx(auth, "ecdsa"))
 	{
-		u_int strength;
-
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
 		build_crl_policy(cfg, local, msg->add_conn.crl_policy);
 
-		if (sscanf(auth, "rsa-%d", &strength) == 1)
-		{
-			cfg->add(cfg, AUTH_RULE_RSA_STRENGTH, (uintptr_t)strength);
-		}
-		if (sscanf(auth, "ecdsa-%d", &strength) == 1)
-		{
-			cfg->add(cfg, AUTH_RULE_ECDSA_STRENGTH, (uintptr_t)strength);
-		}
+		parse_pubkey_constraints(auth, cfg);
 	}
 	else if (streq(auth, "psk") || streq(auth, "secret"))
 	{
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PSK);
 	}
-	else if (strneq(auth, "eap", 3))
+	else if (strpfx(auth, "xauth"))
 	{
-		enumerator_t *enumerator;
-		char *str;
-		int i = 0, type = 0, vendor;
+		char *pos;
+
+		pos = strchr(auth, '-');
+		if (pos)
+		{
+			cfg->add(cfg, AUTH_RULE_XAUTH_BACKEND, strdup(++pos));
+		}
+		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_XAUTH);
+		if (msg->add_conn.xauth_identity)
+		{
+			cfg->add(cfg, AUTH_RULE_XAUTH_IDENTITY,
+				identification_create_from_string(msg->add_conn.xauth_identity));
+		}
+	}
+	else if (strpfx(auth, "eap"))
+	{
+		eap_vendor_type_t *type;
 
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_EAP);
 
-		/* parse EAP string, format: eap[-type[-vendor]] */
-		enumerator = enumerator_create_token(auth, "-", " ");
-		while (enumerator->enumerate(enumerator, &str))
+		type = eap_vendor_type_from_string(auth);
+		if (type)
 		{
-			switch (i)
+			cfg->add(cfg, AUTH_RULE_EAP_TYPE, type->type);
+			if (type->vendor)
 			{
-				case 1:
-					type = eap_type_from_string(str);
-					if (!type)
-					{
-						type = atoi(str);
-						if (!type)
-						{
-							DBG1(DBG_CFG, "unknown EAP method: %s", str);
-							break;
-						}
-					}
-					cfg->add(cfg, AUTH_RULE_EAP_TYPE, type);
-					break;
-				case 2:
-					if (type)
-					{
-						vendor = atoi(str);
-						if (vendor)
-						{
-							cfg->add(cfg, AUTH_RULE_EAP_VENDOR, vendor);
-						}
-						else
-						{
-							DBG1(DBG_CFG, "unknown EAP vendor: %s", str);
-						}
-					}
-					break;
-				default:
-					break;
+				cfg->add(cfg, AUTH_RULE_EAP_VENDOR, type->vendor);
 			}
-			i++;
+			free(type);
 		}
-		enumerator->destroy(enumerator);
 
 		if (msg->add_conn.eap_identity)
 		{
@@ -570,7 +645,6 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 {
 	identification_t *peer_id = NULL;
 	peer_cfg_t *mediated_by = NULL;
-	host_t *vip = NULL;
 	unique_policy_t unique;
 	u_int32_t rekey = 0, reauth = 0, over, jitter;
 	peer_cfg_t *peer_cfg;
@@ -629,38 +703,6 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 	{
 		rekey = msg->add_conn.rekey.ike_lifetime - over;
 	}
-	if (msg->add_conn.me.sourceip_mask)
-	{
-		if (msg->add_conn.me.sourceip)
-		{
-			vip = host_create_from_string(msg->add_conn.me.sourceip, 0);
-		}
-		if (!vip)
-		{	/* if it is set to something like %poolname, request an address */
-			if (msg->add_conn.me.subnets)
-			{	/* use the same address as in subnet, if any */
-				if (strchr(msg->add_conn.me.subnets, '.'))
-				{
-					vip = host_create_any(AF_INET);
-				}
-				else
-				{
-					vip = host_create_any(AF_INET6);
-				}
-			}
-			else
-			{
-				if (strchr(ike_cfg->get_my_addr(ike_cfg), ':'))
-				{
-					vip = host_create_any(AF_INET6);
-				}
-				else
-				{
-					vip = host_create_any(AF_INET);
-				}
-			}
-		}
-	}
 	switch (msg->add_conn.unique)
 	{
 		case 1: /* yes */
@@ -669,6 +711,9 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 			break;
 		case 3: /* keep */
 			unique = UNIQUE_KEEP;
+			break;
+		case 4: /* never */
+			unique = UNIQUE_NEVER;
 			break;
 		default: /* no */
 			unique = UNIQUE_NO;
@@ -682,14 +727,130 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 	/* other.sourceip is managed in stroke_attributes. If it is set, we define
 	 * the pool name as the connection name, which the attribute provider
 	 * uses to serve pool addresses. */
-	peer_cfg = peer_cfg_create(msg->add_conn.name,
-		msg->add_conn.ikev2 ? 2 : 1, ike_cfg,
+	peer_cfg = peer_cfg_create(msg->add_conn.name, ike_cfg,
 		msg->add_conn.me.sendcert, unique,
 		msg->add_conn.rekey.tries, rekey, reauth, jitter, over,
-		msg->add_conn.mobike, msg->add_conn.dpd.delay,
-		vip, msg->add_conn.other.sourceip_mask ?
-							msg->add_conn.name : msg->add_conn.other.sourceip,
+		msg->add_conn.mobike, msg->add_conn.aggressive,
+		msg->add_conn.dpd.delay, msg->add_conn.dpd.timeout,
 		msg->add_conn.ikeme.mediation, mediated_by, peer_id);
+
+	if (msg->add_conn.other.sourceip)
+	{
+		enumerator_t *enumerator;
+		char *token;
+
+		enumerator = enumerator_create_token(msg->add_conn.other.sourceip,
+											 ",", " ");
+		while (enumerator->enumerate(enumerator, &token))
+		{
+			if (streq(token, "%modeconfig") || streq(token, "%modecfg") ||
+				streq(token, "%config") || streq(token, "%cfg") ||
+				streq(token, "%config4") || streq(token, "%config6"))
+			{
+				/* empty pool, uses connection name */
+				this->attributes->add_pool(this->attributes,
+								mem_pool_create(msg->add_conn.name, NULL, 0));
+				peer_cfg->add_pool(peer_cfg, msg->add_conn.name);
+			}
+			else if (*token == '%')
+			{
+				/* external named pool */
+				peer_cfg->add_pool(peer_cfg, token + 1);
+			}
+			else
+			{
+				/* in-memory pool, named using CIDR notation */
+				host_t *base;
+				int bits;
+
+				base = host_create_from_subnet(token, &bits);
+				if (base)
+				{
+					this->attributes->add_pool(this->attributes,
+										mem_pool_create(token, base, bits));
+					peer_cfg->add_pool(peer_cfg, token);
+					base->destroy(base);
+				}
+				else
+				{
+					DBG1(DBG_CFG, "IP pool %s invalid, ignored", token);
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
+
+	if (msg->add_conn.me.sourceip)
+	{
+		enumerator_t *enumerator;
+		char *token;
+
+		enumerator = enumerator_create_token(msg->add_conn.me.sourceip, ",", " ");
+		while (enumerator->enumerate(enumerator, &token))
+		{
+			host_t *vip = NULL;
+
+			if (streq(token, "%modeconfig") || streq(token, "%modecfg") ||
+				streq(token, "%config") || streq(token, "%cfg"))
+			{	/* try to deduce an address family */
+				if (msg->add_conn.me.subnets)
+				{	/* use the same family as in local subnet, if any */
+					if (strchr(msg->add_conn.me.subnets, '.'))
+					{
+						vip = host_create_any(AF_INET);
+					}
+					else
+					{
+						vip = host_create_any(AF_INET6);
+					}
+				}
+				else if (msg->add_conn.other.subnets)
+				{	/* use the same family as in remote subnet, if any */
+					if (strchr(msg->add_conn.other.subnets, '.'))
+					{
+						vip = host_create_any(AF_INET);
+					}
+					else
+					{
+						vip = host_create_any(AF_INET6);
+					}
+				}
+				else
+				{
+					if (strchr(ike_cfg->get_my_addr(ike_cfg, NULL), ':'))
+					{
+						vip = host_create_any(AF_INET6);
+					}
+					else
+					{
+						vip = host_create_any(AF_INET);
+					}
+				}
+			}
+			else if (streq(token, "%config4"))
+			{
+				vip = host_create_any(AF_INET);
+			}
+			else if (streq(token, "%config6"))
+			{
+				vip = host_create_any(AF_INET6);
+			}
+			else
+			{
+				vip = host_create_from_string(token, 0);
+				if (vip)
+				{
+					DBG1(DBG_CFG, "ignored invalid subnet token: %s", token);
+				}
+			}
+
+			if (vip)
+			{
+				peer_cfg->add_virtual_ip(peer_cfg, vip);
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
 
 	/* build leftauth= */
 	auth_cfg = build_auth_cfg(this, msg, TRUE, TRUE);
@@ -724,6 +885,96 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 }
 
 /**
+ * Parse a protoport specifier
+ */
+static bool parse_protoport(char *token, u_int16_t *from_port,
+							u_int16_t *to_port, u_int8_t *protocol)
+{
+	char *sep, *port = "", *endptr;
+	struct protoent *proto;
+	struct servent *svc;
+	long int p;
+
+	sep = strrchr(token, ']');
+	if (!sep)
+	{
+		return FALSE;
+	}
+	*sep = '\0';
+
+	sep = strchr(token, '/');
+	if (sep)
+	{	/* protocol/port */
+		*sep = '\0';
+		port = sep + 1;
+	}
+
+	if (streq(token, "%any"))
+	{
+		*protocol = 0;
+	}
+	else
+	{
+		proto = getprotobyname(token);
+		if (proto)
+		{
+			*protocol = proto->p_proto;
+		}
+		else
+		{
+			p = strtol(token, &endptr, 0);
+			if ((*token && *endptr) || p < 0 || p > 0xff)
+			{
+				return FALSE;
+			}
+			*protocol = (u_int8_t)p;
+		}
+	}
+	if (streq(port, "%any"))
+	{
+		*from_port = 0;
+		*to_port = 0xffff;
+	}
+	else if (streq(port, "%opaque"))
+	{
+		*from_port = 0xffff;
+		*to_port = 0;
+	}
+	else if (*port)
+	{
+		svc = getservbyname(port, NULL);
+		if (svc)
+		{
+			*from_port = *to_port = ntohs(svc->s_port);
+		}
+		else
+		{
+			p = strtol(port, &endptr, 0);
+			if (p < 0 || p > 0xffff)
+			{
+				return FALSE;
+			}
+			*from_port = p;
+			if (*endptr == '-')
+			{
+				port = endptr + 1;
+				p = strtol(port, &endptr, 0);
+				if (p < 0 || p > 0xffff)
+				{
+					return FALSE;
+				}
+			}
+			*to_port = p;
+			if (*endptr)
+			{
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
+/**
  * build a traffic selector from a stroke_end
  */
 static void add_ts(private_stroke_config_t *this,
@@ -734,58 +985,68 @@ static void add_ts(private_stroke_config_t *this,
 	if (end->tohost)
 	{
 		ts = traffic_selector_create_dynamic(end->protocol,
-					end->port ? end->port : 0, end->port ? end->port : 65535);
+											 end->from_port, end->to_port);
 		child_cfg->add_traffic_selector(child_cfg, local, ts);
 	}
 	else
 	{
-		host_t *net;
-
 		if (!end->subnets)
 		{
+			host_t *net;
+
 			net = host_create_from_string(end->address, 0);
 			if (net)
 			{
 				ts = traffic_selector_create_from_subnet(net, 0, end->protocol,
-														 end->port);
+												end->from_port, end->to_port);
 				child_cfg->add_traffic_selector(child_cfg, local, ts);
 			}
 		}
 		else
 		{
-			char *del, *start, *bits;
+			enumerator_t *enumerator;
+			char *subnet, *pos;
+			u_int16_t from_port, to_port;
+			u_int8_t proto;
 
-			start = end->subnets;
-			do
+			enumerator = enumerator_create_token(end->subnets, ",", " ");
+			while (enumerator->enumerate(enumerator, &subnet))
 			{
-				int intbits = 0;
+				from_port = end->from_port;
+				to_port = end->to_port;
+				proto = end->protocol;
 
-				del = strchr(start, ',');
-				if (del)
+				pos = strchr(subnet, '[');
+				if (pos)
 				{
-					*del = '\0';
+					*(pos++) = '\0';
+					if (!parse_protoport(pos, &from_port, &to_port, &proto))
+					{
+						DBG1(DBG_CFG, "invalid proto/port: %s, skipped subnet",
+							 pos);
+						continue;
+					}
 				}
-				bits = strchr(start, '/');
-				if (bits)
+				if (streq(subnet, "%dynamic"))
 				{
-					*bits = '\0';
-					intbits = atoi(bits + 1);
+					ts = traffic_selector_create_dynamic(proto,
+														 from_port, to_port);
 				}
-
-				net = host_create_from_string(start, 0);
-				if (net)
+				else
 				{
-					ts = traffic_selector_create_from_subnet(net, intbits,
-												end->protocol, end->port);
+					ts = traffic_selector_create_from_cidr(subnet, proto,
+														   from_port, to_port);
+				}
+				if (ts)
+				{
 					child_cfg->add_traffic_selector(child_cfg, local, ts);
 				}
 				else
 				{
-					DBG1(DBG_CFG, "invalid subnet: %s, skipped", start);
+					DBG1(DBG_CFG, "invalid subnet: %s, skipped", subnet);
 				}
-				start = del + 1;
 			}
-			while (del);
+			enumerator->destroy(enumerator);
 		}
 	}
 }
@@ -1029,8 +1290,8 @@ METHOD(stroke_config_t, set_user_credentials, void,
 		return;
 	}
 
-	/* replace/set the username in the first EAP auth_cfg, also look for a
-	 * suitable remote ID.
+	/* replace/set the username in the first EAP/XAuth auth_cfg, also look for
+	 * a suitable remote ID.
 	 * note that adding the identity here is not fully thread-safe as the
 	 * peer_cfg and in turn the auth_cfg could be in use. for the default use
 	 * case (setting user credentials before upping the connection) this will
@@ -1049,16 +1310,25 @@ METHOD(stroke_config_t, set_user_credentials, void,
 		}
 
 		auth_class = (uintptr_t)auth_cfg->get(auth_cfg, AUTH_RULE_AUTH_CLASS);
-		if (auth_class == AUTH_CLASS_EAP)
+		if (auth_class == AUTH_CLASS_EAP || auth_class == AUTH_CLASS_XAUTH)
 		{
-			auth_cfg->add(auth_cfg, AUTH_RULE_EAP_IDENTITY, id->clone(id));
-			/* if aaa_identity is specified use that as remote ID */
-			identity = auth_cfg->get(auth_cfg, AUTH_RULE_AAA_IDENTITY);
-			if (identity && identity->get_type(identity) != ID_ANY)
+			if (auth_class == AUTH_CLASS_EAP)
 			{
-				gw = identity;
+				auth_cfg->add(auth_cfg, AUTH_RULE_EAP_IDENTITY, id->clone(id));
+				/* if aaa_identity is specified use that as remote ID */
+				identity = auth_cfg->get(auth_cfg, AUTH_RULE_AAA_IDENTITY);
+				if (identity && identity->get_type(identity) != ID_ANY)
+				{
+					gw = identity;
+				}
+				DBG1(DBG_CFG, "  configured EAP-Identity %Y", id);
 			}
-			DBG1(DBG_CFG, "  configured EAP-Identity %Y", id);
+			else
+			{
+				auth_cfg->add(auth_cfg, AUTH_RULE_XAUTH_IDENTITY,
+							  id->clone(id));
+				DBG1(DBG_CFG, "  configured XAuth username %Y", id);
+			}
 			type = SHARED_EAP;
 			break;
 		}
@@ -1149,7 +1419,8 @@ METHOD(stroke_config_t, destroy, void,
 /*
  * see header file
  */
-stroke_config_t *stroke_config_create(stroke_ca_t *ca, stroke_cred_t *cred)
+stroke_config_t *stroke_config_create(stroke_ca_t *ca, stroke_cred_t *cred,
+									  stroke_attribute_t *attributes)
 {
 	private_stroke_config_t *this;
 
@@ -1169,8 +1440,8 @@ stroke_config_t *stroke_config_create(stroke_ca_t *ca, stroke_cred_t *cred)
 		.mutex = mutex_create(MUTEX_TYPE_RECURSIVE),
 		.ca = ca,
 		.cred = cred,
+		.attributes = attributes,
 	);
 
 	return &this->public;
 }
-

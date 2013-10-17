@@ -87,7 +87,7 @@ struct private_blowfish_crypter_t {
 	u_int32_t key_size;
 };
 
-METHOD(crypter_t, decrypt, void,
+METHOD(crypter_t, decrypt, bool,
 	private_blowfish_crypter_t *this, chunk_t data, chunk_t iv,
 	chunk_t *decrypted)
 {
@@ -108,9 +108,11 @@ METHOD(crypter_t, decrypt, void,
 	BF_cbc_encrypt(in, out, data.len, &this->schedule, iv.ptr, 0);
 
 	free(iv.ptr);
+
+	return TRUE;
 }
 
-METHOD(crypter_t, encrypt, void,
+METHOD(crypter_t, encrypt, bool,
 	private_blowfish_crypter_t *this, chunk_t data, chunk_t iv,
 	chunk_t *encrypted)
 {
@@ -131,6 +133,8 @@ METHOD(crypter_t, encrypt, void,
 	BF_cbc_encrypt(in, out, data.len, &this->schedule, iv.ptr, 1);
 
 	free(iv.ptr);
+
+	return TRUE;
 }
 
 METHOD(crypter_t, get_block_size, size_t,
@@ -151,10 +155,11 @@ METHOD(crypter_t, get_key_size, size_t,
 	return this->key_size;
 }
 
-METHOD(crypter_t, set_key, void,
+METHOD(crypter_t, set_key, bool,
 	private_blowfish_crypter_t *this, chunk_t key)
 {
 	BF_set_key(&this->schedule, key.len , key.ptr);
+	return TRUE;
 }
 
 METHOD(crypter_t, destroy, void,
