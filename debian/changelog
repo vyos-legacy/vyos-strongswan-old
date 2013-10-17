@@ -1,9 +1,11 @@
-strongswan (5.1.0-2) UNRELEASED; urgency=low
+strongswan (5.1.0-2) unstable; urgency=medium
 
+  * urgency=medium since we already spent 16 days in unstable and the fix is
+    trivial
   * debian/control:
     - strongswan-ike: only depends on iproute on linux arches.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 17 Oct 2013 21:30:59 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 17 Oct 2013 21:40:35 +0200
 
 strongswan (5.1.0-1) unstable; urgency=low
 
