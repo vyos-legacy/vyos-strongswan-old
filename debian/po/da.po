@@ -1,14 +1,14 @@
 # Danish translation strongswan.
 # Copyright (C) 2010 strongswan & nedenstående oversættere.
 # This file is distributed under the same license as the strongswan package.
-# Joe Hansen (joedalton2@yahoo.dk), 2010.
+# Joe Hansen (joedalton2@yahoo.dk), 2010, 2013.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: strongswan\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
 "POT-Creation-Date: 2013-02-07 13:28+0100\n"
-"PO-Revision-Date: 2010-11-04 12:42+0000\n"
+"PO-Revision-Date: 2013-10-06 12:42+0000\n"
 "Last-Translator: Joe Hansen <joedalton2@yahoo.dk>\n"
 "Language-Team: Danish <dansk@dansk-gruppen.dk>\n"
 "Language: da\n"
@@ -69,24 +69,18 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "Start strongSwans IKEv1-dæmon?"
+msgstr "Start strongSwans charon-dæmon?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"Dæmonen charon skal køre for at understøtte version 2 af Internet Key "
-"Exchange-protokollen."
+"Dæmonen charon skal køre for at understøtte Internet Key Exchange-"
+"protokollen."
 
 #. Type: boolean
 #. Description
@@ -456,25 +450,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Du skal kun aktivere opportunistisk kryptering, hvis du er sikker på, at du "
 "ønsker det. Det kan få internetforbindelsen til at gå ned (standardrute), "
-"når plutodæmonen starter op."
+"når dæmonen starter op."
 
-#~ msgid ""
-#~ "The pluto daemon must be running to support version 1 of the Internet Key "
-#~ "Exchange protocol."
-#~ msgstr ""
-#~ "Dæmonen pluto skal køre for at understøtte version 1 af Internet Key "
-#~ "Exchange-protokollen."
 
-#~ msgid "Start strongSwan's IKEv2 daemon?"
-#~ msgstr "Start streongSwans IKEv2-dæmon?"
