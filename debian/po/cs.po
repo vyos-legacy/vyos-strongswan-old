@@ -14,7 +14,7 @@ msgstr ""
 "Project-Id-Version: strongswan\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
 "POT-Creation-Date: 2013-02-07 13:28+0100\n"
-"PO-Revision-Date: 2010-10-16 13:09+0200\n"
+"PO-Revision-Date: 2013-10-28 14:42+0100\n"
 "Last-Translator: Miroslav Kure <kurem@debian.cz>\n"
 "Language-Team: Czech <debian-l10n-czech@lists.debian.org>\n"
 "Language: cs\n"
@@ -73,24 +73,17 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "Spustit strongSwan daemon IKEv1?"
+msgstr "Spustit strongSwan daemona charon?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"Pro podporu 2. verze protokolu Internet Key Exchange musí běžet daemon "
-"charon."
+"Pro podporu protokolu Internet Key Exchange musí běžet daemon charon."
 
 #. Type: boolean
 #. Description
@@ -448,17 +441,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Oportunistické šifrování byste měli povolit pouze v případě, že ho opravdu "
-"chcete. Při startu daemona pluto je možné, že se vaše probíhající spojení do "
+"chcete. Při startu daemona je možné, že se vaše probíhající spojení do "
 "Internetu přeruší (přesněji přestane fungovat výchozí cesta)."
 
 #~ msgid ""
@@ -482,15 +470,6 @@ msgstr ""
 #~ msgstr ""
 #~ "Zadejte cestu k souboru obsahujícímu váš certifikát X.509 ve formátu PEM."
 
-#, fuzzy
-#~| msgid ""
-#~| "Please enter the full location of the file containing your X.509 "
-#~| "certificate in PEM format."
-#~ msgid "You may now enter the location of your X509 RootCA in PEM format:"
-#~ msgstr ""
-#~ "Zadejte celou cestu k souboru obsahujícímu váš certifikát X.509 ve "
-#~ "formátu PEM."
-
 #~ msgid ""
 #~ "Please enter the 2 letter country code for your country. This code will "
 #~ "be placed in the certificate request."
@@ -504,16 +483,11 @@ msgstr ""
 #~ msgid "Example: Upper Austria"
 #~ msgstr "Příklad: Morava"
 
-#, fuzzy
-#~| msgid ""
-#~| "Please enter the organization (e.g. company) that the X509 certificate "
-#~| "should be created for. This name will be placed in the certificate "
-#~| "request."
 #~ msgid ""
 #~ "Please enter the locality (e.g. city) where you live. This name will be "
 #~ "placed in the certificate request."
 #~ msgstr ""
-#~ "Zadejte prosím organizaci pro kterou je certifikát vytvářen. Toto jméno "
+#~ "Zadejte prosím místo (např. město), kde žijete. Toto jméno "
 #~ "bude umístěno do požadavku na certifikát."
 
 #~ msgid "Example: Vienna"
@@ -529,19 +503,6 @@ msgstr ""
 
 #~ msgid "Example: Debian"
 #~ msgstr "Příklad: Debian"
-
-#, fuzzy
-#~| msgid ""
-#~| "Please enter the organization (e.g. company) that the X509 certificate "
-#~| "should be created for. This name will be placed in the certificate "
-#~| "request."
-#~ msgid ""
-#~ "Please enter the organizational unit (e.g. section) that the X509 "
-#~ "certificate should be created for. This name will be placed in the "
-#~ "certificate request."
-#~ msgstr ""
-#~ "Zadejte prosím organizaci pro kterou je certifikát vytvářen. Toto jméno "
-#~ "bude umístěno do požadavku na certifikát."
 
 #~ msgid "Example: security group"
 #~ msgstr "Příklad: bezpečnostní oddělení"
