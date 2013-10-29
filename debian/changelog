@@ -23,12 +23,19 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
     - fr.po updated, thanks Christian Perrier.                  closes: #725469
 
   [ Romain Francoise ]
-  * debian/rules: disable built-in integrity tests; they've been broken
-    for years, don't provide security (by design) and we have better tools
-    at the package level anyway.                                closes: #598138
-  * debian/libstrongswan.install: libchecksum.so is no longer built, remove.
+  * debian/rules:
+    - disable built-in integrity tests; they've been broken for years,
+      don't provide security (by design) and we have better tools at the
+      package level anyway.                                     closes: #598138
+    - disable sql and attr-sql plugins, as per discussion in #718302 they
+      are useless without the database driver plugins.
+  * debian/libstrongswan.install:
+    - libchecksum.so is no longer built, remove.
+    - sql plugin is no longer built, remove.
+  * debian/strongswan-starter.install:
+    - 'ipsec pool' is no longer built, remove.
 
- -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 18:46:55 +0100
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 20:00:27 +0100
 
 strongswan (5.1.0-2) unstable; urgency=medium
 
