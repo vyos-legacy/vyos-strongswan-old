@@ -74,24 +74,18 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "Faut-il démarrer le démon IKEv1 de StrongSwan ?"
+msgstr "Faut-il démarrer le démon charon de StrongSwan ?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"Le démon « charon » doit fonctionner pour que la version 2 du protocole IKE "
-"(Internet Key Exchange) puisse être gérée."
+"Le démon « charon » doit fonctionner pour que le protocole IKE "
+"(Internet Key Exchange) puisse être géré."
 
 #. Type: boolean
 #. Description
@@ -463,18 +457,13 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Vous ne devriez l'activer que s'il est indispensable de l'utiliser. Il est "
 "possible que cela coupe la connexion Internet (la route par défaut) au "
-"moment où le démon « pluto » démarre."
+"moment où le démon démarre."
 
 #~ msgid ""
 #~ "The pluto daemon must be running to support version 1 of the Internet Key "
