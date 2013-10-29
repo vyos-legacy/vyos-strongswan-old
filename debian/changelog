@@ -15,11 +15,11 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
   * debian/po:
     - eu.po updated, thanks Iñaki Larrañaga Murgoitio.          closes: #726636
     - ja.po updated.                                            closes: #726059
-    - cs.po updated, thanks Miroslav Kure.                      closes: #728104 
-    - ru.po updated, thanks Yuri Kozlov.                        closes: #725709 
-    - da.po updated.                                            closes: #725620 
-    - nb.po updated, thanks Bjørn Steensrud.                    closes: #725497 
-    - fr.po updated, thanks Christian Perrier.                  closes: #725469 
+    - cs.po updated, thanks Miroslav Kure.                      closes: #728104
+    - ru.po updated, thanks Yuri Kozlov.                        closes: #725709
+    - da.po updated.                                            closes: #725620
+    - nb.po updated, thanks Bjørn Steensrud.                    closes: #725497
+    - fr.po updated, thanks Christian Perrier.                  closes: #725469
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 01 Oct 2013 09:35:37 +0200
 
