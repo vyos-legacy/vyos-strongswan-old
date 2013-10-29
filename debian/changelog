@@ -2,7 +2,7 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
 
   [ Yves-Alexis Perez ]
   * debian/rules:
-    - enable and install af-ag plugin on Linux.                 closes: #718292
+    - enable and install af-alg plugin on Linux.                closes: #718292
     - enable certexpire plugin.                                 closes: #718293
     - enable lookip plugin.                                     closes: #718299
     - enable error-notify plugin.                               closes: #718304
