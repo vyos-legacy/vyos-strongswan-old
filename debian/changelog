@@ -18,6 +18,7 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
     - cs.po updated, thanks Miroslav Kure.                      closes: #728104 
     - ru.po updated, thanks Yuri Kozlov.                        closes: #725709 
     - da.po updated.                                            closes: #725620 
+    - nb.po updated, thanks Bjørn Steensrud.                    closes: #725497 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 01 Oct 2013 09:35:37 +0200
 
