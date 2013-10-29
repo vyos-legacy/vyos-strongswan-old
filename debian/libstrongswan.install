@@ -1,7 +1,6 @@
 usr/lib/ipsec/libstrongswan.so*
 usr/lib/ipsec/libhydra.so*
 usr/lib/ipsec/libfast.so*
-usr/lib/ipsec/libchecksum.so*
 usr/lib/ipsec/libsimaka.so*
 usr/lib/ipsec/libtnccs.so*
 usr/lib/ipsec/libradius.so*

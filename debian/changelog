@@ -1,5 +1,6 @@
 strongswan (5.1.0-3) UNRELEASED; urgency=low
 
+  [ Yves-Alexis Perez ]
   * debian/rules:
     - enable and install af-ag plugin on Linux.                 closes: #718292
     - enable certexpire plugin.                                 closes: #718293
@@ -21,7 +22,13 @@ strongswan (5.1.0-3) UNRELEASED; urgency=low
     - nb.po updated, thanks Bjørn Steensrud.                    closes: #725497
     - fr.po updated, thanks Christian Perrier.                  closes: #725469
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 01 Oct 2013 09:35:37 +0200
+  [ Romain Francoise ]
+  * debian/rules: disable built-in integrity tests; they've been broken
+    for years, don't provide security (by design) and we have better tools
+    at the package level anyway.                                closes: #598138
+  * debian/libstrongswan.install: libchecksum.so is no longer built, remove.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 18:46:55 +0100
 
 strongswan (5.1.0-2) unstable; urgency=medium
 

@@ -12,7 +12,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
 		--enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 \
 		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
-		--enable-sql --enable-integrity-test \
+		--enable-sql \
 		--enable-ha \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors \
