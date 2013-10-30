@@ -1,4 +1,4 @@
-strongswan (5.1.0-3) UNRELEASED; urgency=high
+strongswan (5.1.0-3) unstable; urgency=high
 
   * urgency=high for the security fixes.
   * debian/patches
@@ -6,7 +6,7 @@ strongswan (5.1.0-3) UNRELEASED; urgency=high
       bypass.
     - CVE-2013-6076 added, fix remote denial of service in IKEv1 code.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 24 Oct 2013 23:22:58 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 29 Oct 2013 21:07:04 +0100
 
 strongswan (5.1.0-2) unstable; urgency=medium
 
