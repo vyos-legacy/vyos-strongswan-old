@@ -38,6 +38,16 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
 
  -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 20:01:37 +0100
 
+strongswan (5.1.0-3) unstable; urgency=high
+
+  * urgency=high for the security fixes.
+  * debian/patches
+    - CVE-2013-6075 added, fix remote denial of service and authorization
+      bypass.
+    - CVE-2013-6076 added, fix remote denial of service in IKEv1 code.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 29 Oct 2013 21:07:04 +0100
+
 strongswan (5.1.0-2) unstable; urgency=medium
 
   * urgency=medium since we already spent 16 days in unstable and the fix is
