@@ -323,10 +323,9 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 								NULL);
 	}
 
-	ike_cfg = ike_cfg_create(IKEV2, TRUE, FALSE, "0.0.0.0", FALSE,
+	ike_cfg = ike_cfg_create(IKEV2, TRUE, FALSE, "0.0.0.0",
 							 charon->socket->get_port(charon->socket, FALSE),
-							 hostname, FALSE, IKEV2_UDP_PORT, FRAGMENTATION_NO,
-							 0);
+							 hostname, IKEV2_UDP_PORT, FRAGMENTATION_NO, 0);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
 
 	peer_cfg = peer_cfg_create(this->current, ike_cfg,
@@ -334,7 +333,7 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 							   UNIQUE_REPLACE, 1, /* keyingtries */
 							   36000, 0, /* rekey 10h, reauth none */
 							   600, 600, /* jitter, over 10min */
-							   TRUE, FALSE, /* mobike, aggressive */
+							   TRUE, FALSE, TRUE, /* mobike, aggressive, pull */
 							   0, 0, /* DPD delay, timeout */
 							   FALSE, NULL, NULL); /* mediation */
 	peer_cfg->add_virtual_ip(peer_cfg,  host_create_from_string("0.0.0.0", 0));

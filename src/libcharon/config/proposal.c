@@ -429,30 +429,33 @@ static void check_proposal(private_proposal_t *this)
 		e->destroy(e);
 	}
 
-	e = create_enumerator(this, ENCRYPTION_ALGORITHM);
-	while (e->enumerate(e, &alg, &ks))
+	if (this->protocol == PROTO_ESP)
 	{
-		if (!encryption_algorithm_is_aead(alg))
+		e = create_enumerator(this, ENCRYPTION_ALGORITHM);
+		while (e->enumerate(e, &alg, &ks))
 		{
-			all_aead = FALSE;
-			break;
-		}
-	}
-	e->destroy(e);
-
-	if (all_aead)
-	{
-		/* if all encryption algorithms in the proposal are AEADs,
-		 * we MUST NOT propose any integrity algorithms */
-		e = array_create_enumerator(this->transforms);
-		while (e->enumerate(e, &entry))
-		{
-			if (entry->type == INTEGRITY_ALGORITHM)
+			if (!encryption_algorithm_is_aead(alg))
 			{
-				array_remove_at(this->transforms, e);
+				all_aead = FALSE;
+				break;
 			}
 		}
 		e->destroy(e);
+
+		if (all_aead)
+		{
+			/* if all encryption algorithms in the proposal are AEADs,
+			 * we MUST NOT propose any integrity algorithms */
+			e = array_create_enumerator(this->transforms);
+			while (e->enumerate(e, &entry))
+			{
+				if (entry->type == INTEGRITY_ALGORITHM)
+				{
+					array_remove_at(this->transforms, e);
+				}
+			}
+			e->destroy(e);
+		}
 	}
 
 	if (this->protocol == PROTO_AH || this->protocol == PROTO_ESP)
@@ -734,6 +737,10 @@ static void proposal_add_supported_ike(private_proposal_t *this)
 			case MODP_2048_256:
 			case ECP_192_BIT:
 			case ECP_224_BIT:
+			case ECP_224_BP:
+			case ECP_256_BP:
+			case ECP_384_BP:
+			case ECP_512_BP:
 				add_algorithm(this, DIFFIE_HELLMAN_GROUP, group, 0);
 				break;
 			default:

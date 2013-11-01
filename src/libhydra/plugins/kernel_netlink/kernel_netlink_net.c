@@ -44,6 +44,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <net/if.h>
+#ifdef HAVE_LINUX_FIB_RULES_H
+#include <linux/fib_rules.h>
+#endif
 
 #include "kernel_netlink_net.h"
 #include "kernel_netlink_shared.h"
@@ -394,6 +397,11 @@ struct private_kernel_netlink_net_t {
 	timeval_t next_roam;
 
 	/**
+	 * roam event due to address change
+	 */
+	bool roam_address;
+
+	/**
 	 * lock to check and update roam event time
 	 */
 	spinlock_t *roam_lock;
@@ -696,9 +704,15 @@ static host_t *get_interface_address(private_kernel_netlink_net_t *this,
 /**
  * callback function that raises the delayed roam event
  */
-static job_requeue_t roam_event(uintptr_t address)
+static job_requeue_t roam_event(private_kernel_netlink_net_t *this)
 {
-	hydra->kernel_interface->roam(hydra->kernel_interface, address != 0);
+	bool address;
+
+	this->roam_lock->lock(this->roam_lock);
+	address = this->roam_address;
+	this->roam_address = FALSE;
+	this->roam_lock->unlock(this->roam_lock);
+	hydra->kernel_interface->roam(hydra->kernel_interface, address);
 	return JOB_REQUEUE_NONE;
 }
 
@@ -718,6 +732,7 @@ static void fire_roam_event(private_kernel_netlink_net_t *this, bool address)
 
 	time_monotonic(&now);
 	this->roam_lock->lock(this->roam_lock);
+	this->roam_address |= address;
 	if (!timercmp(&now, &this->next_roam, >))
 	{
 		this->roam_lock->unlock(this->roam_lock);
@@ -728,8 +743,7 @@ static void fire_roam_event(private_kernel_netlink_net_t *this, bool address)
 	this->roam_lock->unlock(this->roam_lock);
 
 	job = (job_t*)callback_job_create((callback_job_cb_t)roam_event,
-									  (void*)(uintptr_t)(address ? 1 : 0),
-									   NULL, NULL);
+									  this, NULL, NULL);
 	lib->scheduler->schedule_job_ms(lib->scheduler, job, ROAM_DELAY);
 }
 
@@ -1081,7 +1095,7 @@ static void process_route(private_kernel_netlink_net_t *this, struct nlmsghdr *h
 static bool receive_events(private_kernel_netlink_net_t *this, int fd,
 						   watcher_event_t event)
 {
-	char response[1024];
+	char response[1536];
 	struct nlmsghdr *hdr = (struct nlmsghdr*)response;
 	struct sockaddr_nl addr;
 	socklen_t addr_len = sizeof(addr);
@@ -2085,6 +2099,7 @@ static status_t manage_rule(private_kernel_netlink_net_t *this, int nlmsg_type,
 	struct nlmsghdr *hdr;
 	struct rtmsg *msg;
 	chunk_t chunk;
+	char *fwmark;
 
 	memset(&request, 0, sizeof(request));
 	hdr = (struct nlmsghdr*)request;
@@ -2106,6 +2121,29 @@ static status_t manage_rule(private_kernel_netlink_net_t *this, int nlmsg_type,
 	chunk = chunk_from_thing(prio);
 	netlink_add_attribute(hdr, RTA_PRIORITY, chunk, sizeof(request));
 
+	fwmark = lib->settings->get_str(lib->settings,
+					"%s.plugins.kernel-netlink.fwmark", NULL, hydra->daemon);
+	if (fwmark)
+	{
+#ifdef HAVE_LINUX_FIB_RULES_H
+		mark_t mark;
+
+		if (fwmark[0] == '!')
+		{
+			msg->rtm_flags |= FIB_RULE_INVERT;
+			fwmark++;
+		}
+		if (mark_from_string(fwmark, &mark))
+		{
+			chunk = chunk_from_thing(mark.value);
+			netlink_add_attribute(hdr, FRA_FWMARK, chunk, sizeof(request));
+			chunk = chunk_from_thing(mark.mask);
+			netlink_add_attribute(hdr, FRA_FWMASK, chunk, sizeof(request));
+		}
+#else
+		DBG1(DBG_KNL, "setting firewall mark on routing rule is not supported");
+#endif
+	}
 	return this->socket->send_ack(this->socket, hdr);
 }
 

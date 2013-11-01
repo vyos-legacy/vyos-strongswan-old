@@ -134,12 +134,17 @@ METHOD(xauth_method_t, process, status_t,
 		switch (attr->get_type(attr))
 		{
 			case XAUTH_USER_NAME:
-				/* trim to username part if email address given */
 				chunk = attr->get_chunk(attr);
-				pos = memchr(chunk.ptr, '@', chunk.len);
-				if (pos)
+				/* trim to username part if email address given */
+				if (lib->settings->get_bool(lib->settings,
+											"%s.plugins.xauth-pam.trim_email",
+											TRUE, charon->name))
 				{
-					chunk.len = (u_char*)pos - chunk.ptr;
+					pos = memchr(chunk.ptr, '@', chunk.len);
+					if (pos)
+					{
+						chunk.len = (u_char*)pos - chunk.ptr;
+					}
 				}
 				attr2string(user, sizeof(user), chunk);
 				break;
@@ -195,7 +200,7 @@ METHOD(xauth_method_t, destroy, void,
  * Described in header.
  */
 xauth_pam_t *xauth_pam_create_server(identification_t *server,
-									 identification_t *peer)
+									 identification_t *peer, char *profile)
 {
 	private_xauth_pam_t *this;
 

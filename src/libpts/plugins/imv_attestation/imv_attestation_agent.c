@@ -35,8 +35,8 @@
 #include <pts/pts_creds.h>
 
 #include <tcg/tcg_attr.h>
-#include <tcg/tcg_pts_attr_req_file_meas.h>
-#include <tcg/tcg_pts_attr_req_file_meta.h>
+#include <tcg/pts/tcg_pts_attr_req_file_meas.h>
+#include <tcg/pts/tcg_pts_attr_req_file_meta.h>
 
 #include <tncif_pa_subtypes.h>
 
@@ -440,9 +440,8 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 	}
 
 	/* check the IMV state for the next PA-TNC attributes to send */
-	if (!imv_attestation_build(out_msg, attestation_state,
-							  this->supported_algorithms,
-							  this->supported_dh_groups, this->pts_db))
+	if (!imv_attestation_build(out_msg, state, this->supported_algorithms,
+							   this->supported_dh_groups, this->pts_db))
 	{
 		state->set_recommendation(state,
 								TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
@@ -503,8 +502,11 @@ METHOD(imv_agent_if_t, solicit_recommendation, TNC_Result,
 
 	if (session)
 	{
+		TNC_IMV_Evaluation_Result eval;
+		TNC_IMV_Action_Recommendation rec;
 		imv_workitem_t *workitem;
 		enumerator_t *enumerator;
+		char *result_str;
 		int pending_file_meas = 0;
 
 		enumerator = session->create_workitem_enumerator(session);
@@ -522,6 +524,13 @@ METHOD(imv_agent_if_t, solicit_recommendation, TNC_Result,
 					case IMV_WORKITEM_FILE_MEAS:
 					case IMV_WORKITEM_DIR_REF_MEAS:
 					case IMV_WORKITEM_DIR_MEAS:
+						session->remove_workitem(session, enumerator);
+						result_str = "pending file measurements";
+						eval = TNC_IMV_EVALUATION_RESULT_ERROR;
+						rec = workitem->set_result(workitem, result_str, eval);
+						state->update_recommendation(state, rec, eval);
+						imcv_db->finalize_workitem(imcv_db, workitem);
+						workitem->destroy(workitem);
 						pending_file_meas++;
 						break;
 					default:
@@ -565,7 +574,15 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 										 TNC_Version *actual_version)
 {
 	private_imv_attestation_agent_t *this;
+	imv_agent_t *agent;
 	char *hash_alg, *dh_group, *cadir;
+
+	agent = imv_agent_create(name, msg_types, countof(msg_types), id,
+							 actual_version);
+	if (!agent)
+	{
+		return NULL;
+	}
 
 	hash_alg = lib->settings->get_str(lib->settings,
 					"libimcv.plugins.imv-attestation.hash_algorithm", "sha256");
@@ -584,8 +601,7 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 			.solicit_recommendation = _solicit_recommendation,
 			.destroy = _destroy,
 		},
-		.agent = imv_agent_create(name, msg_types, countof(msg_types), id,
-								  actual_version),
+		.agent = agent,
 		.supported_algorithms = PTS_MEAS_ALGO_NONE,
 		.supported_dh_groups = PTS_DH_GROUP_NONE,
 		.pts_credmgr = credential_manager_create(),
@@ -595,8 +611,7 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 
 	libpts_init();
 
-	if (!this->agent ||
-		!pts_meas_algo_probe(&this->supported_algorithms) ||
+	if (!pts_meas_algo_probe(&this->supported_algorithms) ||
 		!pts_dh_group_probe(&this->supported_dh_groups) ||
 		!pts_meas_algo_update(hash_alg, &this->supported_algorithms) ||
 		!pts_dh_group_update(dh_group, &this->supported_dh_groups))
@@ -613,4 +628,3 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 
 	return &this->public;
 }
-

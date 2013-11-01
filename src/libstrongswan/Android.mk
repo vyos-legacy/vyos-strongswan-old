@@ -13,6 +13,7 @@ crypto/prfs/prf.c crypto/prfs/mac_prf.c crypto/pkcs5.c \
 crypto/rngs/rng.c crypto/prf_plus.c crypto/signers/signer.c \
 crypto/signers/mac_signer.c crypto/crypto_factory.c crypto/crypto_tester.c \
 crypto/diffie_hellman.c crypto/aead.c crypto/transform.c \
+crypto/iv/iv_gen_rand.c crypto/iv/iv_gen_seq.c \
 credentials/credential_factory.c credentials/builder.c \
 credentials/cred_encoding.c credentials/keys/private_key.c \
 credentials/keys/public_key.c credentials/keys/shared_key.c \
@@ -35,7 +36,7 @@ selectors/traffic_selector.c threading/thread.c threading/thread_value.c \
 threading/mutex.c threading/semaphore.c threading/rwlock.c threading/spinlock.c \
 utils/utils.c utils/chunk.c utils/debug.c utils/enum.c utils/identification.c \
 utils/lexparser.c utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
-utils/printf_hook.c utils/settings.c
+utils/printf_hook/printf_hook_vstr.c utils/settings.c
 
 # adding the plugin source files
 

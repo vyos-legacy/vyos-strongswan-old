@@ -11,6 +11,7 @@ crypto/prfs/prf.c crypto/prfs/mac_prf.c crypto/pkcs5.c \
 crypto/rngs/rng.c crypto/prf_plus.c crypto/signers/signer.c \
 crypto/signers/mac_signer.c crypto/crypto_factory.c crypto/crypto_tester.c \
 crypto/diffie_hellman.c crypto/aead.c crypto/transform.c \
+crypto/iv/iv_gen_rand.c crypto/iv/iv_gen_seq.c \
 credentials/credential_factory.c credentials/builder.c \
 credentials/cred_encoding.c credentials/keys/private_key.c \
 credentials/keys/public_key.c credentials/keys/shared_key.c \
@@ -33,7 +34,7 @@ selectors/traffic_selector.c threading/thread.c threading/thread_value.c \
 threading/mutex.c threading/semaphore.c threading/rwlock.c threading/spinlock.c \
 utils/utils.c utils/chunk.c utils/debug.c utils/enum.c utils/identification.c \
 utils/lexparser.c utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
-utils/printf_hook.c utils/settings.c
+utils/settings.c
 
 if USE_DEV_HEADERS
 strongswan_includedir = ${dev_headers}
@@ -47,7 +48,8 @@ crypto/proposal/proposal_keywords.h crypto/proposal/proposal_keywords_static.h \
 crypto/prfs/prf.h crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
 crypto/prf_plus.h crypto/signers/signer.h crypto/signers/mac_signer.h \
 crypto/crypto_factory.h crypto/crypto_tester.h crypto/diffie_hellman.h \
-crypto/aead.h crypto/transform.h crypto/pkcs5.h \
+crypto/aead.h crypto/transform.h crypto/pkcs5.h crypto/iv/iv_gen.h \
+crypto/iv/iv_gen_rand.h crypto/iv/iv_gen_seq.h \
 credentials/credential_factory.h credentials/builder.h \
 credentials/cred_encoding.h credentials/keys/private_key.h \
 credentials/keys/public_key.h credentials/keys/shared_key.h \
@@ -78,7 +80,9 @@ threading/mutex.h threading/condvar.h threading/spinlock.h threading/semaphore.h
 threading/rwlock.h threading/rwlock_condvar.h threading/lock_profiler.h \
 utils/utils.h utils/chunk.h utils/debug.h utils/enum.h utils/identification.h \
 utils/lexparser.h utils/optionsfrom.h utils/capabilities.h utils/backtrace.h \
-utils/leak_detective.h utils/printf_hook.h utils/settings.h utils/integrity_checker.h
+utils/leak_detective.h utils/printf_hook/printf_hook.h \
+utils/printf_hook/printf_hook_vstr.h utils/printf_hook/printf_hook_builtin.h \
+utils/settings.h utils/integrity_checker.h
 endif
 
 library.lo :	$(top_builddir)/config.status
@@ -95,6 +99,9 @@ AM_CPPFLAGS = \
 AM_CFLAGS = \
 	@COVERAGE_CFLAGS@
 
+AM_LDFLAGS = \
+	-no-undefined
+
 if USE_LEAK_DETECTIVE
   AM_CPPFLAGS += -DLEAK_DETECTIVE
   libstrongswan_la_SOURCES += utils/leak_detective.c
@@ -110,7 +117,19 @@ if USE_INTEGRITY_TEST
 endif
 
 if USE_VSTR
+  libstrongswan_la_SOURCES += utils/printf_hook/printf_hook_vstr.c
   libstrongswan_la_LIBADD += -lvstr
+endif
+
+if USE_BUILTIN_PRINTF
+  libstrongswan_la_SOURCES += utils/printf_hook/printf_hook_builtin.c
+  libstrongswan_la_LIBADD += -lm
+endif
+
+if !USE_BUILTIN_PRINTF
+if !USE_VSTR
+  libstrongswan_la_SOURCES += utils/printf_hook/printf_hook_glibc.c
+endif
 endif
 
 if USE_LIBCAP

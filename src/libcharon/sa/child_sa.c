@@ -167,12 +167,12 @@ struct private_child_sa_t {
 	/**
 	 * time of last use in seconds (inbound)
 	 */
-	u_int32_t my_usetime;
+	time_t my_usetime;
 
 	/**
 	 * time of last use in seconds (outbound)
 	 */
-	u_int32_t other_usetime;
+	time_t other_usetime;
 
 	/**
 	 * last number of inbound bytes
@@ -429,7 +429,7 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 {
 	status_t status = FAILED;
 	u_int64_t bytes, packets;
-	u_int32_t time;
+	time_t time;
 
 	if (inbound)
 	{
@@ -489,12 +489,12 @@ static bool update_usetime(private_child_sa_t *this, bool inbound)
 {
 	enumerator_t *enumerator;
 	traffic_selector_t *my_ts, *other_ts;
-	u_int32_t last_use = 0;
+	time_t last_use = 0;
 
 	enumerator = create_policy_enumerator(this);
 	while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 	{
-		u_int32_t in, out, fwd;
+		time_t in, out, fwd;
 
 		if (inbound)
 		{
@@ -594,6 +594,9 @@ METHOD(child_sa_t, alloc_spi, u_int32_t,
 										 proto_ike2ip(protocol), this->reqid,
 										 &this->my_spi) == SUCCESS)
 	{
+		/* if we allocate a SPI, but then are unable to establish the SA, we
+		 * need to know the protocol family to delete the partial SA */
+		this->protocol = protocol;
 		return this->my_spi;
 	}
 	return 0;
@@ -1039,12 +1042,6 @@ METHOD(child_sa_t, destroy, void,
 	/* delete SAs in the kernel, if they are set up */
 	if (this->my_spi)
 	{
-		/* if CHILD was not established, use PROTO_ESP used during alloc_spi().
-		 * TODO: For AH support, we have to store protocol specific SPI.s */
-		if (this->protocol == PROTO_NONE)
-		{
-			this->protocol = PROTO_ESP;
-		}
 		hydra->kernel_interface->del_sa(hydra->kernel_interface,
 					this->other_addr, this->my_addr, this->my_spi,
 					proto_ike2ip(this->protocol), this->my_cpi,

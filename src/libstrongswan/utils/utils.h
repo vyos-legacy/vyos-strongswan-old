@@ -113,6 +113,14 @@ static inline bool strncaseeq(const char *x, const char *y, size_t len)
 }
 
 /**
+ * Helper function that checks if a string starts with a given prefix
+ */
+static inline bool strcasepfx(const char *x, const char *prefix)
+{
+	return strncaseeq(x, prefix, strlen(prefix));
+}
+
+/**
  * NULL-safe strdup variant
  */
 static inline char *strdupnull(const char *s)
@@ -671,26 +679,30 @@ static inline u_int64_t untoh64(void *network)
 }
 
 /**
- * Round up size to be multiple of alignement
+ * Get the padding required to make size a multiple of alignment
  */
-static inline size_t round_up(size_t size, int alignement)
+static inline size_t pad_len(size_t size, size_t alignment)
 {
-	int remainder;
+	size_t remainder;
 
-	remainder = size % alignement;
-	if (remainder)
-	{
-		size += alignement - remainder;
-	}
-	return size;
+	remainder = size % alignment;
+	return remainder ? alignment - remainder : 0;
 }
 
 /**
- * Round down size to be a multiple of alignement
+ * Round up size to be multiple of alignment
  */
-static inline size_t round_down(size_t size, int alignement)
+static inline size_t round_up(size_t size, size_t alignment)
 {
-	return size - (size % alignement);
+	return size + pad_len(size, alignment);
+}
+
+/**
+ * Round down size to be a multiple of alignment
+ */
+static inline size_t round_down(size_t size, size_t alignment)
+{
+	return size - (size % alignment);
 }
 
 /**
@@ -752,6 +764,23 @@ bool cas_bool(bool *ptr, bool oldval, bool newval);
 bool cas_ptr(void **ptr, void *oldval, void *newval);
 
 #endif /* HAVE_GCC_ATOMIC_OPERATIONS */
+
+#ifndef HAVE_FMEMOPEN
+# ifdef HAVE_FUNOPEN
+#  define HAVE_FMEMOPEN
+#  define HAVE_FMEMOPEN_FALLBACK
+#  include <stdio.h>
+/**
+ * fmemopen(3) fallback using BSD funopen.
+ *
+ * We could also provide one using fopencookie(), but should we have it we
+ * most likely have fmemopen().
+ *
+ * fseek() is currently not supported.
+ */
+FILE *fmemopen(void *buf, size_t size, const char *mode);
+# endif /* FUNOPEN */
+#endif /* FMEMOPEN */
 
 /**
  * printf hook for time_t.

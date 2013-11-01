@@ -17,6 +17,7 @@
 
 #include <library.h>
 #include <utils/utils.h>
+#include <ipsec/ipsec_types.h>
 
 #include <time.h>
 
@@ -166,11 +167,18 @@ START_TEST(test_untoh)
 END_TEST
 
 /*******************************************************************************
- * round_up/down
+ * pad_len/round_up/down
  */
 
 START_TEST(test_round)
 {
+	ck_assert_int_eq(pad_len(0, 4), 0);
+	ck_assert_int_eq(pad_len(1, 4), 3);
+	ck_assert_int_eq(pad_len(2, 4), 2);
+	ck_assert_int_eq(pad_len(3, 4), 1);
+	ck_assert_int_eq(pad_len(4, 4), 0);
+	ck_assert_int_eq(pad_len(5, 4), 3);
+
 	ck_assert_int_eq(round_up(0, 4), 0);
 	ck_assert_int_eq(round_up(1, 4), 4);
 	ck_assert_int_eq(round_up(2, 4), 4);
@@ -184,6 +192,38 @@ START_TEST(test_round)
 	ck_assert_int_eq(round_down(3, 4), 0);
 	ck_assert_int_eq(round_down(4, 4), 4);
 	ck_assert_int_eq(round_down(5, 4), 4);
+}
+END_TEST
+
+/*******************************************************************************
+ * strpfx
+ */
+
+static struct {
+	char *str;
+	char *pfx;
+	bool prefix;
+	bool case_prefix;
+} strpfx_data[] = {
+	{"", "", TRUE, TRUE},
+	{"abc", "", TRUE, TRUE},
+	{"abc", "a", TRUE, TRUE},
+	{"abc", "ab", TRUE, TRUE},
+	{"abc", "abc", TRUE, TRUE},
+	{"abc", "abcd", FALSE, FALSE},
+	{"abc", "AB", FALSE, TRUE},
+	{"ABC", "ab", FALSE, TRUE},
+	{" abc", "abc", FALSE, FALSE},
+};
+
+START_TEST(test_strpfx)
+{
+	bool prefix;
+
+	prefix = strpfx(strpfx_data[_i].str, strpfx_data[_i].pfx);
+	ck_assert(prefix == strpfx_data[_i].prefix);
+	prefix = strcasepfx(strpfx_data[_i].str, strpfx_data[_i].pfx);
+	ck_assert(prefix == strpfx_data[_i].case_prefix);
 }
 END_TEST
 
@@ -410,6 +450,50 @@ START_TEST(test_time_delta_printf_hook)
 }
 END_TEST
 
+/*******************************************************************************
+ * mark_from_string
+ */
+
+static struct {
+	char *s;
+	bool ok;
+	mark_t m;
+} mark_data[] = {
+	{NULL,			FALSE, { 0 }},
+	{"",			TRUE,  { 0, 0xffffffff }},
+	{"/",			TRUE,  { 0, 0 }},
+	{"42",			TRUE,  { 42, 0xffffffff }},
+	{"0x42",		TRUE,  { 0x42, 0xffffffff }},
+	{"x",			FALSE, { 0 }},
+	{"42/",			TRUE,  { 0, 0 }},
+	{"42/0",		TRUE,  { 0, 0 }},
+	{"42/x",		FALSE, { 0 }},
+	{"42/42",		TRUE,  { 42, 42 }},
+	{"42/0xff",		TRUE,  { 42, 0xff }},
+	{"0x42/0xff",	TRUE,  { 0x42, 0xff }},
+	{"/0xff",		TRUE,  { 0, 0xff }},
+	{"/x",			FALSE, { 0 }},
+	{"x/x",			FALSE, { 0 }},
+	{"0xffffffff/0x0000ffff",	TRUE, { 0x0000ffff, 0x0000ffff }},
+	{"0xffffffff/0xffffffff",	TRUE, { 0xffffffff, 0xffffffff }},
+};
+
+START_TEST(test_mark_from_string)
+{
+	mark_t mark;
+
+	if (mark_from_string(mark_data[_i].s, &mark))
+	{
+		ck_assert_int_eq(mark.value, mark_data[_i].m.value);
+		ck_assert_int_eq(mark.mask, mark_data[_i].m.mask);
+	}
+	else
+	{
+		ck_assert(!mark_data[_i].ok);
+	}
+}
+END_TEST
+
 Suite *utils_suite_create()
 {
 	Suite *s;
@@ -442,6 +526,10 @@ Suite *utils_suite_create()
 	tcase_add_test(tc, test_round);
 	suite_add_tcase(s, tc);
 
+	tc = tcase_create("string helper");
+	tcase_add_loop_test(tc, test_strpfx, 0, countof(strpfx_data));
+	suite_add_tcase(s, tc);
+
 	tc = tcase_create("memxor");
 	tcase_add_test(tc, test_memxor);
 	tcase_add_test(tc, test_memxor_aligned);
@@ -458,6 +546,10 @@ Suite *utils_suite_create()
 	tc = tcase_create("printf_hooks");
 	tcase_add_loop_test(tc, test_time_printf_hook, 0, countof(time_data));
 	tcase_add_loop_test(tc, test_time_delta_printf_hook, 0, countof(time_delta_data));
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("mark_from_string");
+	tcase_add_loop_test(tc, test_mark_from_string, 0, countof(mark_data));
 	suite_add_tcase(s, tc);
 
 	return s;

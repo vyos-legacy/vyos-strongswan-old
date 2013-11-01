@@ -55,8 +55,12 @@ static int verify()
 	}
 	else
 	{
+		chunk_t chunk;
+
+		chunk = chunk_from_fd(0);
 		cert = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
-								  BUILD_FROM_FD, 0, BUILD_END);
+								  BUILD_BLOB, chunk, BUILD_END);
+		free(chunk.ptr);
 	}
 	if (!cert)
 	{
@@ -125,7 +129,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		verify, 'v', "verify",
 		"verify a certificate using the CA certificate",
-		{"[--in file] [--ca file]"},
+		{"[--in file] [--cacert file]"},
 		{
 			{"help",	'h', 0, "show usage information"},
 			{"in",		'i', 1, "X.509 certificate to verify, default: stdin"},
@@ -133,4 +137,3 @@ static void __attribute__ ((constructor))reg()
 		}
 	});
 }
-

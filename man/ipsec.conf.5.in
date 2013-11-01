@@ -1,4 +1,4 @@
-.TH IPSEC.CONF 5 "2012-06-26" "@IPSEC_VERSION@" "strongSwan"
+.TH IPSEC.CONF 5 "2012-06-26" "@PACKAGE_VERSION@" "strongSwan"
 .SH NAME
 ipsec.conf \- IPsec configuration and connections
 .SH DESCRIPTION
@@ -236,9 +236,43 @@ identity (such as EAP-TLS), but it does not match the IKEv2 gateway identity.
 .BR aggressive " = yes | " no
 whether to use IKEv1 Aggressive or Main Mode (the default).
 .TP
+.BR ah " = <cipher suites>"
+comma-separated list of AH algorithms to be used for the connection, e.g.
+.BR sha1-sha256-modp1024 .
+The notation is
+.BR integrity[-dhgroup] .
+For IKEv2, multiple algorithms (separated by -) of the same type can be included
+in a single proposal. IKEv1 only includes the first algorithm in a proposal.
+Only either the
+.B ah
+or
+.B esp
+keyword may be used, AH+ESP bundles are not supported.
+
+There is no default, by default ESP is used.
+The daemon adds its extensive default proposal to the configured value. To
+restrict it to the configured proposal an
+exclamation mark
+.RB ( ! )
+can be added at the end.
+
+If
+.B dh-group
+is specified, CHILD_SA/Quick Mode setup and rekeying include a separate
+Diffie-Hellman exchange.
+.TP
 .BR also " = <name>"
 includes conn section
 .BR <name> .
+.TP
+.BR auth " = <value>"
+was used by the
+.B pluto
+IKEv1 daemon to use AH integrity protection for ESP encrypted packets, but is
+not supported in charon. The
+.B ah
+keyword specifies algorithms to use for integrity protection with AH, but
+without encryption. AH+ESP bundles are not supported.
 .TP
 .BR authby " = " pubkey " | rsasig | ecdsasig | psk | secret | never | xauthpsk | xauthrsasig"
 how the two security gateways should authenticate each other;
@@ -368,6 +402,13 @@ for the connection, e.g.
 .BR aes128-sha256 .
 The notation is
 .BR encryption-integrity[-dhgroup][-esnmode] .
+For IKEv2, multiple algorithms (separated by -) of the same type can be included
+in a single proposal. IKEv1 only includes the first algorithm in a proposal.
+Only either the
+.B ah
+or
+.B esp
+keyword may be used, AH+ESP bundles are not supported.
 
 Defaults to
 .BR aes128-sha1,3des-sha1 .
@@ -488,9 +529,8 @@ Relevant only locally, other end need not agree on it.
 synonym for
 .BR lifetime .
 .TP
-.BR left " = <ip address> | <fqdn> | " %any
-(required)
-the IP address of the left participant's public-network interface
+.BR left " = <ip address> | <fqdn> | " %any " | <range> | <subnet> "
+The IP address of the left participant's public-network interface
 or one of several magic values.
 The value
 .B %any
@@ -509,6 +549,14 @@ in front of a fully-qualified domain name or an IP address will implicitly set
 If
 .B %any
 is used for the remote endpoint it literally means any IP address.
+
+To limit the connection to a  specific range of hosts, a range (
+.BR 10.1.0.0-10.2.255.255
+) or a subnet (
+.BR 10.1.0.0/16
+) can be specified, and multiple addresses, ranges and subnets can be separated
+by commas. While one can freely combine these items, to initiate the connection
+at least one non-range/subnet is required.
 
 Please note that with the usage of wildcards multiple connection descriptions
 might match a given incoming connection attempt. The most specific description
@@ -810,6 +858,14 @@ Instead of omitting either value
 can be used to the same effect, e.g.
 .BR leftsubnet=fec1::1[udp/%any],10.0.0.0/16[%any/53] .
 
+If the protocol is
+.B icmp
+or
+.B ipv6-icmp
+the port is interpreted as ICMP message type if it is less than 256 or as type
+and code if it is greater or equal to 256, with the type in the most significant
+8 bits and the code in the least significant 8 bits.
+
 The port value can alternatively take the value
 .B %opaque
 for RFC 4301 OPAQUE selectors, or a numerical range in the form
@@ -931,8 +987,7 @@ Accepted values are
 and
 .B pull
 (the default).
-Push mode is currently not supported in charon, hence this parameter has no
-effect.
+Push mode is currently not supported with IKEv2.
 .TP
 .BR reauth " = " yes " | no"
 whether rekeying of an IKE_SA should also reauthenticate the peer. In IKEv1,

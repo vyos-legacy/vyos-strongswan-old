@@ -1,4 +1,4 @@
-/* C code produced by gperf version 3.0.3 */
+/* C code produced by gperf version 3.0.4 */
 /* Command-line: /usr/bin/gperf -m 10 -D -C -G -t  */
 /* Computed positions: -k'1,5,7' */
 
@@ -186,7 +186,7 @@ static const short lookup[] =
 
 #ifdef __GNUC__
 __inline
-#ifdef __GNUC_STDC_INLINE__
+#if defined __GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__
 __attribute__ ((__gnu_inline__))
 #endif
 #endif

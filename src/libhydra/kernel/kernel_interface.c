@@ -208,7 +208,7 @@ METHOD(kernel_interface_t, update_sa, status_t,
 METHOD(kernel_interface_t, query_sa, status_t,
 	private_kernel_interface_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets, u_int32_t *time)
+	u_int64_t *bytes, u_int64_t *packets, time_t *time)
 {
 	if (!this->ipsec)
 	{
@@ -256,7 +256,7 @@ METHOD(kernel_interface_t, add_policy, status_t,
 METHOD(kernel_interface_t, query_policy, status_t,
 	private_kernel_interface_t *this, traffic_selector_t *src_ts,
 	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	u_int32_t *use_time)
+	time_t *use_time)
 {
 	if (!this->ipsec)
 	{
@@ -447,7 +447,9 @@ METHOD(kernel_interface_t, get_address_by_ts, status_t,
 	}
 	host->destroy(host);
 
-	addrs = create_address_enumerator(this, ADDR_TYPE_VIRTUAL);
+	/* try virtual IPs only first (on all interfaces) */
+	addrs = create_address_enumerator(this,
+									  ADDR_TYPE_ALL ^ ADDR_TYPE_REGULAR);
 	while (addrs->enumerate(addrs, (void**)&host))
 	{
 		if (ts->includes(ts, host))
@@ -464,8 +466,9 @@ METHOD(kernel_interface_t, get_address_by_ts, status_t,
 	addrs->destroy(addrs);
 
 	if (!found)
-	{
-		addrs = create_address_enumerator(this, ADDR_TYPE_REGULAR);
+	{	/* then try the regular addresses (on all interfaces) */
+		addrs = create_address_enumerator(this,
+										  ADDR_TYPE_ALL ^ ADDR_TYPE_VIRTUAL);
 		while (addrs->enumerate(addrs, (void**)&host))
 		{
 			if (ts->includes(ts, host))

@@ -380,9 +380,13 @@ static int issue()
 		}
 		else
 		{
+			chunk_t chunk;
+
+			chunk = chunk_from_fd(0);
 			cert_req = lib->creds->create(lib->creds, CRED_CERTIFICATE,
 										  CERT_PKCS10_REQUEST,
-										  BUILD_FROM_FD, 0, BUILD_END);
+										  BUILD_BLOB, chunk, BUILD_END);
+			free(chunk.ptr);
 		}
 		if (!cert_req)
 		{
@@ -419,8 +423,12 @@ static int issue()
 		}
 		else
 		{
+			chunk_t chunk;
+
+			chunk = chunk_from_fd(0);
 			public = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, KEY_ANY,
-										 BUILD_FROM_FD, 0, BUILD_END);
+										 BUILD_BLOB, chunk, BUILD_END);
+			free(chunk.ptr);
 		}
 	}
 	if (!public)
@@ -514,14 +522,14 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		issue, 'i', "issue",
 		"issue a certificate using a CA certificate and key",
-		{"[--in file] [--type pub|pkcs10] --cakey file | --cakeyid hex",
+		{"[--in file] [--type pub|pkcs10] --cakey file|--cakeyid hex",
 		 " --cacert file [--dn subject-dn] [--san subjectAltName]+",
-		 "[--lifetime days] [--serial hex] [--crl uri [--crlissuer i] ]+ [--ocsp uri]+",
-		 "[--ca] [--pathlen len] [--flag serverAuth|clientAuth|crlSign|ocspSigning]+",
-		 "[--nc-permitted name] [--nc-excluded name]",
-		 "[--cert-policy oid [--cps-uri uri] [--user-notice text] ]+",
-		 "[--policy-map issuer-oid:subject-oid]",
+		 "[--lifetime days] [--serial hex] [--ca] [--pathlen len]",
+		 "[--flag serverAuth|clientAuth|crlSign|ocspSigning]+",
+		 "[--crl uri [--crlissuer i]]+ [--ocsp uri]+ [--nc-permitted name]",
+		 "[--nc-excluded name] [--policy-mapping issuer-oid:subject-oid]",
 		 "[--policy-explicit len] [--policy-inhibit len] [--policy-any len]",
+		 "[--cert-policy oid [--cps-uri uri] [--user-notice text]]+",
 		 "[--digest md5|sha1|sha224|sha256|sha384|sha512] [--outform der|pem]"},
 		{
 			{"help",			'h', 0, "show usage information"},

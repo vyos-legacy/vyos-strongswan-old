@@ -439,7 +439,7 @@ static payload_rule_t id_prot_i_rules[] = {
 	{NAT_D_V1,					0,	MAX_NAT_D_PAYLOADS,		FALSE,	FALSE},
 	{NAT_D_DRAFT_00_03_V1,		0,	MAX_NAT_D_PAYLOADS,		FALSE,	FALSE},
 	{ID_V1,						0,	1,						TRUE,	FALSE},
-	{CERTIFICATE_V1,			0,	2,						TRUE,	FALSE},
+	{CERTIFICATE_V1,			0,	MAX_CERT_PAYLOADS,		TRUE,	FALSE},
 	{SIGNATURE_V1,				0,	1,						TRUE,	FALSE},
 	{HASH_V1,					0,	1,						TRUE,	FALSE},
 	{FRAGMENT_V1,				0,	1,						FALSE,	TRUE},
@@ -479,7 +479,7 @@ static payload_rule_t id_prot_r_rules[] = {
 	{NAT_D_V1,					0,	MAX_NAT_D_PAYLOADS,		FALSE,	FALSE},
 	{NAT_D_DRAFT_00_03_V1,		0,	MAX_NAT_D_PAYLOADS,		FALSE,	FALSE},
 	{ID_V1,						0,	1,						TRUE,	FALSE},
-	{CERTIFICATE_V1,			0,	2,						TRUE,	FALSE},
+	{CERTIFICATE_V1,			0,	MAX_CERT_PAYLOADS,		TRUE,	FALSE},
 	{SIGNATURE_V1,				0,	1,						TRUE,	FALSE},
 	{HASH_V1,					0,	1,						TRUE,	FALSE},
 	{FRAGMENT_V1,				0,	1,						FALSE,	TRUE},
@@ -1268,17 +1268,38 @@ static char* get_string(private_message_t *this, char *buf, int len)
 			pos += written;
 			len -= written;
 		}
-		if (payload->get_type(payload) == CONFIGURATION)
+		if (payload->get_type(payload) == CONFIGURATION ||
+			payload->get_type(payload) == CONFIGURATION_V1)
 		{
 			cp_payload_t *cp = (cp_payload_t*)payload;
 			enumerator_t *attributes;
 			configuration_attribute_t *attribute;
 			bool first = TRUE;
+			char *pfx;
+
+			switch (cp->get_type(cp))
+			{
+				case CFG_REQUEST:
+					pfx = "RQ(";
+					break;
+				case CFG_REPLY:
+					pfx = "RP(";
+					break;
+				case CFG_SET:
+					pfx = "S(";
+					break;
+				case CFG_ACK:
+					pfx = "A(";
+					break;
+				default:
+					pfx = "(";
+					break;
+			}
 
 			attributes = cp->create_attribute_enumerator(cp);
 			while (attributes->enumerate(attributes, &attribute))
 			{
-				written = snprintf(pos, len, "%s%N", first ? "(" : " ",
+				written = snprintf(pos, len, "%s%N", first ? pfx : " ",
 								   configuration_attribute_type_short_names,
 								   attribute->get_type(attribute));
 				if (written >= len || written < 0)
@@ -1601,7 +1622,7 @@ METHOD(message_t, generate, status_t,
 			htoun32(lenpos, chunk.len + encryption->get_length(encryption));
 		}
 		this->payloads->insert_last(this->payloads, encryption);
-		if (encryption->encrypt(encryption, chunk) != SUCCESS)
+		if (encryption->encrypt(encryption, this->message_id, chunk) != SUCCESS)
 		{
 			generator->destroy(generator);
 			return INVALID_STATE;

@@ -413,7 +413,6 @@ static bool send_packet(private_task_manager_t *this, bool request,
 {
 	bool use_frags = FALSE;
 	ike_cfg_t *ike_cfg;
-	host_t *src, *dst;
 	chunk_t data;
 
 	ike_cfg = this->ike_sa->get_ike_cfg(this->ike_sa);
@@ -438,15 +437,18 @@ static bool send_packet(private_task_manager_t *this, bool request,
 		fragment_payload_t *fragment;
 		u_int8_t num, count;
 		size_t len, frag_size;
-		bool nat;
-
-		/* reduce size due to non-ESP marker */
-		nat = this->ike_sa->has_condition(this->ike_sa, COND_NAT_ANY);
-		frag_size = this->frag.size - (nat ? 4 : 0);
+		host_t *src, *dst;
 
 		src = packet->get_source(packet);
 		dst = packet->get_destination(packet);
-		count = (data.len / (frag_size + 1)) + 1;
+
+		frag_size = this->frag.size;
+		if (dst->get_port(dst) != IKEV2_UDP_PORT &&
+			src->get_port(src) != IKEV2_UDP_PORT)
+		{	/* reduce size due to non-ESP marker */
+			frag_size -= 4;
+		}
+		count = data.len / frag_size + (data.len % frag_size ? 1 : 0);
 
 		DBG1(DBG_IKE, "sending IKE message with length of %zu bytes in "
 			 "%hhu fragments", data.len, count);
@@ -537,23 +539,40 @@ static bool mode_config_expected(private_task_manager_t *this)
 	enumerator_t *enumerator;
 	peer_cfg_t *peer_cfg;
 	char *pool;
+	bool local;
 	host_t *host;
 
 	peer_cfg = this->ike_sa->get_peer_cfg(this->ike_sa);
 	if (peer_cfg)
 	{
-		enumerator = peer_cfg->create_pool_enumerator(peer_cfg);
-		if (!enumerator->enumerate(enumerator, &pool))
-		{	/* no pool configured */
+		if (peer_cfg->use_pull_mode(peer_cfg))
+		{
+			enumerator = peer_cfg->create_pool_enumerator(peer_cfg);
+			if (!enumerator->enumerate(enumerator, &pool))
+			{	/* no pool configured */
+				enumerator->destroy(enumerator);
+				return FALSE;
+			}
 			enumerator->destroy(enumerator);
-			return FALSE;
-		}
-		enumerator->destroy(enumerator);
 
+			local = FALSE;
+		}
+		else
+		{
+			enumerator = peer_cfg->create_virtual_ip_enumerator(peer_cfg);
+			if (!enumerator->enumerate(enumerator, &host))
+			{	/* not requesting a vip */
+				enumerator->destroy(enumerator);
+				return FALSE;
+			}
+			enumerator->destroy(enumerator);
+
+			local = TRUE;
+		}
 		enumerator = this->ike_sa->create_virtual_ip_enumerator(this->ike_sa,
-																FALSE);
+																local);
 		if (!enumerator->enumerate(enumerator, &host))
-		{	/* have a pool, but no VIP assigned yet */
+		{	/* expecting a VIP exchange, but no VIP assigned yet */
 			enumerator->destroy(enumerator);
 			return TRUE;
 		}
@@ -1085,7 +1104,8 @@ static status_t process_request(private_task_manager_t *this,
 			case TRANSACTION:
 				if (this->ike_sa->get_state(this->ike_sa) != IKE_CONNECTING)
 				{
-					task = (task_t *)mode_config_create(this->ike_sa, FALSE);
+					task = (task_t *)mode_config_create(this->ike_sa,
+														FALSE, TRUE);
 				}
 				else
 				{
@@ -1253,7 +1273,7 @@ static status_t handle_fragment(private_task_manager_t *this, message_t *msg)
 		return FAILED;
 	}
 
-	if (this->frag.id != payload->get_id(payload))
+	if (!this->frag.list || this->frag.id != payload->get_id(payload))
 	{
 		clear_fragments(this, payload->get_id(payload));
 		this->frag.list = linked_list_create();
@@ -1765,7 +1785,7 @@ static bool have_equal_ts(child_sa_t *child1, child_sa_t *child2, bool local)
 	{
 		equal = ts1->equals(ts1, ts2);
 	}
-	e1->destroy(e1);
+	e2->destroy(e2);
 	e1->destroy(e1);
 
 	return equal;

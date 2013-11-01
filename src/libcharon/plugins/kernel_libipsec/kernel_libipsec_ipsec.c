@@ -50,6 +50,11 @@ struct private_kernel_libipsec_ipsec_t {
 	 * List of exclude routes (exclude_route_t)
 	 */
 	linked_list_t *excludes;
+
+	/**
+	 * Whether the remote TS may equal the IKE peer
+	 */
+	bool allow_peer_ts;
 };
 
 typedef struct exclude_route_t exclude_route_t;
@@ -226,7 +231,7 @@ static void expire(u_int32_t reqid, u_int8_t protocol, u_int32_t spi, bool hard)
 METHOD(kernel_ipsec_t, get_features, kernel_feature_t,
 	private_kernel_libipsec_ipsec_t *this)
 {
-	return KERNEL_REQUIRE_UDP_ENCAPSULATION;
+	return KERNEL_REQUIRE_UDP_ENCAPSULATION | KERNEL_ESP_V3_TFC;
 }
 
 METHOD(kernel_ipsec_t, get_spi, status_t,
@@ -268,9 +273,10 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 METHOD(kernel_ipsec_t, query_sa, status_t,
 	private_kernel_libipsec_ipsec_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark, u_int64_t *bytes,
-	u_int64_t *packets, u_int32_t *time)
+	u_int64_t *packets, time_t *time)
 {
-	return NOT_SUPPORTED;
+	return ipsec->sas->query_sa(ipsec->sas, src, dst, spi, protocol, mark,
+								bytes, packets, time);
 }
 
 METHOD(kernel_ipsec_t, del_sa, status_t,
@@ -464,7 +470,7 @@ static bool install_route(private_kernel_libipsec_ipsec_t *this,
 		policy->route = NULL;
 	}
 
-	if (dst_ts->is_host(dst_ts, dst))
+	if (!this->allow_peer_ts && dst_ts->is_host(dst_ts, dst))
 	{
 		DBG1(DBG_KNL, "can't install route for %R === %R %N, conflicts with "
 			 "IKE traffic", src_ts, dst_ts, policy_dir_names,
@@ -474,7 +480,7 @@ static bool install_route(private_kernel_libipsec_ipsec_t *this,
 		return FALSE;
 	}
 	/* if remote traffic selector covers the IKE peer, add an exclude route */
-	if (dst_ts->includes(dst_ts, dst))
+	if (!this->allow_peer_ts && dst_ts->includes(dst_ts, dst))
 	{
 		/* add exclude route for peer */
 		add_exclude_route(this, route, src, dst);
@@ -517,11 +523,6 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	policy_entry_t *policy, *found = NULL;
 	status_t status;
 
-	if (type != POLICY_IPSEC)
-	{
-		return SUCCESS;
-	}
-
 	status = ipsec->policies->add_policy(ipsec->policies, src, dst, src_ts,
 								dst_ts, direction, type, sa, mark, priority);
 	if (status != SUCCESS)
@@ -555,7 +556,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 METHOD(kernel_ipsec_t, query_policy, status_t,
 	private_kernel_libipsec_ipsec_t *this, traffic_selector_t *src_ts,
 	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	u_int32_t *use_time)
+	time_t *use_time)
 {
 	return NOT_SUPPORTED;
 }
@@ -693,6 +694,8 @@ kernel_libipsec_ipsec_t *kernel_libipsec_ipsec_create()
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.policies = linked_list_create(),
 		.excludes = linked_list_create(),
+		.allow_peer_ts = lib->settings->get_bool(lib->settings,
+				"%s.plugins.kernel-libipsec.allow_peer_ts", FALSE, hydra->daemon),
 	);
 
 	ipsec->events->register_listener(ipsec->events, &this->ipsec_listener);

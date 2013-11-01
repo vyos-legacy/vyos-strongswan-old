@@ -19,13 +19,16 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.1.0])
-AM_INIT_AUTOMAKE(tar-ustar)
+AC_INIT([strongSwan],[5.1.1])
+AM_INIT_AUTOMAKE([tar-ustar subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_MACRO_DIR([m4/config])
 AC_CONFIG_HEADERS([config.h])
 AC_DEFINE([CONFIG_H_INCLUDED], [], [defined if config.h included])
 PKG_PROG_PKG_CONFIG
+
+m4_include(m4/macros/split-package-version.m4)
+SPLIT_PACKAGE_VERSION
 
 # =================================
 #  check --enable-xxx & --with-xxx
@@ -133,6 +136,7 @@ ARG_DISBL_SET([pkcs12],         [disable PKCS12 container support plugin.])
 ARG_DISBL_SET([pgp],            [disable PGP key decoding plugin.])
 ARG_DISBL_SET([dnskey],         [disable DNS RR key decoding plugin.])
 ARG_DISBL_SET([sshkey],         [disable SSH key decoding plugin.])
+ARG_ENABL_SET([dnscert],        [enable DNSCERT authentication plugin.])
 ARG_ENABL_SET([ipseckey],       [enable IPSECKEY authentication plugin.])
 ARG_DISBL_SET([pem],            [disable PEM decoding plugin.])
 ARG_DISBL_SET([hmac],           [disable HMAC crypto implementation plugin.])
@@ -188,6 +192,8 @@ ARG_ENABL_SET([imc-os],         [enable IMC operating system module.])
 ARG_ENABL_SET([imv-os],         [enable IMV operating system module.])
 ARG_ENABL_SET([imc-attestation],[enable IMC attestation module.])
 ARG_ENABL_SET([imv-attestation],[enable IMV attestation module.])
+ARG_ENABL_SET([imc-swid],       [enable IMC swid module.])
+ARG_ENABL_SET([imv-swid],       [enable IMV swid module.])
 ARG_DISBL_SET([kernel-netlink], [disable the netlink kernel interface.])
 ARG_ENABL_SET([kernel-pfkey],   [enable the PF_KEY kernel interface.])
 ARG_ENABL_SET([kernel-pfroute], [enable the PF_ROUTE kernel interface.])
@@ -327,10 +333,6 @@ if test x$eap_sim = xtrue; then
 	simaka=true;
 fi
 
-if test x$eap_tls = xtrue -o x$eap_ttls = xtrue -o x$eap_peap = xtrue; then
-	tls=true;
-fi
-
 if test x$eap_radius = xtrue -o x$radattr = xtrue -o x$tnc_pdp = xtrue; then
 	radius=true;
 fi
@@ -339,11 +341,15 @@ if test x$tnc_imc = xtrue -o x$tnc_imv = xtrue -o x$tnccs_11 = xtrue -o x$tnccs_
 	tnc_tnccs=true;
 fi
 
-if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_os = xtrue -o x$imv_os = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue; then
+if test x$eap_tls = xtrue -o x$eap_ttls = xtrue -o x$eap_peap = xtrue -o x$tnc_tnccs = xtrue; then
+	tls=true;
+fi
+
+if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_os = xtrue -o x$imv_os = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue -o x$imc_swid = xtrue -o x$imv_swid = xtrue; then
 	imcv=true;
 fi
 
-if test x$imc_attestation = xtrue -o x$imv_attestation = xtrue; then
+if test x$imc_attestation = xtrue -o x$imv_attestation = xtrue -o x$imc_swid = xtrue -o x$imv_swid = xtrue; then
 	pts=true;
 fi
 
@@ -483,8 +489,9 @@ AC_CHECK_FUNC(
 )
 
 AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r getpwuid_r)
+AC_CHECK_FUNCS(fmemopen funopen)
 
-AC_CHECK_HEADERS(sys/sockio.h glob.h)
+AC_CHECK_HEADERS(sys/sockio.h glob.h net/if_tun.h linux/fib_rules.h)
 AC_CHECK_HEADERS(net/pfkeyv2.h netipsec/ipsec.h netinet6/ipsec.h linux/udp.h)
 AC_CHECK_HEADERS(netinet/ip6.h, [], [],
 [
@@ -619,7 +626,7 @@ AC_CHECK_FUNC(
 		[AC_DEFINE([HAVE_PRINTF_FUNCTION], [], [have register_printf_function()])],
 		[
 			AC_MSG_NOTICE([printf does not support custom format specifiers!])
-			vstr=true
+			builtin_printf=true
 		]
 	)]
 )
@@ -627,6 +634,11 @@ AC_CHECK_FUNC(
 if test x$vstr = xtrue; then
 	AC_CHECK_LIB([vstr],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([Vstr string library not found])],[])
 	AC_DEFINE([USE_VSTR], [], [use vstring library for printf hooks])
+	builtin_printf=false
+fi
+
+if test x$builtin_printf = xtrue; then
+	AC_DEFINE([USE_BUILTIN_PRINTF], [], [using builtin printf for printf hooks])
 fi
 
 if test x$gmp = xtrue; then
@@ -969,10 +981,11 @@ nm_plugins=
 cmd_plugins=
 
 # location specific lists for checksumming,
-# for src/libcharon, src/libhydra and src/libstrongswan
+# for src/libcharon, src/libhydra, src/libstrongswan and src/libtnccs
 c_plugins=
 h_plugins=
 s_plugins=
+t_plugins=
 
 ADD_PLUGIN([test-vectors],         [s charon openac scepclient pki])
 ADD_PLUGIN([curl],                 [s charon scepclient scripts nm cmd])
@@ -1002,8 +1015,9 @@ ADD_PLUGIN([pkcs7],                [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([pkcs8],                [s charon openac scepclient pki scripts manager medsrv attest nm cmd])
 ADD_PLUGIN([pkcs12],               [s charon scepclient pki scripts cmd])
 ADD_PLUGIN([pgp],                  [s charon])
-ADD_PLUGIN([dnskey],               [s charon])
-ADD_PLUGIN([sshkey],               [s charon nm cmd])
+ADD_PLUGIN([dnskey],               [s charon pki])
+ADD_PLUGIN([sshkey],               [s charon pki nm cmd])
+ADD_PLUGIN([dnscert],              [c charon])
 ADD_PLUGIN([ipseckey],             [c charon])
 ADD_PLUGIN([pem],                  [s charon openac scepclient pki scripts manager medsrv attest nm cmd])
 ADD_PLUGIN([padlock],              [s charon])
@@ -1060,12 +1074,12 @@ ADD_PLUGIN([xauth-pam],            [c charon])
 ADD_PLUGIN([xauth-noauth],         [c charon])
 ADD_PLUGIN([tnc-ifmap],            [c charon])
 ADD_PLUGIN([tnc-pdp],              [c charon])
-ADD_PLUGIN([tnc-imc],              [c charon])
-ADD_PLUGIN([tnc-imv],              [c charon])
-ADD_PLUGIN([tnc-tnccs],            [c charon])
-ADD_PLUGIN([tnccs-20],             [c charon])
-ADD_PLUGIN([tnccs-11],             [c charon])
-ADD_PLUGIN([tnccs-dynamic],        [c charon])
+ADD_PLUGIN([tnc-imc],              [t charon])
+ADD_PLUGIN([tnc-imv],              [t charon])
+ADD_PLUGIN([tnc-tnccs],            [t charon])
+ADD_PLUGIN([tnccs-20],             [t charon])
+ADD_PLUGIN([tnccs-11],             [t charon])
+ADD_PLUGIN([tnccs-dynamic],        [t charon])
 ADD_PLUGIN([medsrv],               [c charon])
 ADD_PLUGIN([medcli],               [c charon])
 ADD_PLUGIN([dhcp],                 [c charon])
@@ -1104,6 +1118,7 @@ AC_SUBST(cmd_plugins)
 AC_SUBST(c_plugins)
 AC_SUBST(h_plugins)
 AC_SUBST(s_plugins)
+AC_SUBST(t_plugins)
 
 # ======================
 #  set Makefile.am vars
@@ -1169,6 +1184,7 @@ AM_CONDITIONAL(USE_ANDROID_LOG, test x$android_log = xtrue)
 AM_CONDITIONAL(USE_MAEMO, test x$maemo = xtrue)
 AM_CONDITIONAL(USE_SMP, test x$smp = xtrue)
 AM_CONDITIONAL(USE_SQL, test x$sql = xtrue)
+AM_CONDITIONAL(USE_DNSCERT, test x$dnscert = xtrue)
 AM_CONDITIONAL(USE_IPSECKEY, test x$ipseckey = xtrue)
 AM_CONDITIONAL(USE_UPDOWN, test x$updown = xtrue)
 AM_CONDITIONAL(USE_DHCP, test x$dhcp = xtrue)
@@ -1223,6 +1239,8 @@ AM_CONDITIONAL(USE_IMC_OS, test x$imc_os = xtrue)
 AM_CONDITIONAL(USE_IMV_OS, test x$imv_os = xtrue)
 AM_CONDITIONAL(USE_IMC_ATTESTATION, test x$imc_attestation = xtrue)
 AM_CONDITIONAL(USE_IMV_ATTESTATION, test x$imv_attestation = xtrue)
+AM_CONDITIONAL(USE_IMC_SWID, test x$imc_swid = xtrue)
+AM_CONDITIONAL(USE_IMV_SWID, test x$imv_swid = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DEFAULT, test x$socket_default = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DYNAMIC, test x$socket_dynamic = xtrue)
 AM_CONDITIONAL(USE_FARP, test x$farp = xtrue)
@@ -1258,7 +1276,7 @@ AM_CONDITIONAL(USE_NM, test x$nm = xtrue)
 AM_CONDITIONAL(USE_TOOLS, test x$tools = xtrue)
 AM_CONDITIONAL(USE_SCRIPTS, test x$scripts = xtrue)
 AM_CONDITIONAL(USE_CONFTEST, test x$conftest = xtrue)
-AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$tools = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue)
+AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$tools = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$tls = xtrue -o x$tnc_tnccs = xtrue)
 AM_CONDITIONAL(USE_LIBHYDRA, test x$charon = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue)
 AM_CONDITIONAL(USE_LIBCHARON, test x$charon = xtrue -o x$conftest = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue)
 AM_CONDITIONAL(USE_LIBIPSEC, test x$libipsec = xtrue)
@@ -1269,6 +1287,7 @@ AM_CONDITIONAL(USE_FILE_CONFIG, test x$stroke = xtrue)
 AM_CONDITIONAL(USE_IPSEC_SCRIPT, test x$stroke = xtrue -o x$tools = xtrue -o x$conftest = xtrue)
 AM_CONDITIONAL(USE_LIBCAP, test x$capabilities = xlibcap)
 AM_CONDITIONAL(USE_VSTR, test x$vstr = xtrue)
+AM_CONDITIONAL(USE_BUILTIN_PRINTF, test x$builtin_printf = xtrue)
 AM_CONDITIONAL(USE_SIMAKA, test x$simaka = xtrue)
 AM_CONDITIONAL(USE_TLS, test x$tls = xtrue)
 AM_CONDITIONAL(USE_RADIUS, test x$radius = xtrue)
@@ -1374,10 +1393,18 @@ AC_CONFIG_FILES([
 	src/libradius/Makefile
 	src/libtncif/Makefile
 	src/libtnccs/Makefile
+	src/libtnccs/plugins/tnc_tnccs/Makefile
+	src/libtnccs/plugins/tnc_imc/Makefile
+	src/libtnccs/plugins/tnc_imv/Makefile
+	src/libtnccs/plugins/tnccs_11/Makefile
+	src/libtnccs/plugins/tnccs_20/Makefile
+	src/libtnccs/plugins/tnccs_dynamic/Makefile
 	src/libpttls/Makefile
 	src/libpts/Makefile
 	src/libpts/plugins/imc_attestation/Makefile
 	src/libpts/plugins/imv_attestation/Makefile
+	src/libpts/plugins/imc_swid/Makefile
+	src/libpts/plugins/imv_swid/Makefile
 	src/libimcv/Makefile
 	src/libimcv/plugins/imc_test/Makefile
 	src/libimcv/plugins/imv_test/Makefile
@@ -1414,17 +1441,12 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/xauth_noauth/Makefile
 	src/libcharon/plugins/tnc_ifmap/Makefile
 	src/libcharon/plugins/tnc_pdp/Makefile
-	src/libcharon/plugins/tnc_imc/Makefile
-	src/libcharon/plugins/tnc_imv/Makefile
-	src/libcharon/plugins/tnc_tnccs/Makefile
-	src/libcharon/plugins/tnccs_11/Makefile
-	src/libcharon/plugins/tnccs_20/Makefile
-	src/libcharon/plugins/tnccs_dynamic/Makefile
 	src/libcharon/plugins/socket_default/Makefile
 	src/libcharon/plugins/socket_dynamic/Makefile
 	src/libcharon/plugins/farp/Makefile
 	src/libcharon/plugins/smp/Makefile
 	src/libcharon/plugins/sql/Makefile
+	src/libcharon/plugins/dnscert/Makefile
 	src/libcharon/plugins/ipseckey/Makefile
 	src/libcharon/plugins/medsrv/Makefile
 	src/libcharon/plugins/medcli/Makefile
@@ -1460,6 +1482,8 @@ AC_CONFIG_FILES([
 	src/openac/Makefile
 	src/scepclient/Makefile
 	src/pki/Makefile
+	src/pki/man/Makefile
+	src/pool/Makefile
 	src/dumm/Makefile
 	src/dumm/ext/extconf.rb
 	src/libfast/Makefile
@@ -1467,9 +1491,33 @@ AC_CONFIG_FILES([
 	src/medsrv/Makefile
 	src/checksum/Makefile
 	src/conftest/Makefile
+	src/pt-tls-client/Makefile
 	scripts/Makefile
 	testing/Makefile
 ])
+
+# =================
+#  build man pages
+# =================
+
+AC_CONFIG_FILES([
+	man/ipsec.conf.5
+	man/ipsec.secrets.5
+	man/strongswan.conf.5
+	src/charon-cmd/charon-cmd.8
+	src/pki/man/pki.1
+	src/pki/man/pki---gen.1
+	src/pki/man/pki---issue.1
+	src/pki/man/pki---keyid.1
+	src/pki/man/pki---pkcs7.1
+	src/pki/man/pki---print.1
+	src/pki/man/pki---pub.1
+	src/pki/man/pki---req.1
+	src/pki/man/pki---self.1
+	src/pki/man/pki---signcrl.1
+	src/pki/man/pki---verify.1
+])
+
 AC_OUTPUT
 
 # ========================
@@ -1483,4 +1531,5 @@ AC_MSG_RESULT([-----------------------------------------------------])
 AC_MSG_RESULT([libstrongswan:$s_plugins])
 AC_MSG_RESULT([libcharon:    $c_plugins])
 AC_MSG_RESULT([libhydra:     $h_plugins])
+AC_MSG_RESULT([libtnccs:     $t_plugins])
 AC_MSG_RESULT([])

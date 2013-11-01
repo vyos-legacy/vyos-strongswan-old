@@ -163,14 +163,14 @@ static peer_cfg_t* create_peer_cfg(private_cmd_connection_t *this)
 	{
 		remote_port = IKEV2_NATT_PORT;
 	}
-	ike_cfg = ike_cfg_create(version, TRUE, FALSE, "0.0.0.0", FALSE, local_port,
-					this->host, FALSE, remote_port, FRAGMENTATION_NO, 0);
+	ike_cfg = ike_cfg_create(version, TRUE, FALSE, "0.0.0.0", local_port,
+					this->host, remote_port, FRAGMENTATION_NO, 0);
 	ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
 	peer_cfg = peer_cfg_create("cmd", ike_cfg,
 					CERT_SEND_IF_ASKED, UNIQUE_REPLACE, 1, /* keyingtries */
 					36000, 0, /* rekey 10h, reauth none */
 					600, 600, /* jitter, over 10min */
-					TRUE, aggressive, /* mobike, aggressive */
+					TRUE, aggressive, TRUE, /* mobike, aggressive, pull */
 					30, 0, /* DPD delay, timeout */
 					FALSE, NULL, NULL); /* mediation */
 	peer_cfg->add_virtual_ip(peer_cfg, host_create_from_string("0.0.0.0", 0));

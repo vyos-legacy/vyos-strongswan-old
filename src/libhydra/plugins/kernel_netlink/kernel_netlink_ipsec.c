@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2012 Tobias Brunner
+ * Copyright (C) 2006-2013 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2008 Andreas Steffen
  * Copyright (C) 2006-2007 Fabian Hartmann, Noah Heusser
@@ -75,6 +75,9 @@
 
 /** Default replay window size, if not set using charon.replay_window */
 #define DEFAULT_REPLAY_WINDOW 32
+
+/** Default lifetime of an acquire XFRM state (in seconds) */
+#define DEFAULT_ACQUIRE_LIFETIME 165
 
 /**
  * Map the limit for bytes and packets to XFRM_INF by default
@@ -628,6 +631,14 @@ static inline u_int32_t get_priority(policy_entry_t *policy,
 }
 
 /**
+ * Return the length of the ESN bitmap
+ */
+static inline size_t esn_bmp_len(private_kernel_netlink_ipsec_t *this)
+{
+	return this->replay_bmp * sizeof(u_int32_t);
+}
+
+/**
  * Convert the general ipsec mode to the one defined in xfrm.h
  */
 static u_int8_t mode2kernel(ipsec_mode_t mode)
@@ -733,6 +744,17 @@ static struct xfrm_selector ts2selector(traffic_selector_t *src,
 	ts2subnet(src, &sel.saddr, &sel.prefixlen_s);
 	ts2ports(dst, &sel.dport, &sel.dport_mask);
 	ts2ports(src, &sel.sport, &sel.sport_mask);
+	if ((sel.proto == IPPROTO_ICMP || sel.proto == IPPROTO_ICMPV6) &&
+		(sel.dport || sel.sport))
+	{
+		/* the ICMP type is encoded in the most significant 8 bits and the ICMP
+		 * code in the least significant 8 bits of the port.  via XFRM we have
+		 * to pass the ICMP type and code in the source and destination port
+		 * fields, respectively.  the port is in network byte order. */
+		u_int16_t port = max(sel.dport, sel.sport);
+		sel.sport = htons(port & 0xff);
+		sel.dport = htons(port >> 8);
+	}
 	sel.ifindex = 0;
 	sel.user = 0;
 
@@ -755,7 +777,7 @@ static traffic_selector_t* selector2ts(struct xfrm_selector *sel, bool src)
 		prefixlen = sel->prefixlen_s;
 		if (sel->sport_mask)
 		{
-			port = htons(sel->sport);
+			port = ntohs(sel->sport);
 		}
 	}
 	else
@@ -764,10 +786,15 @@ static traffic_selector_t* selector2ts(struct xfrm_selector *sel, bool src)
 		prefixlen = sel->prefixlen_d;
 		if (sel->dport_mask)
 		{
-			port = htons(sel->dport);
+			port = ntohs(sel->dport);
 		}
 	}
-
+	if (sel->proto == IPPROTO_ICMP || sel->proto == IPPROTO_ICMPV6)
+	{	/* convert ICMP[v6] message type and code as supplied by the kernel in
+		 * source and destination ports (both in network order) */
+		port = (sel->sport >> 8) | (sel->dport & 0xff00);
+		port = ntohs(port);
+	}
 	/* The Linux 2.6 kernel does not set the selector's family field,
 	 * so as a kludge we additionally test the prefix length.
 	 */
@@ -1454,7 +1481,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 			struct xfrm_replay_state_esn *replay;
 
 			replay = netlink_reserve(hdr, sizeof(request), XFRMA_REPLAY_ESN_VAL,
-							sizeof(*replay) + (this->replay_window + 7) / 8);
+									 sizeof(*replay) + esn_bmp_len(this));
 			if (!replay)
 			{
 				goto failed;
@@ -1585,7 +1612,7 @@ static void get_replay_state(private_kernel_netlink_ipsec_t *this,
 				break;
 			}
 			if (rta->rta_type == XFRMA_REPLAY_ESN_VAL &&
-				RTA_PAYLOAD(rta) >= sizeof(**replay_esn) + this->replay_bmp)
+				RTA_PAYLOAD(rta) >= sizeof(**replay_esn) + esn_bmp_len(this))
 			{
 				*replay_esn = malloc(RTA_PAYLOAD(rta));
 				memcpy(*replay_esn, RTA_DATA(rta), RTA_PAYLOAD(rta));
@@ -1600,7 +1627,7 @@ static void get_replay_state(private_kernel_netlink_ipsec_t *this,
 METHOD(kernel_ipsec_t, query_sa, status_t,
 	private_kernel_netlink_ipsec_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets, u_int32_t *time)
+	u_int64_t *bytes, u_int64_t *packets, time_t *time)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *out = NULL, *hdr;
@@ -1903,12 +1930,12 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 		struct xfrm_replay_state_esn *state;
 
 		state = netlink_reserve(hdr, sizeof(request), XFRMA_REPLAY_ESN_VAL,
-								sizeof(*state) + this->replay_bmp);
+								sizeof(*state) + esn_bmp_len(this));
 		if (!state)
 		{
 			goto failed;
 		}
-		memcpy(state, replay_esn, sizeof(*state) + this->replay_bmp);
+		memcpy(state, replay_esn, sizeof(*state) + esn_bmp_len(this));
 	}
 	else if (replay)
 	{
@@ -2291,7 +2318,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 METHOD(kernel_ipsec_t, query_policy, status_t,
 	private_kernel_netlink_ipsec_t *this, traffic_selector_t *src_ts,
 	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	u_int32_t *use_time)
+	time_t *use_time)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *out = NULL, *hdr;
@@ -2623,7 +2650,7 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 {
 	private_kernel_netlink_ipsec_t *this;
 	bool register_for_events = TRUE;
-	int fd;
+	FILE *f;
 
 	INIT(this,
 		.public = {
@@ -2665,12 +2692,13 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 		register_for_events = FALSE;
 	}
 
-	/* disable lifetimes for allocated SPIs in kernel */
-	fd = open("/proc/sys/net/core/xfrm_acq_expires", O_WRONLY);
-	if (fd > 0)
+	f = fopen("/proc/sys/net/core/xfrm_acq_expires", "w");
+	if (f)
 	{
-		ignore_result(write(fd, "165", 3));
-		close(fd);
+		fprintf(f, "%u", lib->settings->get_int(lib->settings,
+								"%s.plugins.kernel-netlink.xfrm_acq_expires",
+								DEFAULT_ACQUIRE_LIFETIME, hydra->daemon));
+		fclose(f);
 	}
 
 	this->socket_xfrm = netlink_socket_create(NETLINK_XFRM);
