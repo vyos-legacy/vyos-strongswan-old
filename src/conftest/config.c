@@ -103,9 +103,9 @@ static ike_cfg_t *load_ike_config(private_config_t *this,
 
 	ike_cfg = ike_cfg_create(IKEV2, TRUE,
 		settings->get_bool(settings, "configs.%s.fake_nat", FALSE, config),
-		settings->get_str(settings, "configs.%s.lhost", "%any", config), FALSE,
+		settings->get_str(settings, "configs.%s.lhost", "%any", config),
 		settings->get_int(settings, "configs.%s.lport", 500, config),
-		settings->get_str(settings, "configs.%s.rhost", "%any", config), FALSE,
+		settings->get_str(settings, "configs.%s.rhost", "%any", config),
 		settings->get_int(settings, "configs.%s.rport", 500, config),
 		FRAGMENTATION_NO, 0);
 	token = settings->get_str(settings, "configs.%s.proposal", NULL, config);
@@ -249,8 +249,8 @@ static peer_cfg_t *load_peer_config(private_config_t *this,
 
 	ike_cfg = load_ike_config(this, settings, config);
 	peer_cfg = peer_cfg_create(config, ike_cfg, CERT_ALWAYS_SEND,
-							   UNIQUE_NO, 1, 0, 0, 0, 0, FALSE, FALSE, 0, 0,
-							   FALSE, NULL, NULL);
+							   UNIQUE_NO, 1, 0, 0, 0, 0, FALSE, FALSE, TRUE,
+							   0, 0, FALSE, NULL, NULL);
 
 	auth = auth_cfg_create();
 	auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);

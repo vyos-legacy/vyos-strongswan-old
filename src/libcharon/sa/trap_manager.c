@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Tobias Brunner
+ * Copyright (C) 2011-2013 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -19,6 +19,7 @@
 #include <hydra.h>
 #include <daemon.h>
 #include <threading/rwlock.h>
+#include <threading/thread_value.h>
 #include <collections/linked_list.h>
 
 
@@ -62,6 +63,11 @@ struct private_trap_manager_t {
 	rwlock_t *lock;
 
 	/**
+	 * track if the current thread is installing a trap policy
+	 */
+	thread_value_t *installing;
+
+	/**
 	 * listener to track acquiring IKE_SAs
 	 */
 	trap_listener_t listener;
@@ -102,19 +108,20 @@ METHOD(trap_manager_t, install, u_int32_t,
 	linked_list_t *my_ts, *other_ts, *list;
 	enumerator_t *enumerator;
 	status_t status;
+	linked_list_t *proposals;
+	proposal_t *proposal;
+	protocol_id_t proto = PROTO_ESP;
 
 	/* try to resolve addresses */
 	ike_cfg = peer->get_ike_cfg(peer);
-	other = host_create_from_dns(ike_cfg->get_other_addr(ike_cfg, NULL),
-								 0, ike_cfg->get_other_port(ike_cfg));
+	other = ike_cfg->resolve_other(ike_cfg, AF_UNSPEC);
 	if (!other || other->is_anyaddr(other))
 	{
 		DESTROY_IF(other);
 		DBG1(DBG_CFG, "installing trap failed, remote address unknown");
 		return 0;
 	}
-	me = host_create_from_dns(ike_cfg->get_my_addr(ike_cfg, NULL),
-					other->get_family(other), ike_cfg->get_my_port(ike_cfg));
+	me = ike_cfg->resolve_me(ike_cfg, other->get_family(other));
 	if (!me || me->is_anyaddr(me))
 	{
 		DESTROY_IF(me);
@@ -130,6 +137,7 @@ METHOD(trap_manager_t, install, u_int32_t,
 	}
 
 	this->lock->write_lock(this->lock);
+	this->installing->set(this->installing, this);
 	enumerator = this->traps->create_enumerator(this->traps);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
@@ -142,7 +150,6 @@ METHOD(trap_manager_t, install, u_int32_t,
 		}
 	}
 	enumerator->destroy(enumerator);
-	this->lock->unlock(this->lock);
 
 	if (found)
 	{	/* config might have changed so update everything */
@@ -162,10 +169,15 @@ METHOD(trap_manager_t, install, u_int32_t,
 	other_ts = child->get_traffic_selectors(child, FALSE, NULL, list);
 	list->destroy_offset(list, offsetof(host_t, destroy));
 
-	/* while we don't know the finally negotiated protocol (ESP|AH), we
-	 * could iterate all proposals for a best guess (TODO). But as we
-	 * support ESP only for now, we set it here. */
-	child_sa->set_protocol(child_sa, PROTO_ESP);
+	/* We don't know the finally negotiated protocol (ESP|AH), we install
+	 * the SA with the protocol of the first proposal */
+	proposals = child->get_proposals(child, TRUE);
+	if (proposals->get_first(proposals, (void**)&proposal) == SUCCESS)
+	{
+		proto = proposal->get_protocol(proposal);
+	}
+	proposals->destroy_offset(proposals, offsetof(proposal_t, destroy));
+	child_sa->set_protocol(child_sa, proto);
 	child_sa->set_mode(child_sa, child->get_mode(child));
 	status = child_sa->add_policies(child_sa, my_ts, other_ts);
 	my_ts->destroy_offset(my_ts, offsetof(traffic_selector_t, destroy));
@@ -182,11 +194,11 @@ METHOD(trap_manager_t, install, u_int32_t,
 			.child_sa = child_sa,
 			.peer_cfg = peer->get_ref(peer),
 		);
-		this->lock->write_lock(this->lock);
 		this->traps->insert_last(this->traps, entry);
-		this->lock->unlock(this->lock);
 		reqid = child_sa->get_reqid(child_sa);
 	}
+	this->installing->set(this->installing, NULL);
+	this->lock->unlock(this->lock);
 
 	if (status != SUCCESS)
 	{
@@ -263,6 +275,10 @@ METHOD(trap_manager_t, find_reqid, u_int32_t,
 	entry_t *entry;
 	u_int32_t reqid = 0;
 
+	if (this->installing->get(this->installing))
+	{	/* current thread holds the lock */
+		return reqid;
+	}
 	this->lock->read_lock(this->lock);
 	enumerator = this->traps->create_enumerator(this->traps);
 	while (enumerator->enumerate(enumerator, &entry))
@@ -429,6 +445,7 @@ METHOD(trap_manager_t, destroy, void,
 {
 	charon->bus->remove_listener(charon->bus, &this->listener.listener);
 	this->traps->destroy_function(this->traps, (void*)destroy_entry);
+	this->installing->destroy(this->installing);
 	this->lock->destroy(this->lock);
 	free(this);
 }
@@ -459,6 +476,7 @@ trap_manager_t *trap_manager_create(void)
 		},
 		.traps = linked_list_create(),
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
+		.installing = thread_value_create(NULL),
 	);
 	charon->bus->add_listener(charon->bus, &this->listener.listener);
 

@@ -1,4 +1,4 @@
-/* C code produced by gperf version 3.0.3 */
+/* C code produced by gperf version 3.0.4 */
 /* Command-line: /usr/bin/gperf -m 10 -C -G -D -t  */
 /* Computed positions: -k'2-3,6,$' */
 
@@ -55,7 +55,7 @@ struct kw_entry {
 };
 
 #define TOTAL_KEYWORDS 138
-#define MIN_WORD_LENGTH 3
+#define MIN_WORD_LENGTH 2
 #define MAX_WORD_LENGTH 17
 #define MIN_HASH_VALUE 9
 #define MAX_HASH_VALUE 257
@@ -85,8 +85,8 @@ hash (str, len)
       258, 258, 258, 258, 258, 258, 258, 258, 258, 258,
       258, 258, 258, 258, 258, 258, 258, 258, 258, 258,
       258, 258, 258, 258, 258,   3, 258,  31,   1,  83,
-       50,   5,   4,   1,  60,   1, 258, 121,  62,   5,
-       33,  51,  41,   2,  22,   1,  25, 103,   1, 258,
+       50,   5,   4,   1,  79,   1, 258, 121,  62,   5,
+       33,  51,  41,   2,  22,   1,  25, 103,   6, 258,
       258,   8,   2, 258, 258, 258, 258, 258, 258, 258,
       258, 258, 258, 258, 258, 258, 258, 258, 258, 258,
       258, 258, 258, 258, 258, 258, 258, 258, 258, 258,
@@ -164,7 +164,6 @@ static const struct kw_entry wordlist[] =
     {"virtual_private",   KW_SETUP_DEPRECATED},
     {"lefthostaccess",    KW_LEFTHOSTACCESS},
     {"leftca",            KW_LEFTCA},
-    {"righthostaccess",   KW_RIGHTHOSTACCESS},
     {"rightfirewall",     KW_RIGHTFIREWALL},
     {"rightprotoport",    KW_RIGHTPROTOPORT},
     {"inactivity",        KW_INACTIVITY},
@@ -178,11 +177,11 @@ static const struct kw_entry wordlist[] =
     {"mark_in",           KW_MARK_IN},
     {"strictcrlpolicy",   KW_STRICTCRLPOLICY},
     {"force_keepalive",   KW_SETUP_DEPRECATED},
+    {"righthostaccess",   KW_RIGHTHOSTACCESS},
     {"marginbytes",       KW_MARGINBYTES},
     {"mediated_by",       KW_MEDIATED_BY},
     {"marginpackets",     KW_MARGINPACKETS},
     {"margintime",        KW_REKEYMARGIN},
-    {"rightauth",         KW_RIGHTAUTH},
     {"fragmentation",     KW_FRAGMENTATION},
     {"pfsgroup",          KW_PFS_DEPRECATED},
     {"crluri1",           KW_CRLURI},
@@ -196,16 +195,16 @@ static const struct kw_entry wordlist[] =
     {"installpolicy",     KW_INSTALLPOLICY},
     {"also",              KW_ALSO},
     {"rightcert",         KW_RIGHTCERT},
-    {"overridemtu",       KW_SETUP_DEPRECATED},
+    {"rightauth",         KW_RIGHTAUTH},
     {"mediation",         KW_MEDIATION},
     {"rightca",           KW_RIGHTCA},
     {"klipsdebug",        KW_SETUP_DEPRECATED},
     {"ldapbase",          KW_CA_DEPRECATED},
+    {"overridemtu",       KW_SETUP_DEPRECATED},
     {"ocspuri1",          KW_OCSPURI},
     {"dpdtimeout",        KW_DPDTIMEOUT},
     {"aaa_identity",      KW_AAA_IDENTITY},
     {"ike",               KW_IKE},
-    {"charondebug",       KW_CHARONDEBUG},
     {"mark_out",          KW_MARK_OUT},
     {"dumpdir",           KW_SETUP_DEPRECATED},
     {"rekey",             KW_REKEY},
@@ -219,11 +218,11 @@ static const struct kw_entry wordlist[] =
     {"authby",            KW_AUTHBY},
     {"leftcert2",         KW_LEFTCERT2},
     {"nat_traversal",     KW_SETUP_DEPRECATED},
+    {"charondebug",       KW_CHARONDEBUG},
     {"dpdaction",         KW_DPDACTION},
     {"xauth_identity",    KW_XAUTH_IDENTITY},
-    {"charonstart",       KW_SETUP_DEPRECATED},
+    {"ah",                KW_AH},
     {"leftsubnetwithin",  KW_LEFTSUBNET},
-    {"reauth",            KW_REAUTH},
     {"modeconfig",        KW_MODECONFIG},
     {"ldaphost",          KW_CA_DEPRECATED},
     {"leftikeport",       KW_LEFTIKEPORT},
@@ -238,18 +237,19 @@ static const struct kw_entry wordlist[] =
     {"leftca2",           KW_LEFTCA2},
     {"packetdefault",     KW_SETUP_DEPRECATED},
     {"mark",              KW_MARK},
-    {"leftauth",          KW_LEFTAUTH},
+    {"charonstart",       KW_SETUP_DEPRECATED},
     {"plutostderrlog",    KW_SETUP_DEPRECATED},
     {"auto",              KW_AUTO},
     {"fragicmp",          KW_SETUP_DEPRECATED},
     {"closeaction",       KW_CLOSEACTION},
     {"prepluto",          KW_SETUP_DEPRECATED},
-    {"auth",              KW_AUTH},
     {"leftid2",           KW_LEFTID2},
     {"nocrsend",          KW_SETUP_DEPRECATED},
-    {"xauth",             KW_XAUTH},
+    {"leftauth",          KW_LEFTAUTH},
+    {"reauth",            KW_REAUTH},
     {"plutostart",        KW_SETUP_DEPRECATED},
     {"cachecrls",         KW_CACHECRLS},
+    {"xauth",             KW_XAUTH},
     {"crluri2",           KW_CRLURI2},
     {"rightca2",          KW_RIGHTCA2},
     {"rightcert2",        KW_RIGHTCERT2},
@@ -272,21 +272,21 @@ static const short lookup[] =
      14,  15,  16,  -1,  -1,  -1,  17,  18,  19,  20,
      21,  22,  -1,  23,  24,  -1,  25,  26,  27,  -1,
      28,  29,  30,  -1,  -1,  31,  32,  -1,  33,  34,
-     35,  -1,  36,  37,  38,  39,  -1,  40,  41,  -1,
-     -1,  42,  43,  44,  45,  -1,  46,  -1,  47,  -1,
-     48,  49,  50,  51,  52,  53,  54,  -1,  55,  56,
-     57,  58,  59,  -1,  60,  61,  62,  -1,  63,  -1,
-     64,  -1,  65,  66,  67,  68,  69,  70,  71,  72,
-     -1,  73,  74,  75,  76,  77,  -1,  -1,  78,  -1,
-     -1,  79,  80,  -1,  81,  -1,  82,  83,  84,  85,
-     86,  87,  88,  -1,  89,  -1,  90,  91,  -1,  92,
-     93,  -1,  94,  95,  -1,  -1,  -1,  -1,  96,  97,
-     98,  99, 100, 101,  -1, 102, 103, 104,  -1, 105,
-    106, 107, 108, 109, 110, 111, 112, 113, 114,  -1,
-    115, 116,  -1, 117,  -1, 118,  -1,  -1, 119, 120,
-     -1,  -1, 121,  -1,  -1, 122,  -1, 123,  -1, 124,
-     -1, 125,  -1,  -1,  -1,  -1,  -1, 126,  -1,  -1,
-     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+     35,  -1,  36,  37,  38,  39,  -1,  40,  -1,  -1,
+     -1,  41,  42,  43,  44,  -1,  45,  -1,  46,  -1,
+     47,  48,  49,  50,  51,  52,  53,  54,  55,  56,
+     57,  58,  -1,  -1,  59,  60,  61,  -1,  62,  -1,
+     63,  -1,  64,  65,  66,  67,  68,  69,  70,  71,
+     -1,  72,  73,  74,  75,  76,  77,  -1,  78,  -1,
+     -1,  79,  80,  -1,  81,  -1,  -1,  82,  83,  84,
+     85,  86,  87,  -1,  88,  -1,  89,  90,  -1,  91,
+     92,  -1,  93,  94,  -1,  95,  -1,  -1,  96,  97,
+     98,  99,  -1, 100,  -1, 101, 102, 103,  -1, 104,
+    105, 106, 107, 108, 109, 110, 111, 112, 113, 114,
+     -1, 115,  -1, 116,  -1, 117,  -1,  -1, 118, 119,
+     -1,  -1,  -1,  -1,  -1, 120,  -1, 121,  -1, 122,
+    123, 124,  -1,  -1,  -1,  -1,  -1, 125,  -1,  -1,
+     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, 126,  -1,
      -1, 127, 128,  -1, 129,  -1, 130,  -1,  -1,  -1,
      -1,  -1,  -1, 131,  -1, 132,  -1, 133, 134,  -1,
      -1,  -1,  -1, 135,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -295,7 +295,7 @@ static const short lookup[] =
 
 #ifdef __GNUC__
 __inline
-#ifdef __GNUC_STDC_INLINE__
+#if defined __GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__
 __attribute__ ((__gnu_inline__))
 #endif
 #endif

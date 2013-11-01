@@ -258,6 +258,7 @@ struct stroke_msg_t {
 			int mode;
 			int mobike;
 			int aggressive;
+			int pushmode;
 			int force_encap;
 			int fragmentation;
 			int ipcomp;
@@ -274,6 +275,7 @@ struct stroke_msg_t {
 			struct {
 				char *ike;
 				char *esp;
+				char *ah;
 			} algorithms;
 			struct {
 				int reauth;

@@ -61,6 +61,12 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the `fmemopen' function. */
+#undef HAVE_FMEMOPEN
+
+/* Define to 1 if you have the `funopen' function. */
+#undef HAVE_FUNOPEN
+
 /* have GCC __sync_* atomic operations */
 #undef HAVE_GCC_ATOMIC_OPERATIONS
 
@@ -106,6 +112,9 @@
 /* have libunwind.h */
 #undef HAVE_LIBUNWIND_H
 
+/* Define to 1 if you have the <linux/fib_rules.h> header file. */
+#undef HAVE_LINUX_FIB_RULES_H
+
 /* Define to 1 if you have the <linux/udp.h> header file. */
 #undef HAVE_LINUX_UDP_H
 
@@ -126,6 +135,9 @@
 
 /* Define to 1 if you have the <netipsec/ipsec.h> header file. */
 #undef HAVE_NETIPSEC_IPSEC_H
+
+/* Define to 1 if you have the <net/if_tun.h> header file. */
+#undef HAVE_NET_IF_TUN_H
 
 /* Define to 1 if you have the <net/pfkeyv2.h> header file. */
 #undef HAVE_NET_PFKEYV2_H
@@ -271,6 +283,9 @@
 
 /* use TrouSerS library libtspi as TSS implementation */
 #undef TSS_TROUSERS
+
+/* using builtin printf for printf hooks */
+#undef USE_BUILTIN_PRINTF
 
 /* support for IKEv1 protocol */
 #undef USE_IKEV1

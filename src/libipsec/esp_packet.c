@@ -232,7 +232,6 @@ METHOD(esp_packet_t, decrypt, status_t,
 		return PARSE_ERROR;
 	}
 	ciphertext = reader->peek(reader);
-	ciphertext.len += icv.len;
 	reader->destroy(reader);
 
 	if (!esp_context->verify_seqno(esp_context, seq))
@@ -245,6 +244,8 @@ METHOD(esp_packet_t, decrypt, status_t,
 	DBG3(DBG_ESP, "ESP decryption:\n  SPI %.8x [seq %u]\n  IV %B\n  "
 		 "encrypted %B\n  ICV %B", spi, seq, &iv, &ciphertext, &icv);
 
+	/* include ICV in ciphertext for decryption/verification */
+	ciphertext.len += icv.len;
 	/* aad = spi + seq */
 	aad = chunk_create(data.ptr, 8);
 
@@ -283,7 +284,7 @@ METHOD(esp_packet_t, encrypt, status_t,
 	u_int32_t next_seqno;
 	size_t blocksize, plainlen;
 	aead_t *aead;
-	rng_t *rng;
+	iv_gen_t *iv_gen;
 
 	this->packet->set_data(this->packet, chunk_empty);
 
@@ -293,13 +294,13 @@ METHOD(esp_packet_t, encrypt, status_t,
 		return FAILED;
 	}
 
-	rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK);
-	if (!rng)
+	aead = esp_context->get_aead(esp_context);
+	iv_gen = aead->get_iv_gen(aead);
+	if (!iv_gen)
 	{
-		DBG1(DBG_ESP, "ESP encryption failed: could not find RNG");
+		DBG1(DBG_ESP, "ESP encryption failed: no IV generator");
 		return NOT_FOUND;
 	}
-	aead = esp_context->get_aead(esp_context);
 
 	blocksize = aead->get_block_size(aead);
 	iv.len = aead->get_iv_size(aead);
@@ -309,7 +310,9 @@ METHOD(esp_packet_t, encrypt, status_t,
 	payload = this->payload ? this->payload->get_encoding(this->payload)
 							: chunk_empty;
 	plainlen = payload.len + 2;
-	padding.len = blocksize - (plainlen % blocksize);
+	padding.len = pad_len(plainlen, blocksize);
+	/* ICV must be on a 4-byte boundary */
+	padding.len += pad_len(iv.len + plainlen + padding.len, 4);
 	plainlen += padding.len;
 
 	/* len = spi, seq, IV, plaintext, ICV */
@@ -319,14 +322,12 @@ METHOD(esp_packet_t, encrypt, status_t,
 	writer->write_uint32(writer, next_seqno);
 
 	iv = writer->skip(writer, iv.len);
-	if (!rng->get_bytes(rng, iv.len, iv.ptr))
+	if (!iv_gen->get_iv(iv_gen, next_seqno, iv.len, iv.ptr))
 	{
 		DBG1(DBG_ESP, "ESP encryption failed: could not generate IV");
 		writer->destroy(writer);
-		rng->destroy(rng);
 		return FAILED;
 	}
-	rng->destroy(rng);
 
 	/* plain-/ciphertext will start here */
 	ciphertext = writer->get_buf(writer);

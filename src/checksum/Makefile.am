@@ -57,9 +57,17 @@ if USE_RADIUS
   libs += $(DESTDIR)$(ipseclibdir)/libradius.so
 endif
 
+if USE_LIBPTTLS
+  deps += $(top_builddir)/src/libpttls/libpttls.la
+  libs += $(DESTDIR)$(ipseclibdir)/libpttls.so
+endif
+
 if USE_LIBTNCCS
   deps += $(top_builddir)/src/libtnccs/libtnccs.la
   libs += $(DESTDIR)$(ipseclibdir)/libtnccs.so
+if !MONOLITHIC
+  AM_CPPFLAGS += -DT_PLUGINS=\""${t_plugins}\""
+endif
 endif
 
 if USE_SIMAKA
@@ -97,7 +105,7 @@ if USE_TOOLS
 endif
 
 if USE_ATTR_SQL
-  exes += $(top_builddir)/src/libhydra/plugins/attr_sql/.libs/pool
+  exes += $(top_builddir)/src/pool/.libs/pool
 endif
 
 if USE_IMV_ATTESTATION

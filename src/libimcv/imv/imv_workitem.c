@@ -20,7 +20,7 @@
 
 typedef struct private_imv_workitem_t private_imv_workitem_t;
 
-ENUM(imv_workitem_type_names, IMV_WORKITEM_PACKAGES, IMV_WORKITEM_UDP_PORT_BLOCK,
+ENUM(imv_workitem_type_names, IMV_WORKITEM_PACKAGES, IMV_WORKITEM_SWID_TAGS,
 	"PCKGS",
 	"UNSRC",
 	"FWDEN",
@@ -34,7 +34,8 @@ ENUM(imv_workitem_type_names, IMV_WORKITEM_PACKAGES, IMV_WORKITEM_UDP_PORT_BLOCK
 	"TCPOP",
 	"TCPBL",
 	"UDPOP",
-	"UDPBL"
+	"UDPBL",
+	"SWIDT"
 );
 
 /**
@@ -105,6 +106,9 @@ METHOD(imv_workitem_t, set_imv_id, void,
 	private_imv_workitem_t *this, TNC_IMVID imv_id)
 {
 	this->imv_id = imv_id;
+
+	DBG2(DBG_IMV, "IMV %d handles %N workitem %d", imv_id,
+		 imv_workitem_type_names, this->type, this->id);
 }
 
 METHOD(imv_workitem_t, get_imv_id, TNC_IMVID,

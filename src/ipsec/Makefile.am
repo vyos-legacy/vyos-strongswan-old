@@ -9,6 +9,7 @@ _ipsec.8 : _ipsec.8.in
 	-e "s:@IPSEC_VERSION@:$(PACKAGE_VERSION):" \
 	-e "s:@IPSEC_SCRIPT@:$(ipsec_script):g" \
 	-e "s:@IPSEC_SCRIPT_UPPER@:$(ipsec_script_upper):g" \
+	-e "s:@IPSEC_DIR@:$(ipsecdir):" \
 	$(srcdir)/$@.in > $@
 
 _ipsec : _ipsec.in
@@ -20,6 +21,7 @@ _ipsec : _ipsec.in
 	-e "s:@IPSEC_DISTRO@::" \
 	-e "s:@IPSEC_DIR@:$(ipsecdir):" \
 	-e "s:@IPSEC_SCRIPT@:$(ipsec_script):" \
+	-e "s:@IPSEC_BINDIR@:$(bindir):" \
 	-e "s:@IPSEC_SBINDIR@:$(sbindir):" \
 	-e "s:@IPSEC_CONFDIR@:$(sysconfdir):" \
 	-e "s:@IPSEC_PIDDIR@:$(piddir):" \

@@ -100,12 +100,20 @@ if USE_INTEGRITY_TEST
   SUBDIRS += checksum
 endif
 
+if USE_ATTR_SQL
+  SUBDIRS += pool
+endif
+
 if USE_TKM
   SUBDIRS += charon-tkm
 endif
 
 if USE_CMD
   SUBDIRS += charon-cmd
+endif
+
+if USE_LIBPTTLS
+  SUBDIRS += pt-tls-client
 endif
 
 EXTRA_DIST = strongswan.conf

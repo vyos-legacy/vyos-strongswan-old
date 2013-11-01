@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2013 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -234,7 +235,6 @@ METHOD(crypto_factory_t, create_signer, signer_t*,
 	}
 	enumerator->destroy(enumerator);
 	this->lock->unlock(this->lock);
-
 	return signer;
 }
 
@@ -249,9 +249,9 @@ METHOD(crypto_factory_t, create_hasher, hasher_t*,
 	enumerator = this->hashers->create_enumerator(this->hashers);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
-		if (algo == HASH_PREFERRED || entry->algo == algo)
+		if (entry->algo == algo)
 		{
-			if (this->test_on_create && algo != HASH_PREFERRED &&
+			if (this->test_on_create &&
 				!this->tester->test_hasher(this->tester, algo,
 										   entry->create_hasher, NULL,
 										   default_plugin_name))
@@ -307,14 +307,13 @@ METHOD(crypto_factory_t, create_rng, rng_t*,
 {
 	enumerator_t *enumerator;
 	entry_t *entry;
-	u_int diff = ~0;
-	rng_constructor_t constr = NULL;
+	rng_t *rng = NULL;
 
 	this->lock->read_lock(this->lock);
 	enumerator = this->rngs->create_enumerator(this->rngs);
 	while (enumerator->enumerate(enumerator, &entry))
 	{	/* find the best matching quality, but at least as good as requested */
-		if (entry->algo >= quality && diff > entry->algo - quality)
+		if (entry->algo >= quality)
 		{
 			if (this->test_on_create &&
 				!this->tester->test_rng(this->tester, quality,
@@ -323,21 +322,16 @@ METHOD(crypto_factory_t, create_rng, rng_t*,
 			{
 				continue;
 			}
-			diff = entry->algo - quality;
-			constr = entry->create_rng;
-			if (diff == 0)
-			{	/* perfect match, won't get better */
+			rng = entry->create_rng(quality);
+			if (rng)
+			{
 				break;
 			}
 		}
 	}
 	enumerator->destroy(enumerator);
 	this->lock->unlock(this->lock);
-	if (constr)
-	{
-		return constr(quality);
-	}
-	return NULL;
+	return rng;
 }
 
 METHOD(crypto_factory_t, create_nonce_gen, nonce_gen_t*,
@@ -396,14 +390,18 @@ METHOD(crypto_factory_t, create_dh, diffie_hellman_t*,
 
 /**
  * Insert an algorithm entry to a list
+ *
+ * Entries are sorted by algorithm identifier (which is important for RNGs)
+ * while maintaining the order in which algorithms were added, unless they were
+ * benchmarked and speed is provided, which then is used to order entries of
+ * the same algorithm.
  */
 static void add_entry(private_crypto_factory_t *this, linked_list_t *list,
 					  int algo, const char *plugin_name,
 					  u_int speed, void *create)
 {
+	enumerator_t *enumerator;
 	entry_t *entry, *current;
-	linked_list_t *tmp;
-	bool inserted = FALSE;
 
 	INIT(entry,
 		.algo = algo,
@@ -413,30 +411,21 @@ static void add_entry(private_crypto_factory_t *this, linked_list_t *list,
 	entry->create = create;
 
 	this->lock->write_lock(this->lock);
-	if (speed)
-	{	/* insert sorted by speed using a temporary list */
-		tmp = linked_list_create();
-		while (list->remove_first(list, (void**)&current) == SUCCESS)
-		{
-			tmp->insert_last(tmp, current);
-		}
-		while (tmp->remove_first(tmp, (void**)&current) == SUCCESS)
-		{
-			if (!inserted &&
-				current->algo == algo &&
-				current->speed < speed)
-			{
-				list->insert_last(list, entry);
-				inserted = TRUE;
-			}
-			list->insert_last(list, current);
-		}
-		tmp->destroy(tmp);
-	}
-	if (!inserted)
+	enumerator = list->create_enumerator(list);
+	while (enumerator->enumerate(enumerator, &current))
 	{
-		list->insert_last(list, entry);
+		if (current->algo > algo)
+		{
+			break;
+		}
+		else if (current->algo == algo && speed &&
+				 current->speed < speed)
+		{
+			break;
+		}
 	}
+	list->insert_before(list, enumerator, entry);
+	enumerator->destroy(enumerator);
 	this->lock->unlock(this->lock);
 }
 

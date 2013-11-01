@@ -360,7 +360,7 @@ static bool id_equals(identification_t *a, char *b_str)
 
 	b = identification_create_from_string(b_str);
 	equals = a->equals(a, b);
-	equals = equals && b->equals(b, a);
+	ck_assert_int_eq(equals, b->equals(b, a));
 	b->destroy(b);
 	return equals;
 }
@@ -476,6 +476,48 @@ START_TEST(test_equals_fqdn)
 }
 END_TEST
 
+START_TEST(test_equals_empty)
+{
+	identification_t *a;
+
+	a = identification_create_from_encoding(_i, chunk_empty);
+
+	switch (_i)
+	{
+		case ID_ANY:
+			ck_assert(id_equals(a, "%any"));
+			break;
+		case ID_IPV4_ADDR:
+			ck_assert(!id_equals(a, "192.168.1.1"));
+			break;
+		case ID_FQDN:
+			ck_assert(!id_equals(a, "moon.strongswan.org"));
+			break;
+		case ID_USER_FQDN:
+			ck_assert(!id_equals(a, "moon@strongswan.org"));
+			break;
+		case ID_IPV6_ADDR:
+			ck_assert(!id_equals(a, "fec0::1"));
+			break;
+		case ID_DER_ASN1_DN:
+			ck_assert(!id_equals(a, "C=CH, E=moon@strongswan.org, CN=moon"));
+			break;
+		case ID_KEY_ID:
+			ck_assert(!id_equals(a, "@#12345678"));
+			break;
+		case ID_DER_ASN1_GN:
+		case ID_IPV4_ADDR_SUBNET:
+		case ID_IPV6_ADDR_SUBNET:
+		case ID_IPV4_ADDR_RANGE:
+		case ID_IPV6_ADDR_RANGE:
+			/* currently not tested */
+			break;
+	}
+
+	a->destroy(a);
+}
+END_TEST
+
 /*******************************************************************************
  * matches
  */
@@ -573,6 +615,103 @@ START_TEST(test_matches_string)
 	ck_assert(id_matches(a, "**", ID_MATCH_NONE));
 	ck_assert(id_matches(a, "*", ID_MATCH_ANY));
 	ck_assert(id_matches(a, "%any", ID_MATCH_ANY));
+	a->destroy(a);
+}
+END_TEST
+
+START_TEST(test_matches_empty)
+{
+	identification_t *a;
+
+	a = identification_create_from_encoding(_i, chunk_empty);
+
+	switch (_i)
+	{
+		case ID_ANY:
+			ck_assert(id_matches(a, "%any", ID_MATCH_ANY));
+			break;
+		case ID_IPV4_ADDR:
+			ck_assert(id_matches(a, "192.168.1.1", ID_MATCH_NONE));
+			break;
+		case ID_FQDN:
+			ck_assert(id_matches(a, "moon.strongswan.org", ID_MATCH_NONE));
+			break;
+		case ID_USER_FQDN:
+			ck_assert(id_matches(a, "moon@strongswan.org", ID_MATCH_NONE));
+			break;
+		case ID_IPV6_ADDR:
+			ck_assert(id_matches(a, "fec0::1", ID_MATCH_NONE));
+			break;
+		case ID_DER_ASN1_DN:
+			ck_assert(id_matches(a, "C=CH, E=moon@strongswan.org, CN=moon",
+								 ID_MATCH_NONE));
+			break;
+		case ID_KEY_ID:
+			ck_assert(id_matches(a, "@#12345678", ID_MATCH_NONE));
+			break;
+		case ID_DER_ASN1_GN:
+		case ID_IPV4_ADDR_SUBNET:
+		case ID_IPV6_ADDR_SUBNET:
+		case ID_IPV4_ADDR_RANGE:
+		case ID_IPV6_ADDR_RANGE:
+			/* currently not tested */
+			break;
+	}
+
+	a->destroy(a);
+}
+END_TEST
+
+static bool id_matches_rev(identification_t *a, char *b_str, id_match_t expected)
+{
+	identification_t *b;
+	id_match_t match;
+
+	b = identification_create_from_string(b_str);
+	match = b->matches(b, a);
+	b->destroy(b);
+	return match == expected;
+}
+
+START_TEST(test_matches_empty_reverse)
+{
+	identification_t *a;
+
+	a = identification_create_from_encoding(_i, chunk_empty);
+
+	switch (_i)
+	{
+		case ID_ANY:
+			ck_assert(id_matches_rev(a, "%any", ID_MATCH_ANY));
+			break;
+		case ID_IPV4_ADDR:
+			ck_assert(id_matches_rev(a, "192.168.1.1", ID_MATCH_NONE));
+			break;
+		case ID_FQDN:
+			ck_assert(id_matches_rev(a, "moon.strongswan.org", ID_MATCH_NONE));
+			break;
+		case ID_USER_FQDN:
+			ck_assert(id_matches_rev(a, "moon@strongswan.org", ID_MATCH_NONE));
+			break;
+		case ID_IPV6_ADDR:
+			ck_assert(id_matches_rev(a, "fec0::1", ID_MATCH_NONE));
+			break;
+		case ID_DER_ASN1_DN:
+			ck_assert(id_matches_rev(a, "C=CH, E=moon@strongswan.org, CN=moon",
+									 ID_MATCH_NONE));
+			break;
+		case ID_KEY_ID:
+			ck_assert(id_matches_rev(a, "@#12345678", ID_MATCH_NONE));
+			break;
+		case ID_DER_ASN1_GN:
+		case ID_IPV4_ADDR_SUBNET:
+		case ID_IPV6_ADDR_SUBNET:
+		case ID_IPV4_ADDR_RANGE:
+		case ID_IPV6_ADDR_RANGE:
+			/* currently not tested */
+			break;
+	}
+
 	a->destroy(a);
 }
 END_TEST
@@ -690,6 +829,7 @@ Suite *identification_suite_create()
 	tcase_add_test(tc, test_equals_any);
 	tcase_add_test(tc, test_equals_binary);
 	tcase_add_test(tc, test_equals_fqdn);
+	tcase_add_loop_test(tc, test_equals_empty, ID_ANY, ID_KEY_ID + 1);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("matches");
@@ -697,6 +837,8 @@ Suite *identification_suite_create()
 	tcase_add_test(tc, test_matches_any);
 	tcase_add_test(tc, test_matches_binary);
 	tcase_add_test(tc, test_matches_string);
+	tcase_add_loop_test(tc, test_matches_empty, ID_ANY, ID_KEY_ID + 1);
+	tcase_add_loop_test(tc, test_matches_empty_reverse, ID_ANY, ID_KEY_ID + 1);
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("part enumeration");

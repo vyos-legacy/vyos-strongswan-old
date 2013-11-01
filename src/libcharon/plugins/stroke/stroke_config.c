@@ -131,19 +131,14 @@ METHOD(backend_t, get_peer_cfg_by_name, peer_cfg_t*,
  * parse a proposal string, either into ike_cfg or child_cfg
  */
 static void add_proposals(private_stroke_config_t *this, char *string,
-						  ike_cfg_t *ike_cfg, child_cfg_t *child_cfg)
+				ike_cfg_t *ike_cfg, child_cfg_t *child_cfg, protocol_id_t proto)
 {
 	if (string)
 	{
 		char *single;
 		char *strict;
 		proposal_t *proposal;
-		protocol_id_t proto = PROTO_ESP;
 
-		if (ike_cfg)
-		{
-			proto = PROTO_IKE;
-		}
 		strict = string + strlen(string) - 1;
 		if (*strict == '!')
 		{
@@ -178,11 +173,11 @@ static void add_proposals(private_stroke_config_t *this, char *string,
 	}
 	if (ike_cfg)
 	{
-		ike_cfg->add_proposal(ike_cfg, proposal_create_default(PROTO_IKE));
+		ike_cfg->add_proposal(ike_cfg, proposal_create_default(proto));
 	}
 	else
 	{
-		child_cfg->add_proposal(child_cfg, proposal_create_default(PROTO_ESP));
+		child_cfg->add_proposal(child_cfg, proposal_create_default(proto));
 	}
 }
 
@@ -191,38 +186,69 @@ static void add_proposals(private_stroke_config_t *this, char *string,
  */
 static ike_cfg_t *build_ike_cfg(private_stroke_config_t *this, stroke_msg_t *msg)
 {
+	enumerator_t *enumerator;
 	stroke_end_t tmp_end;
 	ike_cfg_t *ike_cfg;
 	host_t *host;
 	u_int16_t ikeport;
+	char me[256], other[256], *token;
+	bool swapped = FALSE;;
 
-	host = host_create_from_dns(msg->add_conn.other.address, 0, 0);
-	if (host)
+	enumerator = enumerator_create_token(msg->add_conn.other.address, ",", " ");
+	while (enumerator->enumerate(enumerator, &token))
 	{
-		if (hydra->kernel_interface->get_interface(hydra->kernel_interface,
-												   host, NULL))
+		if (!strchr(token, '/'))
 		{
-			DBG2(DBG_CFG, "left is other host, swapping ends");
-			tmp_end = msg->add_conn.me;
-			msg->add_conn.me = msg->add_conn.other;
-			msg->add_conn.other = tmp_end;
-			host->destroy(host);
-		}
-		else
-		{
-			host->destroy(host);
-			host = host_create_from_dns(msg->add_conn.me.address, 0, 0);
+			host = host_create_from_dns(token, 0, 0);
 			if (host)
 			{
-				if (!hydra->kernel_interface->get_interface(
+				if (hydra->kernel_interface->get_interface(
 										hydra->kernel_interface, host, NULL))
 				{
-					DBG1(DBG_CFG, "left nor right host is our side, "
-						 "assuming left=local");
+					DBG2(DBG_CFG, "left is other host, swapping ends");
+					tmp_end = msg->add_conn.me;
+					msg->add_conn.me = msg->add_conn.other;
+					msg->add_conn.other = tmp_end;
+					swapped = TRUE;
 				}
 				host->destroy(host);
 			}
 		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (!swapped)
+	{
+		enumerator = enumerator_create_token(msg->add_conn.me.address, ",", " ");
+		while (enumerator->enumerate(enumerator, &token))
+		{
+			if (!strchr(token, '/'))
+			{
+				host = host_create_from_dns(token, 0, 0);
+				if (host)
+				{
+					if (!hydra->kernel_interface->get_interface(
+										hydra->kernel_interface, host, NULL))
+					{
+						DBG1(DBG_CFG, "left nor right host is our side, "
+							 "assuming left=local");
+					}
+					host->destroy(host);
+				}
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
+
+	if (msg->add_conn.me.allow_any)
+	{
+		snprintf(me, sizeof(me), "%s,0.0.0.0/0,::/0",
+				 msg->add_conn.me.address);
+	}
+	if (msg->add_conn.other.allow_any)
+	{
+		snprintf(other, sizeof(other), "%s,0.0.0.0/0,::/0",
+				 msg->add_conn.other.address);
 	}
 	ikeport = msg->add_conn.me.ikeport;
 	ikeport = (ikeport == IKEV2_UDP_PORT) ?
@@ -230,15 +256,16 @@ static ike_cfg_t *build_ike_cfg(private_stroke_config_t *this, stroke_msg_t *msg
 	ike_cfg = ike_cfg_create(msg->add_conn.version,
 							 msg->add_conn.other.sendcert != CERT_NEVER_SEND,
 							 msg->add_conn.force_encap,
-							 msg->add_conn.me.address,
-							 msg->add_conn.me.allow_any,
+							 msg->add_conn.me.allow_any ?
+								me : msg->add_conn.me.address,
 							 ikeport,
-							 msg->add_conn.other.address,
-							 msg->add_conn.other.allow_any,
+							 msg->add_conn.other.allow_any ?
+								other : msg->add_conn.other.address,
 							 msg->add_conn.other.ikeport,
 							 msg->add_conn.fragmentation,
 							 msg->add_conn.ikedscp);
-	add_proposals(this, msg->add_conn.algorithms.ike, ike_cfg, NULL);
+
+	add_proposals(this, msg->add_conn.algorithms.ike, ike_cfg, NULL, PROTO_IKE);
 	return ike_cfg;
 }
 
@@ -731,6 +758,7 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 		msg->add_conn.me.sendcert, unique,
 		msg->add_conn.rekey.tries, rekey, reauth, jitter, over,
 		msg->add_conn.mobike, msg->add_conn.aggressive,
+		msg->add_conn.pushmode == 0,
 		msg->add_conn.dpd.delay, msg->add_conn.dpd.timeout,
 		msg->add_conn.ikeme.mediation, mediated_by, peer_id);
 
@@ -780,7 +808,13 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 		enumerator->destroy(enumerator);
 	}
 
-	if (msg->add_conn.me.sourceip)
+	if (msg->add_conn.me.sourceip && msg->add_conn.other.sourceip)
+	{
+		DBG1(DBG_CFG, "'%s' has both left- and rightsourceip, but IKE can "
+			 "negotiate one virtual IP only, ignoring local virtual IP",
+			 msg->add_conn.name);
+	}
+	else if (msg->add_conn.me.sourceip)
 	{
 		enumerator_t *enumerator;
 		char *token;
@@ -817,7 +851,15 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 				}
 				else
 				{
-					if (strchr(ike_cfg->get_my_addr(ike_cfg, NULL), ':'))
+					char *addr, *next, *hit;
+
+					/* guess virtual IP family based on local address. If
+					 * multiple addresses are specified, we look at the first
+					 * only, as with leftallowany a ::/0 is always appended. */
+					addr = ike_cfg->get_my_addr(ike_cfg);
+					next = strchr(addr, ',');
+					hit = strchr(addr, ':');
+					if (hit && (!next || hit < next))
 					{
 						vip = host_create_any(AF_INET6);
 					}
@@ -1112,8 +1154,16 @@ static child_cfg_t *build_child_cfg(private_stroke_config_t *this,
 	add_ts(this, &msg->add_conn.me, child_cfg, TRUE);
 	add_ts(this, &msg->add_conn.other, child_cfg, FALSE);
 
-	add_proposals(this, msg->add_conn.algorithms.esp, NULL, child_cfg);
-
+	if (msg->add_conn.algorithms.ah)
+	{
+		add_proposals(this, msg->add_conn.algorithms.ah,
+					  NULL, child_cfg, PROTO_AH);
+	}
+	else
+	{
+		add_proposals(this, msg->add_conn.algorithms.esp,
+					  NULL, child_cfg, PROTO_ESP);
+	}
 	return child_cfg;
 }
 
@@ -1188,7 +1238,7 @@ METHOD(stroke_config_t, del, void,
 
 	this->mutex->lock(this->mutex);
 	enumerator = this->list->create_enumerator(this->list);
-	while (enumerator->enumerate(enumerator, (void**)&peer))
+	while (enumerator->enumerate(enumerator, &peer))
 	{
 		bool keep = FALSE;
 
@@ -1209,12 +1259,11 @@ METHOD(stroke_config_t, del, void,
 		}
 		children->destroy(children);
 
-		/* if peer config matches, or has no children anymore, remove it */
-		if (!keep || streq(peer->get_name(peer), msg->del_conn.name))
+		/* if peer config has no children anymore, remove it */
+		if (!keep)
 		{
 			this->list->remove_at(this->list, enumerator);
 			peer->destroy(peer);
-			deleted = TRUE;
 		}
 	}
 	enumerator->destroy(enumerator);
