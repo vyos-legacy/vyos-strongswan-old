@@ -72,16 +72,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
 msgstr "Abiarazi StrongSwan-ren 'charon' daemona abiarazi?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
@@ -448,17 +444,13 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Enkriptazio oportunista behar duzula ziur bazaude bakarrik gaitu beharko "
-"zenuke. Interneteko konexioak moztu ditzake (lehenetsitako atebidea) "
-"daemona abiaraztean."
+"zenuke. Interneteko konexioak moztu ditzake (lehenetsitako atebidea) daemona "
+"abiaraztean."
 
 #~ msgid ""
 #~ "The pluto daemon must be running to support version 1 of the Internet Key "
