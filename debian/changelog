@@ -12,6 +12,9 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
     - install certexpire and unity plugins.
     - install lookip binary and plugin.
     - install error-notify binary and plugin.
+  * debian/strongswan-starter.install:
+    - pki tool is now in /usr/bin.
+    - add pt-tls-client for TCG Trusted Network Connect.
   * debian/control:
     - update long description, thanks to Justin B Rye.          closes: #725085
   * debian/po:
