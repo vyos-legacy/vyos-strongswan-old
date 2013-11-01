@@ -1,6 +1,7 @@
-strongswan (5.1.0-3) UNRELEASED; urgency=low
+strongswan (5.1.1-1) UNRELEASED; urgency=low
 
   [ Yves-Alexis Perez ]
+  * New upstream bugfix release
   * debian/rules:
     - enable and install af-alg plugin on Linux.                closes: #718292
     - enable certexpire plugin.                                 closes: #718293
