@@ -1,7 +1,7 @@
 # German translation of strongswan templates
 # Matthias Julius <mdeb@julius-net.net>, 2007.
 # Martin Eberhard Schauer <Martin.E.Schauer@gmx.de>, 2010.
-# Helge Kreutzmann <debian@helgefjell.de>, 2007, 2010.
+# Helge Kreutzmann <debian@helgefjell.de>, 2007, 2010, 2013.
 # This file is distributed under the same license as the strongswan package.
 #
 msgid ""
@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: strongswan 4.4.0-1\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
 "POT-Creation-Date: 2013-02-07 13:28+0100\n"
-"PO-Revision-Date: 2010-06-29 21:55+0200\n"
+"PO-Revision-Date: 2013-11-02 15:40+0100\n"
 "Last-Translator: Helge Kreutzmann <debian@helgefjell.de>\n"
 "Language-Team: German <debian-l10n-german@lists.debian.org>\n"
 "Language: de\n"
@@ -43,7 +43,7 @@ msgstr ""
 "Modi betrieben wurden, werden jetzt vernünftige Standardwerte gesetzt. Wenn "
 "Sie jetzt ein Upgrade von einer früheren Version durchführen und Sie die "
 "strongSwan-Startparameter angepasst haben, werfen Sie bitte einen Blick auf "
-"NEWS.Debian. Die Datei enthält Anweisungen, wie Sie Ihren Installation "
+"NEWS.Debian. Die Datei enthält Anweisungen, wie Sie Ihre Installation "
 "entsprechend ändern."
 
 #. Type: boolean
@@ -64,7 +64,7 @@ msgid ""
 msgstr ""
 "Es wird empfohlen, strongSwan neuzustarten, da eine Sicherheitskorrektur "
 "erst nach dem Neustart des Daemons greift. Die meisten Leute erwarten, dass "
-"der Daemon neu startet, daher ist diese Wahl eine gute Idee. Er kann "
+"der Daemon neustartet, daher ist diese Wahl eine gute Idee. Er kann "
 "allerdings existierende Verbindungen beenden und erneut aufbauen. Falls Sie "
 "solch eine Verbindung für diese Aktualisierung verwenden, wird der Neustart "
 "nicht empfohlen."
@@ -72,24 +72,18 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "strongSwans IKEv1-Daemon starten?"
+msgstr "strongSwans Charon-Daemon starten?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"Der Charon-Daemon muss laufen, um Version 2 des Internet Key Exchange-"
-"Protokolls zu unterstützen."
+"Der Charon-Daemon muss laufen, um das Internet-Key-Exchange-"
+"Protokoll zu unterstützen."
 
 #. Type: boolean
 #. Description
@@ -175,7 +169,7 @@ msgstr ""
 "Wenn Sie sich für die Erstellung eines neuen X.509-Zertifikats entscheiden, "
 "wird Ihnen zunächst eine Reihe von Fragen gestellt. Diese Fragen müssen "
 "beantwortet werden, damit das Zertifikat erstellt werden kann. Bitte "
-"beachten Sie: Wenn der öffentliche Schlüssel von einer bestehenden "
+"beachten Sie: Wenn Sie den öffentliche Schlüssel von einer bestehenden "
 "Zertifizierungsstelle (Certificate Authority, CA) bestätigen lassen wollen, "
 "sollten Sie nicht wählen, ein selbstsigniertes Zertifikat zu erstellen. "
 "Außerdem müssen dann alle gegebenen Antworten exakt den Anforderungen der CA "
@@ -301,11 +295,11 @@ msgid ""
 "Authority to create a trust path."
 msgstr ""
 "Nur selbstsignierte X.509-Zertifikate können automatisch erstellt werden, da "
-"da andernfalls eine Zertifizierungsstelle zur Signatur der "
+"andernfalls eine Zertifizierungsstelle zur Signatur der "
 "Zertifikatsanfrage benötigt wird. Falls Sie sich entscheiden, ein "
 "selbstsigniertes Zertifikat zu erstellen, können Sie es sofort zur "
 "Verbindung mit anderen IPSec-Rechnern verwenden, die X.509-Zertifikate zur "
-"Authentifizierung von IPSec-Verbindungen verwenden. Die Verwendung der PKI-"
+"Authentifizierung von IPSec-Verbindungen unterstützen. Die Verwendung der PKI-"
 "Funktionalität von strongSwan verlangt allerdings, dass alle Zertifikate von "
 "einer Zertifizierungsstelle signiert sind, um einen Vertrauenspfad zu "
 "erstellen."
@@ -468,17 +462,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
 msgstr ""
 "Sie sollten opportunistische Verschlüsselung nur verwenden, falls Sie sich "
-"sicher sind, dass Sie sie verwenden möchten. Beim Starten des Pluto-Daemons "
+"sicher sind, dass Sie sie verwenden möchten. Beim Starten des Daemons "
 "könnte die Internetverbindung (Default Route) unterbrochen werden."
 
 #~ msgid ""
@@ -512,7 +501,7 @@ msgstr ""
 #~ "Anweisungen, wie Sie Ihren Setup entsprechend ändern."
 
 #~ msgid "Restart Openswan now?"
-#~ msgstr "Möchten Sie jetzt Openswan neu starten?"
+#~ msgstr "Möchten Sie jetzt Openswan neustarten?"
 
 #~ msgid ""
 #~ "Restarting Openswan is recommended, since if there is a security fix, it "
