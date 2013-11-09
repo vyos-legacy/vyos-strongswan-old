@@ -1,21 +1,23 @@
-# ITALIAN TRANSLATION OF STRONGSWAN'S PO-DEBCONF FILE.
-# COPYRIGHT (C) YEAR THE STRONGSWAN'S COPYRIGHT HOLDER
+# Italian translation of strongswan's po-debconf file.
+# Copyright (c) 2013, strongswan package copyright holder
 # This file is distributed under the same license as the strongswan package.
-#
 # Vincenzo Campanella <vinz65@gmail.com>, 2010.
+# Beatrice Torracca <beatricet@libero.it>, 2013.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: strongswan\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
 "POT-Creation-Date: 2013-02-07 13:28+0100\n"
-"PO-Revision-Date: 2010-11-13 16:03+0100\n"
-"Last-Translator: Vincenzo Campanella <vinz65@gmail.com>\n"
-"Language-Team: Italian <tp@lists.linux.it>\n"
+"PO-Revision-Date: 2013-11-09 11:59+0100\n"
+"Last-Translator: Beatrice Torracca <beatricet@libero.it>\n"
+"Language-Team: Italiano <debian-l10n-italian@lists.debian.org>\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1)\n"
+"X-Generator: Gtranslator 2.91.6\n"
 
 #. Type: note
 #. Description
@@ -41,8 +43,8 @@ msgstr ""
 "installazioni e per quelle già esistenti che vengono eseguite in qualsiasi "
 "modalità predefinita vengono ora impostati dei livelli predefiniti "
 "ragionevoli. Se si sta aggiornando da una versione precedente e si sono "
-"modificati i parametri di strongSwan, consultare le NEWS.Debian su come "
-"modificare le impostazioni."
+"modificati i parametri di avvio di  strongSwan, consultare le NEWS.Debian su "
+"come modificare le impostazioni."
 
 #. Type: boolean
 #. Description
@@ -70,15 +72,13 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
 #| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "Avviare il demone di strongSwan IKEv1?"
+msgstr "Avviare il demone charon di strongSwan?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
 #| msgid ""
 #| "The charon daemon must be running to support version 2 of the Internet "
 #| "Key Exchange protocol."
@@ -86,8 +86,8 @@ msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"Per il supporto alla versione 2 del protocollo IKE (Internet Key Exchange) è "
-"necessario che il demone charon sia in esecuzione."
+"Per il supporto al protocollo Internet Key Exchange è necessario che il "
+"demone charon sia in esecuzione."
 
 #. Type: boolean
 #. Description
@@ -107,7 +107,7 @@ msgid ""
 "connections, key based authentication is easier to administer and more "
 "secure."
 msgstr ""
-"Per questo host è possibile la creazione o la creazione automatica di un "
+"Per questo host è possibile la creazione o l'importazione automatica di un "
 "certificato X.509 per l'autenticazione di connessioni IPsec ad altri host; è "
 "la modalità preferita per la creazione di connessioni IPsec sicure. L'altra "
 "possibilità è l'utilizzo di password segrete condivise e identiche fra le "
@@ -171,7 +171,7 @@ msgstr ""
 "da ricordare che, se si desidera che la chiave pubblica venga firmata da "
 "un'autorità di certificazione (CA) esistente, non si dovrebbe creare un "
 "certificato auto-firmato e inoltre tutte le risposte fornite devono "
-"adempiere esattamente i requisiti della CA, in quanto altrimenti la "
+"adempiere esattamente ai requisiti della CA, in quanto altrimenti la "
 "richiesta di certificato potrebbe essere rifiutata."
 
 #. Type: select
@@ -199,7 +199,7 @@ msgstr ""
 #. Description
 #: ../strongswan-starter.templates:7001
 msgid "File name of your PEM format X.509 certificate:"
-msgstr "Nome file del proprio certificato X.509 formato PEM:"
+msgstr "Nome file del proprio certificato X.509 in formato PEM:"
 
 #. Type: string
 #. Description
@@ -215,7 +215,7 @@ msgstr ""
 #. Description
 #: ../strongswan-starter.templates:8001
 msgid "File name of your PEM format X.509 private key:"
-msgstr "Nome file della propria chiave privata X.509 formato PEM:"
+msgstr "Nome file della propria chiave privata X.509 in formato PEM:"
 
 #. Type: string
 #. Description
@@ -233,7 +233,7 @@ msgstr ""
 #. Description
 #: ../strongswan-starter.templates:9001
 msgid "File name of your PEM format X.509 RootCA:"
-msgstr "Nome file del proprio RootCA X.509 formato PEM:"
+msgstr "Nome file del proprio RootCA X.509 in formato PEM:"
 
 #. Type: string
 #. Description
@@ -246,7 +246,7 @@ msgid ""
 "your X.509 certificate or private key."
 msgstr ""
 "Opzionalmente è possibile inserire la posizione del file che contiene "
-"l'autorità di certificazione root (RootCA) utilizzata per la firma del "
+"l'autorità di certificazione root (RootCA) X.509 utilizzata per la firma del "
 "proprio certificato in formato PEM. Se non se ne possiede uno o non si "
 "desidera utilizzarlo lasciare il campo vuoto. Notare che non è possibile "
 "memorizzare il RootCA nello stesso file del proprio certificato o chiave "
@@ -307,7 +307,7 @@ msgid ""
 "private key and the certificate request will be created, and you will have "
 "to sign the certificate request with your Certificate Authority."
 msgstr ""
-"Se non si sceglie di creare un certificato auto-firmato verranno creati solo "
+"Se non si sceglie di creare un certificato auto-firmato verranno create solo "
 "la chiave privata RSA e la richiesta di certificato che andrà poi firmata "
 "con l'autorità di certificazione scelta."
 
@@ -353,7 +353,7 @@ msgid ""
 "Please enter the full name of the state or province the server resides in "
 "(such as \"Upper Austria\")."
 msgstr ""
-"Inserire il nome completo dello stato o della provincia il in cui il server "
+"Inserire il nome completo dello stato o della provincia in cui il server "
 "risiede (per esempio, «Milano»)."
 
 #. Type: string
@@ -415,7 +415,7 @@ msgstr "Nome comune host per la richiesta di certificato X.509:"
 msgid ""
 "Please enter the Common Name for this host (such as \"gateway.example.org\")."
 msgstr ""
-"Inserire il nome comune di questo host (per esempio, «gateway.esempio.it»)."
+"Inserire il nome comune di questo host (per esempio, «gateway.example.org»)."
 
 #. Type: string
 #. Description
@@ -456,7 +456,6 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
 #| msgid ""
 #| "You should only enable opportunistic encryption if you are sure you want "
 #| "it. It may break the Internet connection (default route) as the pluto "
@@ -467,7 +466,7 @@ msgid ""
 msgstr ""
 "Si dovrebbe abilitare l'OE solo se lo si desidera veramente. Potrebbe "
 "interrompere la connessione Internet (route predefinita) durante l'avvio del "
-"demone pluto."
+"demone."
 
 #~ msgid ""
 #~ "The pluto daemon must be running to support version 1 of the Internet Key "
