@@ -3,20 +3,20 @@
 # This file is distributed under the same license as the strongswan package.
 #
 # Luísa Lourenço <kikentai@gmail.com>, 2007.
-# Américo Monteiro <a_monteiro@netcabo.pt>, 2009, 2010.
+# Américo Monteiro <a_monteiro@gmx.com>, 2009, 2010, 2013.
 msgid ""
 msgstr ""
-"Project-Id-Version: strongswan 4.4.0-1\n"
+"Project-Id-Version: strongswan 5.1.0-3\n"
 "Report-Msgid-Bugs-To: strongswan@packages.debian.org\n"
 "POT-Creation-Date: 2013-02-07 13:28+0100\n"
-"PO-Revision-Date: 2010-06-26 18:47+0100\n"
-"Last-Translator: Américo Monteiro <a_monteiro@netcabo.pt>\n"
+"PO-Revision-Date: 2013-11-18 00:33+0000\n"
+"Last-Translator: Américo Monteiro <a_monteiro@gmx.com>\n"
 "Language-Team: Portuguese <traduz@debianpt.org>\n"
 "Language: pt\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Lokalize 1.0\n"
+"X-Generator: Lokalize 1.4\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. Type: note
@@ -72,15 +72,13 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
 #| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
-msgstr "Iniciar o daemon IKEv1 do strongSwan?"
+msgstr "Iniciar o daemon charon do strongSwan?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#, fuzzy
 #| msgid ""
 #| "The charon daemon must be running to support version 2 of the Internet "
 #| "Key Exchange protocol."
@@ -88,8 +86,8 @@ msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
 msgstr ""
-"O daemon charon precisa de estar a correr para suportar a versão 2 do "
-"protocolo Internet Key Exchange."
+"O daemon charon precisa de estar a correr para suportar o protocolo "
+"Internet Key Exchange."
 
 #. Type: boolean
 #. Description
@@ -457,7 +455,6 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#, fuzzy
 #| msgid ""
 #| "You should only enable opportunistic encryption if you are sure you want "
 #| "it. It may break the Internet connection (default route) as the pluto "
@@ -468,7 +465,7 @@ msgid ""
 msgstr ""
 "Você deverá apenas activar a encriptação oportunista se tiver a certeza que "
 "a quer. Pode quebrar a ligação à Internet (rota predefinida) assim que o "
-"daemon pluto arrancar."
+"daemon arrancar."
 
 #~ msgid ""
 #~ "The pluto daemon must be running to support version 1 of the Internet Key "

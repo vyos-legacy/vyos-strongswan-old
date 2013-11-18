@@ -28,6 +28,7 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
     - tr.po updated, thanks Atila KOÇ.                          closes: #728874
     - it.po updated, thanks Beatrice Torracca.                  closes: #729122
     - de.po updated, thanks Helge Kreutzmann.                   closes: #729170
+    - pt.po updated, thanks Américo Monteiro.                   closes: #729823
   * debian/patches:
     - CVE-2013-6075 and CVE-2013-6076 dropped, included upstream.
 
