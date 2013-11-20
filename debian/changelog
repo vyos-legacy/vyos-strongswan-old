@@ -17,6 +17,7 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
     - add pt-tls-client for TCG Trusted Network Connect.
   * debian/control:
     - update long description, thanks to Justin B Rye.          closes: #725085
+    - make the pkg-swan-devel list the maintainer, and add René to uploaders.
   * debian/po:
     - eu.po updated, thanks Iñaki Larrañaga Murgoitio.          closes: #726636
     - ja.po updated.                                            closes: #726059
