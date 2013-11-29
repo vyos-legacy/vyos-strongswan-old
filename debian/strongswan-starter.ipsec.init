@@ -47,7 +47,7 @@ do_start()
 
 	# test if charon is currently running
 	if [ -e $CHARON ]; then
-	  start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $STARTER --test > /dev/null \
+	  start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $CHARON --test > /dev/null \
 		|| return 1
 	fi
 
