@@ -49,6 +49,10 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
   * debian/strongswan-starter.install:
     - 'ipsec pool' is no longer built, remove.
 
+  [ Raphael Geissert ]
+  * Allow the configuration of strongswan.conf to be stored in snippets
+    in /etc/strongswan.conf.d/
+
  -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 20:01:37 +0100
 
 strongswan (5.1.0-3) unstable; urgency=high
