@@ -1,4 +1,4 @@
-strongswan (5.1.1-1) UNRELEASED; urgency=low
+strongswan (5.1.1-1) unstable; urgency=low
 
   [ Yves-Alexis Perez ]
   * New upstream bugfix release
@@ -55,7 +55,7 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
   * Allow the configuration of strongswan.conf to be stored in snippets
     in /etc/strongswan.conf.d/
 
- -- Romain Francoise <rfrancoise@debian.org>  Tue, 29 Oct 2013 20:01:37 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 24 Jan 2014 21:22:32 +0100
 
 strongswan (5.1.0-3) unstable; urgency=high
 
