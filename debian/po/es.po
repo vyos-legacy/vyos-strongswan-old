@@ -64,9 +64,9 @@ msgstr ""
 "útil. Para todas las instalaciones nuevas, así como para las antiguas que "
 "ejecuten cualquiera de los modos predefinidos, se configurarán unos niveles "
 "predeterminados válidos. Si está actualizando de una versión antigua y ha "
-"cambiado los parámetros de arranque de strongSwan, revise el archivo "
-"«NEWS.Debian» para leer las instrucciones sobre cómo modificar su "
-"configuración apropiadamente."
+"cambiado los parámetros de arranque de strongSwan, revise el archivo «NEWS."
+"Debian» para leer las instrucciones sobre cómo modificar su configuración "
+"apropiadamente."
 
 #. Type: boolean
 #. Description
@@ -94,16 +94,12 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#| msgid "Start strongSwan's IKEv1 daemon?"
 msgid "Start strongSwan's charon daemon?"
 msgstr "¿Desea iniciar el demonio charon de strongSwan?"
 
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:4001
-#| msgid ""
-#| "The charon daemon must be running to support version 2 of the Internet "
-#| "Key Exchange protocol."
 msgid ""
 "The charon daemon must be running to support the Internet Key Exchange "
 "protocol."
@@ -174,8 +170,8 @@ msgid ""
 "or to import an existing public and private key stored in PEM file(s) for "
 "authenticating IPsec connections."
 msgstr ""
-"Puede crear un certificado X.509 nuevo con una configuración definida por "
-"el usuario o importar una clave pública/privada almacenada en archivo/s PEM "
+"Puede crear un certificado X.509 nuevo con una configuración definida por el "
+"usuario o importar una clave pública/privada almacenada en archivo/s PEM "
 "para autenticar las conexiones IPsec."
 
 #. Type: select
@@ -214,9 +210,9 @@ msgstr ""
 "almacenan en un único archivo). Opcionalmente, puede indicar el nombre de un "
 "archivo donde se encuentran las clave/s pública/s de la Autoridad de "
 "Certificación, pero este archivo no puede ser el mismo que los anteriores. "
-"Tenga en cuenta que el formato para los certificados X.509 tiene que "
-"ser PEM y que la clave privada no debe estar cifrada o el proceso de "
-"importación fallará."
+"Tenga en cuenta que el formato para los certificados X.509 tiene que ser PEM "
+"y que la clave privada no debe estar cifrada o el proceso de importación "
+"fallará."
 
 #. Type: string
 #. Description
@@ -322,8 +318,8 @@ msgstr ""
 "firmado, puede utilizarlo inmediatamente para conectar a otras máquinas "
 "IPsec que permitan la autenticación de conexiones IPsec con certificados "
 "X.509. Sin embargo, si utiliza las funcionalidades PKI de strongSwan es "
-"necesario que todos los certificados estén firmados por una única "
-"Autoridad de Certificación para crear una ruta segura."
+"necesario que todos los certificados estén firmados por una única Autoridad "
+"de Certificación para crear una ruta segura."
 
 #. Type: boolean
 #. Description
@@ -362,8 +358,8 @@ msgid ""
 "certificate, but not here."
 msgstr ""
 "OpenSSL se negará a generar un certificado a menos que este campo sea un "
-"código de país ISO-3166 válido, además no se permite que este campo quede "
-"en blanco."
+"código de país ISO-3166 válido, además no se permite que este campo quede en "
+"blanco."
 
 #. Type: string
 #. Description
@@ -485,10 +481,6 @@ msgstr ""
 #. Type: boolean
 #. Description
 #: ../strongswan-starter.templates:19001
-#| msgid ""
-#| "You should only enable opportunistic encryption if you are sure you want "
-#| "it. It may break the Internet connection (default route) as the pluto "
-#| "daemon starts."
 msgid ""
 "You should only enable opportunistic encryption if you are sure you want it. "
 "It may break the Internet connection (default route) as the daemon starts."
