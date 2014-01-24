@@ -34,6 +34,7 @@ strongswan (5.1.1-1) UNRELEASED; urgency=low
     - es.po updated, thanks Matias A. Bellone.                  closes: #733731
   * debian/patches:
     - CVE-2013-6075 and CVE-2013-6076 dropped, included upstream.
+    - 01_fix-manpages updated, move pki --issue manpage to section 1.
   * debian/strongswan-starter.ipsec.init:
     - use daemon exe in start-stop-daemon test.                 closes: #730661
 

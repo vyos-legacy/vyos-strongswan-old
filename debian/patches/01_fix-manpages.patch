@@ -39,3 +39,18 @@
  .SH "SYNOPSIS"
  .B ipsec scepclient [argument ...]
  .sp
+--- a/src/pki/man/pki---issue.1.in
++++ b/src/pki/man/pki---issue.1.in
+@@ -1,4 +1,4 @@
+-.TH "PKI \-\-ISSUE" 8 "2013-08-12" "@PACKAGE_VERSION@" "strongSwan"
++.TH "PKI \-\-ISSUE" 1 "2013-08-12" "@PACKAGE_VERSION@" "strongSwan"
+ .
+ .SH "NAME"
+ .
+@@ -176,4 +176,4 @@ given PKCS#10 certificate request and th
+ .
+ .SH "SEE ALSO"
+ .
+-.BR pki (1)
+\ No newline at end of file
++.BR pki (1)
