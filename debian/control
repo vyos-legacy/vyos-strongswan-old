@@ -71,7 +71,7 @@ Architecture: any
 Pre-Depends: debconf | debconf-2.0
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
   libstrongswan (= ${binary:Version}), strongswan-starter | strongswan-nm,
-  bsdmainutils, debianutils (>=1.7), ipsec-tools, host, iproute [linux-any]
+  bsdmainutils, debianutils (>=1.7), ipsec-tools, iproute [linux-any]
 Suggests: curl
 Provides: ike-server
 Conflicts: freeswan (<< 2.04-12), openswan, strongswan (<< 4.2.12-1)
