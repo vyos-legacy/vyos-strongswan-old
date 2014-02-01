@@ -122,3 +122,15 @@ Description: strongSwan IKEv2 daemon, transitional package
  This package used to install the charon daemon, implementing the IKEv2
  protocol. It has been replaced the strongswan-ike package, so it can be safely
  removed.
+
+Package: charon-cmd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})
+Breaks: strongswan-ike (<= 5.1.1-1)
+Replaces: strongswan-ike (<= 5.1.1-1)
+Description: standalone IPsec client
+ The strongSwan VPN suite uses the native IPsec stack in the standard
+ Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
+ .
+ This package contains the charon-cmd command, which can be used as a client to
+ connect to a remote IKE daemon.
