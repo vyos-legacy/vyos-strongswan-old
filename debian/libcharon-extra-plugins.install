@@ -1,0 +1,25 @@
+# libcharon plugins
+usr/lib/ipsec/plugins/libstrongswan-addrblock.so
+usr/lib/ipsec/plugins/libstrongswan-certexpire.so
+usr/lib/ipsec/plugins/libstrongswan-eap*.so
+usr/lib/ipsec/plugins/libstrongswan-error-notify.so
+usr/lib/ipsec/plugins/libstrongswan-ha.so
+usr/lib/ipsec/plugins/libstrongswan-led.so
+usr/lib/ipsec/plugins/libstrongswan-lookip.so
+usr/lib/ipsec/plugins/libstrongswan-medsrv.so
+usr/lib/ipsec/plugins/libstrongswan-medcli.so
+usr/lib/ipsec/plugins/libstrongswan-tnc-tnccs.so
+usr/lib/ipsec/plugins/libstrongswan-unity.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-eap.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-generic.so
+usr/lib/ipsec/plugins/libstrongswan-xauth-pam.so
+# support libs
+usr/lib/ipsec/libpttls.so*
+usr/lib/ipsec/libradius.so*
+usr/lib/ipsec/libsimaka.so*
+usr/lib/ipsec/libtnccs.so*
+usr/lib/ipsec/libtls.so*
+# binaries
+usr/lib/ipsec/error-notify
+usr/lib/ipsec/lookip
+usr/lib/ipsec/pt-tls-client

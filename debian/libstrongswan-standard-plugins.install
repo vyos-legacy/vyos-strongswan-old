@@ -1,0 +1,4 @@
+# libstrongswan
+usr/lib/ipsec/plugins/libstrongswan-agent.so
+usr/lib/ipsec/plugins/libstrongswan-gcm.so
+usr/lib/ipsec/plugins/libstrongswan-openssl.so

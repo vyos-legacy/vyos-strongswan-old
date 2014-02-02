@@ -1,3 +1,17 @@
+strongswan (5.1.1-2) UNRELEASED; urgency=medium
+
+  in 5.1.1-2 package, few plugins have been splitted from the main
+  libstrongswan package. The plugins are now in following packages:
+    - libstrongswan: main/default plugins, as defined by the strongSwan
+    project
+    - libstrongswan-standard-plugins: non default but useful plugins (agent,
+    gcm and openssl)
+    - libstrongswan-extra-plugins: more scarcely used plugins
+    - libcharon-extra-plugins: more scarecely used plugins for the charon
+    daemon
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 02 Feb 2014 20:05:15 +0100
+
 strongswan (5.1.0-1) unstable; urgency=low
 
   Starting with strongSwan 5, the IKEv1 daemon (pluto) is gone, and the charon

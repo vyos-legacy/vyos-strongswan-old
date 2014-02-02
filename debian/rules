@@ -84,10 +84,10 @@ override_dh_install:
 	# first special cases
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	# handle Linux-only plugins
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-dhcp.so
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-farp.so
+	dh_install -p libcharon-extra-plugins usr/lib/ipsec/plugins/libstrongswan-dhcp.so
+	dh_install -p libcharon-extra-plugins usr/lib/ipsec/plugins/libstrongswan-farp.so
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-netlink.so
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-af-alg.so
+	dh_install -p libstrongswan-extras-plugins usr/lib/ipsec/plugins/libstrongswan-af-alg.so
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
@@ -98,12 +98,12 @@ endif
 
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	# special handling for padlock, as it is only built on i386
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-padlock.so
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
+	dh_install -p libstrongswan-extras-plugins usr/lib/ipsec/plugins/libstrongswan-padlock.so
+	dh_install -p libstrongswan-extras-plugins usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 endif
 
 ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
-	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-rdrand.so
+	dh_install -p libstrongswan-extras-plugins usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 endif
 
 	# then install the rest, ignoring the above
