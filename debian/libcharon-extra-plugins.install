@@ -14,6 +14,7 @@ usr/lib/ipsec/plugins/libstrongswan-xauth-eap.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-generic.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-pam.so
 # support libs
+usr/lib/ipsec/libfast.so*
 usr/lib/ipsec/libpttls.so*
 usr/lib/ipsec/libradius.so*
 usr/lib/ipsec/libsimaka.so*

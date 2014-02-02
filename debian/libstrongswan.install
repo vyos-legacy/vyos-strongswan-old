@@ -28,4 +28,3 @@ usr/lib/ipsec/libhydra.so*
 usr/lib/ipsec/plugins/libstrongswan-attr.so
 usr/lib/ipsec/plugins/libstrongswan-resolve.so
 etc/strongswan.conf
-usr/lib/ipsec/libfast.so*
