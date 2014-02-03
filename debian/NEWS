@@ -1,7 +1,7 @@
-strongswan (5.1.1-2) UNRELEASED; urgency=medium
+strongswan (5.1.1-2) unstable; urgency=medium
 
-  in 5.1.1-2 package, few plugins have been splitted from the main
-  libstrongswan package. The plugins are now in following packages:
+  In 5.1.1-2 package, few plugins have been split from the main libstrongswan
+  package. The plugins are now in following packages:
     - libstrongswan: main/default plugins, as defined by the strongSwan
     project
     - libstrongswan-standard-plugins: non default but useful plugins (agent,
