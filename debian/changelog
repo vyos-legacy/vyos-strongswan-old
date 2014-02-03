@@ -4,7 +4,10 @@ strongswan (5.1.1-2) UNRELEASED; urgency=medium
     - drop dependency on host, inherited from openSwan.         closes: #736661
     - split charon-cmd to a standalone package.
     - add new plugins packages: libstrongswan-standard-plugins,
-      libstrongswan-extra-plugins and libcharon-extra-plugins.
+    libstrongswan-extra-plugins and libcharon-extra-plugins.
+    - split strongswan-ike package to strongswan-libcharon (libcharon and
+    default libcharon plugins) and strongswan-charon (charon daemon), keep
+    strongswan-ike as transitional package for now.
   * debian/po:
     - sv.po updated, thanks Martin Bagge.                       closes: #725667
   * debian/charon-cmd.lintian-overrides: override lintian error about
