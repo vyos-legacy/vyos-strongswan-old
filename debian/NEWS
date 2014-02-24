@@ -1,4 +1,4 @@
-strongswan (5.1.1-2) unstable; urgency=medium
+strongswan (5.1.1-2+splitplugins) experimental; urgency=medium
 
   In 5.1.1-2 package, few plugins have been split from the main libstrongswan
   package. The plugins are now in following packages:
@@ -9,6 +9,9 @@ strongswan (5.1.1-2) unstable; urgency=medium
     - libstrongswan-extra-plugins: more scarcely used plugins
     - libcharon-extra-plugins: more scarecely used plugins for the charon
     daemon
+
+  WARNING: this is an experimental release of the packaging, use at your own
+  risk.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sun, 02 Feb 2014 20:05:15 +0100
 

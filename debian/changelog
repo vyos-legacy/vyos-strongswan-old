@@ -1,4 +1,4 @@
-strongswan (5.1.1-2) UNRELEASED; urgency=medium
+strongswan (5.1.1-2+splitplugins) experimental; urgency=medium
 
   * debian/control:
     - drop dependency on host, inherited from openSwan.         closes: #736661
@@ -13,7 +13,7 @@ strongswan (5.1.1-2) UNRELEASED; urgency=medium
   * debian/charon-cmd.lintian-overrides: override lintian error about
     charon-cmd rpath.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sun, 26 Jan 2014 10:33:42 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 24 Feb 2014 10:42:49 +0100
 
 strongswan (5.1.1-1) unstable; urgency=low
 
