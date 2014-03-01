@@ -81,7 +81,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})
 Breaks: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1)
 Replaces: libstrongswan (<= 5.1.1-1),strongswan-ike (<= 5.1.1-1)
-Description: strongSwan utility and crypto library (extra plugins)
+Description: strongSwan utility and crypto library (standard plugins)
  The strongSwan VPN suite uses the native IPsec stack in the standard
  Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
  .
