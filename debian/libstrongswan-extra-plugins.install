@@ -1,0 +1,9 @@
+# libstrongswan
+usr/lib/ipsec/plugins/libstrongswan-ccm.so
+usr/lib/ipsec/plugins/libstrongswan-cmac.so
+usr/lib/ipsec/plugins/libstrongswan-ctr.so
+usr/lib/ipsec/plugins/libstrongswan-curl.so
+usr/lib/ipsec/plugins/libstrongswan-gcrypt.so
+usr/lib/ipsec/plugins/libstrongswan-ldap.so
+usr/lib/ipsec/plugins/libstrongswan-pkcs11.so
+usr/lib/ipsec/plugins/libstrongswan-test-vectors.so

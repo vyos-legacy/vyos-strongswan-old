@@ -18,7 +18,6 @@ usr/share/man/man8/_updown_espmark.8
 usr/bin/pki
 usr/lib/ipsec/scepclient
 usr/lib/ipsec/openac
-usr/lib/ipsec/pt-tls-client
 usr/share/man/man8/scepclient.8
 usr/share/man/man8/openac.8
 usr/share/man/man1/pki---gen.1
