@@ -40,6 +40,7 @@ if [ "$1" = "purge" ] ; then
 
         rm -rf /etc/ipsec.d/
         rm -rf /var/run/pluto/
+        rm -rf /var/lib/strongswan/
 fi
 
 # dh_installdeb will replace this with shell code automatically
