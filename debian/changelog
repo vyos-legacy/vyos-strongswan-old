@@ -4,6 +4,8 @@ strongswan (5.1.1-4) UNRELEASED; urgency=medium
     - add conflicts against openSwan.                           closes: #740808
   * debian/strongswan-starter,postrm:
     - remove /var/lib/strongswan on purge.
+  * debian/ipsec.secrets.proto:
+    - stop lying about ipsec showhostkey command.               closes: #600382
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 05 Mar 2014 09:51:11 +0100
 
