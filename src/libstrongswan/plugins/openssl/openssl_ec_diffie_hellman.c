@@ -102,6 +102,11 @@ static bool chunk2ecp(const EC_GROUP *group, chunk_t chunk, EC_POINT *point)
 		goto error;
 	}
 
+	if (!EC_POINT_is_on_curve(group, point, ctx))
+	{
+		goto error;
+	}
+
 	ret = TRUE;
 error:
 	BN_CTX_end(ctx);
@@ -196,7 +201,7 @@ static bool compute_shared_key(private_openssl_ec_diffie_hellman_t *this,
 	 * http://www.rfc-editor.org/errata_search.php?eid=9
 	 */
 	x_coordinate_only = lib->settings->get_bool(lib->settings,
-							"libstrongswan.ecp_x_coordinate_only", TRUE);
+									"%s.ecp_x_coordinate_only", TRUE, lib->ns);
 	if (!ecp2chunk(this->ec_group, secret, shared_secret, x_coordinate_only))
 	{
 		goto error;

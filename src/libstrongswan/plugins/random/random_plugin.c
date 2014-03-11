@@ -51,6 +51,9 @@ static int dev_random = -1;
 /** /dev/urandom file descriptor */
 static int dev_urandom = -1;
 
+/** Is strong randomness equivalent to true randomness? */
+static bool strong_equals_true = FALSE;
+
 /**
  * See header.
  */
@@ -65,6 +68,14 @@ int random_plugin_get_dev_random()
 int random_plugin_get_dev_urandom()
 {
 	return dev_urandom;
+}
+
+/**
+ * See header.
+ */
+bool random_plugin_get_strong_equals_true()
+{
+	return strong_equals_true;
 }
 
 /**
@@ -131,10 +142,12 @@ plugin_t *random_plugin_create()
 		},
 	);
 
+	strong_equals_true = lib->settings->get_bool(lib->settings,
+						"%s.plugins.random.strong_equals_true", FALSE, lib->ns);
 	urandom_file = lib->settings->get_str(lib->settings,
-						"libstrongswan.plugins.random.urandom", DEV_URANDOM);
+						"%s.plugins.random.urandom", DEV_URANDOM, lib->ns);
 	random_file = lib->settings->get_str(lib->settings,
-						"libstrongswan.plugins.random.random", DEV_RANDOM);
+						"%s.plugins.random.random", DEV_RANDOM, lib->ns);
 	if (!open_dev(urandom_file, &dev_urandom) ||
 		!open_dev(random_file, &dev_random))
 	{

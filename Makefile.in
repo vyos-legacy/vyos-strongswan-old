@@ -190,7 +190,7 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
-DIST_SUBDIRS = src man init testing scripts
+DIST_SUBDIRS = src man conf init testing scripts
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -229,7 +229,6 @@ am__relativize = \
 DIST_ARCHIVES = $(distdir).tar.gz
 GZIP_ENV = --best
 DIST_TARGETS = dist-gzip
-distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
@@ -247,8 +246,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -316,6 +313,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -404,12 +406,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -424,6 +430,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -434,7 +441,7 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-SUBDIRS = src man init testing $(am__append_1)
+SUBDIRS = src man conf init testing $(am__append_1)
 @USE_SILENT_RULES_TRUE@AM_MAKEFLAGS = -s
 ACLOCAL_AMFLAGS = -I m4/config
 EXTRA_DIST = Doxyfile.in LICENSE Android.common.mk.in Android.common.mk Android.mk
@@ -443,6 +450,9 @@ BUILT_SOURCES = Android.common.mk
 MAINTAINERCLEANFILES = Android.common.mk
 @USE_DEV_HEADERS_TRUE@config_includedir = $(ipseclibdir)/include
 @USE_DEV_HEADERS_TRUE@nodist_config_include_HEADERS = config.h
+
+# we leave config files behind intentionally so prevent distcheck from complaining
+distuninstallcheck_listfiles = find . -type f \! -name '*.conf' -print
 all: $(BUILT_SOURCES) config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -971,17 +981,19 @@ apidoc :	Doxyfile
 
 cov-reset-common:
 		@rm -rf $(top_builddir)/coverage
-		@find $(top_builddir)/{src,scripts} -name "*.gcda" -delete
+		@find $(top_builddir)/src $(top_builddir)/scripts -name "*.gcda" -delete
 
 @COVERAGE_TRUE@cov-reset: cov-reset-common
 @COVERAGE_TRUE@		@lcov --zerocounters --directory $(top_builddir)
 
 @COVERAGE_TRUE@cov-report:
 @COVERAGE_TRUE@		@mkdir $(top_builddir)/coverage
-@COVERAGE_TRUE@		lcov -c -o $(top_builddir)/coverage/coverage.info -d $(top_builddir)
+@COVERAGE_TRUE@		lcov -c -o $(top_builddir)/coverage/coverage.info -d $(top_builddir) \
+@COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
 @COVERAGE_TRUE@		lcov -r $(top_builddir)/coverage/coverage.info '*/tests/*' \
-@COVERAGE_TRUE@			 -o $(top_builddir)/coverage/coverage.cleaned.info
-@COVERAGE_TRUE@		genhtml --num-spaces 4 --legend \
+@COVERAGE_TRUE@			 -o $(top_builddir)/coverage/coverage.cleaned.info \
+@COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
+@COVERAGE_TRUE@		genhtml --num-spaces 4 --legend --branch-coverage \
 @COVERAGE_TRUE@				-t "$(PACKAGE_STRING)" \
 @COVERAGE_TRUE@				-o $(top_builddir)/coverage/html \
 @COVERAGE_TRUE@				-p `readlink -m $(abs_top_srcdir)`/src \
@@ -996,7 +1008,7 @@ cov-reset-common:
 @COVERAGE_FALSE@		@echo "reconfigure with --enable-coverage"
 
 clean-local: cov-reset-common
-		@find $(top_builddir)/{src,scripts} -name "*.gcno" -delete
+		@find $(top_builddir)/src $(top_builddir)/scripts -name "*.gcno" -delete
 		@rm -rf apidoc
 
 .PHONY: cov-reset-common cov-reset cov-report coverage

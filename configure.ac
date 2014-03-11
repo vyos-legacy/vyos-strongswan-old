@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2007-2013 Tobias Brunner
+# Copyright (C) 2007-2014 Tobias Brunner
 # Copyright (C) 2006-2013 Andreas Steffen
 # Copyright (C) 2006-2013 Martin Willi
 # Hochschule fuer Technik Rapperswil
@@ -19,8 +19,18 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.1.1])
-AM_INIT_AUTOMAKE([tar-ustar subdir-objects])
+AC_INIT([strongSwan],[5.1.2])
+AM_INIT_AUTOMAKE(m4_esyscmd([
+	echo tar-ustar
+	echo subdir-objects
+	case `automake --version | head -n 1` in
+		*" 1.9"*);;
+		*" 1.10"*);;
+		*" 1.11"*);;
+		# don't use parallel test harness in 1.12 and up
+		*) echo serial-tests;;
+	esac
+]))
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_MACRO_DIR([m4/config])
 AC_CONFIG_HEADERS([config.h])
@@ -229,6 +239,7 @@ ARG_ENABL_SET([pkcs11],         [enables the PKCS11 token support plugin.])
 ARG_ENABL_SET([ctr],            [enables the Counter Mode wrapper crypto plugin.])
 ARG_ENABL_SET([ccm],            [enables the CCM AEAD wrapper crypto plugin.])
 ARG_ENABL_SET([gcm],            [enables the GCM AEAD wrapper crypto plugin.])
+ARG_ENABL_SET([ntru],           [enables the NTRU crypto plugin.])
 ARG_ENABL_SET([addrblock],      [enables RFC 3779 address block constraint support.])
 ARG_ENABL_SET([unity],          [enables Cisco Unity extension plugin.])
 ARG_ENABL_SET([uci],            [enable OpenWRT UCI configuration plugin.])
@@ -251,7 +262,6 @@ ARG_ENABL_SET([vstr],           [enforce using the Vstr string library to replac
 ARG_ENABL_SET([monolithic],     [build monolithic version of libstrongswan that includes all enabled plugins. Similarly, the plugins of charon are assembled in libcharon.])
 ARG_ENABL_SET([bfd-backtraces], [use binutils libbfd to resolve backtraces for memory leaks and segfaults.])
 ARG_ENABL_SET([unwind-backtraces],[use libunwind to create backtraces for memory leaks and segfaults.])
-ARG_ENABL_SET([unit-tests],     [enable unit tests using the check test framework.])
 ARG_ENABL_SET([coverage],       [enable lcov coverage report generation.])
 ARG_ENABL_SET([tkm],            [enable Trusted Key Manager support.])
 ARG_ENABL_SET([cmd],            [enable the command line IKE client charon-cmd.])
@@ -274,7 +284,7 @@ fi
 # ===========================
 
 if test -z "$CFLAGS"; then
-	CFLAGS="-g -O2 -Wall -Wno-format -Wno-pointer-sign"
+	CFLAGS="-g -O2 -Wall -Wno-format -Wno-format-security -Wno-pointer-sign"
 fi
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -292,6 +302,7 @@ AC_PROG_EGREP
 AC_PROG_AWK
 AC_PROG_LEX
 AC_PROG_YACC
+AM_PATH_PYTHON(,,[:])
 AC_PATH_PROG([PERL], [perl], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 AC_PATH_PROG([GPERF], [gperf], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 
@@ -374,10 +385,6 @@ fi
 
 if test x$medcli = xtrue; then
 	mediation=true
-fi
-
-if test x$coverage = xtrue; then
-	unit_tests=true
 fi
 
 # ===========================================
@@ -488,8 +495,45 @@ AC_CHECK_FUNC(
 	)]
 )
 
+AC_CHECK_FUNC(
+	[qsort_r],
+	[
+		AC_DEFINE([HAVE_QSORT_R], [], [have qsort_r()])
+		# set -Werror so that we get an error for "argument ... has
+		# incompatible pointer type" warnings
+		save_CFLAGS="$CFLAGS"
+		CFLAGS="$CFLAGS -Werror"
+		AC_MSG_CHECKING([for GNU-style qsort_r])
+		AC_COMPILE_IFELSE(
+			[AC_LANG_PROGRAM(
+				[[#define _GNU_SOURCE
+				  #include <stdlib.h>
+				  int cmp (const void *a, const void *b, void *x) { return 0; }]],
+				[[int arr[] = { 0, 1 };
+				  qsort_r(arr, 2, sizeof(int), cmp, arr);]])],
+		[AC_MSG_RESULT([yes]);
+		 AC_DEFINE([HAVE_QSORT_R_GNU], [], [have GNU-style qsort_r()])],
+		[
+			AC_MSG_RESULT([no]);
+			AC_MSG_CHECKING([for BSD-style qsort_r])
+			AC_COMPILE_IFELSE(
+				[AC_LANG_PROGRAM(
+					[[#include <stdlib.h>
+					  int cmp (void *x, const void *a, const void *b) { return 0; }]],
+					[[int arr[] = { 0, 1 };
+					  qsort_r(arr, 2, sizeof(int), arr, cmp);]])],
+			[AC_MSG_RESULT([yes]);
+			 AC_DEFINE([HAVE_QSORT_R_BSD], [], [have BSD-style qsort_r()])],
+			[AC_MSG_RESULT([no]);
+			 AC_MSG_FAILURE([qsort_r has unknown semantics])])
+		])
+		CFLAGS="$save_CFLAGS"
+	],
+	[]
+)
+
 AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r getpwuid_r)
-AC_CHECK_FUNCS(fmemopen funopen)
+AC_CHECK_FUNCS(fmemopen funopen mmap memrchr)
 
 AC_CHECK_HEADERS(sys/sockio.h glob.h net/if_tun.h linux/fib_rules.h)
 AC_CHECK_HEADERS(net/pfkeyv2.h netipsec/ipsec.h netinet6/ipsec.h linux/udp.h)
@@ -633,7 +677,7 @@ AC_CHECK_FUNC(
 
 if test x$vstr = xtrue; then
 	AC_CHECK_LIB([vstr],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([Vstr string library not found])],[])
-	AC_DEFINE([USE_VSTR], [], [use vstring library for printf hooks])
+	AC_DEFINE([USE_VSTR], [], [use Vstr string library for printf hooks])
 	builtin_printf=false
 fi
 
@@ -933,12 +977,9 @@ CFLAGS="$CFLAGS -include `pwd`/config.h"
 
 if test x$tkm = xtrue; then
 	AC_PATH_PROG([GPRBUILD], [gprbuild], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
-fi
-
-if test x$unit_tests = xtrue; then
-	PKG_CHECK_MODULES(CHECK, [check >= 0.9.4])
-	AC_SUBST(CHECK_CFLAGS)
-	AC_SUBST(CHECK_LIBS)
+	if test x$GPRBUILD = x; then
+		AC_MSG_ERROR([gprbuild not found])
+	fi
 fi
 
 if test x$coverage = xtrue; then
@@ -1034,6 +1075,7 @@ ADD_PLUGIN([hmac],                 [s charon scripts nm cmd])
 ADD_PLUGIN([ctr],                  [s charon scripts nm cmd])
 ADD_PLUGIN([ccm],                  [s charon scripts nm cmd])
 ADD_PLUGIN([gcm],                  [s charon scripts nm cmd])
+ADD_PLUGIN([ntru],                 [s charon scripts nm cmd])
 ADD_PLUGIN([attr],                 [h charon])
 ADD_PLUGIN([attr-sql],             [h charon])
 ADD_PLUGIN([load-tester],          [c charon])
@@ -1171,6 +1213,7 @@ AM_CONDITIONAL(USE_CTR, test x$ctr = xtrue)
 AM_CONDITIONAL(USE_CCM, test x$ccm = xtrue)
 AM_CONDITIONAL(USE_GCM, test x$gcm = xtrue)
 AM_CONDITIONAL(USE_AF_ALG, test x$af_alg = xtrue)
+AM_CONDITIONAL(USE_NTRU, test x$ntru = xtrue)
 
 #  charon plugins
 # ----------------
@@ -1296,7 +1339,6 @@ AM_CONDITIONAL(USE_PTS, test x$pts = xtrue)
 AM_CONDITIONAL(USE_TROUSERS, test x$tss = xtrousers)
 AM_CONDITIONAL(MONOLITHIC, test x$monolithic = xtrue)
 AM_CONDITIONAL(USE_SILENT_RULES, test x$enable_silent_rules = xyes)
-AM_CONDITIONAL(UNITTESTS, test x$unit_tests = xtrue)
 AM_CONDITIONAL(COVERAGE, test x$coverage = xtrue)
 AM_CONDITIONAL(USE_TKM, test x$tkm = xtrue)
 AM_CONDITIONAL(USE_CMD, test x$cmd = xtrue)
@@ -1321,12 +1363,32 @@ if test x$ikev2 = xtrue; then
 	AC_DEFINE([USE_IKEV2], [], [support for IKEv2 protocol])
 fi
 
+# ====================================================
+#  options for enabled modules (see conf/Makefile.am)
+# ====================================================
+
+strongswan_options=
+
+AM_COND_IF([USE_ATTR_SQL], [strongswan_options=${strongswan_options}" pool"])
+AM_COND_IF([USE_CHARON], [strongswan_options=${strongswan_options}" charon charon-logging"])
+AM_COND_IF([USE_FILE_CONFIG], [strongswan_options=${strongswan_options}" starter"])
+AM_COND_IF([USE_IMV_ATTESTATION], [strongswan_options=${strongswan_options}" attest"])
+AM_COND_IF([USE_IMCV], [strongswan_options=${strongswan_options}" imcv"])
+AM_COND_IF([USE_IMV_OS], [strongswan_options=${strongswan_options}" pacman"])
+AM_COND_IF([USE_LIBTNCCS], [strongswan_options=${strongswan_options}" tnc"])
+AM_COND_IF([USE_MANAGER], [strongswan_options=${strongswan_options}" manager"])
+AM_COND_IF([USE_MEDSRV], [strongswan_options=${strongswan_options}" medsrv"])
+AM_COND_IF([USE_TOOLS], [strongswan_options=${strongswan_options}" tools"])
+
+AC_SUBST(strongswan_options)
+
 # =================
 #  build Makefiles
 # =================
 
 AC_CONFIG_FILES([
 	Makefile
+	conf/Makefile
 	man/Makefile
 	init/Makefile
 	init/systemd/Makefile
@@ -1377,6 +1439,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/ccm/Makefile
 	src/libstrongswan/plugins/gcm/Makefile
 	src/libstrongswan/plugins/af_alg/Makefile
+	src/libstrongswan/plugins/ntru/Makefile
 	src/libstrongswan/plugins/test_vectors/Makefile
 	src/libstrongswan/tests/Makefile
 	src/libhydra/Makefile
@@ -1501,9 +1564,10 @@ AC_CONFIG_FILES([
 # =================
 
 AC_CONFIG_FILES([
+	conf/strongswan.conf.5.head
+	conf/strongswan.conf.5.tail
 	man/ipsec.conf.5
 	man/ipsec.secrets.5
-	man/strongswan.conf.5
 	src/charon-cmd/charon-cmd.8
 	src/pki/man/pki.1
 	src/pki/man/pki---gen.1

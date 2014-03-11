@@ -167,7 +167,7 @@ static bool get_next_test_vector(test_vector_t *test)
 	while (fgets(line, sizeof(line), ctx.in))
 	{
 		enumerator_t *enumerator;
-		chunk_t value;
+		chunk_t value = chunk_empty;
 		char *token;
 		int i;
 
@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
 	ctx.in = stdin;
 	ctx.out = stdout;
 
-	library_init(NULL);
+	library_init(NULL, "aes-test");
 	atexit(library_deinit);
 
 	while (true)

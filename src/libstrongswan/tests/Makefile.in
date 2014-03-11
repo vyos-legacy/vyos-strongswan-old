@@ -77,11 +77,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-TESTS = test_runner$(EXEEXT)
+TESTS = tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libstrongswan/tests
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/depcomp $(top_srcdir)/test-driver
+	$(top_srcdir)/depcomp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -99,36 +99,57 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__EXEEXT_1 = test_runner$(EXEEXT)
-am_test_runner_OBJECTS = test_runner-test_runner.$(OBJEXT) \
-	test_runner-test_linked_list.$(OBJEXT) \
-	test_runner-test_enumerator.$(OBJEXT) \
-	test_runner-test_linked_list_enumerator.$(OBJEXT) \
-	test_runner-test_bio_reader.$(OBJEXT) \
-	test_runner-test_bio_writer.$(OBJEXT) \
-	test_runner-test_chunk.$(OBJEXT) \
-	test_runner-test_enum.$(OBJEXT) \
-	test_runner-test_hashtable.$(OBJEXT) \
-	test_runner-test_identification.$(OBJEXT) \
-	test_runner-test_threading.$(OBJEXT) \
-	test_runner-test_utils.$(OBJEXT) \
-	test_runner-test_vectors.$(OBJEXT) \
-	test_runner-test_array.$(OBJEXT) \
-	test_runner-test_ecdsa.$(OBJEXT) \
-	test_runner-test_rsa.$(OBJEXT) test_runner-test_host.$(OBJEXT) \
-	test_runner-test_printf.$(OBJEXT)
-test_runner_OBJECTS = $(am_test_runner_OBJECTS)
 am__DEPENDENCIES_1 =
-test_runner_DEPENDENCIES =  \
+libtest_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(am__DEPENDENCIES_1)
+am__dirstamp = $(am__leading_dot)dirstamp
+am_libtest_la_OBJECTS = libtest_la-test_suite.lo \
+	libtest_la-test_runner.lo utils/libtest_la-test_rng.lo
+libtest_la_OBJECTS = $(am_libtest_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-test_runner_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(test_runner_CFLAGS) \
-	$(CFLAGS) $(test_runner_LDFLAGS) $(LDFLAGS) -o $@
+libtest_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libtest_la_CFLAGS) \
+	$(CFLAGS) $(libtest_la_LDFLAGS) $(LDFLAGS) -o $@
+am__EXEEXT_1 = tests$(EXEEXT)
+am_tests_OBJECTS = tests-tests.$(OBJEXT) \
+	suites/tests-test_linked_list.$(OBJEXT) \
+	suites/tests-test_enumerator.$(OBJEXT) \
+	suites/tests-test_linked_list_enumerator.$(OBJEXT) \
+	suites/tests-test_bio_reader.$(OBJEXT) \
+	suites/tests-test_bio_writer.$(OBJEXT) \
+	suites/tests-test_chunk.$(OBJEXT) \
+	suites/tests-test_enum.$(OBJEXT) \
+	suites/tests-test_hashtable.$(OBJEXT) \
+	suites/tests-test_identification.$(OBJEXT) \
+	suites/tests-test_threading.$(OBJEXT) \
+	suites/tests-test_watcher.$(OBJEXT) \
+	suites/tests-test_stream.$(OBJEXT) \
+	suites/tests-test_fetch_http.$(OBJEXT) \
+	suites/tests-test_utils.$(OBJEXT) \
+	suites/tests-test_settings.$(OBJEXT) \
+	suites/tests-test_vectors.$(OBJEXT) \
+	suites/tests-test_array.$(OBJEXT) \
+	suites/tests-test_ecdsa.$(OBJEXT) \
+	suites/tests-test_rsa.$(OBJEXT) \
+	suites/tests-test_host.$(OBJEXT) \
+	suites/tests-test_hasher.$(OBJEXT) \
+	suites/tests-test_crypter.$(OBJEXT) \
+	suites/tests-test_pen.$(OBJEXT) \
+	suites/tests-test_asn1.$(OBJEXT) \
+	suites/tests-test_asn1_parser.$(OBJEXT) \
+	suites/tests-test_printf.$(OBJEXT) \
+	suites/tests-test_test_rng.$(OBJEXT) \
+	suites/tests-test_ntru.$(OBJEXT)
+tests_OBJECTS = $(am_tests_OBJECTS)
+tests_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la libtest.la
+tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(tests_CFLAGS) $(CFLAGS) \
+	$(tests_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -163,8 +184,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(test_runner_SOURCES)
-DIST_SOURCES = $(test_runner_SOURCES)
+SOURCES = $(libtest_la_SOURCES) $(tests_SOURCES)
+DIST_SOURCES = $(libtest_la_SOURCES) $(tests_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -211,188 +232,6 @@ am__tty_colors = { \
     std='[m'; \
   fi; \
 }
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
-am__install_max = 40
-am__nobase_strip_setup = \
-  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
-am__nobase_strip = \
-  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
-am__nobase_list = $(am__nobase_strip_setup); \
-  for p in $$list; do echo "$$p $$p"; done | \
-  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
-  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
-    if (++n[$$2] == $(am__install_max)) \
-      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
-    END { for (dir in files) print dir, files[dir] }'
-am__base_list = \
-  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
-  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__uninstall_files_from_dir = { \
-  test -z "$$files" \
-    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
-    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
-         $(am__cd) "$$dir" && rm -f $$files; }; \
-  }
-am__recheck_rx = ^[ 	]*:recheck:[ 	]*
-am__global_test_result_rx = ^[ 	]*:global-test-result:[ 	]*
-am__copy_in_global_log_rx = ^[ 	]*:copy-in-global-log:[ 	]*
-# A command that, given a newline-separated list of test names on the
-# standard input, print the name of the tests that are to be re-run
-# upon "make recheck".
-am__list_recheck_tests = $(AWK) '{ \
-  recheck = 1; \
-  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
-    { \
-      if (rc < 0) \
-        { \
-          if ((getline line2 < ($$0 ".log")) < 0) \
-	    recheck = 0; \
-          break; \
-        } \
-      else if (line ~ /$(am__recheck_rx)[nN][Oo]/) \
-        { \
-          recheck = 0; \
-          break; \
-        } \
-      else if (line ~ /$(am__recheck_rx)[yY][eE][sS]/) \
-        { \
-          break; \
-        } \
-    }; \
-  if (recheck) \
-    print $$0; \
-  close ($$0 ".trs"); \
-  close ($$0 ".log"); \
-}'
-# A command that, given a newline-separated list of test names on the
-# standard input, create the global log from their .trs and .log files.
-am__create_global_log = $(AWK) ' \
-function fatal(msg) \
-{ \
-  print "fatal: making $@: " msg | "cat >&2"; \
-  exit 1; \
-} \
-function rst_section(header) \
-{ \
-  print header; \
-  len = length(header); \
-  for (i = 1; i <= len; i = i + 1) \
-    printf "="; \
-  printf "\n\n"; \
-} \
-{ \
-  copy_in_global_log = 1; \
-  global_test_result = "RUN"; \
-  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
-    { \
-      if (rc < 0) \
-         fatal("failed to read from " $$0 ".trs"); \
-      if (line ~ /$(am__global_test_result_rx)/) \
-        { \
-          sub("$(am__global_test_result_rx)", "", line); \
-          sub("[ 	]*$$", "", line); \
-          global_test_result = line; \
-        } \
-      else if (line ~ /$(am__copy_in_global_log_rx)[nN][oO]/) \
-        copy_in_global_log = 0; \
-    }; \
-  if (copy_in_global_log) \
-    { \
-      rst_section(global_test_result ": " $$0); \
-      while ((rc = (getline line < ($$0 ".log"))) != 0) \
-      { \
-        if (rc < 0) \
-          fatal("failed to read from " $$0 ".log"); \
-        print line; \
-      }; \
-      printf "\n"; \
-    }; \
-  close ($$0 ".trs"); \
-  close ($$0 ".log"); \
-}'
-# Restructured Text title.
-am__rst_title = { sed 's/.*/   &   /;h;s/./=/g;p;x;s/ *$$//;p;g' && echo; }
-# Solaris 10 'make', and several other traditional 'make' implementations,
-# pass "-e" to $(SHELL), and POSIX 2008 even requires this.  Work around it
-# by disabling -e (using the XSI extension "set +e") if it's set.
-am__sh_e_setup = case $$- in *e*) set +e;; esac
-# Default flags passed to test drivers.
-am__common_driver_flags = \
-  --color-tests "$$am__color_tests" \
-  --enable-hard-errors "$$am__enable_hard_errors" \
-  --expect-failure "$$am__expect_failure"
-# To be inserted before the command running the test.  Creates the
-# directory for the log if needed.  Stores in $dir the directory
-# containing $f, in $tst the test, in $log the log.  Executes the
-# developer- defined test setup AM_TESTS_ENVIRONMENT (if any), and
-# passes TESTS_ENVIRONMENT.  Set up options for the wrapper that
-# will run the test scripts (or their associated LOG_COMPILER, if
-# thy have one).
-am__check_pre = \
-$(am__sh_e_setup);					\
-$(am__vpath_adj_setup) $(am__vpath_adj)			\
-$(am__tty_colors);					\
-srcdir=$(srcdir); export srcdir;			\
-case "$@" in						\
-  */*) am__odir=`echo "./$@" | sed 's|/[^/]*$$||'`;;	\
-    *) am__odir=.;; 					\
-esac;							\
-test "x$$am__odir" = x"." || test -d "$$am__odir" 	\
-  || $(MKDIR_P) "$$am__odir" || exit $$?;		\
-if test -f "./$$f"; then dir=./;			\
-elif test -f "$$f"; then dir=;				\
-else dir="$(srcdir)/"; fi;				\
-tst=$$dir$$f; log='$@'; 				\
-if test -n '$(DISABLE_HARD_ERRORS)'; then		\
-  am__enable_hard_errors=no; 				\
-else							\
-  am__enable_hard_errors=yes; 				\
-fi; 							\
-case " $(XFAIL_TESTS) " in				\
-  *[\ \	]$$f[\ \	]* | *[\ \	]$$dir$$f[\ \	]*) \
-    am__expect_failure=yes;;				\
-  *)							\
-    am__expect_failure=no;;				\
-esac; 							\
-$(AM_TESTS_ENVIRONMENT) $(TESTS_ENVIRONMENT)
-# A shell command to get the names of the tests scripts with any registered
-# extension removed (i.e., equivalently, the names of the test logs, with
-# the '.log' extension removed).  The result is saved in the shell variable
-# '$bases'.  This honors runtime overriding of TESTS and TEST_LOGS.  Sadly,
-# we cannot use something simpler, involving e.g., "$(TEST_LOGS:.log=)",
-# since that might cause problem with VPATH rewrites for suffix-less tests.
-# See also 'test-harness-vpath-rewrite.sh' and 'test-trs-basic.sh'.
-am__set_TESTS_bases = \
-  bases='$(TEST_LOGS)'; \
-  bases=`for i in $$bases; do echo $$i; done | sed 's/\.log$$//'`; \
-  bases=`echo $$bases`
-RECHECK_LOGS = $(TEST_LOGS)
-AM_RECURSIVE_TARGETS = check recheck
-TEST_SUITE_LOG = test-suite.log
-TEST_EXTENSIONS = @EXEEXT@ .test
-LOG_DRIVER = $(SHELL) $(top_srcdir)/test-driver
-LOG_COMPILE = $(LOG_COMPILER) $(AM_LOG_FLAGS) $(LOG_FLAGS)
-am__set_b = \
-  case '$@' in \
-    */*) \
-      case '$*' in \
-        */*) b='$*';; \
-          *) b=`echo '$@' | sed 's/\.log$$//'`; \
-       esac;; \
-    *) \
-      b='$*';; \
-  esac
-am__test_logs1 = $(TESTS:=.log)
-am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
-TEST_LOGS = $(am__test_logs2:.test.log=.log)
-TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/test-driver
-TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
-	$(TEST_LOG_FLAGS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
@@ -408,8 +247,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -477,6 +314,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -565,12 +407,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -585,6 +431,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -595,30 +442,67 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-test_runner_SOURCES = \
-  test_runner.c test_runner.h test_suite.h \
-  test_linked_list.c test_enumerator.c test_linked_list_enumerator.c \
-  test_bio_reader.c test_bio_writer.c test_chunk.c test_enum.c test_hashtable.c \
-  test_identification.c test_threading.c test_utils.c test_vectors.c \
-  test_array.c test_ecdsa.c test_rsa.c test_host.c test_printf.c
+check_LTLIBRARIES = libtest.la
+libtest_la_SOURCES = \
+  test_suite.c test_suite.h \
+  test_runner.c test_runner.h \
+  utils/test_rng.c utils/test_rng.h
 
-test_runner_CFLAGS = \
+libtest_la_CFLAGS = \
   -I$(top_srcdir)/src/libstrongswan \
+  @COVERAGE_CFLAGS@
+
+libtest_la_LDFLAGS = @COVERAGE_LDFLAGS@
+libtest_la_LIBADD = \
+  $(top_builddir)/src/libstrongswan/libstrongswan.la \
+  $(PTHREADLIB)
+
+tests_SOURCES = tests.h tests.c \
+  suites/test_linked_list.c \
+  suites/test_enumerator.c \
+  suites/test_linked_list_enumerator.c \
+  suites/test_bio_reader.c \
+  suites/test_bio_writer.c \
+  suites/test_chunk.c \
+  suites/test_enum.c \
+  suites/test_hashtable.c \
+  suites/test_identification.c \
+  suites/test_threading.c \
+  suites/test_watcher.c \
+  suites/test_stream.c \
+  suites/test_fetch_http.c \
+  suites/test_utils.c \
+  suites/test_settings.c \
+  suites/test_vectors.c \
+  suites/test_array.c \
+  suites/test_ecdsa.c \
+  suites/test_rsa.c \
+  suites/test_host.c \
+  suites/test_hasher.c \
+  suites/test_crypter.c \
+  suites/test_pen.c \
+  suites/test_asn1.c \
+  suites/test_asn1_parser.c \
+  suites/test_printf.c \
+  suites/test_test_rng.c \
+  suites/test_ntru.c
+
+tests_CFLAGS = \
+  -I$(top_srcdir)/src/libstrongswan \
+  -I$(top_srcdir)/src/libstrongswan/tests \
   -DPLUGINDIR=\""$(top_builddir)/src/libstrongswan/plugins\"" \
   -DPLUGINS=\""${s_plugins}\"" \
-  @COVERAGE_CFLAGS@ \
-  @CHECK_CFLAGS@
+  @COVERAGE_CFLAGS@
 
-test_runner_LDFLAGS = @COVERAGE_LDFLAGS@
-test_runner_LDADD = \
+tests_LDFLAGS = @COVERAGE_LDFLAGS@
+tests_LDADD = \
   $(top_builddir)/src/libstrongswan/libstrongswan.la \
-  $(PTHREADLIB) \
-  @CHECK_LIBS@
+  libtest.la
 
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .log .o .obj .test .test$(EXEEXT) .trs
+.SUFFIXES: .c .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -650,6 +534,28 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
+clean-checkLTLIBRARIES:
+	-test -z "$(check_LTLIBRARIES)" || rm -f $(check_LTLIBRARIES)
+	@list='$(check_LTLIBRARIES)'; \
+	locs=`for p in $$list; do echo $$p; done | \
+	      sed 's|^[^/]*$$|.|; s|/[^/]*$$||; s|$$|/so_locations|' | \
+	      sort -u`; \
+	test -z "$$locs" || { \
+	  echo rm -f $${locs}; \
+	  rm -f $${locs}; \
+	}
+utils/$(am__dirstamp):
+	@$(MKDIR_P) utils
+	@: > utils/$(am__dirstamp)
+utils/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) utils/$(DEPDIR)
+	@: > utils/$(DEPDIR)/$(am__dirstamp)
+utils/libtest_la-test_rng.lo: utils/$(am__dirstamp) \
+	utils/$(DEPDIR)/$(am__dirstamp)
+
+libtest.la: $(libtest_la_OBJECTS) $(libtest_la_DEPENDENCIES) $(EXTRA_libtest_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libtest_la_LINK)  $(libtest_la_OBJECTS) $(libtest_la_LIBADD) $(LIBS)
+
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
 	echo " rm -f" $$list; \
@@ -658,35 +564,114 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+suites/$(am__dirstamp):
+	@$(MKDIR_P) suites
+	@: > suites/$(am__dirstamp)
+suites/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) suites/$(DEPDIR)
+	@: > suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_linked_list.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_enumerator.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_linked_list_enumerator.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_bio_reader.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_bio_writer.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_chunk.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_enum.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_hashtable.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_identification.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_threading.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_watcher.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_stream.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_fetch_http.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_utils.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_settings.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_vectors.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_array.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_ecdsa.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_rsa.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_host.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_hasher.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_crypter.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_pen.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_asn1.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_asn1_parser.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_printf.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_test_rng.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_ntru.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 
-test_runner$(EXEEXT): $(test_runner_OBJECTS) $(test_runner_DEPENDENCIES) $(EXTRA_test_runner_DEPENDENCIES) 
-	@rm -f test_runner$(EXEEXT)
-	$(AM_V_CCLD)$(test_runner_LINK) $(test_runner_OBJECTS) $(test_runner_LDADD) $(LIBS)
+tests$(EXEEXT): $(tests_OBJECTS) $(tests_DEPENDENCIES) $(EXTRA_tests_DEPENDENCIES) 
+	@rm -f tests$(EXEEXT)
+	$(AM_V_CCLD)$(tests_LINK) $(tests_OBJECTS) $(tests_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f suites/*.$(OBJEXT)
+	-rm -f utils/*.$(OBJEXT)
+	-rm -f utils/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_array.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_bio_reader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_bio_writer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_chunk.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_ecdsa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_enum.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_enumerator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_hashtable.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_host.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_identification.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_linked_list.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_linked_list_enumerator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_printf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_rsa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_runner.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_threading.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_utils.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_runner-test_vectors.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libtest_la-test_runner.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libtest_la-test_suite.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tests-tests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1_parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_reader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_writer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_chunk.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_crypter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ecdsa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_enum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_enumerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_fetch_http.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_hasher.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_hashtable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_host.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_identification.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ntru.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_pen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_printf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_rsa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_settings.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_stream.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_test_rng.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_threading.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_vectors.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_watcher.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/libtest_la-test_rng.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -712,263 +697,439 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-test_runner-test_runner.o: test_runner.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_runner.o -MD -MP -MF $(DEPDIR)/test_runner-test_runner.Tpo -c -o test_runner-test_runner.o `test -f 'test_runner.c' || echo '$(srcdir)/'`test_runner.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_runner.Tpo $(DEPDIR)/test_runner-test_runner.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_runner.c' object='test_runner-test_runner.o' libtool=no @AMDEPBACKSLASH@
+libtest_la-test_suite.lo: test_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -MT libtest_la-test_suite.lo -MD -MP -MF $(DEPDIR)/libtest_la-test_suite.Tpo -c -o libtest_la-test_suite.lo `test -f 'test_suite.c' || echo '$(srcdir)/'`test_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libtest_la-test_suite.Tpo $(DEPDIR)/libtest_la-test_suite.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_suite.c' object='libtest_la-test_suite.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_runner.o `test -f 'test_runner.c' || echo '$(srcdir)/'`test_runner.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -c -o libtest_la-test_suite.lo `test -f 'test_suite.c' || echo '$(srcdir)/'`test_suite.c
 
-test_runner-test_runner.obj: test_runner.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_runner.obj -MD -MP -MF $(DEPDIR)/test_runner-test_runner.Tpo -c -o test_runner-test_runner.obj `if test -f 'test_runner.c'; then $(CYGPATH_W) 'test_runner.c'; else $(CYGPATH_W) '$(srcdir)/test_runner.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_runner.Tpo $(DEPDIR)/test_runner-test_runner.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_runner.c' object='test_runner-test_runner.obj' libtool=no @AMDEPBACKSLASH@
+libtest_la-test_runner.lo: test_runner.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -MT libtest_la-test_runner.lo -MD -MP -MF $(DEPDIR)/libtest_la-test_runner.Tpo -c -o libtest_la-test_runner.lo `test -f 'test_runner.c' || echo '$(srcdir)/'`test_runner.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libtest_la-test_runner.Tpo $(DEPDIR)/libtest_la-test_runner.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_runner.c' object='libtest_la-test_runner.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_runner.obj `if test -f 'test_runner.c'; then $(CYGPATH_W) 'test_runner.c'; else $(CYGPATH_W) '$(srcdir)/test_runner.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -c -o libtest_la-test_runner.lo `test -f 'test_runner.c' || echo '$(srcdir)/'`test_runner.c
 
-test_runner-test_linked_list.o: test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_linked_list.o -MD -MP -MF $(DEPDIR)/test_runner-test_linked_list.Tpo -c -o test_runner-test_linked_list.o `test -f 'test_linked_list.c' || echo '$(srcdir)/'`test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_linked_list.Tpo $(DEPDIR)/test_runner-test_linked_list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_linked_list.c' object='test_runner-test_linked_list.o' libtool=no @AMDEPBACKSLASH@
+utils/libtest_la-test_rng.lo: utils/test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -MT utils/libtest_la-test_rng.lo -MD -MP -MF utils/$(DEPDIR)/libtest_la-test_rng.Tpo -c -o utils/libtest_la-test_rng.lo `test -f 'utils/test_rng.c' || echo '$(srcdir)/'`utils/test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) utils/$(DEPDIR)/libtest_la-test_rng.Tpo utils/$(DEPDIR)/libtest_la-test_rng.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='utils/test_rng.c' object='utils/libtest_la-test_rng.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_linked_list.o `test -f 'test_linked_list.c' || echo '$(srcdir)/'`test_linked_list.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -c -o utils/libtest_la-test_rng.lo `test -f 'utils/test_rng.c' || echo '$(srcdir)/'`utils/test_rng.c
 
-test_runner-test_linked_list.obj: test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_linked_list.obj -MD -MP -MF $(DEPDIR)/test_runner-test_linked_list.Tpo -c -o test_runner-test_linked_list.obj `if test -f 'test_linked_list.c'; then $(CYGPATH_W) 'test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/test_linked_list.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_linked_list.Tpo $(DEPDIR)/test_runner-test_linked_list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_linked_list.c' object='test_runner-test_linked_list.obj' libtool=no @AMDEPBACKSLASH@
+tests-tests.o: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.o -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_linked_list.obj `if test -f 'test_linked_list.c'; then $(CYGPATH_W) 'test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/test_linked_list.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
 
-test_runner-test_enumerator.o: test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_enumerator.o -MD -MP -MF $(DEPDIR)/test_runner-test_enumerator.Tpo -c -o test_runner-test_enumerator.o `test -f 'test_enumerator.c' || echo '$(srcdir)/'`test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_enumerator.Tpo $(DEPDIR)/test_runner-test_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_enumerator.c' object='test_runner-test_enumerator.o' libtool=no @AMDEPBACKSLASH@
+tests-tests.obj: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.obj -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_enumerator.o `test -f 'test_enumerator.c' || echo '$(srcdir)/'`test_enumerator.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
 
-test_runner-test_enumerator.obj: test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_enumerator.obj -MD -MP -MF $(DEPDIR)/test_runner-test_enumerator.Tpo -c -o test_runner-test_enumerator.obj `if test -f 'test_enumerator.c'; then $(CYGPATH_W) 'test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/test_enumerator.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_enumerator.Tpo $(DEPDIR)/test_runner-test_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_enumerator.c' object='test_runner-test_enumerator.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_linked_list.o: suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list.o -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list.Tpo -c -o suites/tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list.Tpo suites/$(DEPDIR)/tests-test_linked_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/tests-test_linked_list.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_enumerator.obj `if test -f 'test_enumerator.c'; then $(CYGPATH_W) 'test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/test_enumerator.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
 
-test_runner-test_linked_list_enumerator.o: test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_linked_list_enumerator.o -MD -MP -MF $(DEPDIR)/test_runner-test_linked_list_enumerator.Tpo -c -o test_runner-test_linked_list_enumerator.o `test -f 'test_linked_list_enumerator.c' || echo '$(srcdir)/'`test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_linked_list_enumerator.Tpo $(DEPDIR)/test_runner-test_linked_list_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_linked_list_enumerator.c' object='test_runner-test_linked_list_enumerator.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_linked_list.obj: suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list.Tpo -c -o suites/tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list.Tpo suites/$(DEPDIR)/tests-test_linked_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/tests-test_linked_list.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_linked_list_enumerator.o `test -f 'test_linked_list_enumerator.c' || echo '$(srcdir)/'`test_linked_list_enumerator.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
 
-test_runner-test_linked_list_enumerator.obj: test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_linked_list_enumerator.obj -MD -MP -MF $(DEPDIR)/test_runner-test_linked_list_enumerator.Tpo -c -o test_runner-test_linked_list_enumerator.obj `if test -f 'test_linked_list_enumerator.c'; then $(CYGPATH_W) 'test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/test_linked_list_enumerator.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_linked_list_enumerator.Tpo $(DEPDIR)/test_runner-test_linked_list_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_linked_list_enumerator.c' object='test_runner-test_linked_list_enumerator.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_enumerator.o: suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enumerator.o -MD -MP -MF suites/$(DEPDIR)/tests-test_enumerator.Tpo -c -o suites/tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enumerator.Tpo suites/$(DEPDIR)/tests-test_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/tests-test_enumerator.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_linked_list_enumerator.obj `if test -f 'test_linked_list_enumerator.c'; then $(CYGPATH_W) 'test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/test_linked_list_enumerator.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
 
-test_runner-test_bio_reader.o: test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_bio_reader.o -MD -MP -MF $(DEPDIR)/test_runner-test_bio_reader.Tpo -c -o test_runner-test_bio_reader.o `test -f 'test_bio_reader.c' || echo '$(srcdir)/'`test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_bio_reader.Tpo $(DEPDIR)/test_runner-test_bio_reader.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_bio_reader.c' object='test_runner-test_bio_reader.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_enumerator.obj: suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_enumerator.Tpo -c -o suites/tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enumerator.Tpo suites/$(DEPDIR)/tests-test_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/tests-test_enumerator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_bio_reader.o `test -f 'test_bio_reader.c' || echo '$(srcdir)/'`test_bio_reader.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
 
-test_runner-test_bio_reader.obj: test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_bio_reader.obj -MD -MP -MF $(DEPDIR)/test_runner-test_bio_reader.Tpo -c -o test_runner-test_bio_reader.obj `if test -f 'test_bio_reader.c'; then $(CYGPATH_W) 'test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/test_bio_reader.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_bio_reader.Tpo $(DEPDIR)/test_runner-test_bio_reader.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_bio_reader.c' object='test_runner-test_bio_reader.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_linked_list_enumerator.o: suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list_enumerator.o -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo -c -o suites/tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/tests-test_linked_list_enumerator.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_bio_reader.obj `if test -f 'test_bio_reader.c'; then $(CYGPATH_W) 'test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/test_bio_reader.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
 
-test_runner-test_bio_writer.o: test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_bio_writer.o -MD -MP -MF $(DEPDIR)/test_runner-test_bio_writer.Tpo -c -o test_runner-test_bio_writer.o `test -f 'test_bio_writer.c' || echo '$(srcdir)/'`test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_bio_writer.Tpo $(DEPDIR)/test_runner-test_bio_writer.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_bio_writer.c' object='test_runner-test_bio_writer.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_linked_list_enumerator.obj: suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo -c -o suites/tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/tests-test_linked_list_enumerator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_bio_writer.o `test -f 'test_bio_writer.c' || echo '$(srcdir)/'`test_bio_writer.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
 
-test_runner-test_bio_writer.obj: test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_bio_writer.obj -MD -MP -MF $(DEPDIR)/test_runner-test_bio_writer.Tpo -c -o test_runner-test_bio_writer.obj `if test -f 'test_bio_writer.c'; then $(CYGPATH_W) 'test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/test_bio_writer.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_bio_writer.Tpo $(DEPDIR)/test_runner-test_bio_writer.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_bio_writer.c' object='test_runner-test_bio_writer.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_bio_reader.o: suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_reader.o -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_reader.Tpo -c -o suites/tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_reader.Tpo suites/$(DEPDIR)/tests-test_bio_reader.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/tests-test_bio_reader.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_bio_writer.obj `if test -f 'test_bio_writer.c'; then $(CYGPATH_W) 'test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/test_bio_writer.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
 
-test_runner-test_chunk.o: test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_chunk.o -MD -MP -MF $(DEPDIR)/test_runner-test_chunk.Tpo -c -o test_runner-test_chunk.o `test -f 'test_chunk.c' || echo '$(srcdir)/'`test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_chunk.Tpo $(DEPDIR)/test_runner-test_chunk.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_chunk.c' object='test_runner-test_chunk.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_bio_reader.obj: suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_reader.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_reader.Tpo -c -o suites/tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_reader.Tpo suites/$(DEPDIR)/tests-test_bio_reader.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/tests-test_bio_reader.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_chunk.o `test -f 'test_chunk.c' || echo '$(srcdir)/'`test_chunk.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
 
-test_runner-test_chunk.obj: test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_chunk.obj -MD -MP -MF $(DEPDIR)/test_runner-test_chunk.Tpo -c -o test_runner-test_chunk.obj `if test -f 'test_chunk.c'; then $(CYGPATH_W) 'test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/test_chunk.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_chunk.Tpo $(DEPDIR)/test_runner-test_chunk.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_chunk.c' object='test_runner-test_chunk.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_bio_writer.o: suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_writer.o -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_writer.Tpo -c -o suites/tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_writer.Tpo suites/$(DEPDIR)/tests-test_bio_writer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/tests-test_bio_writer.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_chunk.obj `if test -f 'test_chunk.c'; then $(CYGPATH_W) 'test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/test_chunk.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
 
-test_runner-test_enum.o: test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_enum.o -MD -MP -MF $(DEPDIR)/test_runner-test_enum.Tpo -c -o test_runner-test_enum.o `test -f 'test_enum.c' || echo '$(srcdir)/'`test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_enum.Tpo $(DEPDIR)/test_runner-test_enum.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_enum.c' object='test_runner-test_enum.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_bio_writer.obj: suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_writer.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_writer.Tpo -c -o suites/tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_writer.Tpo suites/$(DEPDIR)/tests-test_bio_writer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/tests-test_bio_writer.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_enum.o `test -f 'test_enum.c' || echo '$(srcdir)/'`test_enum.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
 
-test_runner-test_enum.obj: test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_enum.obj -MD -MP -MF $(DEPDIR)/test_runner-test_enum.Tpo -c -o test_runner-test_enum.obj `if test -f 'test_enum.c'; then $(CYGPATH_W) 'test_enum.c'; else $(CYGPATH_W) '$(srcdir)/test_enum.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_enum.Tpo $(DEPDIR)/test_runner-test_enum.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_enum.c' object='test_runner-test_enum.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_chunk.o: suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_chunk.o -MD -MP -MF suites/$(DEPDIR)/tests-test_chunk.Tpo -c -o suites/tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_chunk.Tpo suites/$(DEPDIR)/tests-test_chunk.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/tests-test_chunk.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_enum.obj `if test -f 'test_enum.c'; then $(CYGPATH_W) 'test_enum.c'; else $(CYGPATH_W) '$(srcdir)/test_enum.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
 
-test_runner-test_hashtable.o: test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_hashtable.o -MD -MP -MF $(DEPDIR)/test_runner-test_hashtable.Tpo -c -o test_runner-test_hashtable.o `test -f 'test_hashtable.c' || echo '$(srcdir)/'`test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_hashtable.Tpo $(DEPDIR)/test_runner-test_hashtable.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_hashtable.c' object='test_runner-test_hashtable.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_chunk.obj: suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_chunk.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_chunk.Tpo -c -o suites/tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_chunk.Tpo suites/$(DEPDIR)/tests-test_chunk.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/tests-test_chunk.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_hashtable.o `test -f 'test_hashtable.c' || echo '$(srcdir)/'`test_hashtable.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
 
-test_runner-test_hashtable.obj: test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_hashtable.obj -MD -MP -MF $(DEPDIR)/test_runner-test_hashtable.Tpo -c -o test_runner-test_hashtable.obj `if test -f 'test_hashtable.c'; then $(CYGPATH_W) 'test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/test_hashtable.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_hashtable.Tpo $(DEPDIR)/test_runner-test_hashtable.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_hashtable.c' object='test_runner-test_hashtable.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_enum.o: suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enum.o -MD -MP -MF suites/$(DEPDIR)/tests-test_enum.Tpo -c -o suites/tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enum.Tpo suites/$(DEPDIR)/tests-test_enum.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/tests-test_enum.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_hashtable.obj `if test -f 'test_hashtable.c'; then $(CYGPATH_W) 'test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/test_hashtable.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
 
-test_runner-test_identification.o: test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_identification.o -MD -MP -MF $(DEPDIR)/test_runner-test_identification.Tpo -c -o test_runner-test_identification.o `test -f 'test_identification.c' || echo '$(srcdir)/'`test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_identification.Tpo $(DEPDIR)/test_runner-test_identification.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_identification.c' object='test_runner-test_identification.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_enum.obj: suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enum.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_enum.Tpo -c -o suites/tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enum.Tpo suites/$(DEPDIR)/tests-test_enum.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/tests-test_enum.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_identification.o `test -f 'test_identification.c' || echo '$(srcdir)/'`test_identification.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
 
-test_runner-test_identification.obj: test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_identification.obj -MD -MP -MF $(DEPDIR)/test_runner-test_identification.Tpo -c -o test_runner-test_identification.obj `if test -f 'test_identification.c'; then $(CYGPATH_W) 'test_identification.c'; else $(CYGPATH_W) '$(srcdir)/test_identification.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_identification.Tpo $(DEPDIR)/test_runner-test_identification.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_identification.c' object='test_runner-test_identification.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_hashtable.o: suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hashtable.o -MD -MP -MF suites/$(DEPDIR)/tests-test_hashtable.Tpo -c -o suites/tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hashtable.Tpo suites/$(DEPDIR)/tests-test_hashtable.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/tests-test_hashtable.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_identification.obj `if test -f 'test_identification.c'; then $(CYGPATH_W) 'test_identification.c'; else $(CYGPATH_W) '$(srcdir)/test_identification.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
 
-test_runner-test_threading.o: test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_threading.o -MD -MP -MF $(DEPDIR)/test_runner-test_threading.Tpo -c -o test_runner-test_threading.o `test -f 'test_threading.c' || echo '$(srcdir)/'`test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_threading.Tpo $(DEPDIR)/test_runner-test_threading.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_threading.c' object='test_runner-test_threading.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_hashtable.obj: suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hashtable.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_hashtable.Tpo -c -o suites/tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hashtable.Tpo suites/$(DEPDIR)/tests-test_hashtable.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/tests-test_hashtable.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_threading.o `test -f 'test_threading.c' || echo '$(srcdir)/'`test_threading.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
 
-test_runner-test_threading.obj: test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_threading.obj -MD -MP -MF $(DEPDIR)/test_runner-test_threading.Tpo -c -o test_runner-test_threading.obj `if test -f 'test_threading.c'; then $(CYGPATH_W) 'test_threading.c'; else $(CYGPATH_W) '$(srcdir)/test_threading.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_threading.Tpo $(DEPDIR)/test_runner-test_threading.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_threading.c' object='test_runner-test_threading.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_identification.o: suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_identification.o -MD -MP -MF suites/$(DEPDIR)/tests-test_identification.Tpo -c -o suites/tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_identification.Tpo suites/$(DEPDIR)/tests-test_identification.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/tests-test_identification.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_threading.obj `if test -f 'test_threading.c'; then $(CYGPATH_W) 'test_threading.c'; else $(CYGPATH_W) '$(srcdir)/test_threading.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
 
-test_runner-test_utils.o: test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_utils.o -MD -MP -MF $(DEPDIR)/test_runner-test_utils.Tpo -c -o test_runner-test_utils.o `test -f 'test_utils.c' || echo '$(srcdir)/'`test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_utils.Tpo $(DEPDIR)/test_runner-test_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_utils.c' object='test_runner-test_utils.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_identification.obj: suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_identification.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_identification.Tpo -c -o suites/tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_identification.Tpo suites/$(DEPDIR)/tests-test_identification.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/tests-test_identification.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_utils.o `test -f 'test_utils.c' || echo '$(srcdir)/'`test_utils.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
 
-test_runner-test_utils.obj: test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_utils.obj -MD -MP -MF $(DEPDIR)/test_runner-test_utils.Tpo -c -o test_runner-test_utils.obj `if test -f 'test_utils.c'; then $(CYGPATH_W) 'test_utils.c'; else $(CYGPATH_W) '$(srcdir)/test_utils.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_utils.Tpo $(DEPDIR)/test_runner-test_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_utils.c' object='test_runner-test_utils.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_threading.o: suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_threading.o -MD -MP -MF suites/$(DEPDIR)/tests-test_threading.Tpo -c -o suites/tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_threading.Tpo suites/$(DEPDIR)/tests-test_threading.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/tests-test_threading.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_utils.obj `if test -f 'test_utils.c'; then $(CYGPATH_W) 'test_utils.c'; else $(CYGPATH_W) '$(srcdir)/test_utils.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
 
-test_runner-test_vectors.o: test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_vectors.o -MD -MP -MF $(DEPDIR)/test_runner-test_vectors.Tpo -c -o test_runner-test_vectors.o `test -f 'test_vectors.c' || echo '$(srcdir)/'`test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_vectors.Tpo $(DEPDIR)/test_runner-test_vectors.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_vectors.c' object='test_runner-test_vectors.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_threading.obj: suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_threading.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_threading.Tpo -c -o suites/tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_threading.Tpo suites/$(DEPDIR)/tests-test_threading.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/tests-test_threading.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_vectors.o `test -f 'test_vectors.c' || echo '$(srcdir)/'`test_vectors.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
 
-test_runner-test_vectors.obj: test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_vectors.obj -MD -MP -MF $(DEPDIR)/test_runner-test_vectors.Tpo -c -o test_runner-test_vectors.obj `if test -f 'test_vectors.c'; then $(CYGPATH_W) 'test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/test_vectors.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_vectors.Tpo $(DEPDIR)/test_runner-test_vectors.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_vectors.c' object='test_runner-test_vectors.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_watcher.o: suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_watcher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_watcher.Tpo -c -o suites/tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_watcher.Tpo suites/$(DEPDIR)/tests-test_watcher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/tests-test_watcher.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_vectors.obj `if test -f 'test_vectors.c'; then $(CYGPATH_W) 'test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/test_vectors.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
 
-test_runner-test_array.o: test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_array.o -MD -MP -MF $(DEPDIR)/test_runner-test_array.Tpo -c -o test_runner-test_array.o `test -f 'test_array.c' || echo '$(srcdir)/'`test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_array.Tpo $(DEPDIR)/test_runner-test_array.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_array.c' object='test_runner-test_array.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_watcher.obj: suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_watcher.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_watcher.Tpo -c -o suites/tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_watcher.Tpo suites/$(DEPDIR)/tests-test_watcher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/tests-test_watcher.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_array.o `test -f 'test_array.c' || echo '$(srcdir)/'`test_array.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
 
-test_runner-test_array.obj: test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_array.obj -MD -MP -MF $(DEPDIR)/test_runner-test_array.Tpo -c -o test_runner-test_array.obj `if test -f 'test_array.c'; then $(CYGPATH_W) 'test_array.c'; else $(CYGPATH_W) '$(srcdir)/test_array.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_array.Tpo $(DEPDIR)/test_runner-test_array.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_array.c' object='test_runner-test_array.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_stream.o: suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_stream.o -MD -MP -MF suites/$(DEPDIR)/tests-test_stream.Tpo -c -o suites/tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_stream.Tpo suites/$(DEPDIR)/tests-test_stream.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/tests-test_stream.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_array.obj `if test -f 'test_array.c'; then $(CYGPATH_W) 'test_array.c'; else $(CYGPATH_W) '$(srcdir)/test_array.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
 
-test_runner-test_ecdsa.o: test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_ecdsa.o -MD -MP -MF $(DEPDIR)/test_runner-test_ecdsa.Tpo -c -o test_runner-test_ecdsa.o `test -f 'test_ecdsa.c' || echo '$(srcdir)/'`test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_ecdsa.Tpo $(DEPDIR)/test_runner-test_ecdsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_ecdsa.c' object='test_runner-test_ecdsa.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_stream.obj: suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_stream.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_stream.Tpo -c -o suites/tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_stream.Tpo suites/$(DEPDIR)/tests-test_stream.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/tests-test_stream.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_ecdsa.o `test -f 'test_ecdsa.c' || echo '$(srcdir)/'`test_ecdsa.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
 
-test_runner-test_ecdsa.obj: test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_ecdsa.obj -MD -MP -MF $(DEPDIR)/test_runner-test_ecdsa.Tpo -c -o test_runner-test_ecdsa.obj `if test -f 'test_ecdsa.c'; then $(CYGPATH_W) 'test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/test_ecdsa.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_ecdsa.Tpo $(DEPDIR)/test_runner-test_ecdsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_ecdsa.c' object='test_runner-test_ecdsa.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_fetch_http.o: suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_fetch_http.o -MD -MP -MF suites/$(DEPDIR)/tests-test_fetch_http.Tpo -c -o suites/tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_fetch_http.Tpo suites/$(DEPDIR)/tests-test_fetch_http.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/tests-test_fetch_http.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_ecdsa.obj `if test -f 'test_ecdsa.c'; then $(CYGPATH_W) 'test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/test_ecdsa.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
 
-test_runner-test_rsa.o: test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_rsa.o -MD -MP -MF $(DEPDIR)/test_runner-test_rsa.Tpo -c -o test_runner-test_rsa.o `test -f 'test_rsa.c' || echo '$(srcdir)/'`test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_rsa.Tpo $(DEPDIR)/test_runner-test_rsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_rsa.c' object='test_runner-test_rsa.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_fetch_http.obj: suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_fetch_http.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_fetch_http.Tpo -c -o suites/tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_fetch_http.Tpo suites/$(DEPDIR)/tests-test_fetch_http.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/tests-test_fetch_http.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_rsa.o `test -f 'test_rsa.c' || echo '$(srcdir)/'`test_rsa.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
 
-test_runner-test_rsa.obj: test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_rsa.obj -MD -MP -MF $(DEPDIR)/test_runner-test_rsa.Tpo -c -o test_runner-test_rsa.obj `if test -f 'test_rsa.c'; then $(CYGPATH_W) 'test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/test_rsa.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_rsa.Tpo $(DEPDIR)/test_runner-test_rsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_rsa.c' object='test_runner-test_rsa.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_utils.o: suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_utils.o -MD -MP -MF suites/$(DEPDIR)/tests-test_utils.Tpo -c -o suites/tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_utils.Tpo suites/$(DEPDIR)/tests-test_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/tests-test_utils.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_rsa.obj `if test -f 'test_rsa.c'; then $(CYGPATH_W) 'test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/test_rsa.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
 
-test_runner-test_host.o: test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_host.o -MD -MP -MF $(DEPDIR)/test_runner-test_host.Tpo -c -o test_runner-test_host.o `test -f 'test_host.c' || echo '$(srcdir)/'`test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_host.Tpo $(DEPDIR)/test_runner-test_host.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_host.c' object='test_runner-test_host.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_utils.obj: suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_utils.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_utils.Tpo -c -o suites/tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_utils.Tpo suites/$(DEPDIR)/tests-test_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/tests-test_utils.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_host.o `test -f 'test_host.c' || echo '$(srcdir)/'`test_host.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
 
-test_runner-test_host.obj: test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_host.obj -MD -MP -MF $(DEPDIR)/test_runner-test_host.Tpo -c -o test_runner-test_host.obj `if test -f 'test_host.c'; then $(CYGPATH_W) 'test_host.c'; else $(CYGPATH_W) '$(srcdir)/test_host.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_host.Tpo $(DEPDIR)/test_runner-test_host.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_host.c' object='test_runner-test_host.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_settings.o: suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_settings.o -MD -MP -MF suites/$(DEPDIR)/tests-test_settings.Tpo -c -o suites/tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_settings.Tpo suites/$(DEPDIR)/tests-test_settings.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/tests-test_settings.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_host.obj `if test -f 'test_host.c'; then $(CYGPATH_W) 'test_host.c'; else $(CYGPATH_W) '$(srcdir)/test_host.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
 
-test_runner-test_printf.o: test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_printf.o -MD -MP -MF $(DEPDIR)/test_runner-test_printf.Tpo -c -o test_runner-test_printf.o `test -f 'test_printf.c' || echo '$(srcdir)/'`test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_printf.Tpo $(DEPDIR)/test_runner-test_printf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_printf.c' object='test_runner-test_printf.o' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_settings.obj: suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_settings.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_settings.Tpo -c -o suites/tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_settings.Tpo suites/$(DEPDIR)/tests-test_settings.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/tests-test_settings.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_printf.o `test -f 'test_printf.c' || echo '$(srcdir)/'`test_printf.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
 
-test_runner-test_printf.obj: test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -MT test_runner-test_printf.obj -MD -MP -MF $(DEPDIR)/test_runner-test_printf.Tpo -c -o test_runner-test_printf.obj `if test -f 'test_printf.c'; then $(CYGPATH_W) 'test_printf.c'; else $(CYGPATH_W) '$(srcdir)/test_printf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/test_runner-test_printf.Tpo $(DEPDIR)/test_runner-test_printf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='test_printf.c' object='test_runner-test_printf.obj' libtool=no @AMDEPBACKSLASH@
+suites/tests-test_vectors.o: suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_vectors.o -MD -MP -MF suites/$(DEPDIR)/tests-test_vectors.Tpo -c -o suites/tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_vectors.Tpo suites/$(DEPDIR)/tests-test_vectors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/tests-test_vectors.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(test_runner_CFLAGS) $(CFLAGS) -c -o test_runner-test_printf.obj `if test -f 'test_printf.c'; then $(CYGPATH_W) 'test_printf.c'; else $(CYGPATH_W) '$(srcdir)/test_printf.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
+
+suites/tests-test_vectors.obj: suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_vectors.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_vectors.Tpo -c -o suites/tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_vectors.Tpo suites/$(DEPDIR)/tests-test_vectors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/tests-test_vectors.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
+
+suites/tests-test_array.o: suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_array.o -MD -MP -MF suites/$(DEPDIR)/tests-test_array.Tpo -c -o suites/tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_array.Tpo suites/$(DEPDIR)/tests-test_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/tests-test_array.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
+
+suites/tests-test_array.obj: suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_array.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_array.Tpo -c -o suites/tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_array.Tpo suites/$(DEPDIR)/tests-test_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/tests-test_array.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
+
+suites/tests-test_ecdsa.o: suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ecdsa.o -MD -MP -MF suites/$(DEPDIR)/tests-test_ecdsa.Tpo -c -o suites/tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ecdsa.Tpo suites/$(DEPDIR)/tests-test_ecdsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/tests-test_ecdsa.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
+
+suites/tests-test_ecdsa.obj: suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ecdsa.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_ecdsa.Tpo -c -o suites/tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ecdsa.Tpo suites/$(DEPDIR)/tests-test_ecdsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/tests-test_ecdsa.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
+
+suites/tests-test_rsa.o: suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_rsa.o -MD -MP -MF suites/$(DEPDIR)/tests-test_rsa.Tpo -c -o suites/tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_rsa.Tpo suites/$(DEPDIR)/tests-test_rsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/tests-test_rsa.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
+
+suites/tests-test_rsa.obj: suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_rsa.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_rsa.Tpo -c -o suites/tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_rsa.Tpo suites/$(DEPDIR)/tests-test_rsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/tests-test_rsa.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
+
+suites/tests-test_host.o: suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_host.o -MD -MP -MF suites/$(DEPDIR)/tests-test_host.Tpo -c -o suites/tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_host.Tpo suites/$(DEPDIR)/tests-test_host.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/tests-test_host.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
+
+suites/tests-test_host.obj: suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_host.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_host.Tpo -c -o suites/tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_host.Tpo suites/$(DEPDIR)/tests-test_host.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/tests-test_host.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
+
+suites/tests-test_hasher.o: suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hasher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_hasher.Tpo -c -o suites/tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hasher.Tpo suites/$(DEPDIR)/tests-test_hasher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/tests-test_hasher.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
+
+suites/tests-test_hasher.obj: suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hasher.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_hasher.Tpo -c -o suites/tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hasher.Tpo suites/$(DEPDIR)/tests-test_hasher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/tests-test_hasher.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
+
+suites/tests-test_crypter.o: suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypter.o -MD -MP -MF suites/$(DEPDIR)/tests-test_crypter.Tpo -c -o suites/tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypter.Tpo suites/$(DEPDIR)/tests-test_crypter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/tests-test_crypter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
+
+suites/tests-test_crypter.obj: suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypter.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_crypter.Tpo -c -o suites/tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypter.Tpo suites/$(DEPDIR)/tests-test_crypter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/tests-test_crypter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
+
+suites/tests-test_pen.o: suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_pen.o -MD -MP -MF suites/$(DEPDIR)/tests-test_pen.Tpo -c -o suites/tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_pen.Tpo suites/$(DEPDIR)/tests-test_pen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/tests-test_pen.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
+
+suites/tests-test_pen.obj: suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_pen.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_pen.Tpo -c -o suites/tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_pen.Tpo suites/$(DEPDIR)/tests-test_pen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/tests-test_pen.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
+
+suites/tests-test_asn1.o: suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1.o -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1.Tpo -c -o suites/tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1.Tpo suites/$(DEPDIR)/tests-test_asn1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/tests-test_asn1.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
+
+suites/tests-test_asn1.obj: suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1.Tpo -c -o suites/tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1.Tpo suites/$(DEPDIR)/tests-test_asn1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/tests-test_asn1.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
+
+suites/tests-test_asn1_parser.o: suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1_parser.o -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1_parser.Tpo -c -o suites/tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1_parser.Tpo suites/$(DEPDIR)/tests-test_asn1_parser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/tests-test_asn1_parser.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
+
+suites/tests-test_asn1_parser.obj: suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1_parser.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1_parser.Tpo -c -o suites/tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1_parser.Tpo suites/$(DEPDIR)/tests-test_asn1_parser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/tests-test_asn1_parser.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
+
+suites/tests-test_printf.o: suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_printf.o -MD -MP -MF suites/$(DEPDIR)/tests-test_printf.Tpo -c -o suites/tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_printf.Tpo suites/$(DEPDIR)/tests-test_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/tests-test_printf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
+
+suites/tests-test_printf.obj: suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_printf.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_printf.Tpo -c -o suites/tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_printf.Tpo suites/$(DEPDIR)/tests-test_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/tests-test_printf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
+
+suites/tests-test_test_rng.o: suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_test_rng.o -MD -MP -MF suites/$(DEPDIR)/tests-test_test_rng.Tpo -c -o suites/tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_test_rng.Tpo suites/$(DEPDIR)/tests-test_test_rng.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/tests-test_test_rng.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
+
+suites/tests-test_test_rng.obj: suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_test_rng.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_test_rng.Tpo -c -o suites/tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_test_rng.Tpo suites/$(DEPDIR)/tests-test_test_rng.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/tests-test_test_rng.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
+
+suites/tests-test_ntru.o: suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ntru.o -MD -MP -MF suites/$(DEPDIR)/tests-test_ntru.Tpo -c -o suites/tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ntru.Tpo suites/$(DEPDIR)/tests-test_ntru.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/tests-test_ntru.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
+
+suites/tests-test_ntru.obj: suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ntru.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_ntru.Tpo -c -o suites/tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ntru.Tpo suites/$(DEPDIR)/tests-test_ntru.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/tests-test_ntru.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
 
 clean-libtool:
 	-rm -rf .libs _libs
+	-rm -rf utils/.libs utils/_libs
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -1022,168 +1183,98 @@ cscopelist-am: $(am__tagged_files)
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
-# Recover from deleted '.trs' file; this should ensure that
-# "rm -f foo.log; make foo.trs" re-run 'foo.test', and re-create
-# both 'foo.log' and 'foo.trs'.  Break the recipe in two subshells
-# to avoid problems with "make -n".
-.log.trs:
-	rm -f $< $@
-	$(MAKE) $(AM_MAKEFLAGS) $<
-
-# Leading 'am--fnord' is there to ensure the list of targets does not
-# expand to empty, as could happen e.g. with make check TESTS=''.
-am--fnord $(TEST_LOGS) $(TEST_LOGS:.log=.trs): $(am__force_recheck)
-am--force-recheck:
-	@:
-
-$(TEST_SUITE_LOG): $(TEST_LOGS)
-	@$(am__set_TESTS_bases); \
-	am__f_ok () { test -f "$$1" && test -r "$$1"; }; \
-	redo_bases=`for i in $$bases; do \
-	              am__f_ok $$i.trs && am__f_ok $$i.log || echo $$i; \
-	            done`; \
-	if test -n "$$redo_bases"; then \
-	  redo_logs=`for i in $$redo_bases; do echo $$i.log; done`; \
-	  redo_results=`for i in $$redo_bases; do echo $$i.trs; done`; \
-	  if $(am__make_dryrun); then :; else \
-	    rm -f $$redo_logs && rm -f $$redo_results || exit 1; \
-	  fi; \
-	fi; \
-	if test -n "$$am__remaking_logs"; then \
-	  echo "fatal: making $(TEST_SUITE_LOG): possible infinite" \
-	       "recursion detected" >&2; \
-	else \
-	  am__remaking_logs=yes $(MAKE) $(AM_MAKEFLAGS) $$redo_logs; \
-	fi; \
-	if $(am__make_dryrun); then :; else \
-	  st=0;  \
-	  errmsg="fatal: making $(TEST_SUITE_LOG): failed to create"; \
-	  for i in $$redo_bases; do \
-	    test -f $$i.trs && test -r $$i.trs \
-	      || { echo "$$errmsg $$i.trs" >&2; st=1; }; \
-	    test -f $$i.log && test -r $$i.log \
-	      || { echo "$$errmsg $$i.log" >&2; st=1; }; \
+check-TESTS: $(TESTS)
+	@failed=0; all=0; xfail=0; xpass=0; skip=0; \
+	srcdir=$(srcdir); export srcdir; \
+	list=' $(TESTS) '; \
+	$(am__tty_colors); \
+	if test -n "$$list"; then \
+	  for tst in $$list; do \
+	    if test -f ./$$tst; then dir=./; \
+	    elif test -f $$tst; then dir=; \
+	    else dir="$(srcdir)/"; fi; \
+	    if $(TESTS_ENVIRONMENT) $${dir}$$tst $(AM_TESTS_FD_REDIRECT); then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xpass=`expr $$xpass + 1`; \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=XPASS; \
+	      ;; \
+	      *) \
+		col=$$grn; res=PASS; \
+	      ;; \
+	      esac; \
+	    elif test $$? -ne 77; then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xfail=`expr $$xfail + 1`; \
+		col=$$lgn; res=XFAIL; \
+	      ;; \
+	      *) \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=FAIL; \
+	      ;; \
+	      esac; \
+	    else \
+	      skip=`expr $$skip + 1`; \
+	      col=$$blu; res=SKIP; \
+	    fi; \
+	    echo "$${col}$$res$${std}: $$tst"; \
 	  done; \
-	  test $$st -eq 0 || exit 1; \
-	fi
-	@$(am__sh_e_setup); $(am__tty_colors); $(am__set_TESTS_bases); \
-	ws='[ 	]'; \
-	results=`for b in $$bases; do echo $$b.trs; done`; \
-	test -n "$$results" || results=/dev/null; \
-	all=`  grep "^$$ws*:test-result:"           $$results | wc -l`; \
-	pass=` grep "^$$ws*:test-result:$$ws*PASS"  $$results | wc -l`; \
-	fail=` grep "^$$ws*:test-result:$$ws*FAIL"  $$results | wc -l`; \
-	skip=` grep "^$$ws*:test-result:$$ws*SKIP"  $$results | wc -l`; \
-	xfail=`grep "^$$ws*:test-result:$$ws*XFAIL" $$results | wc -l`; \
-	xpass=`grep "^$$ws*:test-result:$$ws*XPASS" $$results | wc -l`; \
-	error=`grep "^$$ws*:test-result:$$ws*ERROR" $$results | wc -l`; \
-	if test `expr $$fail + $$xpass + $$error` -eq 0; then \
-	  success=true; \
-	else \
-	  success=false; \
-	fi; \
-	br='==================='; br=$$br$$br$$br$$br; \
-	result_count () \
-	{ \
-	    if test x"$$1" = x"--maybe-color"; then \
-	      maybe_colorize=yes; \
-	    elif test x"$$1" = x"--no-color"; then \
-	      maybe_colorize=no; \
+	  if test "$$all" -eq 1; then \
+	    tests="test"; \
+	    All=""; \
+	  else \
+	    tests="tests"; \
+	    All="All "; \
+	  fi; \
+	  if test "$$failed" -eq 0; then \
+	    if test "$$xfail" -eq 0; then \
+	      banner="$$All$$all $$tests passed"; \
 	    else \
-	      echo "$@: invalid 'result_count' usage" >&2; exit 4; \
+	      if test "$$xfail" -eq 1; then failures=failure; else failures=failures; fi; \
+	      banner="$$All$$all $$tests behaved as expected ($$xfail expected $$failures)"; \
 	    fi; \
-	    shift; \
-	    desc=$$1 count=$$2; \
-	    if test $$maybe_colorize = yes && test $$count -gt 0; then \
-	      color_start=$$3 color_end=$$std; \
+	  else \
+	    if test "$$xpass" -eq 0; then \
+	      banner="$$failed of $$all $$tests failed"; \
 	    else \
-	      color_start= color_end=; \
+	      if test "$$xpass" -eq 1; then passes=pass; else passes=passes; fi; \
+	      banner="$$failed of $$all $$tests did not behave as expected ($$xpass unexpected $$passes)"; \
 	    fi; \
-	    echo "$${color_start}# $$desc $$count$${color_end}"; \
-	}; \
-	create_testsuite_report () \
-	{ \
-	  result_count $$1 "TOTAL:" $$all   "$$brg"; \
-	  result_count $$1 "PASS: " $$pass  "$$grn"; \
-	  result_count $$1 "SKIP: " $$skip  "$$blu"; \
-	  result_count $$1 "XFAIL:" $$xfail "$$lgn"; \
-	  result_count $$1 "FAIL: " $$fail  "$$red"; \
-	  result_count $$1 "XPASS:" $$xpass "$$red"; \
-	  result_count $$1 "ERROR:" $$error "$$mgn"; \
-	}; \
-	{								\
-	  echo "$(PACKAGE_STRING): $(subdir)/$(TEST_SUITE_LOG)" |	\
-	    $(am__rst_title);						\
-	  create_testsuite_report --no-color;				\
-	  echo;								\
-	  echo ".. contents:: :depth: 2";				\
-	  echo;								\
-	  for b in $$bases; do echo $$b; done				\
-	    | $(am__create_global_log);					\
-	} >$(TEST_SUITE_LOG).tmp || exit 1;				\
-	mv $(TEST_SUITE_LOG).tmp $(TEST_SUITE_LOG);			\
-	if $$success; then						\
-	  col="$$grn";							\
-	 else								\
-	  col="$$red";							\
-	  test x"$$VERBOSE" = x || cat $(TEST_SUITE_LOG);		\
-	fi;								\
-	echo "$${col}$$br$${std}"; 					\
-	echo "$${col}Testsuite summary for $(PACKAGE_STRING)$${std}";	\
-	echo "$${col}$$br$${std}"; 					\
-	create_testsuite_report --maybe-color;				\
-	echo "$$col$$br$$std";						\
-	if $$success; then :; else					\
-	  echo "$${col}See $(subdir)/$(TEST_SUITE_LOG)$${std}";		\
-	  if test -n "$(PACKAGE_BUGREPORT)"; then			\
-	    echo "$${col}Please report to $(PACKAGE_BUGREPORT)$${std}";	\
-	  fi;								\
-	  echo "$$col$$br$$std";					\
-	fi;								\
-	$$success || exit 1
-
-check-TESTS:
-	@list='$(RECHECK_LOGS)';           test -z "$$list" || rm -f $$list
-	@list='$(RECHECK_LOGS:.log=.trs)'; test -z "$$list" || rm -f $$list
-	@test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
-	@set +e; $(am__set_TESTS_bases); \
-	log_list=`for i in $$bases; do echo $$i.log; done`; \
-	trs_list=`for i in $$bases; do echo $$i.trs; done`; \
-	log_list=`echo $$log_list`; trs_list=`echo $$trs_list`; \
-	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) TEST_LOGS="$$log_list"; \
-	exit $$?;
-recheck: all $(check_PROGRAMS)
-	@test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
-	@set +e; $(am__set_TESTS_bases); \
-	bases=`for i in $$bases; do echo $$i; done \
-	         | $(am__list_recheck_tests)` || exit 1; \
-	log_list=`for i in $$bases; do echo $$i.log; done`; \
-	log_list=`echo $$log_list`; \
-	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) \
-	        am__force_recheck=am--force-recheck \
-	        TEST_LOGS="$$log_list"; \
-	exit $$?
-test_runner.log: test_runner$(EXEEXT)
-	@p='test_runner$(EXEEXT)'; \
-	b='test_runner'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-.test.log:
-	@p='$<'; \
-	$(am__set_b); \
-	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-@am__EXEEXT_TRUE@.test$(EXEEXT).log:
-@am__EXEEXT_TRUE@	@p='$<'; \
-@am__EXEEXT_TRUE@	$(am__set_b); \
-@am__EXEEXT_TRUE@	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
-@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
-@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
-@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
+	  fi; \
+	  dashes="$$banner"; \
+	  skipped=""; \
+	  if test "$$skip" -ne 0; then \
+	    if test "$$skip" -eq 1; then \
+	      skipped="($$skip test was not run)"; \
+	    else \
+	      skipped="($$skip tests were not run)"; \
+	    fi; \
+	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$skipped"; \
+	  fi; \
+	  report=""; \
+	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
+	    report="Please report to $(PACKAGE_BUGREPORT)"; \
+	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$report"; \
+	  fi; \
+	  dashes=`echo "$$dashes" | sed s/./=/g`; \
+	  if test "$$failed" -eq 0; then \
+	    col="$$grn"; \
+	  else \
+	    col="$$red"; \
+	  fi; \
+	  echo "$${col}$$dashes$${std}"; \
+	  echo "$${col}$$banner$${std}"; \
+	  test -z "$$skipped" || echo "$${col}$$skipped$${std}"; \
+	  test -z "$$report" || echo "$${col}$$report$${std}"; \
+	  echo "$${col}$$dashes$${std}"; \
+	  test "$$failed" -eq 0; \
+	else :; fi
 
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -1216,7 +1307,7 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
+	$(MAKE) $(AM_MAKEFLAGS) $(check_LTLIBRARIES) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
 all-am: Makefile
@@ -1241,26 +1332,27 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
-	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
-	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
-	-test -z "$(TEST_SUITE_LOG)" || rm -f $(TEST_SUITE_LOG)
 
 clean-generic:
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f suites/$(DEPDIR)/$(am__dirstamp)
+	-rm -f suites/$(am__dirstamp)
+	-rm -f utils/$(DEPDIR)/$(am__dirstamp)
+	-rm -f utils/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
-	mostlyclean-am
+clean-am: clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ./$(DEPDIR) suites/$(DEPDIR) utils/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1306,7 +1398,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ./$(DEPDIR) suites/$(DEPDIR) utils/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -1328,18 +1420,18 @@ uninstall-am:
 .MAKE: check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-TESTS check-am clean \
-	clean-checkPROGRAMS clean-generic clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	recheck tags tags-am uninstall uninstall-am
+	clean-checkLTLIBRARIES clean-checkPROGRAMS clean-generic \
+	clean-libtool cscopelist-am ctags ctags-am distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

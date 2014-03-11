@@ -79,8 +79,7 @@ build_triplet = @build@
 host_triplet = @host@
 subdir = man
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(srcdir)/ipsec.conf.5.in $(srcdir)/ipsec.secrets.5.in \
-	$(srcdir)/strongswan.conf.5.in
+	$(srcdir)/ipsec.conf.5.in $(srcdir)/ipsec.secrets.5.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -96,7 +95,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = ipsec.conf.5 ipsec.secrets.5 strongswan.conf.5
+CONFIG_CLEAN_FILES = ipsec.conf.5 ipsec.secrets.5
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -164,8 +163,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -233,6 +230,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -321,12 +323,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -341,6 +347,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -353,8 +360,7 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 man_MANS = \
 	ipsec.conf.5 \
-	ipsec.secrets.5 \
-	strongswan.conf.5
+	ipsec.secrets.5
 
 CLEANFILES = $(man_MANS)
 all: all-am
@@ -393,8 +399,6 @@ $(am__aclocal_m4_deps):
 ipsec.conf.5: $(top_builddir)/config.status $(srcdir)/ipsec.conf.5.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 ipsec.secrets.5: $(top_builddir)/config.status $(srcdir)/ipsec.secrets.5.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-strongswan.conf.5: $(top_builddir)/config.status $(srcdir)/strongswan.conf.5.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 mostlyclean-libtool:

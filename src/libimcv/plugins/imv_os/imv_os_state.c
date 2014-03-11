@@ -421,7 +421,7 @@ METHOD(imv_state_t, get_reason_string, bool,
 
 	/* Instantiate a TNC Reason String object */
 	DESTROY_IF(this->reason_string);
-	this->reason_string = imv_reason_string_create(*reason_language);
+	this->reason_string = imv_reason_string_create(*reason_language, "\n");
 
 	if (this->count_update || this->count_blacklist)
 	{
@@ -494,7 +494,7 @@ METHOD(imv_state_t, get_remediation_instructions, bool,
 
 	*string = this->remediation_string->get_encoding(this->remediation_string);
 	*uri = lib->settings->get_str(lib->settings,
-							"libimcv.plugins.imv-os.remediation_uri", NULL);
+							"%s.plugins.imv-os.remediation_uri", NULL, lib->ns);
 
 	return TRUE;
 }

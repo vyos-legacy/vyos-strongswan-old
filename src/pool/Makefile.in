@@ -14,6 +14,7 @@
 
 @SET_MAKE@
 
+
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
@@ -78,10 +79,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-ipsec_PROGRAMS = pool$(EXEEXT)
+@USE_ATTR_SQL_TRUE@ipsec_PROGRAMS = pool$(EXEEXT)
 subdir = src/pool
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/depcomp
+	$(top_srcdir)/depcomp $(dist_templates_DATA)
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -99,14 +100,16 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__installdirs = "$(DESTDIR)$(ipsecdir)"
+am__installdirs = "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(templatesdir)"
 PROGRAMS = $(ipsec_PROGRAMS)
-am_pool_OBJECTS = pool.$(OBJEXT) pool_attributes.$(OBJEXT) \
-	pool_usage.$(OBJEXT)
+am__pool_SOURCES_DIST = pool.c pool_attributes.c pool_attributes.h \
+	pool_usage.h pool_usage.c
+@USE_ATTR_SQL_TRUE@am_pool_OBJECTS = pool.$(OBJEXT) \
+@USE_ATTR_SQL_TRUE@	pool_attributes.$(OBJEXT) \
+@USE_ATTR_SQL_TRUE@	pool_usage.$(OBJEXT)
 pool_OBJECTS = $(am_pool_OBJECTS)
-pool_DEPENDENCIES =  \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la
+@USE_ATTR_SQL_TRUE@pool_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la \
+@USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libhydra/libhydra.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -146,12 +149,40 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(pool_SOURCES)
-DIST_SOURCES = $(pool_SOURCES)
+DIST_SOURCES = $(am__pool_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__uninstall_files_from_dir = { \
+  test -z "$$files" \
+    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
+    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
+         $(am__cd) "$$dir" && rm -f $$files; }; \
+  }
+DATA = $(dist_templates_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -186,8 +217,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -255,6 +284,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -343,12 +377,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -363,6 +401,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -373,19 +412,21 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-pool_SOURCES = \
-	pool.c pool_attributes.c pool_attributes.h \
-	pool_usage.h pool_usage.c
+@USE_ATTR_SQL_TRUE@pool_SOURCES = \
+@USE_ATTR_SQL_TRUE@	pool.c pool_attributes.c pool_attributes.h \
+@USE_ATTR_SQL_TRUE@	pool_usage.h pool_usage.c
 
-AM_CPPFLAGS = \
-	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra \
-	-DPLUGINS=\""${pool_plugins}\""
+@USE_ATTR_SQL_TRUE@AM_CPPFLAGS = \
+@USE_ATTR_SQL_TRUE@	-I$(top_srcdir)/src/libstrongswan \
+@USE_ATTR_SQL_TRUE@	-I$(top_srcdir)/src/libhydra \
+@USE_ATTR_SQL_TRUE@	-DPLUGINS=\""${pool_plugins}\""
 
-pool_LDADD = \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la
+@USE_ATTR_SQL_TRUE@pool_LDADD = \
+@USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+@USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libhydra/libhydra.la
 
+templatesdir = $(pkgdatadir)/templates/database/sql
+dist_templates_DATA = mysql.sql sqlite.sql
 all: all-am
 
 .SUFFIXES:
@@ -513,6 +554,27 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-dist_templatesDATA: $(dist_templates_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(dist_templates_DATA)'; test -n "$(templatesdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(templatesdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(templatesdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(templatesdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(templatesdir)" || exit $$?; \
+	done
+
+uninstall-dist_templatesDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(dist_templates_DATA)'; test -n "$(templatesdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(templatesdir)'; $(am__uninstall_files_from_dir)
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -598,9 +660,9 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(ipsecdir)"; do \
+	for dir in "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(templatesdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -656,7 +718,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-ipsecPROGRAMS
+install-data-am: install-dist_templatesDATA install-ipsecPROGRAMS
 
 install-dvi: install-dvi-am
 
@@ -702,7 +764,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-ipsecPROGRAMS
+uninstall-am: uninstall-dist_templatesDATA uninstall-ipsecPROGRAMS
 
 .MAKE: install-am install-strip
 
@@ -711,17 +773,19 @@ uninstall-am: uninstall-ipsecPROGRAMS
 	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-ipsecPROGRAMS install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-data-am install-dist_templatesDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-ipsecPROGRAMS install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am uninstall-ipsecPROGRAMS
+	tags tags-am uninstall uninstall-am \
+	uninstall-dist_templatesDATA uninstall-ipsecPROGRAMS
 
 
-pool.o :	$(top_builddir)/config.status
+@USE_ATTR_SQL_TRUE@pool.o :	$(top_builddir)/config.status
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

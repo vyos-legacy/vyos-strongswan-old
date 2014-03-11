@@ -129,7 +129,7 @@ am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_xauth_pam_la_LIBADD =
 am_libstrongswan_xauth_pam_la_OBJECTS = xauth_pam_plugin.lo \
-	xauth_pam.lo
+	xauth_pam_listener.lo xauth_pam.lo
 libstrongswan_xauth_pam_la_OBJECTS =  \
 	$(am_libstrongswan_xauth_pam_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -218,8 +218,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -287,6 +285,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -375,12 +378,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -395,6 +402,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -417,6 +425,7 @@ AM_CFLAGS = \
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-xauth-pam.la
 libstrongswan_xauth_pam_la_SOURCES = \
 	xauth_pam_plugin.h xauth_pam_plugin.c \
+	xauth_pam_listener.h xauth_pam_listener.c \
 	xauth_pam.h xauth_pam.c
 
 libstrongswan_xauth_pam_la_LDFLAGS = -module -avoid-version -lpam
@@ -511,6 +520,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xauth_pam.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xauth_pam_listener.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xauth_pam_plugin.Plo@am__quote@
 
 .c.o:

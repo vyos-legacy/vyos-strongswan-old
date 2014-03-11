@@ -178,10 +178,10 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_97 = plugins/ccm/libstrongswan-ccm.la
 @USE_GCM_TRUE@am__append_98 = plugins/gcm
 @MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_99 = plugins/gcm/libstrongswan-gcm.la
-@USE_TEST_VECTORS_TRUE@am__append_100 = plugins/test_vectors
-@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_101 = plugins/test_vectors/libstrongswan-test-vectors.la
-@MONOLITHIC_TRUE@@UNITTESTS_TRUE@am__append_102 = .
-@UNITTESTS_TRUE@am__append_103 = tests
+@USE_NTRU_TRUE@am__append_100 = plugins/ntru
+@MONOLITHIC_TRUE@@USE_NTRU_TRUE@am__append_101 = plugins/ntru/libstrongswan-ntru.la
+@USE_TEST_VECTORS_TRUE@am__append_102 = plugins/test_vectors
+@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_103 = plugins/test_vectors/libstrongswan-test-vectors.la
 subdir = src/libstrongswan
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp \
@@ -254,7 +254,7 @@ libstrongswan_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__append_83) $(am__append_85) $(am__append_87) \
 	$(am__append_89) $(am__append_91) $(am__append_93) \
 	$(am__append_95) $(am__append_97) $(am__append_99) \
-	$(am__append_101)
+	$(am__append_101) $(am__append_103)
 am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c \
 	bio/bio_writer.c collections/blocking_queue.c \
@@ -300,8 +300,8 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
 	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
 	utils/capabilities.c utils/backtrace.c utils/settings.c \
-	utils/leak_detective.c utils/integrity_checker.c \
-	utils/printf_hook/printf_hook_vstr.c \
+	utils/test.c utils/utils/strerror.c utils/leak_detective.c \
+	utils/integrity_checker.c utils/printf_hook/printf_hook_vstr.c \
 	utils/printf_hook/printf_hook_builtin.c \
 	utils/printf_hook/printf_hook_glibc.c
 am__dirstamp = $(am__leading_dot)dirstamp
@@ -355,9 +355,9 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	threading/spinlock.lo utils/utils.lo utils/chunk.lo \
 	utils/debug.lo utils/enum.lo utils/identification.lo \
 	utils/lexparser.lo utils/optionsfrom.lo utils/capabilities.lo \
-	utils/backtrace.lo utils/settings.lo $(am__objects_1) \
-	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
-	$(am__objects_5)
+	utils/backtrace.lo utils/settings.lo utils/test.lo \
+	utils/utils/strerror.lo $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4) $(am__objects_5)
 libstrongswan_la_OBJECTS = $(am_libstrongswan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -468,7 +468,7 @@ am__nobase_strongswan_include_HEADERS_DIST = library.h asn1/asn1.h \
 	utils/printf_hook/printf_hook.h \
 	utils/printf_hook/printf_hook_vstr.h \
 	utils/printf_hook/printf_hook_builtin.h utils/settings.h \
-	utils/integrity_checker.h
+	utils/test.h utils/integrity_checker.h utils/utils/strerror.h
 HEADERS = $(nobase_strongswan_include_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -508,7 +508,8 @@ DIST_SUBDIRS = . plugins/af_alg plugins/aes plugins/des \
 	plugins/soup plugins/ldap plugins/mysql plugins/sqlite \
 	plugins/padlock plugins/openssl plugins/gcrypt \
 	plugins/fips_prf plugins/agent plugins/keychain plugins/pkcs11 \
-	plugins/ctr plugins/ccm plugins/gcm plugins/test_vectors tests
+	plugins/ctr plugins/ccm plugins/gcm plugins/ntru \
+	plugins/test_vectors tests
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -549,8 +550,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -618,6 +617,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -706,12 +710,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -726,6 +734,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -781,8 +790,9 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
 	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
 	utils/capabilities.c utils/backtrace.c utils/settings.c \
-	$(am__append_2) $(am__append_5) $(am__append_6) \
-	$(am__append_8) $(am__append_10)
+	utils/test.c utils/utils/strerror.c $(am__append_2) \
+	$(am__append_5) $(am__append_6) $(am__append_8) \
+	$(am__append_10)
 @USE_DEV_HEADERS_TRUE@strongswan_includedir = ${dev_headers}
 @USE_DEV_HEADERS_TRUE@nobase_strongswan_include_HEADERS = \
 @USE_DEV_HEADERS_TRUE@library.h \
@@ -828,7 +838,8 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 @USE_DEV_HEADERS_TRUE@utils/lexparser.h utils/optionsfrom.h utils/capabilities.h utils/backtrace.h \
 @USE_DEV_HEADERS_TRUE@utils/leak_detective.h utils/printf_hook/printf_hook.h \
 @USE_DEV_HEADERS_TRUE@utils/printf_hook/printf_hook_vstr.h utils/printf_hook/printf_hook_builtin.h \
-@USE_DEV_HEADERS_TRUE@utils/settings.h utils/integrity_checker.h
+@USE_DEV_HEADERS_TRUE@utils/settings.h utils/test.h utils/integrity_checker.h \
+@USE_DEV_HEADERS_TRUE@utils/utils/strerror.h
 
 libstrongswan_la_LIBADD = $(PTHREADLIB) $(DLLIB) $(BTLIB) $(SOCKLIB) \
 	$(RTLIB) $(BFDLIB) $(UNWINDLIB) $(am__append_7) \
@@ -847,7 +858,7 @@ libstrongswan_la_LIBADD = $(PTHREADLIB) $(DLLIB) $(BTLIB) $(SOCKLIB) \
 	$(am__append_81) $(am__append_83) $(am__append_85) \
 	$(am__append_87) $(am__append_89) $(am__append_91) \
 	$(am__append_93) $(am__append_95) $(am__append_97) \
-	$(am__append_99) $(am__append_101)
+	$(am__append_99) $(am__append_101) $(am__append_103)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
 	-DIPSEC_DIR=\"${ipsecdir}\" -DIPSEC_LIB_DIR=\"${ipseclibdir}\" \
 	-DPLUGINDIR=\"${plugindir}\" \
@@ -894,8 +905,7 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_FALSE@	$(am__append_88) $(am__append_90) \
 @MONOLITHIC_FALSE@	$(am__append_92) $(am__append_94) \
 @MONOLITHIC_FALSE@	$(am__append_96) $(am__append_98) \
-@MONOLITHIC_FALSE@	$(am__append_100) $(am__append_102) \
-@MONOLITHIC_FALSE@	$(am__append_103)
+@MONOLITHIC_FALSE@	$(am__append_100) $(am__append_102) tests
 
 # build plugins with their own Makefile
 #######################################
@@ -921,8 +931,7 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_TRUE@	$(am__append_88) $(am__append_90) \
 @MONOLITHIC_TRUE@	$(am__append_92) $(am__append_94) \
 @MONOLITHIC_TRUE@	$(am__append_96) $(am__append_98) \
-@MONOLITHIC_TRUE@	$(am__append_100) $(am__append_102) \
-@MONOLITHIC_TRUE@	$(am__append_103)
+@MONOLITHIC_TRUE@	$(am__append_100) $(am__append_102) . tests
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -1354,6 +1363,15 @@ utils/backtrace.lo: utils/$(am__dirstamp) \
 	utils/$(DEPDIR)/$(am__dirstamp)
 utils/settings.lo: utils/$(am__dirstamp) \
 	utils/$(DEPDIR)/$(am__dirstamp)
+utils/test.lo: utils/$(am__dirstamp) utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/$(am__dirstamp):
+	@$(MKDIR_P) utils/utils
+	@: > utils/utils/$(am__dirstamp)
+utils/utils/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) utils/utils/$(DEPDIR)
+	@: > utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/strerror.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
 utils/leak_detective.lo: utils/$(am__dirstamp) \
 	utils/$(DEPDIR)/$(am__dirstamp)
 utils/integrity_checker.lo: utils/$(am__dirstamp) \
@@ -1443,6 +1461,8 @@ mostlyclean-compile:
 	-rm -f utils/*.lo
 	-rm -f utils/printf_hook/*.$(OBJEXT)
 	-rm -f utils/printf_hook/*.lo
+	-rm -f utils/utils/*.$(OBJEXT)
+	-rm -f utils/utils/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1536,10 +1556,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/lexparser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/optionsfrom.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/settings.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/test.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/utils.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_builtin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_glibc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_vstr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/strerror.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -1602,6 +1624,7 @@ clean-libtool:
 	-rm -rf threading/.libs threading/_libs
 	-rm -rf utils/.libs utils/_libs
 	-rm -rf utils/printf_hook/.libs utils/printf_hook/_libs
+	-rm -rf utils/utils/.libs utils/utils/_libs
 install-nobase_strongswan_includeHEADERS: $(nobase_strongswan_include_HEADERS)
 	@$(NORMAL_INSTALL)
 	@list='$(nobase_strongswan_include_HEADERS)'; test -n "$(strongswan_includedir)" || list=; \
@@ -1881,6 +1904,8 @@ distclean-generic:
 	-rm -f utils/$(am__dirstamp)
 	-rm -f utils/printf_hook/$(DEPDIR)/$(am__dirstamp)
 	-rm -f utils/printf_hook/$(am__dirstamp)
+	-rm -f utils/utils/$(DEPDIR)/$(am__dirstamp)
+	-rm -f utils/utils/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -1893,7 +1918,7 @@ clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) asn1/$(DEPDIR) bio/$(DEPDIR) collections/$(DEPDIR) credentials/$(DEPDIR) credentials/certificates/$(DEPDIR) credentials/containers/$(DEPDIR) credentials/ietf_attributes/$(DEPDIR) credentials/keys/$(DEPDIR) credentials/sets/$(DEPDIR) crypto/$(DEPDIR) crypto/crypters/$(DEPDIR) crypto/hashers/$(DEPDIR) crypto/iv/$(DEPDIR) crypto/prfs/$(DEPDIR) crypto/proposal/$(DEPDIR) crypto/rngs/$(DEPDIR) crypto/signers/$(DEPDIR) database/$(DEPDIR) eap/$(DEPDIR) fetcher/$(DEPDIR) ipsec/$(DEPDIR) networking/$(DEPDIR) networking/streams/$(DEPDIR) pen/$(DEPDIR) plugins/$(DEPDIR) processing/$(DEPDIR) processing/jobs/$(DEPDIR) resolver/$(DEPDIR) selectors/$(DEPDIR) threading/$(DEPDIR) utils/$(DEPDIR) utils/printf_hook/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) asn1/$(DEPDIR) bio/$(DEPDIR) collections/$(DEPDIR) credentials/$(DEPDIR) credentials/certificates/$(DEPDIR) credentials/containers/$(DEPDIR) credentials/ietf_attributes/$(DEPDIR) credentials/keys/$(DEPDIR) credentials/sets/$(DEPDIR) crypto/$(DEPDIR) crypto/crypters/$(DEPDIR) crypto/hashers/$(DEPDIR) crypto/iv/$(DEPDIR) crypto/prfs/$(DEPDIR) crypto/proposal/$(DEPDIR) crypto/rngs/$(DEPDIR) crypto/signers/$(DEPDIR) database/$(DEPDIR) eap/$(DEPDIR) fetcher/$(DEPDIR) ipsec/$(DEPDIR) networking/$(DEPDIR) networking/streams/$(DEPDIR) pen/$(DEPDIR) plugins/$(DEPDIR) processing/$(DEPDIR) processing/jobs/$(DEPDIR) resolver/$(DEPDIR) selectors/$(DEPDIR) threading/$(DEPDIR) utils/$(DEPDIR) utils/printf_hook/$(DEPDIR) utils/utils/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1940,7 +1965,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) asn1/$(DEPDIR) bio/$(DEPDIR) collections/$(DEPDIR) credentials/$(DEPDIR) credentials/certificates/$(DEPDIR) credentials/containers/$(DEPDIR) credentials/ietf_attributes/$(DEPDIR) credentials/keys/$(DEPDIR) credentials/sets/$(DEPDIR) crypto/$(DEPDIR) crypto/crypters/$(DEPDIR) crypto/hashers/$(DEPDIR) crypto/iv/$(DEPDIR) crypto/prfs/$(DEPDIR) crypto/proposal/$(DEPDIR) crypto/rngs/$(DEPDIR) crypto/signers/$(DEPDIR) database/$(DEPDIR) eap/$(DEPDIR) fetcher/$(DEPDIR) ipsec/$(DEPDIR) networking/$(DEPDIR) networking/streams/$(DEPDIR) pen/$(DEPDIR) plugins/$(DEPDIR) processing/$(DEPDIR) processing/jobs/$(DEPDIR) resolver/$(DEPDIR) selectors/$(DEPDIR) threading/$(DEPDIR) utils/$(DEPDIR) utils/printf_hook/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) asn1/$(DEPDIR) bio/$(DEPDIR) collections/$(DEPDIR) credentials/$(DEPDIR) credentials/certificates/$(DEPDIR) credentials/containers/$(DEPDIR) credentials/ietf_attributes/$(DEPDIR) credentials/keys/$(DEPDIR) credentials/sets/$(DEPDIR) crypto/$(DEPDIR) crypto/crypters/$(DEPDIR) crypto/hashers/$(DEPDIR) crypto/iv/$(DEPDIR) crypto/prfs/$(DEPDIR) crypto/proposal/$(DEPDIR) crypto/rngs/$(DEPDIR) crypto/signers/$(DEPDIR) database/$(DEPDIR) eap/$(DEPDIR) fetcher/$(DEPDIR) ipsec/$(DEPDIR) networking/$(DEPDIR) networking/streams/$(DEPDIR) pen/$(DEPDIR) plugins/$(DEPDIR) processing/$(DEPDIR) processing/jobs/$(DEPDIR) resolver/$(DEPDIR) selectors/$(DEPDIR) threading/$(DEPDIR) utils/$(DEPDIR) utils/printf_hook/$(DEPDIR) utils/utils/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

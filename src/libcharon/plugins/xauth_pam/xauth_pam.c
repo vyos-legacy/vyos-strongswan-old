@@ -116,7 +116,11 @@ static void attr2string(char *buf, size_t len, chunk_t chunk)
 {
 	if (chunk.len && chunk.len < len)
 	{
-		snprintf(buf, len, "%.*s", (int)chunk.len, chunk.ptr);
+		chunk_t sane;
+
+		chunk_printable(chunk, &sane, '?');
+		snprintf(buf, len, "%.*s", (int)sane.len, sane.ptr);
+		chunk_clear(&sane);
 	}
 }
 
@@ -138,7 +142,7 @@ METHOD(xauth_method_t, process, status_t,
 				/* trim to username part if email address given */
 				if (lib->settings->get_bool(lib->settings,
 											"%s.plugins.xauth-pam.trim_email",
-											TRUE, charon->name))
+											TRUE, lib->ns))
 				{
 					pos = memchr(chunk.ptr, '@', chunk.len);
 					if (pos)
@@ -171,9 +175,8 @@ METHOD(xauth_method_t, process, status_t,
 	service = lib->settings->get_str(lib->settings,
 				"%s.plugins.xauth-pam.pam_service",
 					lib->settings->get_str(lib->settings,
-						"%s.plugins.eap-gtc.pam_service",
-						"login", charon->name),
-				charon->name);
+						"%s.plugins.eap-gtc.pam_service", "login", lib->ns),
+				lib->ns);
 
 	if (authenticate(service, user, pass))
 	{

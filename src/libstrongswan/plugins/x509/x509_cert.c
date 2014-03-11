@@ -20,13 +20,13 @@
 
 #define _GNU_SOURCE
 
-#include "x509_cert.h"
-
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "x509_cert.h"
 
 #include <library.h>
 #include <utils/debug.h>
@@ -1446,7 +1446,7 @@ static bool parse_certificate(private_x509_cert_t *this)
 						break;
 					default:
 						if (critical && lib->settings->get_bool(lib->settings,
-							"libstrongswan.x509.enforce_critical", TRUE))
+							"%s.x509.enforce_critical", TRUE, lib->ns))
 						{
 							DBG1(DBG_ASN, "critical '%s' extension not supported",
 								 (extn_oid == OID_UNKNOWN) ? "unknown" :
