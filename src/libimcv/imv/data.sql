@@ -168,6 +168,42 @@ INSERT INTO products (			/* 28 */
  'Debian 7.2 x86_64'
 );
 
+INSERT INTO products (			/* 29 */
+  name
+) VALUES (
+ 'Android 4.1.2'
+);
+
+INSERT INTO products (			/* 30 */
+  name
+) VALUES (
+ 'Android 4.2.2'
+);
+
+INSERT INTO products (			/* 31 */
+  name
+) VALUES (
+ 'Android 4.3.1'
+);
+
+INSERT INTO products (			/* 32 */
+  name
+) VALUES (
+ 'Android 4.4'
+);
+
+INSERT INTO products (			/* 33 */
+  name
+) VALUES (
+ 'Android 4.4.1'
+);
+
+INSERT INTO products (			/* 34 */
+  name
+) VALUES (
+ 'Android 4.4.2'
+);
+
 /* Directories */
 
 INSERT INTO directories (		/*  1 */
@@ -568,6 +604,24 @@ INSERT INTO groups (			/* 10 */
   'Ref. Linux', 8
 );
 
+INSERT INTO groups (            /* 11 */
+  name
+) VALUES (
+  'TPM BIOS'
+);
+
+INSERT INTO groups (            /* 12 */
+  name
+) VALUES (
+  'TPM IMA'
+);
+
+INSERT INTO groups (            /* 13 */
+  name
+) VALUES (
+  'TPM BIOS/IMA'
+);
+
 /* Default Product Groups */
 
 INSERT INTO groups_product_defaults (
@@ -732,6 +786,42 @@ INSERT INTO groups_product_defaults (
   3, 22
 );
 
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 29
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 30
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 31
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 32
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 33
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 34
+);
+
 /* Policies */
 
 INSERT INTO policies (			/*  1 */
@@ -842,6 +932,24 @@ INSERT INTO policies (			/* 18 */
   15, 'SWID Tags', '', 2, 2
 );
 
+INSERT INTO policies (          /* 19 */
+  type, name, argument, rec_fail, rec_noresult
+) VALUES (
+  16, 'TPM BIOS Measurements', 'B', 2, 2
+);
+
+INSERT INTO policies (          /* 20 */
+  type, name, argument, rec_fail, rec_noresult
+) VALUES (
+  16, 'TPM IMA Measurements', 'I', 2, 2
+);
+
+INSERT INTO policies (          /* 21 */
+  type, name, argument, rec_fail, rec_noresult
+) VALUES (
+  16, 'TPM BIOS/IMA Measurements', 'BI', 2, 2
+);
+
 /* Enforcements */
 
 INSERT INTO enforcements (		/*  1 */
@@ -926,6 +1034,24 @@ INSERT INTO enforcements (		/* 14 */
   policy, group_id, max_age
 ) VALUES (
   15, 9, 0
+);
+
+INSERT INTO enforcements (      /* 15 */
+  policy, group_id, max_age
+) VALUES (
+  19, 11, 60
+);
+
+INSERT INTO enforcements (      /* 16 */
+  policy, group_id, max_age
+) VALUES (
+  20, 12, 60
+);
+
+INSERT INTO enforcements (      /* 17 */
+  policy, group_id, max_age
+) VALUES (
+  21, 13, 60
 );
 
 /* regids */
@@ -1056,5 +1182,11 @@ INSERT INTO tags (
   regid, unique_sw_id
 ) VALUES (
   10, 'strongSwan-5-1-1'
+);
+
+INSERT INTO tags (
+  regid, unique_sw_id
+) VALUES (
+  10, 'strongSwan-5-1-2'
 );
 

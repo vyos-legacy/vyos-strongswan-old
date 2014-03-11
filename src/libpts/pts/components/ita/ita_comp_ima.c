@@ -683,7 +683,7 @@ METHOD(pts_component_t, verify, status_t,
 					status = this->pts_db->check_comp_measurement(this->pts_db,
 										measurement, this->bios_cid, this->kid,
 										++this->seq_no,	pcr, algo);
-					if (status != SUCCESS)
+					if (status == FAILED)
 					{
 						return status;
 					}
@@ -803,7 +803,7 @@ METHOD(pts_component_t, verify, status_t,
 		}
 		if (pcrs->set(pcrs, pcr, pcr_after))
 		{
-			return SUCCESS;
+			return status;
 		}
 	}
 	else
@@ -811,7 +811,7 @@ METHOD(pts_component_t, verify, status_t,
 		pcr_after = pcrs->extend(pcrs, pcr, measurement);
 		if (pcr_after.ptr)
 		{
-			return SUCCESS;
+			return status;
 		}
 	}
 	return FAILED;
@@ -951,7 +951,7 @@ pts_component_t *pts_ita_comp_ima_create(u_int32_t depth,
 		.bios_list = linked_list_create(),
 		.ima_list = linked_list_create(),
 		.pcr_info = lib->settings->get_bool(lib->settings,
-						"libimcv.plugins.imc-attestation.pcr_info", TRUE),
+						"%s.plugins.imc-attestation.pcr_info", TRUE, lib->ns),
 		.ref = 1,
 	);
 

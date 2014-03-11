@@ -339,10 +339,8 @@ METHOD(task_manager_t, flush_queue, void,
 	}
 }
 
-/**
- * flush all tasks in the task manager
- */
-static void flush(private_task_manager_t *this)
+METHOD(task_manager_t, flush, void,
+	private_task_manager_t *this)
 {
 	flush_queue(this, TASK_QUEUE_QUEUED);
 	flush_queue(this, TASK_QUEUE_PASSIVE);
@@ -1581,7 +1579,7 @@ METHOD(task_manager_t, process_message, status_t,
 			lib->scheduler->schedule_job(lib->scheduler, job,
 					lib->settings->get_int(lib->settings,
 							"%s.half_open_timeout", HALF_OPEN_IKE_SA_TIMEOUT,
-							charon->name));
+							lib->ns));
 		}
 		this->ike_sa->update_hosts(this->ike_sa, me, other, TRUE);
 		charon->bus->message(charon->bus, msg, TRUE, TRUE);
@@ -2070,6 +2068,7 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 				.adopt_child_tasks = _adopt_child_tasks,
 				.busy = _busy,
 				.create_task_enumerator = _create_task_enumerator,
+				.flush = _flush,
 				.flush_queue = _flush_queue,
 				.destroy = _destroy,
 			},
@@ -2083,9 +2082,9 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 		.frag = {
 			.exchange = ID_PROT,
 			.max_packet = lib->settings->get_int(lib->settings,
-					"%s.max_packet", MAX_PACKET, charon->name),
+						"%s.max_packet", MAX_PACKET, lib->ns),
 			.size = lib->settings->get_int(lib->settings,
-					"%s.fragment_size", MAX_FRAGMENT_SIZE, charon->name),
+						"%s.fragment_size", MAX_FRAGMENT_SIZE, lib->ns),
 		},
 		.ike_sa = ike_sa,
 		.rng = lib->crypto->create_rng(lib->crypto, RNG_WEAK),
@@ -2093,11 +2092,11 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 		.active_tasks = linked_list_create(),
 		.passive_tasks = linked_list_create(),
 		.retransmit_tries = lib->settings->get_int(lib->settings,
-					"%s.retransmit_tries", RETRANSMIT_TRIES, charon->name),
+						"%s.retransmit_tries", RETRANSMIT_TRIES, lib->ns),
 		.retransmit_timeout = lib->settings->get_double(lib->settings,
-					"%s.retransmit_timeout", RETRANSMIT_TIMEOUT, charon->name),
+						"%s.retransmit_timeout", RETRANSMIT_TIMEOUT, lib->ns),
 		.retransmit_base = lib->settings->get_double(lib->settings,
-					"%s.retransmit_base", RETRANSMIT_BASE, charon->name),
+						"%s.retransmit_base", RETRANSMIT_BASE, lib->ns),
 	);
 
 	if (!this->rng)

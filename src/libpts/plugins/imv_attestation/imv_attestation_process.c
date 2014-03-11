@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011-2013 Sansar Choinyambuu, Andreas Steffen
+ * Copyright (C) 2011-2012 Sansar Choinyambuu
+ * Copyright (C) 2011-2014 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -12,6 +13,9 @@
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  */
+
+#define _GNU_SOURCE /* for stdndup() */
+#include <string.h>
 
 #include "imv_attestation_process.h"
 
@@ -92,7 +96,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 
 			/* check compliance of responder nonce length */
 			min_nonce_len = lib->settings->get_int(lib->settings,
-						"libimcv.plugins.imv-attestation.min_nonce_len", 0);
+						"%s.plugins.imv-attestation.min_nonce_len", 0, lib->ns);
 			nonce_len = responder_nonce.len;
 			if (nonce_len < PTS_MIN_NONCE_LEN ||
 			   (min_nonce_len > 0 && nonce_len < min_nonce_len))
@@ -162,7 +166,9 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			if (!aik)
 			{
 				DBG1(DBG_IMV, "AIK unavailable");
-				return FALSE;
+				attestation_state->set_measurement_error(attestation_state,
+									IMV_ATTESTATION_ERROR_NO_TRUSTED_AIK);
+				break;
 			}
 			if (aik->get_type(aik) == CERT_X509)
 			{
@@ -186,7 +192,9 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 							   trusted ? "" : "not ");
 				if (!trusted)
 				{
-					return FALSE;
+					attestation_state->set_measurement_error(attestation_state,
+										IMV_ATTESTATION_ERROR_NO_TRUSTED_AIK);
+					break;
 				}
 			}
 			pts->set_aik(pts, aik);
@@ -242,7 +250,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 				}
 				type =    found->get_type(found);
 				arg_int = found->get_arg_int(found);
- 
+
 				switch (type)
 				{
 					default:
@@ -295,7 +303,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 						e = measurements->create_enumerator(measurements);
 						while (e->enumerate(e, &filename, &measurement))
 						{
-							if (pts_db->add_file_measurement(pts_db, 
+							if (pts_db->add_file_measurement(pts_db,
 									platform_info, algo, measurement, filename,
 									is_dir, arg_int) != SUCCESS)
 							{
@@ -366,6 +374,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			pts_comp_evidence_t *evidence;
 			pts_component_t *comp;
 			u_int32_t depth;
+			status_t status;
 
 			attr_cast = (tcg_pts_attr_simple_comp_evid_t*)attr;
 			evidence = attr_cast->get_comp_evidence(attr_cast);
@@ -377,12 +386,9 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 				DBG1(DBG_IMV, "  no entry found for component evidence request");
 				break;
 			}
-			if (comp->verify(comp, name->get_qualifier(name), pts,
-							 evidence) != SUCCESS)
+			status = comp->verify(comp, name->get_qualifier(name), pts, evidence);
+			if (status == VERIFY_ERROR || status == FAILED)
 			{
-				state->update_recommendation(state,
-							TNC_IMV_ACTION_RECOMMENDATION_ISOLATE,
-							TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR);
 				attestation_state->set_measurement_error(attestation_state,
 									IMV_ATTESTATION_ERROR_COMP_EVID_FAIL);
 				name->log(name, "  measurement mismatch for ");
@@ -396,6 +402,9 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			pts_meas_algorithms_t comp_hash_algorithm;
 			chunk_t pcr_comp, tpm_quote_sig, evid_sig;
 			chunk_t pcr_composite, quote_info;
+			imv_session_t *session;
+			imv_workitem_t *workitem;
+			enumerator_t *enumerator;
 			bool use_quote2, use_ver_info;
 
 			attr_cast = (tcg_pts_attr_simple_evid_final_t*)attr;
@@ -420,9 +429,6 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 				{
 					DBG1(DBG_IMV, "received PCR Composite does not match "
 								  "constructed one");
-					state->update_recommendation(state,
-								TNC_IMV_ACTION_RECOMMENDATION_ISOLATE,
-								TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR);
 					attestation_state->set_measurement_error(attestation_state,
 										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					goto quote_error;
@@ -431,9 +437,6 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 
 				if (!pts->verify_quote_signature(pts, quote_info, tpm_quote_sig))
 				{
-					state->update_recommendation(state,
-								TNC_IMV_ACTION_RECOMMENDATION_ISOLATE,
-								TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR);
 					attestation_state->set_measurement_error(attestation_state,
 										IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL);
 					goto quote_error;
@@ -449,6 +452,52 @@ quote_error:
 				 * if all expected component measurements were received
 				 */
 				attestation_state->finalize_components(attestation_state);
+
+				session = state->get_session(state);
+				enumerator = session->create_workitem_enumerator(session);
+				while (enumerator->enumerate(enumerator, &workitem))
+				{
+					if (workitem->get_type(workitem) == IMV_WORKITEM_TPM_ATTEST)
+					{
+						TNC_IMV_Action_Recommendation rec;
+						TNC_IMV_Evaluation_Result eval;
+						char *result_str;
+						u_int32_t error;
+
+						error = attestation_state->get_measurement_error(
+														attestation_state);
+						if (error & (IMV_ATTESTATION_ERROR_COMP_EVID_FAIL |
+									 IMV_ATTESTATION_ERROR_COMP_EVID_PEND |
+									 IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL))
+						{
+							imv_reason_string_t *reason_string;
+							chunk_t result;
+
+							reason_string = imv_reason_string_create("en", ", ");
+							attestation_state->add_comp_evid_reasons(
+											attestation_state, reason_string);
+							result = reason_string->get_encoding(reason_string);
+							result_str = strndup(result.ptr, result.len);
+							reason_string->destroy(reason_string);
+							eval = TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR;
+						}
+						else
+						{
+							result_str = strdup("attestation successful");
+							eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
+						}
+						session->remove_workitem(session, enumerator);
+						rec = workitem->set_result(workitem, result_str, eval);
+						state->update_recommendation(state, rec, eval);
+						imcv_db->finalize_workitem(imcv_db, workitem);
+						workitem->destroy(workitem);
+						free(result_str);
+						attestation_state->set_handshake_state(attestation_state,
+													IMV_ATTESTATION_STATE_END);
+						break;
+					}
+				}
+				enumerator->destroy(enumerator);
 			}
 
 			if (attr_cast->get_evid_sig(attr_cast, &evid_sig))

@@ -1203,6 +1203,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	struct nlmsghdr *hdr;
 	struct xfrm_usersa_info *sa;
 	u_int16_t icv_size = 64;
+	ipsec_mode_t original_mode = mode;
 	status_t status = FAILED;
 
 	/* if IPComp is used, we install an additional IPComp SA. if the cpi is 0
@@ -1213,7 +1214,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		add_sa(this, src, dst, htonl(ntohs(cpi)), IPPROTO_COMP, reqid, mark,
 			   tfc, &lft, ENCR_UNDEFINED, chunk_empty, AUTH_UNDEFINED,
 			   chunk_empty, mode, ipcomp, 0, initiator, FALSE, FALSE, inbound,
-			   NULL, NULL);
+			   src_ts, dst_ts);
 		ipcomp = IPCOMP_NONE;
 		/* use transport mode ESP SA, IPComp uses tunnel mode */
 		mode = MODE_TRANSPORT;
@@ -1243,7 +1244,12 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 			break;
 		case MODE_BEET:
 		case MODE_TRANSPORT:
-			if(src_ts && dst_ts)
+			if (original_mode == MODE_TUNNEL)
+			{	/* don't install selectors for switched SAs.  because only one
+				 * selector can be installed other traffic would get dropped */
+				break;
+			}
+			if (src_ts && dst_ts)
 			{
 				sa->sel = ts2selector(src_ts, dst_ts);
 				/* don't install proto/port on SA. This would break
@@ -1459,8 +1465,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		goto failed;
 	}
 
-	if (tfc)
-	{
+	if (tfc && protocol == IPPROTO_ESP && mode == MODE_TUNNEL)
+	{	/* the kernel supports TFC padding only for tunnel mode ESP SAs */
 		u_int32_t *tfcpad;
 
 		tfcpad = netlink_reserve(hdr, sizeof(request), XFRMA_TFCPAD,
@@ -2679,15 +2685,15 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.policy_history = TRUE,
 		.install_routes = lib->settings->get_bool(lib->settings,
-					"%s.install_routes", TRUE, hydra->daemon),
+							"%s.install_routes", TRUE, lib->ns),
 		.replay_window = lib->settings->get_int(lib->settings,
-					"%s.replay_window", DEFAULT_REPLAY_WINDOW, hydra->daemon),
+							"%s.replay_window", DEFAULT_REPLAY_WINDOW, lib->ns),
 	);
 
 	this->replay_bmp = (this->replay_window + sizeof(u_int32_t) * 8 - 1) /
 													(sizeof(u_int32_t) * 8);
 
-	if (streq(hydra->daemon, "starter"))
+	if (streq(lib->ns, "starter"))
 	{	/* starter has no threads, so we do not register for kernel events */
 		register_for_events = FALSE;
 	}
@@ -2697,7 +2703,7 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 	{
 		fprintf(f, "%u", lib->settings->get_int(lib->settings,
 								"%s.plugins.kernel-netlink.xfrm_acq_expires",
-								DEFAULT_ACQUIRE_LIFETIME, hydra->daemon));
+								DEFAULT_ACQUIRE_LIFETIME, lib->ns));
 		fclose(f);
 	}
 

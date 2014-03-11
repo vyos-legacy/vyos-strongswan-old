@@ -25,6 +25,7 @@
 #define IMV_ATTESTATION_STATE_H_
 
 #include <imv/imv_state.h>
+#include <imv/imv_reason_string.h>
 #include <pts/pts.h>
 #include <pts/pts_database.h>
 #include <pts/components/pts_component.h>
@@ -64,9 +65,10 @@ enum imv_attestation_handshake_state_t {
 enum imv_meas_error_t {
 	IMV_ATTESTATION_ERROR_FILE_MEAS_FAIL =  1,
 	IMV_ATTESTATION_ERROR_FILE_MEAS_PEND =  2,
-	IMV_ATTESTATION_ERROR_COMP_EVID_FAIL =  4,
-	IMV_ATTESTATION_ERROR_COMP_EVID_PEND =  8,
-	IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL = 16
+	IMV_ATTESTATION_ERROR_NO_TRUSTED_AIK =  4,
+	IMV_ATTESTATION_ERROR_COMP_EVID_FAIL =  8,
+	IMV_ATTESTATION_ERROR_COMP_EVID_PEND = 16,
+	IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL = 32
 };
 
 /**
@@ -116,6 +118,13 @@ struct imv_attestation_state_t {
 										 pts_database_t *pts_db);
 
 	/**
+	 * Enumerate over all Functional Components
+	 *
+	 * @return					Functional Component enumerator
+	 */
+	enumerator_t* (*create_component_enumerator)(imv_attestation_state_t *this);
+
+	/**
 	 * Get a Functional Component with a given name
 	 *
 	 * @param name				Name of the requested Functional Component
@@ -129,11 +138,6 @@ struct imv_attestation_state_t {
 	 * and to check if all expected measurements were received
 	 */
 	void (*finalize_components)(imv_attestation_state_t *this);
-
-	/**
-	 * Have the Functional Component measurements been finalized?
-	 */
-	bool (*components_finalized)(imv_attestation_state_t *this);
 
 	/**
 	 * Indicates the types of measurement errors that occurred
@@ -150,6 +154,21 @@ struct imv_attestation_state_t {
 	void (*set_measurement_error)(imv_attestation_state_t *this,
 								  u_int32_t error);
 
+	/**
+	 * Returns a concatenation of File Measurement reason strings
+	 *
+	 * @param reason_string		Concatenated reason strings
+	 */
+	void (*add_file_meas_reasons)(imv_attestation_state_t *this,
+								  imv_reason_string_t *reason_string);
+
+	/**
+	 * Returns a concatenation of Component Evidence reason strings
+	 *
+	 * @param reason_string		Concatenated reason strings
+	 */
+	void (*add_comp_evid_reasons)(imv_attestation_state_t *this,
+								  imv_reason_string_t *reason_string);
 };
 
 /**

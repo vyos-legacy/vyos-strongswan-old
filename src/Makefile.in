@@ -101,11 +101,12 @@ host_triplet = @host@
 @USE_FAST_TRUE@am__append_22 = libfast
 @USE_MANAGER_TRUE@am__append_23 = manager
 @USE_MEDSRV_TRUE@am__append_24 = medsrv
-@USE_INTEGRITY_TEST_TRUE@am__append_25 = checksum
-@USE_ATTR_SQL_TRUE@am__append_26 = pool
+@USE_ATTR_SQL_TRUE@am__append_25 = pool
+@USE_ATTR_SQL_FALSE@@USE_SQL_TRUE@am__append_26 = pool
 @USE_TKM_TRUE@am__append_27 = charon-tkm
 @USE_CMD_TRUE@am__append_28 = charon-cmd
 @USE_LIBPTTLS_TRUE@am__append_29 = pt-tls-client
+@USE_INTEGRITY_TEST_TRUE@am__append_30 = checksum
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -183,8 +184,8 @@ DIST_SUBDIRS = . include libstrongswan libhydra libipsec libsimaka \
 	libtls libradius libtncif libtnccs libpttls libimcv libpts \
 	libcharon starter ipsec _copyright charon charon-nm stroke \
 	_updown _updown_espmark openac scepclient pki conftest dumm \
-	libfast manager medsrv checksum pool charon-tkm charon-cmd \
-	pt-tls-client
+	libfast manager medsrv pool charon-tkm charon-cmd \
+	pt-tls-client checksum
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -225,8 +226,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -294,6 +293,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -382,12 +386,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -402,6 +410,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -421,8 +430,7 @@ SUBDIRS = . include $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_19) $(am__append_20) $(am__append_21) \
 	$(am__append_22) $(am__append_23) $(am__append_24) \
 	$(am__append_25) $(am__append_26) $(am__append_27) \
-	$(am__append_28) $(am__append_29)
-EXTRA_DIST = strongswan.conf
+	$(am__append_28) $(am__append_29) $(am__append_30)
 all: all-recursive
 
 .SUFFIXES:
@@ -678,7 +686,7 @@ install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
-install-exec-am: install-exec-local
+install-exec-am:
 
 install-html: install-html-recursive
 
@@ -725,19 +733,14 @@ uninstall-am:
 	ctags-am distclean distclean-generic distclean-libtool \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-exec-local \
-	install-html install-html-am install-info install-info-am \
-	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip installcheck installcheck-am \
-	installdirs installdirs-am maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
+	ps ps-am tags tags-am uninstall uninstall-am
 
-
-install-exec-local :
-		test -e "$(DESTDIR)${sysconfdir}" || $(INSTALL) -d "$(DESTDIR)$(sysconfdir)"
-		test -e "$(DESTDIR)$(sysconfdir)/strongswan.conf" || $(INSTALL) -m 640 $(srcdir)/strongswan.conf $(DESTDIR)$(sysconfdir)/strongswan.conf || true
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

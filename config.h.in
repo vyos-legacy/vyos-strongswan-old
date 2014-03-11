@@ -124,6 +124,12 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
+/* Define to 1 if you have the `memrchr' function. */
+#undef HAVE_MEMRCHR
+
+/* Define to 1 if you have the `mmap' function. */
+#undef HAVE_MMAP
+
 /* have mpz_mown_sec() */
 #undef HAVE_MPZ_POWM_SEC
 
@@ -168,6 +174,15 @@
 
 /* Define to 1 if you have the `pthread_spin_init' function. */
 #undef HAVE_PTHREAD_SPIN_INIT
+
+/* have qsort_r() */
+#undef HAVE_QSORT_R
+
+/* have BSD-style qsort_r() */
+#undef HAVE_QSORT_R_BSD
+
+/* have GNU-style qsort_r() */
+#undef HAVE_QSORT_R_GNU
 
 /* Define to 1 if you have the `rb_errinfo' function. */
 #undef HAVE_RB_ERRINFO
@@ -293,7 +308,7 @@
 /* support for IKEv2 protocol */
 #undef USE_IKEV2
 
-/* use vstring library for printf hooks */
+/* use Vstr string library for printf hooks */
 #undef USE_VSTR
 
 /* Version number of package */

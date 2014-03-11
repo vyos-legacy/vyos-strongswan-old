@@ -687,6 +687,14 @@ METHOD(ike_sa_t, set_state, void,
 					DBG1(DBG_IKE, "maximum IKE_SA lifetime %ds", t);
 				}
 				trigger_dpd = this->peer_cfg->get_dpd(this->peer_cfg);
+				if (trigger_dpd)
+				{
+					/* Some peers delay the DELETE after rekeying an IKE_SA.
+					 * If this delay is longer than our DPD delay, we would
+					 * send a DPD request here. The IKE_SA is not ready to do
+					 * so yet, so prevent that. */
+					this->stats[STAT_INBOUND] = this->stats[STAT_ESTABLISHED];
+				}
 			}
 			break;
 		}
@@ -1162,26 +1170,13 @@ METHOD(ike_sa_t, initiate, status_t,
 #endif /* ME */
 			)
 		{
-			bool is_anyaddr;
-			host_t *host;
 			char *addr;
 
-			addr = this->ike_cfg->get_my_addr(this->ike_cfg);
-			host = this->ike_cfg->resolve_other(this->ike_cfg, AF_UNSPEC);
-			is_anyaddr = host && host->is_anyaddr(host);
-			DESTROY_IF(host);
-
-			if (is_anyaddr || !this->retry_initiate_interval)
+			addr = this->ike_cfg->get_other_addr(this->ike_cfg);
+			if (!this->retry_initiate_interval)
 			{
-				if (is_anyaddr)
-				{
-					DBG1(DBG_IKE, "unable to initiate to %s", addr);
-				}
-				else
-				{
-					DBG1(DBG_IKE, "unable to resolve %s, initiate aborted",
-						 addr);
-				}
+				DBG1(DBG_IKE, "unable to resolve %s, initiate aborted",
+					 addr);
 				DESTROY_IF(child_cfg);
 				charon->bus->alert(charon->bus, ALERT_PEER_ADDR_FAILED);
 				return DESTROY_ME;
@@ -2130,7 +2125,10 @@ METHOD(ike_sa_t, destroy, void,
 	charon->bus->set_sa(charon->bus, &this->public);
 
 	set_state(this, IKE_DESTROYING);
-	DESTROY_IF(this->task_manager);
+	if (this->task_manager)
+	{
+		this->task_manager->flush(this->task_manager);
+	}
 
 	/* remove attributes first, as we pass the IKE_SA to the handler */
 	while (array_remove(this->attributes, ARRAY_TAIL, &entry))
@@ -2174,6 +2172,7 @@ METHOD(ike_sa_t, destroy, void,
 	charon->bus->set_sa(charon->bus, NULL);
 
 	array_destroy(this->child_sas);
+	DESTROY_IF(this->task_manager);
 	DESTROY_IF(this->keymat);
 	array_destroy(this->attributes);
 	array_destroy(this->my_vips);
@@ -2330,11 +2329,11 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 		.attributes = array_create(sizeof(attribute_entry_t), 0),
 		.unique_id = ref_get(&unique_id),
 		.keepalive_interval = lib->settings->get_time(lib->settings,
-							"%s.keep_alive", KEEPALIVE_INTERVAL, charon->name),
+								"%s.keep_alive", KEEPALIVE_INTERVAL, lib->ns),
 		.retry_initiate_interval = lib->settings->get_time(lib->settings,
-							"%s.retry_initiate_interval", 0, charon->name),
+								"%s.retry_initiate_interval", 0, lib->ns),
 		.flush_auth_cfg = lib->settings->get_bool(lib->settings,
-							"%s.flush_auth_cfg", FALSE, charon->name),
+								"%s.flush_auth_cfg", FALSE, lib->ns),
 	);
 
 	if (version == IKEV2)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Tobias Brunner
+ * Copyright (C) 2011-2013 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -99,6 +99,11 @@ struct private_stroke_socket_t {
 	 * Counter values for IKE events
 	 */
 	stroke_counter_t *counter;
+
+	/**
+	 * TRUE if log level changes are not allowed
+	 */
+	bool prevent_loglevel_changes;
 };
 
 /**
@@ -490,6 +495,25 @@ static void stroke_leases(private_stroke_socket_t *this,
 }
 
 /**
+ * Callback function for usage report
+ */
+static void report_usage(FILE *out, int count, size_t bytes,
+						 backtrace_t *bt, bool detailed)
+{
+	fprintf(out, "%zu bytes total, %d allocations, %zu bytes average:\n",
+			bytes, count, bytes / count);
+	bt->log(bt, out, detailed);
+}
+
+/**
+ * Callback function for memusage summary
+ */
+static void sum_usage(FILE *out, int count, size_t bytes, int whitelisted)
+{
+	fprintf(out, "Total memory usage: %zu\n", bytes);
+}
+
+/**
  * Show memory usage
  */
 static void stroke_memusage(private_stroke_socket_t *this,
@@ -497,7 +521,9 @@ static void stroke_memusage(private_stroke_socket_t *this,
 {
 	if (lib->leak_detective)
 	{
-		lib->leak_detective->usage(lib->leak_detective, out);
+		lib->leak_detective->usage(lib->leak_detective,
+								   (leak_detective_report_cb_t)report_usage,
+								   (leak_detective_summary_cb_t)sum_usage, out);
 	}
 }
 
@@ -546,6 +572,12 @@ static void stroke_loglevel(private_stroke_socket_t *this,
 	DBG1(DBG_CFG, "received stroke: loglevel %d for %s",
 		 msg->loglevel.level, msg->loglevel.type);
 
+	if (this->prevent_loglevel_changes)
+	{
+		DBG1(DBG_CFG, "prevented log level change");
+		fprintf(out, "command not allowed!\n");
+		return;
+	}
 	if (strcaseeq(msg->loglevel.type, "any"))
 	{
 		group = DBG_ANY;
@@ -555,7 +587,7 @@ static void stroke_loglevel(private_stroke_socket_t *this,
 		group = enum_from_name(debug_names, msg->loglevel.type);
 		if ((int)group < 0)
 		{
-			fprintf(out, "invalid type (%s)!\n", msg->loglevel.type);
+			fprintf(out, "unknown type '%s'!\n", msg->loglevel.type);
 			return;
 		}
 	}
@@ -591,8 +623,8 @@ static bool on_accept(private_stroke_socket_t *this, stream_t *stream)
 		return FALSE;
 	}
 
-	/* read message */
-	msg = malloc(len);
+	/* read message (we need an additional byte to terminate the buffer) */
+	msg = malloc(len + 1);
 	msg->length = len;
 	if (!stream->read_all(stream, (char*)msg + sizeof(len), len - sizeof(len)))
 	{
@@ -603,6 +635,9 @@ static bool on_accept(private_stroke_socket_t *this, stream_t *stream)
 		free(msg);
 		return FALSE;
 	}
+	/* make sure even incorrectly unterminated strings don't extend over the
+	 * message boundaries */
+	((char*)msg)[len] = '\0';
 
 	DBG3(DBG_CFG, "stroke message %b", (void*)msg, len);
 
@@ -727,6 +762,8 @@ stroke_socket_t *stroke_socket_create()
 		.public = {
 			.destroy = _destroy,
 		},
+		.prevent_loglevel_changes = lib->settings->get_bool(lib->settings,
+				"%s.plugins.stroke.prevent_loglevel_changes", FALSE, lib->ns),
 	);
 
 	this->cred = stroke_cred_create();
@@ -746,10 +783,10 @@ stroke_socket_t *stroke_socket_create()
 	charon->bus->add_listener(charon->bus, &this->counter->listener);
 
 	max_concurrent = lib->settings->get_int(lib->settings,
-			"%s.plugins.stroke.max_concurrent", MAX_CONCURRENT_DEFAULT,
-			charon->name);
+				"%s.plugins.stroke.max_concurrent", MAX_CONCURRENT_DEFAULT,
+				lib->ns);
 	uri = lib->settings->get_str(lib->settings,
-			"%s.plugins.stroke.socket", "unix://" STROKE_SOCKET, charon->name);
+				"%s.plugins.stroke.socket", "unix://" STROKE_SOCKET, lib->ns);
 	this->service = lib->streams->create_service(lib->streams, uri, 10);
 	if (!this->service)
 	{

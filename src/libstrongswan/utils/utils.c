@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2014 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -14,8 +14,7 @@
  * for more details.
  */
 
-#include "utils.h"
-
+#define _GNU_SOURCE /* for memrchr */
 #include <sys/stat.h>
 #include <string.h>
 #include <stdio.h>
@@ -26,6 +25,8 @@
 #include <dirent.h>
 #include <time.h>
 #include <pthread.h>
+
+#include "utils.h"
 
 #include "collections/enumerator.h"
 #include "utils/debug.h"
@@ -102,7 +103,7 @@ void memwipe_noinline(void *ptr, size_t n)
  */
 void *memstr(const void *haystack, const char *needle, size_t n)
 {
-	unsigned const char *pos = haystack;
+	const u_char *pos = haystack;
 	size_t l;
 
 	if (!haystack || !needle || (l = strlen(needle)) == 0)
@@ -112,6 +113,28 @@ void *memstr(const void *haystack, const char *needle, size_t n)
 	for (; n >= l; ++pos, --n)
 	{
 		if (memeq(pos, needle, l))
+		{
+			return (void*)pos;
+		}
+	}
+	return NULL;
+}
+
+/**
+ * Described in header.
+ */
+void *utils_memrchr(const void *s, int c, size_t n)
+{
+	const u_char *pos;
+
+	if (!s || !n)
+	{
+		return NULL;
+	}
+
+	for (pos = s + n - 1; pos >= (u_char*)s; pos--)
+	{
+		if (*pos == (u_char)c)
 		{
 			return (void*)pos;
 		}
@@ -139,6 +162,115 @@ char* translate(char *str, const char *from, const char *to)
 		pos++;
 	}
 	return str;
+}
+
+/**
+ * Described in header.
+ */
+char* strreplace(const char *str, const char *search, const char *replace)
+{
+	size_t len, slen, rlen, count = 0;
+	char *res, *pos, *found, *dst;
+
+	if (!str || !*str || !search || !*search || !replace)
+	{
+		return (char*)str;
+	}
+	slen = strlen(search);
+	rlen = strlen(replace);
+	if (slen != rlen)
+	{
+		for (pos = (char*)str; (pos = strstr(pos, search)); pos += slen)
+		{
+			found = pos;
+			count++;
+		}
+		if (!count)
+		{
+			return (char*)str;
+		}
+		len = (found - str) + strlen(found) + count * (rlen - slen);
+	}
+	else
+	{
+		len = strlen(str);
+	}
+	found = strstr(str, search);
+	if (!found)
+	{
+		return (char*)str;
+	}
+	dst = res = malloc(len + 1);
+	pos = (char*)str;
+	do
+	{
+		len = found - pos;
+		memcpy(dst, pos, len);
+		dst += len;
+		memcpy(dst, replace, rlen);
+		dst += rlen;
+		pos = found + slen;
+	}
+	while ((found = strstr(pos, search)));
+	strcpy(dst, pos);
+	return res;
+}
+
+/**
+ * Described in header.
+ */
+char* path_dirname(const char *path)
+{
+	char *pos;
+
+	pos = path ? strrchr(path, '/') : NULL;
+
+	if (pos && !pos[1])
+	{	/* if path ends with slashes we have to look beyond them */
+		while (pos > path && *pos == '/')
+		{	/* skip trailing slashes */
+			pos--;
+		}
+		pos = memrchr(path, '/', pos - path + 1);
+	}
+	if (!pos)
+	{
+		return strdup(".");
+	}
+	while (pos > path && *pos == '/')
+	{	/* skip superfluous slashes */
+		pos--;
+	}
+	return strndup(path, pos - path + 1);
+}
+
+/**
+ * Described in header.
+ */
+char* path_basename(const char *path)
+{
+	char *pos, *trail = NULL;
+
+	if (!path || !*path)
+	{
+		return strdup(".");
+	}
+	pos = strrchr(path, '/');
+	if (pos && !pos[1])
+	{	/* if path ends with slashes we have to look beyond them */
+		while (pos > path && *pos == '/')
+		{	/* skip trailing slashes */
+			pos--;
+		}
+		if (pos == path && *pos == '/')
+		{	/* contains only slashes */
+			return strdup("/");
+		}
+		trail = pos + 1;
+		pos = memrchr(path, '/', trail - path);
+	}
+	pos = pos ? pos + 1 : (char*)path;
+	return trail ? strndup(pos, trail - pos) : strdup(pos);
 }
 
 /**
@@ -250,84 +382,6 @@ char* tty_escape_get(int fd, tty_escape_t escape)
 	}
 	return "";
 }
-
-/**
- * The size of the thread-specific error buffer
- */
-#define STRERROR_BUF_LEN 256
-
-/**
- * Key to store thread-specific error buffer
- */
-static pthread_key_t strerror_buf_key;
-
-/**
- * Only initialize the key above once
- */
-static pthread_once_t strerror_buf_key_once = PTHREAD_ONCE_INIT;
-
-/**
- * Create the key used for the thread-specific error buffer
- */
-static void create_strerror_buf_key()
-{
-	pthread_key_create(&strerror_buf_key, free);
-}
-
-/**
- * Retrieve the error buffer assigned to the current thread (or create it)
- */
-static inline char *get_strerror_buf()
-{
-	char *buf;
-
-	pthread_once(&strerror_buf_key_once, create_strerror_buf_key);
-	buf = pthread_getspecific(strerror_buf_key);
-	if (!buf)
-	{
-		buf = malloc(STRERROR_BUF_LEN);
-		pthread_setspecific(strerror_buf_key, buf);
-	}
-	return buf;
-}
-
-#ifdef HAVE_STRERROR_R
-/*
- * Described in header.
- */
-const char *safe_strerror(int errnum)
-{
-	char *buf = get_strerror_buf(), *msg;
-
-#ifdef STRERROR_R_CHAR_P
-	/* char* version which may or may not return the original buffer */
-	msg = strerror_r(errnum, buf, STRERROR_BUF_LEN);
-#else
-	/* int version returns 0 on success */
-	msg = strerror_r(errnum, buf, STRERROR_BUF_LEN) ? "Unknown error" : buf;
-#endif
-	return msg;
-}
-#else /* HAVE_STRERROR_R */
-/* we actually wan't to call strerror(3) below */
-#undef strerror
-/*
- * Described in header.
- */
-const char *safe_strerror(int errnum)
-{
-	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-	char *buf = get_strerror_buf();
-
-	/* use a mutex to ensure calling strerror(3) is thread-safe */
-	pthread_mutex_lock(&mutex);
-	strncpy(buf, strerror(errnum), STRERROR_BUF_LEN);
-	pthread_mutex_unlock(&mutex);
-	buf[STRERROR_BUF_LEN - 1] = '\0';
-	return buf;
-}
-#endif /* HAVE_STRERROR_R */
-
 
 #ifndef HAVE_CLOSEFROM
 /**
@@ -570,7 +624,7 @@ int time_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 	};
 	time_t *time = *((time_t**)(args[0]));
-	bool utc = *((bool*)(args[1]));;
+	bool utc = *((int*)(args[1]));
 	struct tm t;
 
 	if (*time == UNDEFINED_TIME)

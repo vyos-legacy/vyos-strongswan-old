@@ -16,6 +16,7 @@
 
 
 
+
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
@@ -89,7 +90,7 @@ ipsec_PROGRAMS = imv_policy_manager$(EXEEXT)
 @USE_IMV_OS_TRUE@am__append_6 = plugins/imv_os
 subdir = src/libimcv
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/depcomp
+	$(top_srcdir)/depcomp $(dist_templates_DATA)
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -135,7 +136,7 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(ipsecdir)" \
-	"$(DESTDIR)$(ipsecdir)"
+	"$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(templatesdir)"
 LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 libimcv_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
@@ -224,6 +225,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+DATA = $(dist_templates_DATA)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 am__recursive_targets = \
@@ -293,8 +295,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -362,6 +362,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -450,12 +455,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -470,6 +479,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -505,7 +515,6 @@ libimcv_la_SOURCES = \
 	imv/imv_remediation_string.h imv/imv_remediation_string.c \
 	imv/imv_session.h imv/imv_session.c \
 	imv/imv_workitem.h imv/imv_workitem.c \
-	imv/tables.sql imv/data.sql \
 	ietf/ietf_attr.h ietf/ietf_attr.c \
 	ietf/ietf_attr_assess_result.h ietf/ietf_attr_assess_result.c \
 	ietf/ietf_attr_attr_request.h ietf/ietf_attr_attr_request.c \
@@ -533,6 +542,8 @@ libimcv_la_SOURCES = \
 
 ipsec_SCRIPTS = imv/_imv_policy
 EXTRA_DIST = imv/_imv_policy
+templatesdir = $(pkgdatadir)/templates/database/imv
+dist_templates_DATA = imv/tables.sql imv/data.sql
 imv_policy_manager_SOURCES = \
 	imv/imv_policy_manager.c \
 	imv/imv_policy_manager_usage.h imv/imv_policy_manager_usage.c
@@ -891,6 +902,27 @@ clean-libtool:
 	-rm -rf ita/.libs ita/_libs
 	-rm -rf os_info/.libs os_info/_libs
 	-rm -rf pa_tnc/.libs pa_tnc/_libs
+install-dist_templatesDATA: $(dist_templates_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(dist_templates_DATA)'; test -n "$(templatesdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(templatesdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(templatesdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(templatesdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(templatesdir)" || exit $$?; \
+	done
+
+uninstall-dist_templatesDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(dist_templates_DATA)'; test -n "$(templatesdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(templatesdir)'; $(am__uninstall_files_from_dir)
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run 'make' without going through this Makefile.
@@ -1048,10 +1080,10 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-recursive
-all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS)
+all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(ipsecdir)"; do \
+	for dir in "$(DESTDIR)$(ipseclibdir)" "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(templatesdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -1119,8 +1151,8 @@ info: info-recursive
 
 info-am:
 
-install-data-am: install-ipsecPROGRAMS install-ipsecSCRIPTS \
-	install-ipseclibLTLIBRARIES
+install-data-am: install-dist_templatesDATA install-ipsecPROGRAMS \
+	install-ipsecSCRIPTS install-ipseclibLTLIBRARIES
 
 install-dvi: install-dvi-recursive
 
@@ -1166,8 +1198,8 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-ipsecPROGRAMS uninstall-ipsecSCRIPTS \
-	uninstall-ipseclibLTLIBRARIES
+uninstall-am: uninstall-dist_templatesDATA uninstall-ipsecPROGRAMS \
+	uninstall-ipsecSCRIPTS uninstall-ipseclibLTLIBRARIES
 
 .MAKE: $(am__recursive_targets) install-am install-strip
 
@@ -1177,17 +1209,18 @@ uninstall-am: uninstall-ipsecPROGRAMS uninstall-ipsecSCRIPTS \
 	ctags-am distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-ipsecPROGRAMS install-ipsecSCRIPTS \
+	install-data-am install-dist_templatesDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-ipsecPROGRAMS install-ipsecSCRIPTS \
 	install-ipseclibLTLIBRARIES install-man install-pdf \
 	install-pdf-am install-ps install-ps-am install-strip \
 	installcheck installcheck-am installdirs installdirs-am \
 	maintainer-clean maintainer-clean-generic mostlyclean \
 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
 	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
-	uninstall-ipsecPROGRAMS uninstall-ipsecSCRIPTS \
-	uninstall-ipseclibLTLIBRARIES
+	uninstall-dist_templatesDATA uninstall-ipsecPROGRAMS \
+	uninstall-ipsecSCRIPTS uninstall-ipseclibLTLIBRARIES
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

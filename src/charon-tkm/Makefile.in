@@ -131,8 +131,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -200,6 +198,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -288,12 +291,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -308,6 +315,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -318,26 +326,29 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-SRC = $(top_builddir)/src
-
-# includes relative to obj directory
+SRC = $(abs_top_srcdir)/src
+OBJ = $(abs_top_builddir)/src
 AM_CPPFLAGS = \
-	-include $(top_builddir)/config.h \
-	-I../$(SRC)/libstrongswan \
-	-I../$(SRC)/libhydra \
-	-I../$(SRC)/libcharon
+	-include $(abs_top_builddir)/config.h \
+	-I$(SRC)/libstrongswan \
+	-I$(SRC)/libhydra \
+	-I$(SRC)/libcharon
 
 LIBLD = \
-	-L$(SRC)/libstrongswan/.libs \
-	-L$(SRC)/libhydra/.libs \
-	-L$(SRC)/libcharon/.libs
+	-L$(OBJ)/libstrongswan/.libs \
+	-L$(OBJ)/libhydra/.libs \
+	-L$(OBJ)/libcharon/.libs
 
-LIBPT = $(SRC)/libstrongswan/.libs:$(SRC)/libhydra/.libs:$(SRC)/libcharon/.libs
+LIBPT = $(OBJ)/libstrongswan/.libs:$(OBJ)/libhydra/.libs:$(OBJ)/libcharon/.libs
 LIBFL = -lstrongswan -lhydra -lcharon
 BUILD_OPTS = \
-	-XOBJ_DIR=$(CURDIR)/obj \
+	-XOBJ_DIR=$(abs_builddir)/obj \
 	-cargs $(AM_CPPFLAGS) $(DEFS) \
 	-largs $(LIBLD) $(LIBFL)
+
+TEST_OPTS = \
+	-cargs -DBUILDDIR=\"${abs_top_builddir}\" \
+	-largs -L$(OBJ)/libstrongswan/tests/.libs -ltest
 
 
 # plugins to enable
@@ -543,12 +554,15 @@ build_charon: build_charon.gpr src/charon-tkm.c
 	@$(GPRBUILD) -p $< $(BUILD_OPTS)
 
 build_tests: build_tests.gpr
-	@$(GPRBUILD) -p $< $(BUILD_OPTS) -cargs @CHECK_CFLAGS@ -largs @CHECK_LIBS@
+	@$(GPRBUILD) -p $< $(BUILD_OPTS) $(TEST_OPTS)
 
-@UNITTESTS_TRUE@check: build_tests
-@UNITTESTS_TRUE@	@LD_LIBRARY_PATH=$(LIBPT) obj/test_runner
-@UNITTESTS_FALSE@check:
-@UNITTESTS_FALSE@	@echo "reconfigure with --enable-unit-tests"
+check-tkm: build_tests
+	@LD_LIBRARY_PATH=$(LIBPT) obj/tests
+
+check:
+	@echo "TKM tests are not run automatically because they have to be run as root" >&2
+	@echo "and require a properly configured TKM daemon to be running." >&2
+	@echo "They can be run from '$(abs_builddir)' with 'make check-tkm'" >&2
 
 install: build_charon
 	$(INSTALL) -m 755 obj/charon-tkm $(DESTDIR)$(ipsecdir)

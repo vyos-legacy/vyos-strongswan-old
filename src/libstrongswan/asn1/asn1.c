@@ -88,7 +88,7 @@ int asn1_known_oid(chunk_t object)
 			}
 		}
 	}
-	return -1;
+	return OID_UNKNOWN;
 }
 
 /*
@@ -129,7 +129,8 @@ chunk_t asn1_build_known_oid(int n)
 chunk_t asn1_oid_from_string(char *str)
 {
 	enumerator_t *enumerator;
-	u_char buf[64];
+	size_t buf_len = 64;
+	u_char buf[buf_len];
 	char *end;
 	int i = 0, pos = 0, shift;
 	u_int val, shifted_val, first = 0;
@@ -138,7 +139,7 @@ chunk_t asn1_oid_from_string(char *str)
 	while (enumerator->enumerate(enumerator, &str))
 	{
 		val = strtoul(str, &end, 10);
-		if (end == str || pos > countof(buf))
+		if (end == str || pos > buf_len-4)
 		{
 			pos = 0;
 			break;
@@ -175,8 +176,9 @@ chunk_t asn1_oid_from_string(char *str)
  */
 char *asn1_oid_to_string(chunk_t oid)
 {
-	char buf[64], *pos = buf;
-	int len;
+	size_t len = 64;
+	char buf[len], *pos = buf;
+	int written;
 	u_int val;
 
 	if (!oid.len)
@@ -184,13 +186,14 @@ char *asn1_oid_to_string(chunk_t oid)
 		return NULL;
 	}
 	val = oid.ptr[0] / 40;
-	len = snprintf(buf, sizeof(buf), "%u.%u", val, oid.ptr[0] - val * 40);
+	written = snprintf(buf, len, "%u.%u", val, oid.ptr[0] - val * 40);
 	oid = chunk_skip(oid, 1);
-	if (len < 0 || len >= sizeof(buf))
+	if (written < 0 || written >= len)
 	{
 		return NULL;
 	}
-	pos += len;
+	pos += written;
+	len -= written;
 	val = 0;
 
 	while (oid.len)
@@ -199,12 +202,13 @@ char *asn1_oid_to_string(chunk_t oid)
 
 		if (oid.ptr[0] < 128)
 		{
-			len = snprintf(pos, sizeof(buf) + buf - pos, ".%u", val);
-			if (len < 0 || len >= sizeof(buf) + buf - pos)
+			written = snprintf(pos, len, ".%u", val);
+			if (written < 0 || written >= len)
 			{
 				return NULL;
 			}
-			pos += len;
+			pos += written;
+			len -= written;
 			val = 0;
 		}
 		oid = chunk_skip(oid, 1);
@@ -296,7 +300,7 @@ int asn1_unwrap(chunk_t *blob, chunk_t *inner)
 	else
 	{	/* composite length, determine number of length octets */
 		len &= 0x7f;
-		if (len == 0 || len > sizeof(res.len))
+		if (len == 0 || len > blob->len || len > sizeof(res.len))
 		{
 			return ASN1_INVALID;
 		}
@@ -389,8 +393,8 @@ time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
 		tm_year += (tm_year < 50) ? 2000 : 1900;
 	}
 
-	/* prevent large 32 bit integer overflows */
-	if (sizeof(time_t) == 4 && tm_year > 2038)
+	/* prevent obvious 32 bit integer overflows */
+	if (sizeof(time_t) == 4 && (tm_year > 2038 || tm_year < 1901))
 	{
 		return TIME_32_BIT_SIGNED_MAX;
 	}
@@ -398,12 +402,23 @@ time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
 	/* representation of months as 0..11*/
 	if (tm_mon < 1 || tm_mon > 12)
 	{
-		return 0; /* error in month format */
+		return 0;
 	}
 	tm_mon--;
 
 	/* representation of days as 0..30 */
+	if (tm_day < 1 || tm_day > 31)
+	{	/* we don't actually validate the day in relation to tm_year/tm_mon */
+		return 0;
+	}
 	tm_day--;
+
+	if (tm_hour < 0 || tm_hour > 23 ||
+		tm_min < 0 || tm_min > 59 ||
+		tm_sec < 0 || tm_sec > 60 /* allow leap seconds */)
+	{
+		return 0;
+	}
 
 	/* number of leap years between last year and 1970? */
 	tm_leap_4 = (tm_year - 1) / 4;
@@ -420,8 +435,20 @@ time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
 	tm_days = 365 * (tm_year - 1970) + days[tm_mon] + tm_day + tm_leap;
 	tm_secs = 60 * (60 * (24 * tm_days + tm_hour) + tm_min) + tm_sec - tz_offset;
 
-	/* has a 32 bit signed integer overflow occurred? */
-	return (tm_secs < 0) ? TIME_32_BIT_SIGNED_MAX : tm_secs;
+	if (sizeof(time_t) == 4)
+	{	/* has a 32 bit signed integer overflow occurred? */
+		if (tm_year > 1970 && tm_secs < 0)
+		{	/* depending on the time zone, the first days in 1970 may result in
+			 * a negative value, but dates after 1970 never will */
+			return TIME_32_BIT_SIGNED_MAX;
+		}
+		if (tm_year < 1969 && tm_secs > 0)
+		{	/* similarly, tm_secs is not positive for dates before 1970, except
+			 * for the last days in 1969, depending on the time zone */
+			return TIME_32_BIT_SIGNED_MAX;
+		}
+	}
+	return tm_secs;
 }
 
 /**
@@ -537,7 +564,7 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
 
 	len = asn1_length(object);
 
-	if (len == ASN1_INVALID_LENGTH || object->len < len)
+	if (len == ASN1_INVALID_LENGTH)
 	{
 		DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",
 			 level, name);
@@ -675,7 +702,9 @@ bool asn1_is_printablestring(chunk_t str)
 	for (i = 0; i < str.len; i++)
 	{
 		if (strchr(printablestring_charset, str.ptr[i]) == NULL)
+		{
 			return FALSE;
+		}
 	}
 	return TRUE;
 }
@@ -781,10 +810,17 @@ chunk_t asn1_integer(const char *mode, chunk_t content)
 	chunk_t object;
 	size_t len;
 	u_char *pos;
+	bool move;
+
 
 	if (content.len == 0)
 	{	/* make sure 0 is encoded properly */
 		content = chunk_from_chars(0x00);
+		move = FALSE;
+	}
+	else
+	{
+		move = (*mode == 'm');
 	}
 
 	/* ASN.1 integers must be positive numbers in two's complement */
@@ -794,11 +830,9 @@ chunk_t asn1_integer(const char *mode, chunk_t content)
 	{
 		*pos++ = 0x00;
 	}
-	if (len)
-	{
-		memcpy(pos, content.ptr, content.len);
-	}
-	if (*mode == 'm')
+	memcpy(pos, content.ptr, content.len);
+
+	if (move)
 	{
 		free(content.ptr);
 	}

@@ -14,7 +14,6 @@
 
 @SET_MAKE@
 
-
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
@@ -79,7 +78,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = checksum_builder$(EXEEXT)
+EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @MONOLITHIC_FALSE@am__append_1 = -DS_PLUGINS=\""${s_plugins}\""
 @USE_LIBHYDRA_TRUE@am__append_2 = $(top_builddir)/src/libhydra/libhydra.la
 @USE_LIBHYDRA_TRUE@am__append_3 = $(DESTDIR)$(ipseclibdir)/libhydra.so
@@ -103,15 +102,14 @@ noinst_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_PTS_TRUE@am__append_21 = $(DESTDIR)$(ipseclibdir)/libpts.so
 @USE_CHARON_TRUE@am__append_22 = $(top_builddir)/src/libcharon/libcharon.la
 @USE_CHARON_TRUE@am__append_23 = $(DESTDIR)$(ipseclibdir)/libcharon.so
-@USE_CHARON_TRUE@am__append_24 = $(top_builddir)/src/charon/.libs/charon
+@USE_CHARON_TRUE@am__append_24 = $(DESTDIR)$(ipsecdir)/charon
 @MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_25 = -DC_PLUGINS=\""${c_plugins}\""
-@USE_CMD_TRUE@am__append_26 = $(top_builddir)/src/charon-cmd/.libs/charon-cmd
-@USE_TOOLS_TRUE@am__append_27 =  \
-@USE_TOOLS_TRUE@	$(top_builddir)/src/openac/.libs/openac \
-@USE_TOOLS_TRUE@	$(top_builddir)/src/pki/.libs/pki \
-@USE_TOOLS_TRUE@	$(top_builddir)/src/scepclient/.libs/scepclient
-@USE_ATTR_SQL_TRUE@am__append_28 = $(top_builddir)/src/pool/.libs/pool
-@USE_IMV_ATTESTATION_TRUE@am__append_29 = $(top_builddir)/src/libpts/plugins/imv_attestation/.libs/attest
+@USE_CMD_TRUE@am__append_26 = $(DESTDIR)$(sbindir)/charon-cmd
+@USE_TOOLS_TRUE@am__append_27 = $(DESTDIR)$(ipsecdir)/openac \
+@USE_TOOLS_TRUE@	$(DESTDIR)$(ipsecdir)/scepclient \
+@USE_TOOLS_TRUE@	$(DESTDIR)$(bindir)/pki
+@USE_ATTR_SQL_TRUE@am__append_28 = $(DESTDIR)$(ipsecdir)/pool
+@USE_IMV_ATTESTATION_TRUE@am__append_29 = $(DESTDIR)$(ipsecdir)/attest
 subdir = src/checksum
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -172,7 +170,6 @@ libchecksum_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) $(libchecksum_la_LDFLAGS) $(LDFLAGS) -o \
 	$@
-PROGRAMS = $(noinst_PROGRAMS)
 am_checksum_builder_OBJECTS = checksum_builder.$(OBJEXT)
 checksum_builder_OBJECTS = $(am_checksum_builder_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -181,6 +178,10 @@ checksum_builder_DEPENDENCIES =  \
 	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(am__DEPENDENCIES_1)
+checksum_builder_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(AM_CFLAGS) $(CFLAGS) $(checksum_builder_LDFLAGS) $(LDFLAGS) \
+	-o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -256,8 +257,6 @@ BTLIB = @BTLIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CHECK_CFLAGS = @CHECK_CFLAGS@
-CHECK_LIBS = @CHECK_LIBS@
 COVERAGE_CFLAGS = @COVERAGE_CFLAGS@
 COVERAGE_LDFLAGS = @COVERAGE_LDFLAGS@
 CPP = @CPP@
@@ -325,6 +324,11 @@ PKG_CONFIG = @PKG_CONFIG@
 PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
 PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PTHREADLIB = @PTHREADLIB@
+PYTHON = @PYTHON@
+PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
+PYTHON_PLATFORM = @PYTHON_PLATFORM@
+PYTHON_PREFIX = @PYTHON_PREFIX@
+PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -413,12 +417,16 @@ pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
 piddir = @piddir@
+pkgpyexecdir = @pkgpyexecdir@
+pkgpythondir = @pkgpythondir@
 pki_plugins = @pki_plugins@
 plugindir = @plugindir@
 pool_plugins = @pool_plugins@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+pyexecdir = @pyexecdir@
+pythondir = @pythondir@
 random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
@@ -433,6 +441,7 @@ soup_LIBS = @soup_LIBS@
 srcdir = @srcdir@
 starter_plugins = @starter_plugins@
 strongswan_conf = @strongswan_conf@
+strongswan_options = @strongswan_options@
 sysconfdir = @sysconfdir@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
@@ -456,7 +465,8 @@ checksum_builder_LDADD = \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(DLLIB)
 
-CLEANFILES = checksum.c
+checksum_builder_LDFLAGS = -rpath '$(DESTDIR)$(ipseclibdir)'
+CLEANFILES = checksum.c $(EXTRA_PROGRAMS)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libhydra -I$(top_srcdir)/src/libcharon \
 	-DPLUGINDIR=\"${DESTDIR}${plugindir}\" $(am__append_1) \
@@ -552,18 +562,9 @@ clean-ipseclibLTLIBRARIES:
 libchecksum.la: $(libchecksum_la_OBJECTS) $(libchecksum_la_DEPENDENCIES) $(EXTRA_libchecksum_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libchecksum_la_LINK)  $(libchecksum_la_OBJECTS) $(libchecksum_la_LIBADD) $(LIBS)
 
-clean-noinstPROGRAMS:
-	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
-	echo " rm -f" $$list; \
-	rm -f $$list || exit $$?; \
-	test -n "$(EXEEXT)" || exit 0; \
-	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
-	echo " rm -f" $$list; \
-	rm -f $$list
-
 checksum_builder$(EXEEXT): $(checksum_builder_OBJECTS) $(checksum_builder_DEPENDENCIES) $(EXTRA_checksum_builder_DEPENDENCIES) 
 	@rm -f checksum_builder$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(checksum_builder_OBJECTS) $(checksum_builder_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(checksum_builder_LINK) $(checksum_builder_OBJECTS) $(checksum_builder_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -688,7 +689,7 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(PROGRAMS)
+all-am: Makefile $(LTLIBRARIES)
 installdirs:
 	for dir in "$(DESTDIR)$(ipseclibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -727,7 +728,7 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
-	clean-local clean-noinstPROGRAMS mostlyclean-am
+	clean-local mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -801,19 +802,19 @@ uninstall-am: uninstall-ipseclibLTLIBRARIES
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
 	clean-ipseclibLTLIBRARIES clean-libtool clean-local \
-	clean-noinstPROGRAMS cscopelist-am ctags ctags-am distclean \
-	distclean-compile distclean-generic distclean-libtool \
-	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-data-hook install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-ipseclibLTLIBRARIES install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
-	uninstall-hook uninstall-ipseclibLTLIBRARIES
+	cscopelist-am ctags ctags-am distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-data-hook install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-ipseclibLTLIBRARIES install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am uninstall-hook \
+	uninstall-ipseclibLTLIBRARIES
 
 
 checksum.c : checksum_builder $(deps) $(exes)

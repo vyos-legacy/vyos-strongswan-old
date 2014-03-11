@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2014 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "enum.h"
+#include "utils/strerror.h"
 
 /**
  * strongSwan program return codes
@@ -464,12 +465,66 @@ static inline void memwipe(void *ptr, size_t n)
 void *memstr(const void *haystack, const char *needle, size_t n);
 
 /**
+ * Replacement for memrchr(3) if it is not provided by the C library.
+ *
+ * @param s		start of the memory area to search
+ * @param c		character to search
+ * @param n		length of memory area to search
+ * @return		pointer to the found character or NULL
+ */
+void *utils_memrchr(const void *s, int c, size_t n);
+
+#ifndef HAVE_MEMRCHR
+#define memrchr(s,c,n) utils_memrchr(s,c,n)
+#endif
+
+/**
  * Translates the characters in the given string, searching for characters
  * in 'from' and mapping them to characters in 'to'.
  * The two characters sets 'from' and 'to' must contain the same number of
  * characters.
  */
 char *translate(char *str, const char *from, const char *to);
+
+/**
+ * Replaces all occurrences of search in the given string with replace.
+ *
+ * Allocates memory only if anything is replaced in the string.  The original
+ * string is also returned if any of the arguments are invalid (e.g. if search
+ * is empty or any of them are NULL).
+ *
+ * @param str		original string
+ * @param search	string to search for and replace
+ * @param replace	string to replace found occurrences with
+ * @return			allocated string, if anything got replaced, str otherwise
+ */
+char *strreplace(const char *str, const char *search, const char *replace);
+
+/**
+ * Like dirname(3) returns the directory part of the given null-terminated
+ * pathname, up to but not including the final '/' (or '.' if no '/' is found).
+ * Trailing '/' are not counted as part of the pathname.
+ *
+ * The difference is that it does this in a thread-safe manner (i.e. it does not
+ * use static buffers) and does not modify the original path.
+ *
+ * @param path		original pathname
+ * @return			allocated directory component
+ */
+char *path_dirname(const char *path);
+
+/**
+ * Like basename(3) returns the filename part of the given null-terminated path,
+ * i.e. the part following the final '/' (or '.' if path is empty or NULL).
+ * Trailing '/' are not counted as part of the pathname.
+ *
+ * The difference is that it does this in a thread-safe manner (i.e. it does not
+ * use static buffers) and does not modify the original path.
+ *
+ * @param path		original pathname
+ * @return			allocated filename component
+ */
+char *path_basename(const char *path);
 
 /**
  * Creates a directory and all required parent directories.
@@ -480,28 +535,11 @@ char *translate(char *str, const char *from, const char *to);
  */
 bool mkdir_p(const char *path, mode_t mode);
 
-/**
- * Thread-safe wrapper around strerror and strerror_r.
- *
- * This is required because the first is not thread-safe (on some platforms)
- * and the second uses two different signatures (POSIX/GNU) and is impractical
- * to use anyway.
- *
- * @param errnum	error code (i.e. errno)
- * @return			error message
- */
-const char *safe_strerror(int errnum);
-
-/**
- * Replace usages of strerror(3) with thread-safe variant.
- */
-#define strerror(errnum) safe_strerror(errnum)
-
 #ifndef HAVE_CLOSEFROM
 /**
  * Close open file descriptors greater than or equal to lowfd.
  *
- * @param lowfd		start closing file descriptoros from here
+ * @param lowfd		start closing file descriptors from here
  */
 void closefrom(int lowfd);
 #endif

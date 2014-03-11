@@ -278,6 +278,7 @@ METHOD(keymat_v2_t, derive_ike_keys, bool,
 	{
 		DBG1(DBG_IKE, "no %N selected",
 			 transform_type_names, PSEUDO_RANDOM_FUNCTION);
+		chunk_clear(&secret);
 		return FALSE;
 	}
 	this->prf_alg = alg;
@@ -287,6 +288,7 @@ METHOD(keymat_v2_t, derive_ike_keys, bool,
 		DBG1(DBG_IKE, "%N %N not supported!",
 			 transform_type_names, PSEUDO_RANDOM_FUNCTION,
 			 pseudo_random_function_names, alg);
+		chunk_clear(&secret);
 		return FALSE;
 	}
 	DBG4(DBG_IKE, "shared Diffie Hellman secret %B", &secret);
@@ -339,6 +341,7 @@ METHOD(keymat_v2_t, derive_ike_keys, bool,
 		{
 			DBG1(DBG_IKE, "PRF of old SA %N not supported!",
 				 pseudo_random_function_names, rekey_function);
+			chunk_clear(&secret);
 			chunk_free(&full_nonce);
 			chunk_free(&fixed_nonce);
 			chunk_clear(&prf_plus_seed);
@@ -450,17 +453,6 @@ METHOD(keymat_v2_t, derive_child_keys, bool,
 	chunk_t seed, secret = chunk_empty;
 	prf_plus_t *prf_plus;
 
-	if (dh)
-	{
-		if (dh->get_shared_secret(dh, &secret) != SUCCESS)
-		{
-			return FALSE;
-		}
-		DBG4(DBG_CHD, "DH secret %B", &secret);
-	}
-	seed = chunk_cata("mcc", secret, nonce_i, nonce_r);
-	DBG4(DBG_CHD, "seed %B", &seed);
-
 	if (proposal->get_algorithm(proposal, ENCRYPTION_ALGORITHM,
 								&enc_alg, &enc_size))
 	{
@@ -527,7 +519,21 @@ METHOD(keymat_v2_t, derive_child_keys, bool,
 	{
 		return FALSE;
 	}
+
+	if (dh)
+	{
+		if (dh->get_shared_secret(dh, &secret) != SUCCESS)
+		{
+			return FALSE;
+		}
+		DBG4(DBG_CHD, "DH secret %B", &secret);
+	}
+	seed = chunk_cata("scc", secret, nonce_i, nonce_r);
+	DBG4(DBG_CHD, "seed %B", &seed);
+
 	prf_plus = prf_plus_create(this->prf, TRUE, seed);
+	memwipe(seed.ptr, seed.len);
+
 	if (!prf_plus)
 	{
 		return FALSE;
@@ -590,7 +596,7 @@ METHOD(keymat_v2_t, get_auth_octets, bool,
 	idx = chunk_cata("cc", chunk, id->get_encoding(id));
 
 	DBG3(DBG_IKE, "IDx' %B", &idx);
-	DBG3(DBG_IKE, "SK_p %B", &skp);
+	DBG4(DBG_IKE, "SK_p %B", &skp);
 	if (!this->prf->set_key(this->prf, skp) ||
 		!this->prf->allocate_bytes(this->prf, idx, &chunk))
 	{
