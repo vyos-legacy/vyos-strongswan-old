@@ -7,6 +7,8 @@ strongswan (5.1.2-1) UNRELEASED; urgency=medium
     - remove /var/lib/strongswan on purge.
   * debian/ipsec.secrets.proto:
     - stop lying about ipsec showhostkey command.               closes: #600382
+  * debian/patches:
+    - 01_fix-manpages refreshed for new upstream.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 11 Mar 2014 20:48:54 +0100
 
