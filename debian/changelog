@@ -13,6 +13,8 @@ strongswan (5.1.2-1) UNRELEASED; urgency=medium
       upstream.
   * debian/rules, debian/*.install:
     - install default configuration files for all plugins.
+  * debian/NEWS:
+    - fix spurious entry.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 11 Mar 2014 20:48:54 +0100
 
