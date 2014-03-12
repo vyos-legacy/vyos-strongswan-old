@@ -15,6 +15,8 @@ strongswan (5.1.2-1) UNRELEASED; urgency=medium
     - install default configuration files for all plugins.
   * debian/NEWS:
     - fix spurious entry.
+    - add a NEWS entry to advertise about the new strongswan.d configuration
+      mechanism. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 11 Mar 2014 20:48:54 +0100
 

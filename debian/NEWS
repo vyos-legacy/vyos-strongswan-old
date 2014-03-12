@@ -1,3 +1,25 @@
+strongswan (5.1.2-1) unstable; urgency=medium
+
+  Starting 5.1.2, strongSwan natively support a configuration directory (in
+  /etc/strongswan.d/). This replaces the /etc/strongswan.conf.d/ configuration
+  directly which was added in 5.1.1-1.
+  .
+  More information can be found on the strongswan.d configuration mechanism on
+  the upstream commit [1] and user documenation [2].
+  .
+  In Debian, these configurations directories are especially use to easily
+  toggle the loading of the various plugins shipped with the Debian packages.
+  Upstream defaults to load the plugins,  and this can be overridden by
+  changing the files in /etc/strongswan.d. As those latter files are tracked
+  as configuration files, modifications won't be reverted when the package is
+  upgraded. Default settings for the plugins can be found in the templates dir
+  in the /usr/share/strongswan/templates/config folder.
+  .
+  [1]: http://wiki.strongswan.org/projects/strongswan/repository/revisions/55015036183c47692c2e2349a4c59bf00c107986
+  [2]: http://wiki.strongswan.org/projects/strongswan/wiki/StrongswanDirectory
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 12 Mar 2014 10:31:44 +0100
+
 strongswan (5.1.1-2+splitplugins) experimental; urgency=medium
 
   In 5.1.1-2 package, few plugins have been split from the main libstrongswan
