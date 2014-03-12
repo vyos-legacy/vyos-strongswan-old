@@ -11,6 +11,8 @@ strongswan (5.1.2-1) UNRELEASED; urgency=medium
     - 01_fix-manpages refreshed for new upstream.
     - 02_include-strongswan.conf.d removed, strongswan.d is now supported
       upstream.
+  * debian/rules, debian/*.install:
+    - install default configuration files for all plugins.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 11 Mar 2014 20:48:54 +0100
 

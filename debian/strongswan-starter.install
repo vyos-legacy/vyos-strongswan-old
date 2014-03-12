@@ -1,5 +1,7 @@
 #starter
 usr/lib/ipsec/starter
+usr/share/strongswan/templates/config/strongswan.d/starter.conf
+etc/strongswan.d/starter.conf
 usr/lib/ipsec/_copyright
 usr/sbin/ipsec
 etc/ipsec.d
@@ -10,6 +12,8 @@ usr/share/man/man5/ipsec.secrets.5
 usr/share/man/man5/strongswan.conf.5
 #updown
 usr/lib/ipsec/plugins/libstrongswan-updown.so
+usr/share/strongswan/templates/config/plugins/updown.conf
+etc/strongswan.d/charon/updown.conf
 usr/lib/ipsec/_updown
 usr/lib/ipsec/_updown_espmark
 usr/share/man/man8/_updown.8
@@ -31,6 +35,10 @@ usr/share/man/man1/pki---self.1
 usr/share/man/man1/pki---signcrl.1
 usr/share/man/man1/pki---verify.1
 usr/share/man/man1/pki.1
+usr/share/strongswan/templates/config/strongswan.d/tools.conf
+etc/strongswan.d/tools.conf
 #stroke
 usr/lib/ipsec/stroke
 usr/lib/ipsec/plugins/libstrongswan-stroke.so
+usr/share/strongswan/templates/config/plugins/stroke.conf
+etc/strongswan.d/charon/stroke.conf
