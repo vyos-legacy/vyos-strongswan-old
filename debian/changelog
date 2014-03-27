@@ -1,3 +1,11 @@
+strongswan (5.1.2-3) UNRELEASED; urgency=medium
+
+  * debian/patches/
+    02_unit-tests-Fix-filtered-enumerator-tests-on-64-bit-b.patch added, fix
+    testsuite failing on 64 bit big-endian platforms (s390x).
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 27 Mar 2014 20:52:10 +0100
+
 strongswan (5.1.2-2) unstable; urgency=medium
 
   * debian/rules:
