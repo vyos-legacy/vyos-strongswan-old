@@ -1,4 +1,4 @@
-strongswan (5.1.2-3) UNRELEASED; urgency=medium
+strongswan (5.1.2-3) unstable; urgency=medium
 
   * debian/patches/
     - 02_unit-tests-Fix-filtered-enumerator-tests-on-64-bit-b  added, fix
@@ -6,7 +6,7 @@ strongswan (5.1.2-3) UNRELEASED; urgency=medium
     - 03_unit-tests-Fix-chunk-clear-armel added, fix testsuite failing on
     armel.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 27 Mar 2014 20:52:10 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Apr 2014 21:20:33 +0200
 
 strongswan (5.1.2-2) unstable; urgency=medium
 
