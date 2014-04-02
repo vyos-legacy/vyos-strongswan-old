@@ -1,2 +1,3 @@
 01_fix-manpages.patch
 02_unit-tests-Fix-filtered-enumerator-tests-on-64-bit-b.patch
+03_unit-tests-Fix-chunk-clear-armel.patch
