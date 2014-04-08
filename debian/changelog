@@ -1,3 +1,11 @@
+strongswan (5.1.2-4) unstable; urgency=high
+
+  * debian/patches/04_cve-2014-2338.patch: added to fix CVE-2014-2338
+    (authentication bypass vulnerability in IKEv2 code).
+  * debian/control: add myself to Uploaders.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 08 Apr 2014 20:14:54 +0200
+
 strongswan (5.1.2-3) unstable; urgency=medium
 
   * debian/patches/
