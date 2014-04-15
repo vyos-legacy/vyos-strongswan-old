@@ -105,8 +105,7 @@ EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_CHARON_TRUE@am__append_24 = $(DESTDIR)$(ipsecdir)/charon
 @MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_25 = -DC_PLUGINS=\""${c_plugins}\""
 @USE_CMD_TRUE@am__append_26 = $(DESTDIR)$(sbindir)/charon-cmd
-@USE_TOOLS_TRUE@am__append_27 = $(DESTDIR)$(ipsecdir)/openac \
-@USE_TOOLS_TRUE@	$(DESTDIR)$(ipsecdir)/scepclient \
+@USE_TOOLS_TRUE@am__append_27 = $(DESTDIR)$(ipsecdir)/scepclient \
 @USE_TOOLS_TRUE@	$(DESTDIR)$(bindir)/pki
 @USE_ATTR_SQL_TRUE@am__append_28 = $(DESTDIR)$(ipsecdir)/pool
 @USE_IMV_ATTESTATION_TRUE@am__append_29 = $(DESTDIR)$(ipsecdir)/attest
@@ -412,7 +411,6 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
-openac_plugins = @openac_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@

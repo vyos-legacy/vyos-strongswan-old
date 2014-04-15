@@ -95,7 +95,7 @@ host_triplet = @host@
 @USE_NM_TRUE@am__append_16 = charon-nm
 @USE_STROKE_TRUE@am__append_17 = stroke
 @USE_UPDOWN_TRUE@am__append_18 = _updown _updown_espmark
-@USE_TOOLS_TRUE@am__append_19 = openac scepclient pki
+@USE_TOOLS_TRUE@am__append_19 = scepclient pki
 @USE_CONFTEST_TRUE@am__append_20 = conftest
 @USE_DUMM_TRUE@am__append_21 = dumm
 @USE_FAST_TRUE@am__append_22 = libfast
@@ -183,9 +183,9 @@ CTAGS = ctags
 DIST_SUBDIRS = . include libstrongswan libhydra libipsec libsimaka \
 	libtls libradius libtncif libtnccs libpttls libimcv libpts \
 	libcharon starter ipsec _copyright charon charon-nm stroke \
-	_updown _updown_espmark openac scepclient pki conftest dumm \
-	libfast manager medsrv pool charon-tkm charon-cmd \
-	pt-tls-client checksum
+	_updown _updown_espmark scepclient pki conftest dumm libfast \
+	manager medsrv pool charon-tkm charon-cmd pt-tls-client \
+	checksum
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -381,7 +381,6 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
-openac_plugins = @openac_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@

@@ -128,14 +128,10 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_ntru_la_LIBADD =
-am__dirstamp = $(am__leading_dot)dirstamp
-am_libstrongswan_ntru_la_OBJECTS = ntru_plugin.lo ntru_drbg.lo \
-	ntru_ke.lo ntru_mgf1.lo ntru_poly.lo ntru_trits.lo \
-	ntru_crypto/ntru_crypto_ntru_convert.lo \
-	ntru_crypto/ntru_crypto_ntru_encrypt.lo \
-	ntru_crypto/ntru_crypto_ntru_encrypt_key.lo \
-	ntru_crypto/ntru_crypto_ntru_encrypt_param_sets.lo \
-	ntru_crypto/ntru_crypto_ntru_poly.lo
+am_libstrongswan_ntru_la_OBJECTS = ntru_plugin.lo ntru_convert.lo \
+	ntru_drbg.lo ntru_ke.lo ntru_mgf1.lo ntru_param_set.lo \
+	ntru_poly.lo ntru_public_key.lo ntru_private_key.lo \
+	ntru_trits.lo
 libstrongswan_ntru_la_OBJECTS = $(am_libstrongswan_ntru_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -377,7 +373,6 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
-openac_plugins = @openac_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -427,21 +422,15 @@ AM_CFLAGS = \
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-ntru.la
 libstrongswan_ntru_la_SOURCES = \
 	ntru_plugin.h ntru_plugin.c \
+	ntru_convert.h ntru_convert.c \
 	ntru_drbg.h ntru_drbg.c \
 	ntru_ke.h ntru_ke.c \
 	ntru_mgf1.h ntru_mgf1.c \
+	ntru_param_set.h ntru_param_set.c \
 	ntru_poly.h ntru_poly.c \
-	ntru_trits.h ntru_trits.c \
-	ntru_crypto/ntru_crypto.h \
-	ntru_crypto/ntru_crypto_ntru_convert.h \
-	ntru_crypto/ntru_crypto_ntru_convert.c \
-	ntru_crypto/ntru_crypto_ntru_encrypt.c \
-	ntru_crypto/ntru_crypto_ntru_encrypt_key.h \
-	ntru_crypto/ntru_crypto_ntru_encrypt_key.c \
-	ntru_crypto/ntru_crypto_ntru_encrypt_param_sets.h \
-	ntru_crypto/ntru_crypto_ntru_encrypt_param_sets.c \
-	ntru_crypto/ntru_crypto_ntru_poly.h \
-	ntru_crypto/ntru_crypto_ntru_poly.c
+	ntru_public_key.h ntru_public_key.c \
+	ntru_private_key.h ntru_private_key.c \
+	ntru_trits.h ntru_trits.c
 
 libstrongswan_ntru_la_LDFLAGS = -module -avoid-version
 all: all-am
@@ -524,47 +513,26 @@ clean-pluginLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
-ntru_crypto/$(am__dirstamp):
-	@$(MKDIR_P) ntru_crypto
-	@: > ntru_crypto/$(am__dirstamp)
-ntru_crypto/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ntru_crypto/$(DEPDIR)
-	@: > ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-ntru_crypto/ntru_crypto_ntru_convert.lo: ntru_crypto/$(am__dirstamp) \
-	ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-ntru_crypto/ntru_crypto_ntru_encrypt.lo: ntru_crypto/$(am__dirstamp) \
-	ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-ntru_crypto/ntru_crypto_ntru_encrypt_key.lo:  \
-	ntru_crypto/$(am__dirstamp) \
-	ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-ntru_crypto/ntru_crypto_ntru_encrypt_param_sets.lo:  \
-	ntru_crypto/$(am__dirstamp) \
-	ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-ntru_crypto/ntru_crypto_ntru_poly.lo: ntru_crypto/$(am__dirstamp) \
-	ntru_crypto/$(DEPDIR)/$(am__dirstamp)
 
 libstrongswan-ntru.la: $(libstrongswan_ntru_la_OBJECTS) $(libstrongswan_ntru_la_DEPENDENCIES) $(EXTRA_libstrongswan_ntru_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libstrongswan_ntru_la_LINK) $(am_libstrongswan_ntru_la_rpath) $(libstrongswan_ntru_la_OBJECTS) $(libstrongswan_ntru_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f ntru_crypto/*.$(OBJEXT)
-	-rm -f ntru_crypto/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_convert.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_drbg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_ke.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_mgf1.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_param_set.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_plugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_poly.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_private_key.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_public_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntru_trits.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ntru_crypto/$(DEPDIR)/ntru_crypto_ntru_convert.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ntru_crypto/$(DEPDIR)/ntru_crypto_ntru_encrypt.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ntru_crypto/$(DEPDIR)/ntru_crypto_ntru_encrypt_key.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ntru_crypto/$(DEPDIR)/ntru_crypto_ntru_encrypt_param_sets.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ntru_crypto/$(DEPDIR)/ntru_crypto_ntru_poly.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -595,7 +563,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-	-rm -rf ntru_crypto/.libs ntru_crypto/_libs
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -712,8 +679,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f ntru_crypto/$(DEPDIR)/$(am__dirstamp)
-	-rm -f ntru_crypto/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -724,7 +689,7 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	clean-pluginLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR) ntru_crypto/$(DEPDIR)
+	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -770,7 +735,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR) ntru_crypto/$(DEPDIR)
+	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -48,6 +48,37 @@ Close the IKE_SA if setup of the CHILD_SA along with IKE_AUTH failed.
 Number of half\-open IKE_SAs that activate the cookie mechanism.
 
 .TP
+.BR charon.crypto_test.bench " [no]"
+Benchmark crypto algorithms and order them by efficiency.
+
+.TP
+.BR charon.crypto_test.bench_size " [1024]"
+Buffer size used for crypto benchmark.
+
+.TP
+.BR charon.crypto_test.bench_time " [50]"
+Number of iterations to test each algorithm.
+
+.TP
+.BR charon.crypto_test.on_add " [no]"
+Test crypto algorithms during registration (requires test vectors provided by
+the
+.RI "" "test\-vectors" ""
+plugin).
+
+.TP
+.BR charon.crypto_test.on_create " [no]"
+Test crypto algorithms on each crypto primitive instantiation.
+
+.TP
+.BR charon.crypto_test.required " [no]"
+Strictly require at least one test vector to enable an algorithm.
+
+.TP
+.BR charon.crypto_test.rng_true " [no]"
+Whether to test RNG with TRUE quality; requires a lot of entropy.
+
+.TP
 .BR charon.dh_exponent_ansi_x9_42 " [yes]"
 Use ANSI X9.42 DH exponent size or optimum size matched to cryptographic
 strength.
@@ -67,6 +98,47 @@ Enable Denial of Service protection using cookies and aggressiveness checks.
 .TP
 .BR charon.ecp_x_coordinate_only " [yes]"
 Compliance with the errata for RFC 4753.
+
+.TP
+.B charon.filelog
+.br
+Section to define file loggers, see LOGGER CONFIGURATION in
+.RB "" "strongswan.conf" "(5)."
+
+
+.TP
+.B charon.filelog.<filename>
+.br
+<filename> is the full path to the log file.
+
+.TP
+.BR charon.filelog.<filename>.<subsystem> " [<default>]"
+Loglevel for a specific subsystem.
+
+.TP
+.BR charon.filelog.<filename>.append " [yes]"
+If this option is enabled log entries are appended to the existing file.
+
+.TP
+.BR charon.filelog.<filename>.default " [1]"
+Specifies the default loglevel to be used for subsystems for which no specific
+loglevel is defined.
+
+.TP
+.BR charon.filelog.<filename>.flush_line " [no]"
+Enabling this option disables block buffering and enables line buffering.
+
+.TP
+.BR charon.filelog.<filename>.ike_name " [no]"
+Prefix each log entry with the connection name and a unique numerical identifier
+for each IKE_SA.
+
+.TP
+.BR charon.filelog.<filename>.time_format " []"
+Prefix each log entry with a timestamp. The option accepts a format string as
+passed to
+.RB "" "strftime" "(3)."
+
 
 .TP
 .BR charon.flush_auth_cfg " [no]"
@@ -92,6 +164,14 @@ Timeout in seconds for connecting IKE_SAs (also see IKE_SA_INIT DROPPING).
 Enable hash and URL support.
 
 .TP
+.BR charon.host_resolver.max_threads " [3]"
+Maximum number of concurrent resolver threads (they are terminated if unused).
+
+.TP
+.BR charon.host_resolver.min_threads " [0]"
+Minimum number of resolver threads to keep around.
+
+.TP
 .BR charon.i_dont_care_about_security_and_use_aggressive_mode_psk " [no]"
 If enabled responders are allowed to use IKEv1 Aggressive Mode with pre\-shared
 keys, which is discouraged due to security concerns (offline attacks on the
@@ -113,6 +193,34 @@ Number of exclusively locked segments in the hash table.
 .TP
 .BR charon.ikesa_table_size " [1]"
 Size of the IKE_SA hash table.
+
+.TP
+.B charon.imcv
+.br
+Defaults for options in this section can be configured in the
+.RI "" "libimcv" ""
+section.
+
+.TP
+.BR charon.imcv.assessment_result " [yes]"
+Whether IMVs send a standard IETF Assessment Result attribute.
+
+.TP
+.BR charon.imcv.database " []"
+Global IMV policy database URI. If it contains a password, make sure to adjust
+the permissions of the config file accordingly.
+
+.TP
+.BR charon.imcv.os_info.name " []"
+Manually set the name of the client OS (e.g. Ubuntu).
+
+.TP
+.BR charon.imcv.os_info.version " []"
+Manually set the version of the client OS (e.g. 12.04 i686).
+
+.TP
+.BR charon.imcv.policy_script " [ipsec _imv_policy]"
+Script called for each TNC connection to generate IMV policies.
 
 .TP
 .BR charon.inactivity_close_ike " [no]"
@@ -167,6 +275,18 @@ other interfaces are ignored.
 NAT keep alive interval.
 
 .TP
+.BR charon.leak_detective.detailed " [yes]"
+Includes source file names and line numbers in leak detective output.
+
+.TP
+.BR charon.leak_detective.usage_threshold " [10240]"
+Threshold in bytes for leaks to be reported (0 to report all).
+
+.TP
+.BR charon.leak_detective.usage_threshold_count " [0]"
+Threshold in number of allocations for leaks to be reported (0 to report all).
+
+.TP
 .BR charon.load " []"
 Plugins to load in the IKE daemon charon.
 
@@ -196,225 +316,6 @@ WINS servers assigned to peer via configuration payload (CP).
 .TP
 .BR charon.nbns2 " []"
 WINS servers assigned to peer via configuration payload (CP).
-
-.TP
-.BR charon.port " [500]"
-UDP port used locally. If set to 0 a random port will be allocated.
-
-.TP
-.BR charon.port_nat_t " [4500]"
-UDP port used locally in case of NAT\-T. If set to 0 a random port will be
-allocated.  Has to be different from
-.RB "" "charon.port" ","
-otherwise a random port
-will be allocated.
-
-.TP
-.BR charon.process_route " [yes]"
-Process RTM_NEWROUTE and RTM_DELROUTE events.
-
-.TP
-.BR charon.receive_delay " [0]"
-Delay in ms for receiving packets, to simulate larger RTT.
-
-.TP
-.BR charon.receive_delay_request " [yes]"
-Delay request messages.
-
-.TP
-.BR charon.receive_delay_response " [yes]"
-Delay response messages.
-
-.TP
-.BR charon.receive_delay_type " [0]"
-Specific IKEv2 message type to delay, 0 for any.
-
-.TP
-.BR charon.replay_window " [32]"
-Size of the AH/ESP replay window, in packets.
-
-.TP
-.BR charon.retransmit_base " [1.8]"
-Base to use for calculating exponential back off, see IKEv2 RETRANSMISSION in
-.RB "" "strongswan.conf" "(5)."
-
-
-.TP
-.BR charon.retransmit_timeout " [4.0]"
-Timeout in seconds before sending first retransmit.
-
-.TP
-.BR charon.retransmit_tries " [5]"
-Number of times to retransmit a packet before giving up.
-
-.TP
-.BR charon.retry_initiate_interval " [0]"
-Interval to use when retrying to initiate an IKE_SA (e.g. if DNS resolution
-failed), 0 to disable retries.
-
-.TP
-.BR charon.reuse_ikesa " [yes]"
-Initiate CHILD_SA within existing IKE_SAs.
-
-.TP
-.BR charon.routing_table " []"
-Numerical routing table to install routes to.
-
-.TP
-.BR charon.routing_table_prio " []"
-Priority of the routing table.
-
-.TP
-.BR charon.send_delay " [0]"
-Delay in ms for sending packets, to simulate larger RTT.
-
-.TP
-.BR charon.send_delay_request " [yes]"
-Delay request messages.
-
-.TP
-.BR charon.send_delay_response " [yes]"
-Delay response messages.
-
-.TP
-.BR charon.send_delay_type " [0]"
-Specific IKEv2 message type to delay, 0 for any.
-
-.TP
-.BR charon.send_vendor_id " [no]"
-Send strongSwan vendor ID payload
-
-.TP
-.BR charon.threads " [16]"
-Number of worker threads in charon. Several of these are reserved for long
-running tasks in internal modules and plugins. Therefore, make sure you don't
-set this value too low. The number of idle worker threads listed in
-.RI "" "ipsec statusall" ""
-might be used as indicator on the number of reserved threads.
-
-.TP
-.BR charon.user " []"
-Name of the user the daemon changes to after startup.
-
-.TP
-.BR charon.crypto_test.bench " [no]"
-Benchmark crypto algorithms and order them by efficiency.
-
-.TP
-.BR charon.crypto_test.bench_size " [1024]"
-Buffer size used for crypto benchmark.
-
-.TP
-.BR charon.crypto_test.bench_time " [50]"
-Number of iterations to test each algorithm.
-
-.TP
-.BR charon.crypto_test.on_add " [no]"
-Test crypto algorithms during registration (requires test vectors provided by
-the
-.RI "" "test\-vectors" ""
-plugin).
-
-.TP
-.BR charon.crypto_test.on_create " [no]"
-Test crypto algorithms on each crypto primitive instantiation.
-
-.TP
-.BR charon.crypto_test.required " [no]"
-Strictly require at least one test vector to enable an algorithm.
-
-.TP
-.BR charon.crypto_test.rng_true " [no]"
-Whether to test RNG with TRUE quality; requires a lot of entropy.
-
-.TP
-.B charon.filelog
-.br
-Section to define file loggers, see LOGGER CONFIGURATION in
-.RB "" "strongswan.conf" "(5)."
-
-
-.TP
-.B charon.filelog.<filename>
-.br
-<filename> is the full path to the log file.
-
-.TP
-.BR charon.filelog.<filename>.<subsystem> " [<default>]"
-Loglevel for a specific subsystem.
-
-.TP
-.BR charon.filelog.<filename>.append " [yes]"
-If this option is enabled log entries are appended to the existing file.
-
-.TP
-.BR charon.filelog.<filename>.default " [1]"
-Specifies the default loglevel to be used for subsystems for which no specific
-loglevel is defined.
-
-.TP
-.BR charon.filelog.<filename>.flush_line " [no]"
-Enabling this option disables block buffering and enables line buffering.
-
-.TP
-.BR charon.filelog.<filename>.ike_name " [no]"
-Prefix each log entry with the connection name and a unique numerical identifier
-for each IKE_SA.
-
-.TP
-.BR charon.filelog.<filename>.time_format " []"
-Prefix each log entry with a timestamp. The option accepts a format string as
-passed to
-.RB "" "strftime" "(3)."
-
-
-.TP
-.BR charon.host_resolver.max_threads " [3]"
-Maximum number of concurrent resolver threads (they are terminated if unused).
-
-.TP
-.BR charon.host_resolver.min_threads " [0]"
-Minimum number of resolver threads to keep around.
-
-.TP
-.B charon.imcv
-.br
-Defaults for options in this section can be configured in the
-.RI "" "libimcv" ""
-section.
-
-.TP
-.BR charon.imcv.assessment_result " [yes]"
-Whether IMVs send a standard IETF Assessment Result attribute.
-
-.TP
-.BR charon.imcv.database " []"
-Global IMV policy database URI. If it contains a password, make sure to adjust
-the permissions of the config file accordingly.
-
-.TP
-.BR charon.imcv.policy_script " [ipsec _imv_policy]"
-Script called for each TNC connection to generate IMV policies.
-
-.TP
-.BR charon.imcv.os_info.name " []"
-Manually set the name of the client OS (e.g. Ubuntu).
-
-.TP
-.BR charon.imcv.os_info.version " []"
-Manually set the version of the client OS (e.g. 12.04 i686).
-
-.TP
-.BR charon.leak_detective.detailed " [yes]"
-Includes source file names and line numbers in leak detective output.
-
-.TP
-.BR charon.leak_detective.usage_threshold " [10240]"
-Threshold in bytes for leaks to be reported (0 to report all).
-
-.TP
-.BR charon.leak_detective.usage_threshold_count " [0]"
-Threshold in number of allocations for leaks to be reported (0 to report all).
 
 .TP
 .BR charon.plugins.android_log.loglevel " [1]"
@@ -588,6 +489,10 @@ Request peer authentication based on a client certificate.
 Send RADIUS accounting information to RADIUS servers.
 
 .TP
+.BR charon.plugins.eap-radius.accounting_close_on_timeout " [yes]"
+Close the IKE_SA if there is a timeout during interim RADIUS accounting updates.
+
+.TP
 .BR charon.plugins.eap-radius.accounting_requires_vip " [no]"
 If enabled, accounting is disabled unless an IKE_SA has at least one virtual IP.
 
@@ -608,6 +513,23 @@ Closes all IKE_SAs if communication with the RADIUS server times out. If it is
 not set only the current IKE_SA is closed.
 
 .TP
+.BR charon.plugins.eap-radius.dae.enable " [no]"
+Enables support for the Dynamic Authorization Extension (RFC 5176).
+
+.TP
+.BR charon.plugins.eap-radius.dae.listen " [0.0.0.0]"
+Address to listen for DAE messages from the RADIUS server.
+
+.TP
+.BR charon.plugins.eap-radius.dae.port " [3799]"
+Port to listen for DAE requests.
+
+.TP
+.BR charon.plugins.eap-radius.dae.secret " []"
+Shared secret used to verify/sign DAE messages. If set, make sure to adjust the
+permissions of the config file accordingly.
+
+.TP
 .BR charon.plugins.eap-radius.eap_start " [no]"
 Send EAP\-Start instead of EAP\-Identity to start RADIUS conversation.
 
@@ -625,6 +547,20 @@ information that is compared to the groups specified in the
 option in
 .RB "" "ipsec.conf" "(5)."
 
+
+.TP
+.BR charon.plugins.eap-radius.forward.ike_to_radius " []"
+RADIUS attributes to be forwarded from IKEv2 to RADIUS (can be defined by name
+or attribute number, a colon can be used to specify vendor\-specific attributes,
+e.g. Reply\-Message, or 11, or 36906:12).
+
+.TP
+.BR charon.plugins.eap-radius.forward.radius_to_ike " []"
+Same as
+.RI "" "charon.plugins.eap\-radius.forward.ike_to_radius" ""
+but from RADIUS to
+IKEv2, a strongSwan specific private notify (40969) is used to transmit the
+attributes.
 
 .TP
 .BR charon.plugins.eap-radius.id_prefix " []"
@@ -649,41 +585,6 @@ permissions of the config file accordingly.
 IP/Hostname of RADIUS server.
 
 .TP
-.BR charon.plugins.eap-radius.sockets " [1]"
-Number of sockets (ports) to use, increase for high load.
-
-.TP
-.BR charon.plugins.eap-radius.dae.enable " [no]"
-Enables support for the Dynamic Authorization Extension (RFC 5176).
-
-.TP
-.BR charon.plugins.eap-radius.dae.listen " [0.0.0.0]"
-Address to listen for DAE messages from the RADIUS server.
-
-.TP
-.BR charon.plugins.eap-radius.dae.port " [3799]"
-Port to listen for DAE requests.
-
-.TP
-.BR charon.plugins.eap-radius.dae.secret " []"
-Shared secret used to verify/sign DAE messages. If set, make sure to adjust the
-permissions of the config file accordingly.
-
-.TP
-.BR charon.plugins.eap-radius.forward.ike_to_radius " []"
-RADIUS attributes to be forwarded from IKEv2 to RADIUS (can be defined by name
-or attribute number, a colon can be used to specify vendor\-specific attributes,
-e.g. Reply\-Message, or 11, or 36906:12).
-
-.TP
-.BR charon.plugins.eap-radius.forward.radius_to_ike " []"
-Same as
-.RI "" "charon.plugins.eap\-radius.forward.ike_to_radius" ""
-but from RADIUS to
-IKEv2, a strongSwan specific private notify (40969) is used to transmit the
-attributes.
-
-.TP
 .B charon.plugins.eap-radius.servers
 .br
 Section to specify multiple RADIUS servers. The
@@ -704,6 +605,10 @@ The
 accounting. For each RADIUS server a priority can be specified using the
 .RB "" "preference" ""
 [0] option.
+
+.TP
+.BR charon.plugins.eap-radius.sockets " [1]"
+Number of sockets (ports) to use, increase for high load.
 
 .TP
 .B charon.plugins.eap-radius.xauth
@@ -842,6 +747,10 @@ AIK certificate file.
 AIK public key file.
 
 .TP
+.BR charon.plugins.imc-attestation.mandatory_dh_groups " [yes]"
+Enforce mandatory Diffie\-Hellman groups.
+
+.TP
 .BR charon.plugins.imc-attestation.nonce_len " [20]"
 DH nonce length.
 
@@ -922,6 +831,10 @@ Preferred Diffie\-Hellman group.
 Preferred measurement hash algorithm.
 
 .TP
+.BR charon.plugins.imv-attestation.mandatory_dh_groups " [yes]"
+Enforce mandatory Diffie\-Hellman groups.
+
+.TP
 .BR charon.plugins.imv-attestation.min_nonce_len " [0]"
 DH minimum nonce length.
 
@@ -990,6 +903,12 @@ Time in ms to wait until virtual IP addresses appear/disappear before failing.
 Section to configure the load\-tester plugin, see LOAD TESTS in
 .RB "" "strongswan.conf" "(5)"
 for details.
+
+.TP
+.B charon.plugins.load-tester.addrs
+.br
+Section that contains key/value pairs with address pools (in CIDR notation) to
+use for a specific network interface e.g. eth0 = 10.10.0.0/16.
 
 .TP
 .BR charon.plugins.load-tester.addrs_keep " [no]"
@@ -1157,12 +1076,6 @@ IKE version to use (0 means use IKEv2 as initiator and accept any version as
 responder).
 
 .TP
-.B charon.plugins.load-tester.addrs
-.br
-Section that contains key/value pairs with address pools (in CIDR notation) to
-use for a specific network interface e.g. eth0 = 10.10.0.0/16.
-
-.TP
 .BR charon.plugins.lookip.socket " [unix://${piddir}/charon.lkp]"
 Socket provided by the lookip plugin.
 
@@ -1195,6 +1108,11 @@ Set OpenSSL FIPS mode: disabled(0), enabled(1), Suite B enabled(2).
 Whether to load certificates from tokens.
 
 .TP
+.B charon.plugins.pkcs11.modules
+.br
+List of available PKCS#11 modules.
+
+.TP
 .BR charon.plugins.pkcs11.reload_certs " [no]"
 Reload certificates from all tokens if charon receives a SIGHUP.
 
@@ -1221,11 +1139,6 @@ keys not stored on tokens.
 .TP
 .BR charon.plugins.pkcs11.use_rng " [no]"
 Whether the PKCS#11 modules should be used as RNG.
-
-.TP
-.B charon.plugins.pkcs11.modules
-.br
-List of available PKCS#11 modules.
 
 .TP
 .BR charon.plugins.radattr.dir " []"
@@ -1378,14 +1291,6 @@ or
 
 
 .TP
-.BR charon.plugins.tnc-pdp.server " []"
-Name of the strongSwan PDP as contained in the AAA certificate.
-
-.TP
-.BR charon.plugins.tnc-pdp.timeout " []"
-Timeout in seconds before closing incomplete connections.
-
-.TP
 .BR charon.plugins.tnc-pdp.pt_tls.enable " [yes]"
 Enable PT\-TLS protocol on the strongSwan PDP.
 
@@ -1409,6 +1314,14 @@ RADIUS server port the strongSwan PDP is listening on.
 .BR charon.plugins.tnc-pdp.radius.secret " []"
 Shared RADIUS secret between strongSwan PDP and NAS. If set, make sure to adjust
 the permissions of the config file accordingly.
+
+.TP
+.BR charon.plugins.tnc-pdp.server " []"
+Name of the strongSwan PDP as contained in the AAA certificate.
+
+.TP
+.BR charon.plugins.tnc-pdp.timeout " []"
+Timeout in seconds before closing incomplete connections.
 
 .TP
 .BR charon.plugins.tnccs-11.max_message_size " [45000]"
@@ -1472,6 +1385,22 @@ If an email address is received as an XAuth username, trim it to just the
 username part.
 
 .TP
+.BR charon.port " [500]"
+UDP port used locally. If set to 0 a random port will be allocated.
+
+.TP
+.BR charon.port_nat_t " [4500]"
+UDP port used locally in case of NAT\-T. If set to 0 a random port will be
+allocated.  Has to be different from
+.RB "" "charon.port" ","
+otherwise a random port
+will be allocated.
+
+.TP
+.BR charon.process_route " [yes]"
+Process RTM_NEWROUTE and RTM_DELROUTE events.
+
+.TP
 .B charon.processor.priority_threads
 .br
 Section to configure the number of reserved threads per priority class see JOB
@@ -1480,21 +1409,82 @@ PRIORITY MANAGEMENT in
 
 
 .TP
+.BR charon.receive_delay " [0]"
+Delay in ms for receiving packets, to simulate larger RTT.
+
+.TP
+.BR charon.receive_delay_request " [yes]"
+Delay request messages.
+
+.TP
+.BR charon.receive_delay_response " [yes]"
+Delay response messages.
+
+.TP
+.BR charon.receive_delay_type " [0]"
+Specific IKEv2 message type to delay, 0 for any.
+
+.TP
+.BR charon.replay_window " [32]"
+Size of the AH/ESP replay window, in packets.
+
+.TP
+.BR charon.retransmit_base " [1.8]"
+Base to use for calculating exponential back off, see IKEv2 RETRANSMISSION in
+.RB "" "strongswan.conf" "(5)."
+
+
+.TP
+.BR charon.retransmit_timeout " [4.0]"
+Timeout in seconds before sending first retransmit.
+
+.TP
+.BR charon.retransmit_tries " [5]"
+Number of times to retransmit a packet before giving up.
+
+.TP
+.BR charon.retry_initiate_interval " [0]"
+Interval to use when retrying to initiate an IKE_SA (e.g. if DNS resolution
+failed), 0 to disable retries.
+
+.TP
+.BR charon.reuse_ikesa " [yes]"
+Initiate CHILD_SA within existing IKE_SAs.
+
+.TP
+.BR charon.routing_table " []"
+Numerical routing table to install routes to.
+
+.TP
+.BR charon.routing_table_prio " []"
+Priority of the routing table.
+
+.TP
+.BR charon.send_delay " [0]"
+Delay in ms for sending packets, to simulate larger RTT.
+
+.TP
+.BR charon.send_delay_request " [yes]"
+Delay request messages.
+
+.TP
+.BR charon.send_delay_response " [yes]"
+Delay response messages.
+
+.TP
+.BR charon.send_delay_type " [0]"
+Specific IKEv2 message type to delay, 0 for any.
+
+.TP
+.BR charon.send_vendor_id " [no]"
+Send strongSwan vendor ID payload
+
+.TP
 .B charon.syslog
 .br
 Section to define syslog loggers, see LOGGER CONFIGURATION in
 .RB "" "strongswan.conf" "(5)."
 
-
-.TP
-.BR charon.syslog.identifier " []"
-Global identifier used for an
-.RB "" "openlog" "(3)"
-call, prepended to each log message
-by syslog.  If not configured,
-.RB "" "openlog" "(3)"
-is not called, so the value will
-depend on system defaults (often the program name).
 
 .TP
 .B charon.syslog.<facility>
@@ -1519,6 +1509,24 @@ Prefix each log entry with the connection name and a unique numerical identifier
 for each IKE_SA.
 
 .TP
+.BR charon.syslog.identifier " []"
+Global identifier used for an
+.RB "" "openlog" "(3)"
+call, prepended to each log message
+by syslog.  If not configured,
+.RB "" "openlog" "(3)"
+is not called, so the value will
+depend on system defaults (often the program name).
+
+.TP
+.BR charon.threads " [16]"
+Number of worker threads in charon. Several of these are reserved for long
+running tasks in internal modules and plugins. Therefore, make sure you don't
+set this value too low. The number of idle worker threads listed in
+.RI "" "ipsec statusall" ""
+might be used as indicator on the number of reserved threads.
+
+.TP
 .BR charon.tls.cipher " []"
 List of TLS encryption ciphers.
 
@@ -1537,6 +1545,10 @@ List of TLS cipher suites.
 .TP
 .BR charon.tnc.tnc_config " [/etc/tnc_config]"
 TNC IMC/IMV configuration file.
+
+.TP
+.BR charon.user " []"
+Name of the user the daemon changes to after startup.
 
 .TP
 .BR charon.x509.enforce_critical " [yes]"
@@ -1621,10 +1633,6 @@ Number of thread for mediation service web application.
 .TP
 .BR medsrv.timeout " [15m]"
 Session timeout for mediation service.
-
-.TP
-.BR openac.load " []"
-Plugins to load in ipsec openac tool.
 
 .TP
 .BR pacman.database " []"
