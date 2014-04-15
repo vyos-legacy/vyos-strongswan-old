@@ -203,7 +203,8 @@ Package: strongswan-charon
 Architecture: any
 Pre-Depends: debconf | debconf-2.0
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libstrongswan (= ${binary:Version}), strongswan-starter, iproute [linux-any]
+ libstrongswan (= ${binary:Version}), strongswan-starter,
+ iproute2 [linux-any] | iproute [linux-any]
 Provides: ike-server
 Breaks: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1)
 Replaces: strongswan-ikev1, strongswan-ikev2, libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1)
