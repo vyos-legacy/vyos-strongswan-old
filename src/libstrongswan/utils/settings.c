@@ -1224,7 +1224,16 @@ static bool parse_file(linked_list_t *contents, char *file, int level,
 	{
 		if (errno == ENOENT)
 		{
-			DBG2(DBG_LIB, "'%s' does not exist, ignored", file);
+#ifdef STRONGSWAN_CONF
+			if (streq(file, STRONGSWAN_CONF))
+			{
+				DBG2(DBG_LIB, "'%s' does not exist, ignored", file);
+			}
+			else
+#endif
+			{
+				DBG1(DBG_LIB, "'%s' does not exist, ignored", file);
+			}
 			return TRUE;
 		}
 		DBG1(DBG_LIB, "failed to stat '%s': %s", file, strerror(errno));
@@ -1244,8 +1253,8 @@ static bool parse_file(linked_list_t *contents, char *file, int level,
 	fseek(fd, 0, SEEK_END);
 	len = ftell(fd);
 	rewind(fd);
-	text = malloc(len + 1);
-	text[len] = '\0';
+	text = malloc(len + 2);
+	text[len] = text[len + 1] = '\0';
 	if (fread(text, 1, len, fd) != len)
 	{
 		free(text);
@@ -1287,7 +1296,7 @@ static bool parse_files(linked_list_t *contents, char *file, int level,
 
 	if (!strlen(pattern))
 	{
-		DBG2(DBG_LIB, "empty include pattern, ignored");
+		DBG1(DBG_LIB, "empty include pattern, ignored");
 		return TRUE;
 	}
 
@@ -1318,7 +1327,7 @@ static bool parse_files(linked_list_t *contents, char *file, int level,
 		status = glob(pat, GLOB_ERR, NULL, &buf);
 		if (status == GLOB_NOMATCH)
 		{
-			DBG2(DBG_LIB, "no files found matching '%s', ignored", pat);
+			DBG1(DBG_LIB, "no files found matching '%s', ignored", pat);
 		}
 		else if (status != 0)
 		{
@@ -1509,4 +1518,3 @@ settings_t *settings_create(char *file)
 
 	return &this->public;
 }
-

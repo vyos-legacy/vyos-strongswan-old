@@ -200,7 +200,7 @@ int command_usage(char *error)
 	fprintf(out, "usage:\n");
 	if (active == help_idx)
 	{
-		for (i = 0; cmds[i].cmd; i++)
+		for (i = 0; i < MAX_COMMANDS && cmds[i].cmd; i++)
 		{
 			fprintf(out, "  pki --%-7s (-%c)  %s\n",
 					cmds[i].cmd, cmds[i].op, cmds[i].description);
@@ -263,7 +263,7 @@ int command_dispatch(int c, char *v[])
 
 	build_opts();
 	op = getopt_long(c, v, command_optstring, command_opts, NULL);
-	for (i = 0; cmds[i].cmd; i++)
+	for (i = 0; i < MAX_COMMANDS && cmds[i].cmd; i++)
 	{
 		if (cmds[i].op == op)
 		{

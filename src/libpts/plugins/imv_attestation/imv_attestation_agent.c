@@ -482,6 +482,22 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 							}
 						}
 
+						/* do TPM TRUSTED BOOT measurements */
+						if (strchr(workitem->get_arg_str(workitem), 'T'))
+						{
+							comp_name = pts_comp_func_name_create(PEN_ITA,
+											 PTS_ITA_COMP_FUNC_NAME_TBOOT,
+											PTS_ITA_QUALIFIER_FLAG_KERNEL |
+											PTS_ITA_QUALIFIER_TYPE_TRUSTED);
+							comp = attestation_state->create_component(
+											attestation_state, comp_name,
+											0, this->pts_db);
+							if (!comp)
+							{
+								comp_name->log(comp_name, "unregistered ");
+								comp_name->destroy(comp_name);
+							}
+						}
 						attestation_state->set_handshake_state(attestation_state,
 											IMV_ATTESTATION_STATE_NONCE_REQ);
 						continue;
@@ -706,6 +722,7 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 	private_imv_attestation_agent_t *this;
 	imv_agent_t *agent;
 	char *hash_alg, *dh_group, *cadir;
+	bool mandatory_dh_groups;
 
 	agent = imv_agent_create(name, msg_types, countof(msg_types), id,
 							 actual_version);
@@ -718,6 +735,8 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 				"%s.plugins.imv-attestation.hash_algorithm", "sha256", lib->ns);
 	dh_group = lib->settings->get_str(lib->settings,
 				"%s.plugins.imv-attestation.dh_group", "ecp256", lib->ns);
+	mandatory_dh_groups = lib->settings->get_bool(lib->settings,
+				"%s.plugins.imv-attestation.mandatory_dh_groups", TRUE, lib->ns);
 	cadir = lib->settings->get_str(lib->settings,
 				"%s.plugins.imv-attestation.cadir", NULL, lib->ns);
 
@@ -742,7 +761,7 @@ imv_agent_if_t *imv_attestation_agent_create(const char *name, TNC_IMVID id,
 	libpts_init();
 
 	if (!pts_meas_algo_probe(&this->supported_algorithms) ||
-		!pts_dh_group_probe(&this->supported_dh_groups) ||
+		!pts_dh_group_probe(&this->supported_dh_groups, mandatory_dh_groups) ||
 		!pts_meas_algo_update(hash_alg, &this->supported_algorithms) ||
 		!pts_dh_group_update(dh_group, &this->supported_dh_groups))
 	{

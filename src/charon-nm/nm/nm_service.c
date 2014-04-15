@@ -329,7 +329,6 @@ static gboolean connect_(NMVPNPlugin *plugin, NMConnection *connection,
 	{
 		g_set_error(err, NM_VPN_PLUGIN_ERROR, NM_VPN_PLUGIN_ERROR_LAUNCH_FAILED,
 					"Failed to create dummy TUN device.");
-		gateway->destroy(gateway);
 		return FALSE;
 	}
 	address = nm_setting_vpn_get_data_item(vpn, "address");
@@ -658,6 +657,10 @@ static gboolean need_secrets(NMVPNPlugin *plugin, NMConnection *connection,
 				if (key)
 				{
 					key->destroy(key);
+					return FALSE;
+				}
+				else if (nm_setting_vpn_get_secret(settings, "password"))
+				{
 					return FALSE;
 				}
 			}

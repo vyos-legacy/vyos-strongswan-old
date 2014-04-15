@@ -204,16 +204,13 @@ METHOD(crypto_tester_t, test_crypter, bool,
 			continue;
 		}
 
-		tested++;
-		failed = TRUE;
 		crypter = create(alg, vector->key_size);
 		if (!crypter)
-		{
-			DBG1(DBG_LIB, "%N[%s]: %u bit key size not supported",
-				 encryption_algorithm_names, alg, plugin_name,
-				 BITS_PER_BYTE * vector->key_size);
+		{	/* key size not supported */
 			continue;
 		}
+		tested++;
+		failed = TRUE;
 
 		key = chunk_create(vector->key, crypter->get_key_size(crypter));
 		if (!crypter->set_key(crypter, key))
@@ -318,7 +315,7 @@ static u_int bench_aead(private_crypto_tester_t *this,
 {
 	aead_t *aead;
 
-	aead = create(alg, 0);
+	aead = create(alg, 0, 0);
 	if (aead)
 	{
 		char iv[aead->get_iv_size(aead)];
@@ -367,7 +364,8 @@ static u_int bench_aead(private_crypto_tester_t *this,
 
 METHOD(crypto_tester_t, test_aead, bool,
 	private_crypto_tester_t *this, encryption_algorithm_t alg, size_t key_size,
-	aead_constructor_t create, u_int *speed, const char *plugin_name)
+	size_t salt_size, aead_constructor_t create,
+	u_int *speed, const char *plugin_name)
 {
 	enumerator_t *enumerator;
 	aead_test_vector_t *vector;
@@ -389,10 +387,14 @@ METHOD(crypto_tester_t, test_aead, bool,
 		{	/* test only vectors with a specific key size, if key size given */
 			continue;
 		}
+		if (salt_size && salt_size != vector->salt_size)
+		{
+			continue;
+		}
 
 		tested++;
 		failed = TRUE;
-		aead = create(alg, vector->key_size);
+		aead = create(alg, vector->key_size, vector->salt_size);
 		if (!aead)
 		{
 			DBG1(DBG_LIB, "%N[%s]: %u bit key size not supported",
@@ -1221,4 +1223,3 @@ crypto_tester_t *crypto_tester_create()
 
 	return &this->public;
 }
-

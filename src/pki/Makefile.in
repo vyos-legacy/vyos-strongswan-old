@@ -107,7 +107,8 @@ am_pki_OBJECTS = pki.$(OBJEXT) command.$(OBJEXT) \
 	commands/keyid.$(OBJEXT) commands/pub.$(OBJEXT) \
 	commands/req.$(OBJEXT) commands/self.$(OBJEXT) \
 	commands/print.$(OBJEXT) commands/signcrl.$(OBJEXT) \
-	commands/pkcs7.$(OBJEXT) commands/verify.$(OBJEXT)
+	commands/acert.$(OBJEXT) commands/pkcs7.$(OBJEXT) \
+	commands/verify.$(OBJEXT)
 pki_OBJECTS = $(am_pki_OBJECTS)
 pki_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -386,7 +387,6 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
-openac_plugins = @openac_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -436,6 +436,7 @@ pki_SOURCES = pki.c pki.h command.c command.h \
 	commands/self.c \
 	commands/print.c \
 	commands/signcrl.c \
+	commands/acert.c \
 	commands/pkcs7.c \
 	commands/verify.c
 
@@ -549,6 +550,8 @@ commands/print.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/signcrl.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/acert.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/pkcs7.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/verify.$(OBJEXT): commands/$(am__dirstamp) \
@@ -567,6 +570,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/command.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pki.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/acert.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/issue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/keyid.Po@am__quote@

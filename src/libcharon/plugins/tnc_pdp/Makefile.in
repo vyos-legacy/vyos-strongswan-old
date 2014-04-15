@@ -127,11 +127,11 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
-@MONOLITHIC_FALSE@libstrongswan_tnc_pdp_la_DEPENDENCIES =  \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libradius/libradius.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libpttls/libpttls.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libtls/libtls.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libtnccs/libtnccs.la
+libstrongswan_tnc_pdp_la_DEPENDENCIES =  \
+	$(top_builddir)/src/libradius/libradius.la \
+	$(top_builddir)/src/libpttls/libpttls.la \
+	$(top_builddir)/src/libtls/libtls.la \
+	$(top_builddir)/src/libtnccs/libtnccs.la
 am_libstrongswan_tnc_pdp_la_OBJECTS = tnc_pdp_plugin.lo tnc_pdp.lo \
 	tnc_pdp_connections.lo
 libstrongswan_tnc_pdp_la_OBJECTS =  \
@@ -377,7 +377,6 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
-openac_plugins = @openac_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -432,11 +431,11 @@ AM_CFLAGS = \
 
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-tnc-pdp.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-tnc-pdp.la
-@MONOLITHIC_FALSE@libstrongswan_tnc_pdp_la_LIBADD = \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libradius/libradius.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libpttls/libpttls.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libtls/libtls.la \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libtnccs/libtnccs.la
+libstrongswan_tnc_pdp_la_LIBADD = \
+	$(top_builddir)/src/libradius/libradius.la \
+	$(top_builddir)/src/libpttls/libpttls.la \
+	$(top_builddir)/src/libtls/libtls.la \
+	$(top_builddir)/src/libtnccs/libtnccs.la
 
 libstrongswan_tnc_pdp_la_SOURCES = \
 	tnc_pdp_plugin.h tnc_pdp_plugin.c \
