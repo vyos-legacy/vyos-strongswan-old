@@ -1,3 +1,11 @@
+strongswan (5.1.3-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control: make strongswan-charon depend on iproute2 | iproute,
+    thanks to Ryo IGARASHI <rigarash@gmail.com> (closes: #744832).
+
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 15 Apr 2014 19:42:27 +0200
+
 strongswan (5.1.2-4) unstable; urgency=high
 
   * debian/patches/04_cve-2014-2338.patch: added to fix CVE-2014-2338
