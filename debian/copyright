@@ -2007,11 +2007,6 @@ Copyright: 2008, Andreas Steffen
   2008-2011, Tobias Brunner
 License: GPL-2+
 
-Files: src/openac/openac.c
-Copyright: 2002, Ueli Galizzi, Ariane Seiler
-  2004,2007, Andreas Steffen
-License: GPL-2+
-
 Files: src/pluto/ocsp.c
 Copyright: 2003, Christoph Gysin, Simon Zwahlen
   2009, Andreas Steffen - Hochschule fuer Technik Rapperswil
