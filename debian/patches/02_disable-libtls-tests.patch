@@ -1,0 +1,8 @@
+--- a/src/libtls/Makefile.am
++++ b/src/libtls/Makefile.am
+@@ -22,4 +22,4 @@
+ 	tls_server.h tls_handshake.h tls_application.h tls_aead.h tls.h
+ endif
+ 
+-SUBDIRS = . tests
++SUBDIRS = .
