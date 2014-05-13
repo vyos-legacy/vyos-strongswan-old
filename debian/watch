@@ -1,2 +1,3 @@
 version=3
+opts=pgpsigurlmangle=s/$/.sig/ \
 http://download.strongswan.org/strongswan-([\d.]+)\.tar\.bz2
