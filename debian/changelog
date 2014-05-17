@@ -1,4 +1,4 @@
-strongswan (5.1.3-3) UNRELEASED; urgency=medium
+strongswan (5.1.3-3) unstable; urgency=medium
 
   * debian/watch:
     - add pgpsigurlmangle to get PGP signature
@@ -7,7 +7,7 @@ strongswan (5.1.3-3) UNRELEASED; urgency=medium
   * debian/control:
     - add build-dep on libgcrypt20-dev, fix FTBFS.              closes: #747796
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 13 May 2014 21:13:47 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 13 May 2014 22:05:16 +0200
 
 strongswan (5.1.3-2) unstable; urgency=low
 
