@@ -2,6 +2,9 @@ strongswan (5.1.3-4) UNRELEASED; urgency=medium
 
   * debian/control:
     - add build-dep on pkg-config.
+  * debian/patches:
+    - 03_pfkey-Always-include-stdint.h added, cherry-picked from upstream git:
+      always include of stdint.h. Fix FTBFS on kFreeBSD.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 19 May 2014 13:56:20 +0200
 
