@@ -1,7 +1,12 @@
 strongswan (5.1.3-5) UNRELEASED; urgency=medium
 
+  [ Romain Francoise ]
   * Amend build-dep on libgcrypt to 'libgcrypt20-dev | libgcrypt11-dev'.
   * Drop hardening-wrapper from build-depends (unused since 5.0.4-1).
+
+  [ Yves-Alexis Perez ]
+  * debian/po:
+    - pt_BR.po updated, thanks Adriano Rafael Gomes.            closes: #752721
 
  -- Romain Francoise <rfrancoise@debian.org>  Sun, 25 May 2014 11:25:13 +0200
 
