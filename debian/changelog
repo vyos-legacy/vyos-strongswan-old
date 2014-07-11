@@ -10,6 +10,8 @@ strongswan (5.2.0-1) UNRELEASED; urgency=medium
     - pt_BR.po updated, thanks Adriano Rafael Gomes.            closes: #752721
   * debian/patches:
     03_pfkey-Always-include-stdint.h dropped, included upstream.
+  * debian/strongswan-starter.install:
+    - replace tools.conf by pki.conf and scepclient.conf.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Fri, 11 Jul 2014 07:23:41 +0200
 

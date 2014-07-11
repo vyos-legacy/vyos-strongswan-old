@@ -34,8 +34,10 @@ usr/share/man/man1/pki---self.1
 usr/share/man/man1/pki---signcrl.1
 usr/share/man/man1/pki---verify.1
 usr/share/man/man1/pki.1
-usr/share/strongswan/templates/config/strongswan.d/tools.conf
-etc/strongswan.d/tools.conf
+usr/share/strongswan/templates/config/strongswan.d/pki.conf
+usr/share/strongswan/templates/config/strongswan.d/scepclient.conf
+etc/strongswan.d/pki.conf
+etc/strongswan.d/scepclient.conf
 #stroke
 usr/lib/ipsec/stroke
 usr/lib/ipsec/plugins/libstrongswan-stroke.so
