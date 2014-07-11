@@ -277,7 +277,7 @@ METHOD(task_t, build_i_status, status_t,
 {
 	cp_payload_t *cp;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_SET);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_SET);
 	cp->add_attribute(cp,
 			configuration_attribute_create_value(XAUTH_STATUS, this->status));
 
@@ -291,7 +291,7 @@ METHOD(task_t, process_i_status, status_t,
 {
 	cp_payload_t *cp;
 
-	cp = (cp_payload_t*)message->get_payload(message, CONFIGURATION_V1);
+	cp = (cp_payload_t*)message->get_payload(message, PLV1_CONFIGURATION);
 	if (!cp || cp->get_type(cp) != CFG_ACK)
 	{
 		DBG1(DBG_IKE, "received invalid XAUTH status response");
@@ -354,11 +354,11 @@ METHOD(task_t, build_r_ack, status_t,
 {
 	cp_payload_t *cp;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_ACK);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_ACK);
 	cp->set_identifier(cp, this->identifier);
 	cp->add_attribute(cp,
 			configuration_attribute_create_chunk(
-					CONFIGURATION_ATTRIBUTE_V1, XAUTH_STATUS, chunk_empty));
+					PLV1_CONFIGURATION_ATTRIBUTE, XAUTH_STATUS, chunk_empty));
 
 	message->add_payload(message, (payload_t *)cp);
 
@@ -382,7 +382,7 @@ METHOD(task_t, process_r, status_t,
 			return NEED_MORE;
 		}
 	}
-	cp = (cp_payload_t*)message->get_payload(message, CONFIGURATION_V1);
+	cp = (cp_payload_t*)message->get_payload(message, PLV1_CONFIGURATION);
 	if (!cp)
 	{
 		DBG1(DBG_IKE, "configuration payload missing in XAuth request");
@@ -438,7 +438,7 @@ METHOD(task_t, build_r, status_t,
 {
 	if (!this->cp)
 	{	/* send empty reply if building data failed */
-		this->cp = cp_payload_create_type(CONFIGURATION_V1, CFG_REPLY);
+		this->cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_REPLY);
 	}
 	message->add_payload(message, (payload_t *)this->cp);
 	this->cp = NULL;
@@ -451,7 +451,7 @@ METHOD(task_t, process_i, status_t,
 	identification_t *id;
 	cp_payload_t *cp;
 
-	cp = (cp_payload_t*)message->get_payload(message, CONFIGURATION_V1);
+	cp = (cp_payload_t*)message->get_payload(message, PLV1_CONFIGURATION);
 	if (!cp)
 	{
 		DBG1(DBG_IKE, "configuration payload missing in XAuth response");
@@ -463,12 +463,6 @@ METHOD(task_t, process_i, status_t,
 			return NEED_MORE;
 		case SUCCESS:
 			id = this->xauth->get_identity(this->xauth);
-			if (this->user && !id->matches(id, this->user))
-			{
-				DBG1(DBG_IKE, "XAuth username '%Y' does not match to "
-					 "configured username '%Y'", id, this->user);
-				break;
-			}
 			DBG1(DBG_IKE, "XAuth authentication of '%Y' successful", id);
 			if (add_auth_cfg(this, id, FALSE) && allowed(this))
 			{

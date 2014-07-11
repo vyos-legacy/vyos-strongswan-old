@@ -73,10 +73,10 @@ struct child_cfg_t {
 	 * Add a proposal to the list.
 	 *
 	 * The proposals are stored by priority, first added
-	 * is the most preferred.
-	 * After add, proposal is owned by child_cfg.
+	 * is the most preferred. It is safe to add NULL as proposal, which has no
+	 * effect. After add, proposal is owned by child_cfg.
 	 *
-	 * @param proposal		proposal to add
+	 * @param proposal		proposal to add, or NULL
 	 */
 	void (*add_proposal) (child_cfg_t *this, proposal_t *proposal);
 
@@ -233,6 +233,20 @@ struct child_cfg_t {
 	 * @return				TFC padding, 0 to disable, -1 for MTU
 	 */
 	u_int32_t (*get_tfc)(child_cfg_t *this);
+
+	/**
+	 * Get anti-replay window size
+	 *
+	 * @return				anti-replay window size
+	 */
+	u_int32_t (*get_replay_window)(child_cfg_t *this);
+
+	/**
+	 * Set anti-replay window size
+	 *
+	 * @param window		anti-replay window size
+	 */
+	void (*set_replay_window)(child_cfg_t *this, u_int32_t window);
 
 	/**
 	 * Sets two options needed for Mobile IPv6 interoperability.

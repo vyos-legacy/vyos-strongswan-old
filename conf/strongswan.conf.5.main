@@ -1,4 +1,8 @@
 .TP
+.BR aikgen.load " []"
+Plugins to load in ipsec aikgen tool.
+
+.TP
 .BR attest.database " []"
 File measurement information database URI. If it contains a password, make sure
 to adjust the permissions of the config file accordingly.
@@ -26,6 +30,20 @@ For many options defaults can be defined
 in the
 .RB "" "libstrongswan" ""
 section.
+
+.TP
+.BR charon.accept_unencrypted_mainmode_messages " [no]"
+Accept unencrypted ID and HASH payloads in IKEv1 Main Mode.
+
+Some implementations send the third Main Mode message unencrypted, probably to
+find the PSKs for the specified ID for authentication. This is very similar to
+Aggressive Mode, and has the same security implications: A passive attacker can
+sniff the negotiated Identity, and start brute forcing the PSK using the HASH
+payload.
+
+It is recommended to keep this option to no, unless you know exactly what the
+implications are and require compatibility to such devices (for example, some
+SonicWall boxes).
 
 .TP
 .BR charon.block_threshold " [5]"
@@ -666,7 +684,7 @@ Maximum number of processed EAP\-TLS packets (0 = no limit).
 Maximum number of processed EAP\-TNC packets (0 = no limit).
 
 .TP
-.BR charon.plugins.eap-tnc.protocol " [tnccs-1.1]"
+.BR charon.plugins.eap-tnc.protocol " [tnccs-2.0]"
 IF\-TNCCS protocol version to be used 
 .RI "(" "tnccs\-1.1" ","
 .RI "" "tnccs\-2.0" ","
@@ -696,6 +714,14 @@ Phase2 EAP Identity request piggybacked by server onto TLS Finished message.
 .TP
 .BR charon.plugins.eap-ttls.phase2_tnc " [no]"
 Start phase2 EAP TNC protocol after successful client authentication.
+
+.TP
+.BR charon.plugins.eap-ttls.phase2_tnc_method " [pt]"
+Phase2 EAP TNC transport protocol 
+.RI "(" "pt" ""
+as IETF standard or legacy
+.RI "" "tnc" ")"
+
 
 .TP
 .BR charon.plugins.eap-ttls.request_peer_auth " [no]"
@@ -735,132 +761,8 @@ to 0 to disable.
 .TP
 .BR charon.plugins.ha.segment_count " [1]"
 .TP
-.BR charon.plugins.imc-attestation.aik_blob " []"
-AIK encrypted private key blob file.
-
-.TP
-.BR charon.plugins.imc-attestation.aik_cert " []"
-AIK certificate file.
-
-.TP
-.BR charon.plugins.imc-attestation.aik_key " []"
-AIK public key file.
-
-.TP
-.BR charon.plugins.imc-attestation.mandatory_dh_groups " [yes]"
-Enforce mandatory Diffie\-Hellman groups.
-
-.TP
-.BR charon.plugins.imc-attestation.nonce_len " [20]"
-DH nonce length.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr17_after " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr17_before " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr17_meas " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr18_after " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr18_before " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr18_meas " []"
-Dummy data if the TBOOT log is not retrieved.
-
-.TP
-.BR charon.plugins.imc-attestation.pcr_info " [yes]"
-Whether to send pcr_before and pcr_after info.
-
-.TP
-.BR charon.plugins.imc-attestation.use_quote2 " [yes]"
-Use Quote2 AIK signature instead of Quote signature.
-
-.TP
-.BR charon.plugins.imc-os.push_info " [yes]"
-Send operating system info without being prompted.
-
-.TP
-.BR charon.plugins.imc-scanner.push_info " [yes]"
-Send open listening ports without being prompted.
-
-.TP
-.BR charon.plugins.imc-swid.swid_directory " [${prefix}/share]"
-Directory where SWID tags are located.
-
-.TP
-.BR charon.plugins.imc-test.additional_ids " [0]"
-Number of additional IMC IDs.
-
-.TP
-.BR charon.plugins.imc-test.command " [none]"
-Command to be sent to the Test IMV.
-
-.TP
-.BR charon.plugins.imc-test.dummy_size " [0]"
-Size of dummy attribute to be sent to the Test IMV (0 = disabled).
-
-.TP
-.BR charon.plugins.imc-test.retry " [no]"
-Do a handshake retry.
-
-.TP
-.BR charon.plugins.imc-test.retry_command " []"
-Command to be sent to the Test IMV in the handshake retry.
-
-.TP
-.BR charon.plugins.imv-attestation.cadir " []"
-Path to directory with AIK cacerts.
-
-.TP
-.BR charon.plugins.imv-attestation.dh_group " [ecp256]"
-Preferred Diffie\-Hellman group.
-
-.TP
-.BR charon.plugins.imv-attestation.hash_algorithm " [sha256]"
-Preferred measurement hash algorithm.
-
-.TP
-.BR charon.plugins.imv-attestation.mandatory_dh_groups " [yes]"
-Enforce mandatory Diffie\-Hellman groups.
-
-.TP
-.BR charon.plugins.imv-attestation.min_nonce_len " [0]"
-DH minimum nonce length.
-
-.TP
-.BR charon.plugins.imv-os.remediation_uri " []"
-URI pointing to operating system remediation instructions.
-
-.TP
-.BR charon.plugins.imv-scanner.remediation_uri " []"
-URI pointing to scanner remediation instructions.
-
-.TP
-.BR charon.plugins.imv-test.rounds " [0]"
-Number of IMC\-IMV retry rounds.
-
-.TP
 .BR charon.plugins.ipseckey.enable " [no]"
 Enable fetching of IPSECKEY RRs via DNS.
-
-.TP
-.BR charon.plugins.kernel-klips.ipsec_dev_count " [4]"
-Number of ipsecN devices.
-
-.TP
-.BR charon.plugins.kernel-klips.ipsec_dev_mtu " [0]"
-Set MTU of ipsecN device.
 
 .TP
 .BR charon.plugins.kernel-libipsec.allow_peer_ts " [no]"
@@ -926,6 +828,11 @@ Directory to load (intermediate) CA certificates from.
 .TP
 .BR charon.plugins.load-tester.child_rekey " [600]"
 Seconds to start CHILD_SA rekeying after setup.
+
+.TP
+.BR charon.plugins.load-tester.crl " []"
+URI to a CRL to include as certificate distribution point in generated
+certificates.
 
 .TP
 .BR charon.plugins.load-tester.delay " [0]"
@@ -1360,6 +1267,10 @@ Config or IKEv2 Config Payloads (if enabled they can't be handled by other
 plugins, like resolve)
 
 .TP
+.BR charon.plugins.vici.socket " [unix://${piddir}/charon.vici]"
+Socket the vici plugin serves clients.
+
+.TP
 .BR charon.plugins.whitelist.enable " [yes]"
 Enable loaded whitelist plugin.
 
@@ -1395,6 +1306,11 @@ allocated.  Has to be different from
 .RB "" "charon.port" ","
 otherwise a random port
 will be allocated.
+
+.TP
+.BR charon.prefer_temporary_addrs " [no]"
+By default public IPv6 addresses are preferred over temporary ones (RFC 4941),
+to make connections more stable. Enable this option to reverse this.
 
 .TP
 .BR charon.process_route " [yes]"
@@ -1478,6 +1394,18 @@ Specific IKEv2 message type to delay, 0 for any.
 .TP
 .BR charon.send_vendor_id " [no]"
 Send strongSwan vendor ID payload
+
+.TP
+.B charon.start-scripts
+.br
+Section containing a list of scripts (name = path) that are executed when the
+daemon is started.
+
+.TP
+.B charon.stop-scripts
+.br
+Section containing a list of scripts (name = path) that are executed when the
+daemon is terminated.
 
 .TP
 .B charon.syslog
@@ -1565,6 +1493,156 @@ library.
 Plugins to load in IMC/IMVs with stand\-alone
 .RI "" "libimcv" ""
 library.
+
+.TP
+.BR libimcv.plugins.imc-attestation.aik_blob " []"
+AIK encrypted private key blob file.
+
+.TP
+.BR libimcv.plugins.imc-attestation.aik_cert " []"
+AIK certificate file.
+
+.TP
+.BR libimcv.plugins.imc-attestation.aik_pubkey " []"
+AIK public key file.
+
+.TP
+.BR libimcv.plugins.imc-attestation.mandatory_dh_groups " [yes]"
+Enforce mandatory Diffie\-Hellman groups.
+
+.TP
+.BR libimcv.plugins.imc-attestation.nonce_len " [20]"
+DH nonce length.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr17_after " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr17_before " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr17_meas " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr18_after " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr18_before " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr18_meas " []"
+Dummy data if the TBOOT log is not retrieved.
+
+.TP
+.BR libimcv.plugins.imc-attestation.pcr_info " [no]"
+Whether to send pcr_before and pcr_after info.
+
+.TP
+.BR libimcv.plugins.imc-attestation.use_quote2 " [yes]"
+Use Quote2 AIK signature instead of Quote signature.
+
+.TP
+.BR libimcv.plugins.imc-os.device_cert " []"
+Manually set the path to the client device certificate (e.g.
+/etc/pts/aikCert.der)
+
+.TP
+.BR libimcv.plugins.imc-os.device_id " []"
+Manually set the client device ID in hexadecimal format (e.g.
+1083f03988c9762703b1c1080c2e46f72b99cc31)
+
+.TP
+.BR libimcv.plugins.imc-os.device_pubkey " []"
+Manually set the path to the client device public key (e.g. /etc/pts/aikPub.der)
+
+.TP
+.BR libimcv.plugins.imc-os.push_info " [yes]"
+Send operating system info without being prompted.
+
+.TP
+.BR libimcv.plugins.imc-scanner.push_info " [yes]"
+Send open listening ports without being prompted.
+
+.TP
+.BR libimcv.plugins.imc-swid.swid_directory " [${prefix}/share]"
+Directory where SWID tags are located.
+
+.TP
+.BR libimcv.plugins.imc-swid.swid_full " [FALSE]"
+Include file information in the XML\-encoded SWID tags.
+
+.TP
+.BR libimcv.plugins.imc-swid.swid_generator " [/usr/local/bin/swid_generator]"
+SWID generator command to be executed.
+
+.TP
+.BR libimcv.plugins.imc-swid.swid_pretty " [FALSE]"
+Generate XML\-encoded SWID tags with pretty indentation.
+
+.TP
+.BR libimcv.plugins.imc-test.additional_ids " [0]"
+Number of additional IMC IDs.
+
+.TP
+.BR libimcv.plugins.imc-test.command " [none]"
+Command to be sent to the Test IMV.
+
+.TP
+.BR libimcv.plugins.imc-test.dummy_size " [0]"
+Size of dummy attribute to be sent to the Test IMV (0 = disabled).
+
+.TP
+.BR libimcv.plugins.imc-test.retry " [no]"
+Do a handshake retry.
+
+.TP
+.BR libimcv.plugins.imc-test.retry_command " []"
+Command to be sent to the Test IMV in the handshake retry.
+
+.TP
+.BR libimcv.plugins.imv-attestation.cadir " []"
+Path to directory with AIK cacerts.
+
+.TP
+.BR libimcv.plugins.imv-attestation.dh_group " [ecp256]"
+Preferred Diffie\-Hellman group.
+
+.TP
+.BR libimcv.plugins.imv-attestation.hash_algorithm " [sha256]"
+Preferred measurement hash algorithm.
+
+.TP
+.BR libimcv.plugins.imv-attestation.mandatory_dh_groups " [yes]"
+Enforce mandatory Diffie\-Hellman groups.
+
+.TP
+.BR libimcv.plugins.imv-attestation.min_nonce_len " [0]"
+DH minimum nonce length.
+
+.TP
+.BR libimcv.plugins.imv-os.remediation_uri " []"
+URI pointing to operating system remediation instructions.
+
+.TP
+.BR libimcv.plugins.imv-scanner.remediation_uri " []"
+URI pointing to scanner remediation instructions.
+
+.TP
+.BR libimcv.plugins.imv-swid.rest_api_timeout " [120]"
+Timeout of SWID REST API HTTP POST transaction.
+
+.TP
+.BR libimcv.plugins.imv-swid.rest_api_uri " []"
+HTTP URI of the SWID REST API.
+
+.TP
+.BR libimcv.plugins.imv-test.rounds " [0]"
+Number of IMC\-IMV retry rounds.
 
 .TP
 .BR libimcv.stderr_quiet " [no]"
@@ -1669,4 +1747,8 @@ Plugins to load in starter.
 .TP
 .BR starter.load_warning " [yes]"
 Disable charon plugin load option warning.
+
+.TP
+.BR swanctl.load " []"
+Plugins to load in swanctl.
 

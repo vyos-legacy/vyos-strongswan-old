@@ -50,6 +50,11 @@ struct private_curl_fetcher_t {
 	fetcher_callback_t cb;
 
 	/**
+	 * Variable that receives the response code
+	 */
+	u_int *result;
+
+	/**
 	 * Timeout for a transfer
 	 */
 	long timeout;
@@ -82,6 +87,7 @@ METHOD(fetcher_t, fetch, status_t,
 {
 	char error[CURL_ERROR_SIZE], *enc_uri;
 	status_t status;
+	long result = 0;
 	cb_data_t data = {
 		.cb = this->cb,
 		.user = userdata,
@@ -102,7 +108,7 @@ METHOD(fetcher_t, fetch, status_t,
 		goto out;
 	}
 	curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, error);
-	curl_easy_setopt(this->curl, CURLOPT_FAILONERROR, TRUE);
+	curl_easy_setopt(this->curl, CURLOPT_FAILONERROR, FALSE);
 	curl_easy_setopt(this->curl, CURLOPT_NOSIGNAL, TRUE);
 	if (this->timeout)
 	{
@@ -123,7 +129,13 @@ METHOD(fetcher_t, fetch, status_t,
 			status = NOT_SUPPORTED;
 			break;
 		case CURLE_OK:
-			status = SUCCESS;
+			curl_easy_getinfo(this->curl, CURLINFO_RESPONSE_CODE,
+							  &result);
+			if (this->result)
+			{
+				*this->result = result;
+			}
+			status = (result >= 200 && result < 300) ? SUCCESS : FAILED;
 			break;
 		default:
 			DBG1(DBG_LIB, "libcurl http request failed: %s", error);
@@ -186,6 +198,11 @@ METHOD(fetcher_t, set_option, bool,
 		case FETCH_CALLBACK:
 		{
 			this->cb = va_arg(args, fetcher_callback_t);
+			break;
+		}
+		case FETCH_RESPONSE_CODE:
+		{
+			this->result = va_arg(args, u_int*);
 			break;
 		}
 		case FETCH_SOURCEIP:

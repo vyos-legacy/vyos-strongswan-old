@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 Andreas Steffen
+ * Copyright (C) 2011-2014 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,8 +19,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <syslog.h>
 #include <libgen.h>
+#ifdef HAVE_SYSLOG
+# include <syslog.h>
+#endif
 
 #include <library.h>
 #include <utils/debug.h>
@@ -43,9 +45,6 @@ static bool stderr_quiet = TRUE;
  */
 static void attest_dbg(debug_t group, level_t level, char *fmt, ...)
 {
-	int priority = LOG_INFO;
-	char buffer[8192];
-	char *current = buffer, *next;
 	va_list args;
 
 	if (level <= debug_level)
@@ -58,22 +57,30 @@ static void attest_dbg(debug_t group, level_t level, char *fmt, ...)
 			va_end(args);
 		}
 
-		/* write in memory buffer first */
-		va_start(args, fmt);
-		vsnprintf(buffer, sizeof(buffer), fmt, args);
-		va_end(args);
-
-		/* do a syslog with every line */
-		while (current)
+#ifdef HAVE_SYSLOG
 		{
-			next = strchr(current, '\n');
-			if (next)
+			int priority = LOG_INFO;
+			char buffer[8192];
+			char *current = buffer, *next;
+
+			/* write in memory buffer first */
+			va_start(args, fmt);
+			vsnprintf(buffer, sizeof(buffer), fmt, args);
+			va_end(args);
+
+			/* do a syslog with every line */
+			while (current)
 			{
-				*(next++) = '\0';
+				next = strchr(current, '\n');
+				if (next)
+				{
+					*(next++) = '\0';
+				}
+				syslog(priority, "%s\n", current);
+				current = next;
 			}
-			syslog(priority, "%s\n", current);
-			current = next;
 		}
+#endif /* HAVE_SYSLOG */
 	}
 }
 
@@ -91,7 +98,9 @@ static void cleanup(void)
 	attest->destroy(attest);
 	libpts_deinit();
 	libimcv_deinit();
+#ifdef HAVE_SYSLOG
 	closelog();
+#endif
 }
 
 static void do_args(int argc, char *argv[])
@@ -144,9 +153,9 @@ static void do_args(int argc, char *argv[])
 			{ "directory", required_argument, NULL, 'D' },
 			{ "dir", required_argument, NULL, 'D' },
 			{ "file", required_argument, NULL, 'F' },
-			{ "sha1-ima", no_argument, NULL, 'I' },
 			{ "package", required_argument, NULL, 'G' },
 			{ "key", required_argument, NULL, 'K' },
+			{ "measdir", required_argument, NULL, 'M' },
 			{ "owner", required_argument, NULL, 'O' },
 			{ "product", required_argument, NULL, 'P' },
 			{ "relative", no_argument, NULL, 'R' },
@@ -294,9 +303,6 @@ static void do_args(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				}
 				continue;
-			case 'I':
-				attest->set_algo(attest, PTS_MEAS_ALGO_SHA1_IMA);
-				continue;
 			case 'K':
 			{
 				chunk_t aik;
@@ -308,6 +314,12 @@ static void do_args(int argc, char *argv[])
 				}
 				continue;
 			}
+			case 'M':
+				if (!attest->set_meas_directory(attest, optarg))
+				{
+					exit(EXIT_FAILURE);
+				}
+				continue;
 			case 'O':
 				attest->set_owner(attest, optarg);
 				continue;
@@ -437,7 +449,9 @@ int main(int argc, char *argv[])
 
 	/* enable attest debugging hook */
 	dbg = attest_dbg;
+#ifdef HAVE_SYSLOG
 	openlog("attest", 0, LOG_DEBUG);
+#endif
 
 	atexit(library_deinit);
 
@@ -471,4 +485,3 @@ int main(int argc, char *argv[])
 
 	exit(EXIT_SUCCESS);
 }
-

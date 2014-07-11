@@ -16,6 +16,21 @@
  * for more details.
  */
 
+#include "tun_device.h"
+
+#include <utils/debug.h>
+#include <threading/thread.h>
+
+#if !defined(__APPLE__) && !defined(__linux__) && !defined(HAVE_NET_IF_TUN_H)
+
+tun_device_t *tun_device_create(const char *name_tmpl)
+{
+	DBG1(DBG_LIB, "TUN devices are not supported");
+	return NULL;
+}
+
+#else /* TUN devices supported */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -27,22 +42,6 @@
 #include <unistd.h>
 #include <net/if.h>
 
-#if !defined(__APPLE__) && !defined(__linux__) && !defined(HAVE_NET_IF_TUN_H)
-
-#include "tun_device.h"
-
-#include <utils/debug.h>
-
-#warning TUN devices are not supported!
-
-tun_device_t *tun_device_create(const char *name_tmpl)
-{
-	DBG1(DBG_LIB, "TUN devices are not supported");
-	return NULL;
-}
-
-#else /* TUN devices supported */
-
 #ifdef __APPLE__
 #include <net/if_utun.h>
 #include <netinet/in_var.h>
@@ -50,14 +49,13 @@ tun_device_t *tun_device_create(const char *name_tmpl)
 #elif defined(__linux__)
 #include <linux/types.h>
 #include <linux/if_tun.h>
+#elif __FreeBSD__ >= 10
+#include <net/if_tun.h>
+#include <net/if_var.h>
+#include <netinet/in_var.h>
 #else
 #include <net/if_tun.h>
 #endif
-
-#include "tun_device.h"
-
-#include <utils/debug.h>
-#include <threading/thread.h>
 
 #define TUN_DEFAULT_MTU 1500
 
@@ -101,8 +99,79 @@ struct private_tun_device_t {
 	u_int8_t netmask;
 };
 
-METHOD(tun_device_t, set_address, bool,
-	private_tun_device_t *this, host_t *addr, u_int8_t netmask)
+/**
+ * FreeBSD 10 deprecated the SIOCSIFADDR etc. commands.
+ */
+#if __FreeBSD__ >= 10
+
+static bool set_address_and_mask(struct in_aliasreq *ifra, host_t *addr,
+								 u_int8_t netmask)
+{
+	host_t *mask;
+
+	memcpy(&ifra->ifra_addr, addr->get_sockaddr(addr),
+		   *addr->get_sockaddr_len(addr));
+	/* set the same address as destination address */
+	memcpy(&ifra->ifra_dstaddr, addr->get_sockaddr(addr),
+		   *addr->get_sockaddr_len(addr));
+
+	mask = host_create_netmask(addr->get_family(addr), netmask);
+	if (!mask)
+	{
+		DBG1(DBG_LIB, "invalid netmask: %d", netmask);
+		return FALSE;
+	}
+	memcpy(&ifra->ifra_mask, mask->get_sockaddr(mask),
+		   *mask->get_sockaddr_len(mask));
+	mask->destroy(mask);
+	return TRUE;
+}
+
+/**
+ * Set the address using the more flexible SIOCAIFADDR/SIOCDIFADDR commands
+ * on FreeBSD 10 an newer.
+ */
+static bool set_address_impl(private_tun_device_t *this, host_t *addr,
+							 u_int8_t netmask)
+{
+	struct in_aliasreq ifra;
+
+	memset(&ifra, 0, sizeof(ifra));
+	strncpy(ifra.ifra_name, this->if_name, IFNAMSIZ);
+
+	if (this->address)
+	{	/* remove the existing address first */
+		if (!set_address_and_mask(&ifra, this->address, this->netmask))
+		{
+			return FALSE;
+		}
+		if (ioctl(this->sock, SIOCDIFADDR, &ifra) < 0)
+		{
+			DBG1(DBG_LIB, "failed to remove existing address on %s: %s",
+				 this->if_name, strerror(errno));
+			return FALSE;
+		}
+	}
+	if (!set_address_and_mask(&ifra, addr, netmask))
+	{
+		return FALSE;
+	}
+	if (ioctl(this->sock, SIOCAIFADDR, &ifra) < 0)
+	{
+		DBG1(DBG_LIB, "failed to add address on %s: %s",
+			 this->if_name, strerror(errno));
+		return FALSE;
+	}
+	return TRUE;
+}
+
+#else /* __FreeBSD__ */
+
+/**
+ * Set the address using the classic SIOCSIFADDR etc. commands on other systems.
+ */
+static bool set_address_impl(private_tun_device_t *this, host_t *addr,
+							 u_int8_t netmask)
 {
 	struct ifreq ifr;
 	host_t *mask;
@@ -143,6 +212,19 @@ METHOD(tun_device_t, set_address, bool,
 			 this->if_name, strerror(errno));
 		return FALSE;
 	}
+	return TRUE;
+}
+
+#endif /* __FreeBSD__ */
+
+METHOD(tun_device_t, set_address, bool,
+	private_tun_device_t *this, host_t *addr, u_int8_t netmask)
+{
+	if (!set_address_impl(this, addr, netmask))
+	{
+		return FALSE;
+	}
+	DESTROY_IF(this->address);
 	this->address = addr->clone(addr);
 	this->netmask = netmask;
 	return TRUE;

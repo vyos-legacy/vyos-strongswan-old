@@ -7,7 +7,6 @@ bus/bus.c bus/bus.h \
 bus/listeners/listener.h \
 bus/listeners/logger.h \
 bus/listeners/file_logger.c bus/listeners/file_logger.h \
-bus/listeners/sys_logger.c bus/listeners/sys_logger.h \
 config/backend_manager.c config/backend_manager.h config/backend.h \
 config/child_cfg.c config/child_cfg.h \
 config/ike_cfg.c config/ike_cfg.h \
@@ -123,6 +122,9 @@ sa/ikev1/tasks/mode_config.c sa/ikev1/tasks/mode_config.h \
 processing/jobs/dpd_timeout_job.c processing/jobs/dpd_timeout_job.h \
 processing/jobs/adopt_children_job.c processing/jobs/adopt_children_job.h
 
+libcharon_la_SOURCES += \
+    bus/listeners/sys_logger.c bus/listeners/sys_logger.h
+
 LOCAL_SRC_FILES := $(filter %.c,$(libcharon_la_SOURCES))
 
 # adding the plugin source files
@@ -199,6 +201,7 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libtls/
 LOCAL_SRC_FILES += $(addprefix ../libtls/, \
 		tls_protection.c tls_compression.c tls_fragmentation.c tls_alert.c \
 		tls_crypto.c tls_prf.c tls_socket.c tls_eap.c tls_cache.c tls_peer.c \
+		tls_aead_expl.c tls_aead_impl.c tls_aead_null.c tls_aead.c \
 		tls_server.c tls.c \
 	)
 endif

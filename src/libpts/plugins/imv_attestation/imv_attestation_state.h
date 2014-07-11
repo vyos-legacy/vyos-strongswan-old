@@ -29,7 +29,9 @@
 #include <pts/pts.h>
 #include <pts/pts_database.h>
 #include <pts/components/pts_component.h>
+
 #include <library.h>
+#include <bio/bio_writer.h>
 
 typedef struct imv_attestation_state_t imv_attestation_state_t;
 typedef enum imv_attestation_flag_t imv_attestation_flag_t;
@@ -40,10 +42,15 @@ typedef enum imv_meas_error_t imv_meas_error_t;
  * IMV Attestation Flags set for completed actions
  */
 enum imv_attestation_flag_t {
-	IMV_ATTESTATION_FLAG_ATTR_REQ =  (1<<0),
-	IMV_ATTESTATION_FLAG_ALGO =      (1<<1),
-	IMV_ATTESTATION_FLAG_FILE_MEAS = (1<<2),
-	IMV_ATTESTATION_FLAG_REC =       (1<<3)
+	IMV_ATTESTATION_ATTR_PRODUCT_INFO =   (1<<0),
+	IMV_ATTESTATION_ATTR_STRING_VERSION = (1<<1),
+	IMV_ATTESTATION_ATTR_DEVICE_ID =      (1<<2),
+	IMV_ATTESTATION_ATTR_MUST =           (1<<3)-1,
+	IMV_ATTESTATION_ATTR_REQ =            (1<<3),
+	IMV_ATTESTATION_ALGO =                (1<<4),
+	IMV_ATTESTATION_DH_NONCE =            (1<<5),
+	IMV_ATTESTATION_FILE_MEAS =           (1<<6),
+	IMV_ATTESTATION_REC =                 (1<<7)
 };
 
 /**
@@ -114,7 +121,7 @@ struct imv_attestation_state_t {
 	 */
 	pts_component_t* (*create_component)(imv_attestation_state_t *this,
 										 pts_comp_func_name_t *name,
-										 u_int32_t depth,
+										 uint32_t depth,
 										 pts_database_t *pts_db);
 
 	/**
@@ -136,15 +143,18 @@ struct imv_attestation_state_t {
 	/**
 	 * Tell the Functional Components to finalize any measurement registrations
 	 * and to check if all expected measurements were received
+	 *
+	 * @param result			Writer appending component measurement results
 	 */
-	void (*finalize_components)(imv_attestation_state_t *this);
+	void (*finalize_components)(imv_attestation_state_t *this,
+								bio_writer_t *result);
 
 	/**
 	 * Indicates the types of measurement errors that occurred
 	 *
 	 * @return					Measurement error flags
 	 */
-	u_int32_t (*get_measurement_error)(imv_attestation_state_t *this);
+	uint32_t (*get_measurement_error)(imv_attestation_state_t *this);
 
 	/**
 	 * Call if a measurement error is encountered
@@ -152,7 +162,7 @@ struct imv_attestation_state_t {
 	 * @param error				Measurement error type
 	 */
 	void (*set_measurement_error)(imv_attestation_state_t *this,
-								  u_int32_t error);
+								  uint32_t error);
 
 	/**
 	 * Returns a concatenation of File Measurement reason strings

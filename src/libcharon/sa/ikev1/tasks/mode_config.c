@@ -107,7 +107,7 @@ static configuration_attribute_t *build_vip(host_t *vip)
 			chunk = chunk_cata("cc", chunk, prefix);
 		}
 	}
-	return configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE_V1,
+	return configuration_attribute_create_chunk(PLV1_CONFIGURATION_ATTRIBUTE,
 												type, chunk);
 }
 
@@ -139,11 +139,8 @@ static void handle_attribute(private_mode_config_t *this,
 	handler = hydra->attributes->handle(hydra->attributes,
 							this->ike_sa->get_other_id(this->ike_sa), handler,
 							ca->get_type(ca), ca->get_chunk(ca));
-	if (handler)
-	{
-		this->ike_sa->add_configuration_attribute(this->ike_sa,
-				handler, ca->get_type(ca), ca->get_chunk(ca));
-	}
+	this->ike_sa->add_configuration_attribute(this->ike_sa,
+							handler, ca->get_type(ca), ca->get_chunk(ca));
 }
 
 /**
@@ -222,7 +219,7 @@ static void process_payloads(private_mode_config_t *this, message_t *message)
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{
-		if (payload->get_type(payload) == CONFIGURATION_V1)
+		if (payload->get_type(payload) == PLV1_CONFIGURATION)
 		{
 			cp_payload_t *cp = (cp_payload_t*)payload;
 			configuration_attribute_t *ca;
@@ -273,7 +270,7 @@ static void add_attribute(private_mode_config_t *this, cp_payload_t *cp,
 	entry_t *entry;
 
 	cp->add_attribute(cp,
-			configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE_V1,
+			configuration_attribute_create_chunk(PLV1_CONFIGURATION_ATTRIBUTE,
 												 type, data));
 	INIT(entry,
 		.type = type,
@@ -296,7 +293,7 @@ static status_t build_request(private_mode_config_t *this, message_t *message)
 	linked_list_t *vips;
 	host_t *host;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_REQUEST);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_REQUEST);
 
 	vips = linked_list_create();
 
@@ -360,7 +357,7 @@ static status_t build_set(private_mode_config_t *this, message_t *message)
 	host_t *any4, *any6, *found;
 	char *name;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_SET);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_SET);
 
 	id = this->ike_sa->get_other_eap_id(this->ike_sa);
 	config = this->ike_sa->get_peer_cfg(this->ike_sa);
@@ -395,6 +392,8 @@ static status_t build_set(private_mode_config_t *this, message_t *message)
 
 	any4->destroy(any4);
 	any6->destroy(any6);
+
+	charon->bus->assign_vips(charon->bus, this->ike_sa, TRUE);
 
 	/* query registered providers for additional attributes to include */
 	pools = linked_list_create_from_enumerator(
@@ -442,6 +441,8 @@ static void install_vips(private_mode_config_t *this)
 		}
 	}
 	enumerator->destroy(enumerator);
+
+	charon->bus->handle_vips(charon->bus, this->ike_sa, TRUE);
 }
 
 METHOD(task_t, process_r, status_t,
@@ -470,7 +471,7 @@ static status_t build_reply(private_mode_config_t *this, message_t *message)
 	linked_list_t *vips, *pools;
 	host_t *requested;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_REPLY);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_REPLY);
 
 	id = this->ike_sa->get_other_eap_id(this->ike_sa);
 	config = this->ike_sa->get_peer_cfg(this->ike_sa);
@@ -505,13 +506,15 @@ static status_t build_reply(private_mode_config_t *this, message_t *message)
 	}
 	enumerator->destroy(enumerator);
 
+	charon->bus->assign_vips(charon->bus, this->ike_sa, TRUE);
+
 	/* query registered providers for additional attributes to include */
 	enumerator = hydra->attributes->create_responder_enumerator(
 											hydra->attributes, pools, id, vips);
 	while (enumerator->enumerate(enumerator, &type, &value))
 	{
 		cp->add_attribute(cp,
-			configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE_V1,
+			configuration_attribute_create_chunk(PLV1_CONFIGURATION_ATTRIBUTE,
 												 type, value));
 	}
 	enumerator->destroy(enumerator);
@@ -535,7 +538,7 @@ static status_t build_ack(private_mode_config_t *this, message_t *message)
 	configuration_attribute_type_t type;
 	entry_t *entry;
 
-	cp = cp_payload_create_type(CONFIGURATION_V1, CFG_ACK);
+	cp = cp_payload_create_type(PLV1_CONFIGURATION, CFG_ACK);
 
 	/* return empty attributes for installed IPs */
 
@@ -552,7 +555,7 @@ static status_t build_ack(private_mode_config_t *this, message_t *message)
 			type = INTERNAL_IP4_ADDRESS;
 		}
 		cp->add_attribute(cp, configuration_attribute_create_chunk(
-								CONFIGURATION_ATTRIBUTE_V1, type, chunk_empty));
+								PLV1_CONFIGURATION_ATTRIBUTE, type, chunk_empty));
 	}
 	enumerator->destroy(enumerator);
 
@@ -560,7 +563,7 @@ static status_t build_ack(private_mode_config_t *this, message_t *message)
 	while (enumerator->enumerate(enumerator, &entry))
 	{
 		cp->add_attribute(cp,
-			configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE_V1,
+			configuration_attribute_create_chunk(PLV1_CONFIGURATION_ATTRIBUTE,
 												 entry->type, chunk_empty));
 	}
 	enumerator->destroy(enumerator);

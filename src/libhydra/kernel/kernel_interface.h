@@ -69,6 +69,8 @@ enum kernel_feature_t {
 	KERNEL_REQUIRE_EXCLUDE_ROUTE = (1<<1),
 	/** IPsec implementation requires UDP encapsulation of ESP packets */
 	KERNEL_REQUIRE_UDP_ENCAPSULATION = (1<<2),
+	/** IPsec backend does not require a policy reinstall on SA updates */
+	KERNEL_NO_POLICY_UPDATES = (1<<3),
 };
 
 /**
@@ -145,6 +147,7 @@ struct kernel_interface_t {
 	 * @param mode			mode of the SA (tunnel, transport)
 	 * @param ipcomp		IPComp transform to use
 	 * @param cpi			CPI for IPComp
+	 * @param replay_window	anti-replay window size
 	 * @param initiator		TRUE if initiator of the exchange creating this SA
 	 * @param encap			enable UDP encapsulation for NAT traversal
 	 * @param esn			TRUE to use Extended Sequence Numbers
@@ -160,6 +163,7 @@ struct kernel_interface_t {
 						u_int16_t enc_alg, chunk_t enc_key,
 						u_int16_t int_alg, chunk_t int_key,
 						ipsec_mode_t mode, u_int16_t ipcomp, u_int16_t cpi,
+						u_int32_t replay_window,
 						bool initiator, bool encap, bool esn, bool inbound,
 						traffic_selector_t *src_ts, traffic_selector_t *dst_ts);
 
@@ -326,9 +330,12 @@ struct kernel_interface_t {
 	 * for the given source to dest.
 	 *
 	 * @param dest			target destination address
+	 * @param prefix		prefix length if dest is a subnet, -1 for auto
+	 * @param src			source address to check, or NULL
 	 * @return				next hop address, NULL if unreachable
 	 */
-	host_t* (*get_nexthop)(kernel_interface_t *this, host_t *dest, host_t *src);
+	host_t* (*get_nexthop)(kernel_interface_t *this, host_t *dest,
+						   int prefix, host_t *src);
 
 	/**
 	 * Get the interface name of a local address. Interfaces that are down or

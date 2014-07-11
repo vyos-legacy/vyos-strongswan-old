@@ -42,6 +42,7 @@ tests_SOURCES = tests.h tests.c \
   suites/test_host.c \
   suites/test_hasher.c \
   suites/test_crypter.c \
+  suites/test_crypto_factory.c \
   suites/test_pen.c \
   suites/test_asn1.c \
   suites/test_asn1_parser.c \
@@ -52,7 +53,7 @@ tests_SOURCES = tests.h tests.c \
 tests_CFLAGS = \
   -I$(top_srcdir)/src/libstrongswan \
   -I$(top_srcdir)/src/libstrongswan/tests \
-  -DPLUGINDIR=\""$(top_builddir)/src/libstrongswan/plugins\"" \
+  -DPLUGINDIR=\""$(abs_top_builddir)/src/libstrongswan/plugins\"" \
   -DPLUGINS=\""${s_plugins}\"" \
   @COVERAGE_CFLAGS@
 

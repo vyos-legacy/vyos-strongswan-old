@@ -8,6 +8,7 @@ optionstemplatedir = $(templatesdir)/strongswan.d
 pluginstemplatedir = $(templatesdir)/plugins
 
 options = \
+	options/aikgen.opt \
 	options/attest.opt \
 	options/charon.opt \
 	options/charon-logging.opt \
@@ -15,10 +16,12 @@ options = \
 	options/manager.opt \
 	options/medsrv.opt \
 	options/pacman.opt \
+	options/pki.opt \
 	options/pool.opt \
+	options/scepclient.opt \
 	options/starter.opt \
-	options/tnc.opt \
-	options/tools.opt
+	options/swanctl.opt \
+	options/tnc.opt
 
 plugins = \
 	plugins/android_log.opt \
@@ -51,10 +54,10 @@ plugins = \
 	plugins/imv-attestation.opt \
 	plugins/imv-os.opt \
 	plugins/imv-scanner.opt \
+	plugins/imv-swid.opt \
 	plugins/imv-test.opt \
 	plugins/ipseckey.opt \
 	plugins/led.opt \
-	plugins/kernel-klips.opt \
 	plugins/kernel-libipsec.opt \
 	plugins/kernel-netlink.opt \
 	plugins/kernel-pfroute.opt \
@@ -78,6 +81,7 @@ plugins = \
 	plugins/tnccs-20.opt \
 	plugins/unbound.opt \
 	plugins/updown.opt \
+	plugins/vici.opt \
 	plugins/whitelist.opt \
 	plugins/xauth-eap.opt \
 	plugins/xauth-pam.opt

@@ -13,16 +13,9 @@
  * for more details.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <stddef.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <credentials/auth_cfg.h>
 
@@ -56,48 +49,38 @@ static char* push_string(stroke_msg_t *msg, char *string)
 
 static int send_stroke_msg (stroke_msg_t *msg)
 {
-	struct sockaddr_un ctl_addr;
-	int byte_count;
-	char buffer[64];
-
-	ctl_addr.sun_family = AF_UNIX;
-	strcpy(ctl_addr.sun_path, CHARON_CTL_FILE);
+	stream_t *stream;
+	char *uri, buffer[64];
+	int count;
 
 	/* starter is not called from commandline, and therefore absolutely silent */
 	msg->output_verbosity = -1;
 
-	int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-
-	if (sock < 0)
+	uri = lib->settings->get_str(lib->settings, "%s.plugins.stroke.socket",
+								 "unix://" CHARON_CTL_FILE, daemon_name);
+	stream = lib->streams->connect(lib->streams, uri);
+	if (!stream)
 	{
-		DBG1(DBG_APP, "socket() failed: %s", strerror(errno));
-		return -1;
-	}
-	if (connect(sock, (struct sockaddr *)&ctl_addr, offsetof(struct sockaddr_un, sun_path) + strlen(ctl_addr.sun_path)) < 0)
-	{
-		DBG1(DBG_APP, "connect(charon_ctl) failed: %s", strerror(errno));
-		close(sock);
+		DBG1(DBG_APP, "failed to connect to stroke socket '%s'", uri);
 		return -1;
 	}
 
-	/* send message */
-	if (write(sock, msg, msg->length) != msg->length)
+	if (!stream->write_all(stream, msg, msg->length))
 	{
-		DBG1(DBG_APP, "write(charon_ctl) failed: %s", strerror(errno));
-		close(sock);
+		DBG1(DBG_APP, "sending stroke message failed");
+		stream->destroy(stream);
 		return -1;
 	}
-	while ((byte_count = read(sock, buffer, sizeof(buffer)-1)) > 0)
+	while ((count = stream->read(stream, buffer, sizeof(buffer)-1, TRUE)) > 0)
 	{
-		buffer[byte_count] = '\0';
+		buffer[count] = '\0';
 		DBG1(DBG_APP, "%s", buffer);
 	}
-	if (byte_count < 0)
+	if (count < 0)
 	{
-		DBG1(DBG_APP, "read() failed: %s", strerror(errno));
+		DBG1(DBG_APP, "reading stroke response failed");
 	}
-
-	close(sock);
+	stream->destroy(stream);
 	return 0;
 }
 
@@ -202,6 +185,7 @@ int starter_stroke_add_conn(starter_config_t *cfg, starter_conn_t *conn)
 	msg.add_conn.ikeme.mediated_by = push_string(&msg, conn->me_mediated_by);
 	msg.add_conn.ikeme.peerid = push_string(&msg, conn->me_peerid);
 	msg.add_conn.reqid = conn->reqid;
+	msg.add_conn.replay_window = conn->replay_window;
 	msg.add_conn.mark_in.value = conn->mark_in.value;
 	msg.add_conn.mark_in.mask = conn->mark_in.mask;
 	msg.add_conn.mark_out.value = conn->mark_out.value;

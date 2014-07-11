@@ -978,6 +978,9 @@ struct ike_sa_t {
 	 * registered at the IKE_SA. Attributes are inherit()ed and get released
 	 * when the IKE_SA is closed.
 	 *
+	 * Unhandled attributes are passed as well, but with a NULL handler. They
+	 * do not get released.
+	 *
 	 * @param handler		handler installed the attribute, use for release()
 	 * @param type			configuration attribute type
 	 * @param data			associated attribute data
@@ -985,6 +988,17 @@ struct ike_sa_t {
 	void (*add_configuration_attribute)(ike_sa_t *this,
 							attribute_handler_t *handler,
 							configuration_attribute_type_t type, chunk_t data);
+
+	/**
+	 * Create an enumerator over received configuration attributes.
+	 *
+	 * The resulting enumerator is over the configuration_attribute_type_t type,
+	 * a value chunk_t followed by a bool flag. The boolean flag indicates if
+	 * the attribute has been handled by an attribute handler.
+	 *
+	 * @return				enumerator over type, value and the "handled" flag.
+	 */
+	enumerator_t* (*create_attribute_enumerator)(ike_sa_t *this);
 
 	/**
 	 * Set local and remote host addresses to be used for IKE.
@@ -1020,6 +1034,16 @@ struct ike_sa_t {
 	void (*queue_task)(ike_sa_t *this, task_t *task);
 
 	/**
+	 * Inherit required attributes to new SA before rekeying.
+	 *
+	 * Some properties of the SA must be applied before starting IKE_SA
+	 * rekeying, such as the configuration or support extensions.
+	 *
+	 * @param other			other IKE_SA to inherit from
+	 */
+	void (*inherit_pre)(ike_sa_t *this, ike_sa_t *other);
+
+	/**
 	 * Inherit all attributes of other to this after rekeying.
 	 *
 	 * When rekeying is completed, all CHILD_SAs, the virtual IP and all
@@ -1027,7 +1051,7 @@ struct ike_sa_t {
 	 *
 	 * @param other			other IKE SA to inherit from
 	 */
-	void (*inherit) (ike_sa_t *this, ike_sa_t *other);
+	void (*inherit_post) (ike_sa_t *this, ike_sa_t *other);
 
 	/**
 	 * Reset the IKE_SA, useable when initiating fails

@@ -98,7 +98,7 @@ static configuration_attribute_t *build_vip(host_t *vip)
 			chunk = chunk_cata("cc", chunk, prefix);
 		}
 	}
-	return configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE,
+	return configuration_attribute_create_chunk(PLV2_CONFIGURATION_ATTRIBUTE,
 												type, chunk);
 }
 
@@ -130,11 +130,8 @@ static void handle_attribute(private_ike_config_t *this,
 	handler = hydra->attributes->handle(hydra->attributes,
 							this->ike_sa->get_other_id(this->ike_sa), handler,
 							ca->get_type(ca), ca->get_chunk(ca));
-	if (handler)
-	{
-		this->ike_sa->add_configuration_attribute(this->ike_sa,
-				handler, ca->get_type(ca), ca->get_chunk(ca));
-	}
+	this->ike_sa->add_configuration_attribute(this->ike_sa,
+							handler, ca->get_type(ca), ca->get_chunk(ca));
 }
 
 /**
@@ -200,7 +197,7 @@ static void process_payloads(private_ike_config_t *this, message_t *message)
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{
-		if (payload->get_type(payload) == CONFIGURATION)
+		if (payload->get_type(payload) == PLV2_CONFIGURATION)
 		{
 			cp_payload_t *cp = (cp_payload_t*)payload;
 			configuration_attribute_t *ca;
@@ -268,7 +265,7 @@ METHOD(task_t, build_i, status_t,
 
 		if (vips->get_count(vips))
 		{
-			cp = cp_payload_create_type(CONFIGURATION, CFG_REQUEST);
+			cp = cp_payload_create_type(PLV2_CONFIGURATION, CFG_REQUEST);
 			enumerator = vips->create_enumerator(vips);
 			while (enumerator->enumerate(enumerator, &host))
 			{
@@ -288,11 +285,11 @@ METHOD(task_t, build_i, status_t,
 			/* create configuration attribute */
 			DBG2(DBG_IKE, "building %N attribute",
 				 configuration_attribute_type_names, type);
-			ca = configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE,
+			ca = configuration_attribute_create_chunk(PLV2_CONFIGURATION_ATTRIBUTE,
 													  type, data);
 			if (!cp)
 			{
-				cp = cp_payload_create_type(CONFIGURATION, CFG_REQUEST);
+				cp = cp_payload_create_type(PLV2_CONFIGURATION, CFG_REQUEST);
 			}
 			cp->add_attribute(cp, ca);
 
@@ -363,7 +360,7 @@ METHOD(task_t, build_r, status_t,
 				this->ike_sa->add_virtual_ip(this->ike_sa, FALSE, found);
 				if (!cp)
 				{
-					cp = cp_payload_create_type(CONFIGURATION, CFG_REPLY);
+					cp = cp_payload_create_type(PLV2_CONFIGURATION, CFG_REPLY);
 				}
 				cp->add_attribute(cp, build_vip(found));
 				vips->insert_last(vips, found);
@@ -407,12 +404,12 @@ METHOD(task_t, build_r, status_t,
 		{
 			if (!cp)
 			{
-				cp = cp_payload_create_type(CONFIGURATION, CFG_REPLY);
+				cp = cp_payload_create_type(PLV2_CONFIGURATION, CFG_REPLY);
 			}
 			DBG2(DBG_IKE, "building %N attribute",
 				 configuration_attribute_type_names, type);
 			cp->add_attribute(cp,
-				configuration_attribute_create_chunk(CONFIGURATION_ATTRIBUTE,
+				configuration_attribute_create_chunk(PLV2_CONFIGURATION_ATTRIBUTE,
 													 type, value));
 		}
 		enumerator->destroy(enumerator);
@@ -449,6 +446,8 @@ METHOD(task_t, process_i, status_t,
 			}
 		}
 		enumerator->destroy(enumerator);
+
+		charon->bus->handle_vips(charon->bus, this->ike_sa, TRUE);
 		return SUCCESS;
 	}
 	return NEED_MORE;
