@@ -354,6 +354,11 @@ struct private_ike_sa_manager_t {
 	shareable_segment_t *half_open_segments;
 
 	/**
+	 * Total number of half-open IKE_SAs.
+	 */
+	refcount_t half_open_count;
+
+	/**
 	 * Hash table with connected_peers_t objects.
 	 */
 	table_item_t **connected_peers_table;
@@ -764,6 +769,7 @@ static void put_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 		this->half_open_table[row] = item;
 	}
 	this->half_open_segments[segment].count++;
+	ref_get(&this->half_open_count);
 	lock->unlock(lock);
 }
 
@@ -803,6 +809,7 @@ static void remove_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 				free(item);
 			}
 			this->half_open_segments[segment].count--;
+			ignore_result(ref_put(&this->half_open_count));
 			break;
 		}
 		prev = item;
@@ -964,7 +971,7 @@ static bool get_init_hash(private_ike_sa_manager_t *this, message_t *message,
 	{	/* this might be the case when flush() has been called */
 		return FALSE;
 	}
-	if (message->get_first_payload_type(message) == FRAGMENT_V1)
+	if (message->get_first_payload_type(message) == PLV1_FRAGMENT)
 	{	/* only hash the source IP, port and SPI for fragmented init messages */
 		u_int16_t port;
 		u_int64_t spi;
@@ -1306,7 +1313,7 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 
 			ike_id = entry->ike_sa->get_id(entry->ike_sa);
 			entry->checked_out = TRUE;
-			if (message->get_first_payload_type(message) != FRAGMENT_V1)
+			if (message->get_first_payload_type(message) != PLV1_FRAGMENT)
 			{
 				entry->processing = get_message_id_or_hash(message);
 			}
@@ -1962,13 +1969,7 @@ METHOD(ike_sa_manager_t, get_half_open_count, u_int,
 	}
 	else
 	{
-		for (segment = 0; segment < this->segment_count; segment++)
-		{
-			lock = this->half_open_segments[segment].lock;
-			lock->read_lock(lock);
-			count += this->half_open_segments[segment].count;
-			lock->unlock(lock);
-		}
+		count = (u_int)ref_cur(&this->half_open_count);
 	}
 	return count;
 }

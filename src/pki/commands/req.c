@@ -64,8 +64,7 @@ static int req()
 				}
 				continue;
 			case 'g':
-				digest = enum_from_name(hash_algorithm_short_names, arg);
-				if (digest == -1)
+				if (!enum_from_name(hash_algorithm_short_names, arg, &digest))
 				{
 					error = "invalid --digest type";
 					goto usage;
@@ -119,6 +118,7 @@ static int req()
 	{
 		chunk_t chunk;
 
+		set_file_mode(stdin, CERT_ASN1_DER);
 		if (!chunk_from_fd(0, &chunk))
 		{
 			fprintf(stderr, "reading private key failed: %s\n", strerror(errno));
@@ -151,6 +151,7 @@ static int req()
 		error = "encoding certificate request failed";
 		goto end;
 	}
+	set_file_mode(stdout, form);
 	if (fwrite(encoding.ptr, encoding.len, 1, stdout) != 1)
 	{
 		error = "writing certificate request failed";

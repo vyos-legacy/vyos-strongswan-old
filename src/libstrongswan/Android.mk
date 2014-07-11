@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 # copy-n-paste from Makefile.am
-LOCAL_SRC_FILES := \
+libstrongswan_la_SOURCES = \
 library.c \
 asn1/asn1.c asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
 collections/blocking_queue.c collections/enumerator.c collections/hashtable.c \
@@ -27,17 +27,31 @@ credentials/sets/callback_cred.c credentials/auth_cfg.c database/database.c \
 database/database_factory.c fetcher/fetcher.c fetcher/fetcher_manager.c eap/eap.c \
 ipsec/ipsec_types.c \
 networking/host.c networking/host_resolver.c networking/packet.c \
-networking/tun_device.c networking/streams/stream.c \
-networking/streams/stream_service.c networking/streams/stream_manager.c \
+networking/tun_device.c networking/streams/stream_manager.c \
+networking/streams/stream.c networking/streams/stream_service.c \
+networking/streams/stream_tcp.c networking/streams/stream_service_tcp.c \
 pen/pen.c plugins/plugin_loader.c plugins/plugin_feature.c processing/jobs/job.c \
 processing/jobs/callback_job.c processing/processor.c processing/scheduler.c \
 processing/watcher.c resolver/resolver_manager.c resolver/rr_set.c \
-selectors/traffic_selector.c threading/thread.c threading/thread_value.c \
-threading/mutex.c threading/semaphore.c threading/rwlock.c threading/spinlock.c \
+selectors/traffic_selector.c settings/settings.c settings/settings_types.c \
+settings/settings_parser.c settings/settings_lexer.c \
 utils/utils.c utils/chunk.c utils/debug.c utils/enum.c utils/identification.c \
 utils/lexparser.c utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
-utils/printf_hook/printf_hook_builtin.c utils/settings.c utils/test.c \
-utils/utils/strerror.c
+utils/parser_helper.c utils/test.c utils/utils/strerror.c
+
+libstrongswan_la_SOURCES += \
+    threading/thread.c \
+    threading/thread_value.c \
+    threading/mutex.c \
+    threading/rwlock.c \
+    threading/spinlock.c \
+    threading/semaphore.c \
+    networking/streams/stream_unix.c \
+    networking/streams/stream_service_unix.c
+
+libstrongswan_la_SOURCES += utils/printf_hook/printf_hook_builtin.c
+
+LOCAL_SRC_FILES := $(libstrongswan_la_SOURCES)
 
 # adding the plugin source files
 
@@ -70,7 +84,7 @@ LOCAL_SRC_FILES += $(call add_plugin, nonce)
 LOCAL_SRC_FILES += $(call add_plugin, openssl)
 ifneq ($(call plugin_enabled, openssl),)
 LOCAL_C_INCLUDES += $(openssl_PATH)
-LOCAL_SHARED_LIBRARIES += libcrypto
+LOCAL_STATIC_LIBRARIES += libcrypto_static
 endif
 
 LOCAL_SRC_FILES += $(call add_plugin, pem)

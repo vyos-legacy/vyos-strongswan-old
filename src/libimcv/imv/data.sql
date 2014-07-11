@@ -216,6 +216,96 @@ INSERT INTO products (			/* 36 */
  'Ubuntu 14.04 x86_64'
 );
 
+INSERT INTO products (			/* 37 */
+  name
+) VALUES (
+ 'Debian 7.3 i686'
+);
+
+INSERT INTO products (			/* 38 */
+  name
+) VALUES (
+ 'Debian 7.3 x86_64'
+);
+
+INSERT INTO products (			/* 39 */
+  name
+) VALUES (
+ 'Debian 7.4 i686'
+);
+
+INSERT INTO products (			/* 40 */
+  name
+) VALUES (
+ 'Debian 7.4 x86_64'
+);
+
+INSERT INTO products (			/* 41 */
+  name
+) VALUES (
+ 'Debian 7.5 i686'
+);
+
+INSERT INTO products (			/* 42 */
+  name
+) VALUES (
+ 'Debian 7.5 x86_64'
+);
+
+INSERT INTO products (			/* 43 */
+  name
+) VALUES (
+ 'Debian 7.0 armv6l'
+);
+
+INSERT INTO products (			/* 44 */
+  name
+) VALUES (
+ 'Debian 7.1 armv6l'
+);
+
+INSERT INTO products (			/* 45 */
+  name
+) VALUES (
+ 'Debian 7.2 armv6l'
+);
+
+INSERT INTO products (			/* 46 */
+  name
+) VALUES (
+ 'Debian 7.3 armv6l'
+);
+
+INSERT INTO products (			/* 47 */
+  name
+) VALUES (
+ 'Debian 7.4 armv6l'
+);
+
+INSERT INTO products (			/* 48 */
+  name
+) VALUES (
+ 'Debian 7.5 armv6l'
+);
+
+INSERT INTO products (			/* 49 */
+  name
+) VALUES (
+ 'Android 4.3'
+);
+
+INSERT INTO products (			/* 50 */
+  name
+) VALUES (
+ 'Android 4.4.3'
+);
+
+INSERT INTO products (			/* 51 */
+  name
+) VALUES (
+ 'Android 4.4.4'
+);
+
 /* Directories */
 
 INSERT INTO directories (		/*  1 */
@@ -341,12 +431,6 @@ INSERT INTO files (				/*  6 */
 );
 
 /* Algorithms */
-
-INSERT INTO algorithms (
-  id, name
-) VALUES (
-  65536, 'SHA1-IMA' 
-);
 
 INSERT INTO algorithms (
   id, name
@@ -531,27 +615,27 @@ INSERT INTO versions (
 /* Components */
 
 INSERT INTO components (
-  vendor_id, name, qualifier
+  vendor_id, name, qualifier, label
 ) VALUES (
-  36906, 1, 33  /* ITA TGRUB */
+  36906, 1, 33, 'G'  /* ITA TGRUB */
 );
 
 INSERT INTO components (
-  vendor_id, name, qualifier
+  vendor_id, name, qualifier, label
 ) VALUES (
-  36906, 2, 33  /* ITA TBOOT */
+  36906, 2, 33, 'T'  /* ITA TBOOT */
 );
 
 INSERT INTO components (
-  vendor_id, name, qualifier
+  vendor_id, name, qualifier, label
 ) VALUES (
-  36906, 3, 33  /* ITA IMA - Trusted Platform */
+  36906, 3, 33, 'B' /* ITA IMA - Trusted Platform */
 );
 
 INSERT INTO components (
-  vendor_id, name, qualifier
+  vendor_id, name, qualifier, label
 ) VALUES (
-  36906, 3, 34  /* ITA IMA - Operating System */
+  36906, 3, 34, 'I' /* ITA IMA - Operating System */
 );
 
 /* Groups */
@@ -634,6 +718,12 @@ INSERT INTO groups (            /* 13 */
   'TPM BIOS/IMA'
 );
 
+INSERT INTO groups (			/* 14 */
+  name, parent
+) VALUES (
+  'Debian armv6l', 2
+);
+
 /* Default Product Groups */
 
 INSERT INTO groups_product_defaults (
@@ -669,6 +759,24 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  4, 37
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  4, 39
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  4, 41
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   5, 2
 );
 
@@ -694,6 +802,24 @@ INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
   5, 28
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  5, 38
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  5, 40
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  5, 42
 );
 
 INSERT INTO groups_product_defaults (
@@ -844,6 +970,60 @@ INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
   3, 34
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 49
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 50
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 51
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 43
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 44
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 45
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 46
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 47
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  14, 48
 );
 
 /* Policies */
@@ -1078,139 +1258,64 @@ INSERT INTO enforcements (      /* 17 */
   21, 13, 60
 );
 
-/* regids */
+/* swid_entities */
 
-INSERT INTO regids (			/*  1 */
-  name
+INSERT INTO "swid_entities" (		/*  1 */
+  "name", "regid"
 ) VALUES (
- 'regid.1986-12.com.adobe'
+  'strongSwan Project', 'regid.2004-03.org.strongswan'
 );
 
-INSERT INTO regids (			/*  2 */
-  name
+INSERT INTO swid_entities (			/*  2 */
+  "name", "regid"
 ) VALUES (
- 'regid.1991-06.com.microsoft'
+  'Adobe Systems Inc.', 'regid.1986-12.com.adobe'
 );
 
-INSERT INTO regids (			/*  3 */
-  name
+INSERT INTO swid_entities (			/*  3 */
+  "name", "regid"
 ) VALUES (
- 'regid.2004-05.com.ubuntu'
+  'Microsoft Corporation', 'regid.1991-06.com.microsoft'
 );
 
-INSERT INTO regids (			/*  4 */
-  name
+INSERT INTO swid_entities (			/*  4 */
+  "name", "regid"
 ) VALUES (
- 'regid.1995-04.org.apache'
+  'Ubuntu Project', 'regid.2004-05.com.ubuntu'
 );
 
-INSERT INTO regids (			/*  5 */
-  name
+INSERT INTO swid_entities (			/*  5 */
+  "name", "regid"
 ) VALUES (
- 'regid.1999-03.org.debian'
+  'Apache Software Foundation', 'regid.1995-04.org.apache'
 );
 
-INSERT INTO regids (			/*  6 */
-  name
+INSERT INTO swid_entities (			/*  6 */
+  "name", "regid"
 ) VALUES (
- 'regid.1994-04.org.isc'
+  'Debian Project', 'regid.1999-03.org.debian'
 );
 
-INSERT INTO regids (			/*  7 */
-  name
+INSERT INTO swid_entities (			/*  7 */
+  "name", "regid"
 ) VALUES (
- 'regid.1998-12.org.openssl'
+  'Internet Systems Consortium', 'regid.1994-04.org.isc'
 );
 
-INSERT INTO regids (			/*  8 */
-  name
+INSERT INTO swid_entities (			/*  8 */
+  "name", "regid"
 ) VALUES (
- 'regid.1998-01.org.samba'
+  'OpenSSL Project', 'regid.1998-12.org.openssl'
 );
 
-INSERT INTO regids (			/*  9 */
-  name
+INSERT INTO swid_entities (			/*  9 */
+  "name", "regid"
 ) VALUES (
- 'regid.2002-08.org.sqlite'
+  'Samba Project', 'regid.1998-01.org.samba'
 );
 
-INSERT INTO regids (			/* 10 */
-  name
+INSERT INTO swid_entities (			/* 10 */
+  "name", "regid"
 ) VALUES (
- 'regid.2004-03.org.strongswan'
+  'SQLite Project', 'regid.2002-08.org.sqlite'
 );
-
-/* Tags */
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  2, 'Windows-8-Pro'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'apache-2-2-22-13'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'bind-9-8-4-dfsg'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'libsqlite-3-7-13-1'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'libssl-1-0-1e-2'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'libssl-dev-1-0-1e-2'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'libssl-doc-1-0-1e-2'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'openssl-1-0-1e-2'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'smbclient-3-6-6-6'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  5, 'sqlite-3-7-13-1'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  10, 'strongSwan-5-1-1'
-);
-
-INSERT INTO tags (
-  regid, unique_sw_id
-) VALUES (
-  10, 'strongSwan-5-1-2'
-);
-

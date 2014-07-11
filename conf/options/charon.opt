@@ -8,6 +8,21 @@ charon {}
 	**charon-cmd** instead of **charon**). For many options defaults can be
 	defined in the **libstrongswan** section.
 
+charon.accept_unencrypted_mainmode_messages = no
+	Accept unencrypted ID and HASH payloads in IKEv1 Main Mode.
+
+	Accept unencrypted ID and HASH payloads in IKEv1 Main Mode.
+
+	Some implementations send the third Main Mode message unencrypted, probably
+	to find the PSKs for the specified ID for authentication. This is very
+	similar to Aggressive Mode, and has the same security implications: A
+	passive attacker can sniff the negotiated Identity, and start brute forcing
+	the PSK using the HASH payload.
+
+	It is recommended to keep this option to no, unless you know exactly
+	what the implications are and require compatibility to such devices (for
+	example, some SonicWall boxes).
+
 charon.block_threshold = 5
 	Maximum number of half-open IKE_SAs for a single peer IP.
 
@@ -196,6 +211,10 @@ charon.port_nat_t = 4500
 	allocated.  Has to be different from **charon.port**, otherwise a random
 	port will be allocated.
 
+charon.prefer_temporary_addrs = no
+	By default public IPv6 addresses are preferred over temporary ones (RFC
+	4941), to make connections more stable. Enable this option to reverse this.
+
 charon.process_route = yes
 	Process RTM_NEWROUTE and RTM_DELROUTE events.
 
@@ -255,6 +274,14 @@ charon.send_delay_type = 0
 
 charon.send_vendor_id = no
 	Send strongSwan vendor ID payload
+
+charon.start-scripts {}
+	Section containing a list of scripts (name = path) that are executed when
+	the daemon is started.
+
+charon.stop-scripts {}
+	Section containing a list of scripts (name = path) that are executed when
+	the daemon is terminated.
 
 charon.threads = 16
 	Number of worker threads in charon.

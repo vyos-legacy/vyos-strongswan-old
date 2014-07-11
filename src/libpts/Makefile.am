@@ -13,6 +13,10 @@ libpts_la_LIBADD = \
 	$(top_builddir)/src/libtncif/libtncif.la \
 	$(top_builddir)/src/libimcv/libimcv.la
 
+if USE_WINDOWS
+  libpts_la_LIBADD += -lws2_32
+endif
+
 if USE_TROUSERS
   libpts_la_LIBADD += -ltspi
 endif
@@ -31,6 +35,8 @@ libpts_la_SOURCES = \
 	pts/pts_file_meas.h pts/pts_file_meas.c \
 	pts/pts_file_meta.h pts/pts_file_meta.c \
 	pts/pts_file_type.h pts/pts_file_type.c \
+	pts/pts_ima_bios_list.h pts/pts_ima_bios_list.c \
+	pts/pts_ima_event_list.h pts/pts_ima_event_list.c \
 	pts/pts_meas_algo.h pts/pts_meas_algo.c \
 	pts/components/pts_component.h \
 	pts/components/pts_component_manager.h pts/components/pts_component_manager.c \
@@ -66,6 +72,8 @@ libpts_la_SOURCES = \
 	tcg/swid/tcg_swid_attr_req.h tcg/swid/tcg_swid_attr_req.c \
 	tcg/swid/tcg_swid_attr_tag_id_inv.h tcg/swid/tcg_swid_attr_tag_id_inv.c \
 	tcg/swid/tcg_swid_attr_tag_inv.h tcg/swid/tcg_swid_attr_tag_inv.c
+
+EXTRA_DIST = Android.mk
 
 SUBDIRS = .
 

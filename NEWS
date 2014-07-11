@@ -1,3 +1,51 @@
+strongswan-5.2.0
+----------------
+
+- strongSwan has been ported to the Windows platform. Using a MinGW toolchain,
+  many parts of the strongSwan codebase run natively on Windows 7 / 2008 R2
+  and newer releases. charon-svc implements a Windows IKE service based on
+  libcharon, the kernel-iph and kernel-wfp plugins act as networking and IPsec
+  backend on the Windows platform. socket-win provides a native IKE socket
+  implementation, while winhttp fetches CRL and OCSP information using the
+  WinHTTP API.
+
+- The new vici plugin provides a Versatile IKE Configuration Interface for
+  charon. Using the stable IPC interface, external applications can configure,
+  control and monitor the IKE daemon. Instead of scripting the ipsec tool
+  and generating ipsec.conf, third party applications can use the new interface
+  for more control and better reliability.
+
+- Built upon the libvici client library, swanctl implements the first user of
+  the VICI interface. Together with a swanctl.conf configuration file,
+  connections can be defined, loaded and managed. swanctl provides a portable,
+  complete IKE configuration and control interface for the command line.
+  The first six swanctl example scenarios have been added.
+
+- The SWID IMV implements a JSON-based REST API which allows the exchange
+  of SWID tags and Software IDs with the strongTNC policy manager.
+
+- The SWID IMC can extract all installed packages from the dpkg (Debian,
+  Ubuntu, Linux Mint etc.), rpm (Fedora, RedHat, OpenSUSE, etc.), or
+  pacman (Arch Linux, Manjaro, etc.) package managers, respectively, using the
+  swidGenerator (https://github.com/strongswan/swidGenerator) which generates
+  SWID tags according to the new ISO/IEC 19770-2:2014 standard.
+
+- All IMVs now share the access requestor ID, device ID and product info
+  of an access requestor via a common imv_session object.
+
+- The Attestation IMC/IMV pair supports the IMA-NG measurement format
+  introduced with the Linux 3.13 kernel.
+
+- The aikgen tool generates an Attestation Identity Key bound to a TPM.
+
+- Implemented the PT-EAP transport protocol (RFC 7171) for Trusted Network
+  Connect.
+
+- The ipsec.conf replay_window option defines connection specific IPsec replay
+  windows. Original patch courtesy of Zheng Zhong and Christophe Gouault from
+  6Wind.
+
+
 strongswan-5.1.3
 ----------------
 

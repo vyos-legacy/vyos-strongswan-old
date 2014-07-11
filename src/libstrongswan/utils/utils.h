@@ -26,11 +26,18 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
 #include <string.h>
 
-#include "enum.h"
-#include "utils/strerror.h"
+#ifdef WIN32
+# include "windows.h"
+#else
+# define _GNU_SOURCE
+# include <arpa/inet.h>
+# include <sys/socket.h>
+# include <netdb.h>
+# include <netinet/in.h>
+# include <sched.h>
+#endif
 
 /**
  * strongSwan program return codes
@@ -72,6 +79,28 @@
 #ifndef TRUE
 # define TRUE  true
 #endif /* TRUE */
+
+#include "enum.h"
+#include "utils/strerror.h"
+
+/**
+ * Directory separator character in paths on this platform
+ */
+#ifdef WIN32
+# define DIRECTORY_SEPARATOR "\\"
+#else
+# define DIRECTORY_SEPARATOR "/"
+#endif
+
+/**
+ * Initialize utility functions
+ */
+void utils_init();
+
+/**
+ * Deinitialize utility functions
+ */
+void utils_deinit();
 
 /**
  * Helper function that compares two strings for equality
@@ -138,13 +167,54 @@ static inline bool memeq(const void *x, const void *y, size_t len)
 }
 
 /**
+ * Calling memcpy() with NULL pointers, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointers if n is 0.
+ */
+static inline void *memcpy_noop(void *dst, const void *src, size_t n)
+{
+	return n ? memcpy(dst, src, n) : dst;
+}
+#ifdef memcpy
+# undef memcpy
+#endif
+#define memcpy(d,s,n) memcpy_noop(d,s,n)
+
+/**
+ * Calling memmove() with NULL pointers, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointers if n is 0.
+ */
+static inline void *memmove_noop(void *dst, const void *src, size_t n)
+{
+	return n ? memmove(dst, src, n) : dst;
+}
+#ifdef memmove
+# undef memmove
+#endif
+#define memmove(d,s,n) memmove_noop(d,s,n)
+
+/**
+ * Calling memset() with a NULL pointer, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointer if n is 0.
+ */
+static inline void *memset_noop(void *s, int c, size_t n)
+{
+	return n ? memset(s, c, n) : s;
+}
+#ifdef memset
+# undef memset
+#endif
+#define memset(s,c,n) memset_noop(s,c,n)
+
+/**
  * Macro gives back larger of two values.
  */
 #define max(x,y) ({ \
 	typeof(x) _x = (x); \
 	typeof(y) _y = (y); \
 	_x > _y ? _x : _y; })
-
 
 /**
  * Macro gives back smaller of two values.
@@ -204,6 +274,45 @@ static inline bool memeq(const void *x, const void *y, size_t len)
 	static ret name(this, ##__VA_ARGS__)
 
 /**
+ * Callback declaration/definition macro, allowing casted first parameter.
+ *
+ * This is very similar to METHOD, but instead of casting the first parameter
+ * to a public interface, it uses a void*. This allows type safe definition
+ * of a callback function, while using the real type for the first parameter.
+ */
+#define CALLBACK(name, ret, param1, ...) \
+	static ret _cb_##name(union {void *_generic; param1;} \
+	__attribute__((transparent_union)), ##__VA_ARGS__); \
+	static typeof(_cb_##name) *name = (typeof(_cb_##name)*)_cb_##name; \
+	static ret _cb_##name(param1, ##__VA_ARGS__)
+
+/**
+ * This macro allows counting the number of arguments passed to a macro.
+ * Combined with the VA_ARGS_DISPATCH() macro this can be used to implement
+ * macro overloading based on the number of arguments.
+ * 0 to 10 arguments are currently supported.
+ */
+#define VA_ARGS_NUM(...) _VA_ARGS_NUM(0,##__VA_ARGS__,10,9,8,7,6,5,4,3,2,1,0)
+#define _VA_ARGS_NUM(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,NUM,...) NUM
+
+/**
+ * This macro can be used to dispatch a macro call based on the number of given
+ * arguments, for instance:
+ *
+ * @code
+ * #define MY_MACRO(...) VA_ARGS_DISPATCH(MY_MACRO, __VA_ARGS__)(__VA_ARGS__)
+ * #define MY_MACRO1(arg) one_arg(arg)
+ * #define MY_MACRO2(arg1,arg2) two_args(arg1,arg2)
+ * @endcode
+ *
+ * MY_MACRO() can now be called with either one or two arguments, which will
+ * resolve to one_arg(arg) or two_args(arg1,arg2), respectively.
+ */
+#define VA_ARGS_DISPATCH(func, ...) _VA_ARGS_DISPATCH(func, VA_ARGS_NUM(__VA_ARGS__))
+#define _VA_ARGS_DISPATCH(func, num) __VA_ARGS_DISPATCH(func, num)
+#define __VA_ARGS_DISPATCH(func, num) func ## num
+
+/**
  * Architecture independent bitfield definition helpers (at least with GCC).
  *
  * Defines a bitfield with a type t and a fixed size of bitfield members, e.g.:
@@ -260,7 +369,7 @@ static inline bool memeq(const void *x, const void *y, size_t len)
  * TODO: since the uintXX_t types are defined by the C99 standard we should
  * probably use those anyway
  */
-#ifdef __sun
+#if defined __sun || defined WIN32
         #include <stdint.h>
         typedef uint8_t         u_int8_t;
         typedef uint16_t        u_int16_t;
@@ -501,6 +610,11 @@ char *translate(char *str, const char *from, const char *to);
 char *strreplace(const char *str, const char *search, const char *replace);
 
 /**
+ * Portable function to wait for SIGINT/SIGTERM (or equivalent).
+ */
+void wait_sigint();
+
+/**
  * Like dirname(3) returns the directory part of the given null-terminated
  * pathname, up to but not including the final '/' (or '.' if no '/' is found).
  * Trailing '/' are not counted as part of the pathname.
@@ -525,6 +639,14 @@ char *path_dirname(const char *path);
  * @return			allocated filename component
  */
 char *path_basename(const char *path);
+
+/**
+ * Check if a given path is absolute.
+ *
+ * @param path		path to check
+ * @return			TRUE if absolute, FALSE if relative
+ */
+bool path_absolute(const char *path);
 
 /**
  * Creates a directory and all required parent directories.
@@ -748,22 +870,49 @@ static inline size_t round_down(size_t size, size_t alignment)
  */
 typedef u_int refcount_t;
 
+/* use __atomic* built-ins with GCC 4.7 and newer */
+#ifdef __GNUC__
+# if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 6))
+#  define HAVE_GCC_ATOMIC_OPERATIONS
+# endif
+#endif
+
 #ifdef HAVE_GCC_ATOMIC_OPERATIONS
+
+#define ref_get(ref) __atomic_add_fetch(ref, 1, __ATOMIC_RELAXED)
+/* The relaxed memory model works fine for increments as these (usually) don't
+ * change the state of refcounted objects.  But here we have to ensure that we
+ * free the right stuff if ref counted objects are mutable.  So we have to sync
+ * with other threads that call ref_put().  It would be sufficient to use
+ * __ATOMIC_RELEASE here and then call __atomic_thread_fence() with
+ * __ATOMIC_ACQUIRE if we reach 0, but since we don't have control over the use
+ * of ref_put() we have to make sure. */
+#define ref_put(ref) (!__atomic_sub_fetch(ref, 1, __ATOMIC_ACQ_REL))
+#define ref_cur(ref) __atomic_load_n(ref, __ATOMIC_RELAXED)
+
+#define _cas_impl(ptr, oldval, newval) ({ typeof(oldval) _old = oldval; \
+			__atomic_compare_exchange_n(ptr, &_old, newval, FALSE, \
+										__ATOMIC_SEQ_CST, __ATOMIC_RELAXED); })
+#define cas_bool(ptr, oldval, newval) _cas_impl(ptr, oldval, newval)
+#define cas_ptr(ptr, oldval, newval) _cas_impl(ptr, oldval, newval)
+
+#elif defined(HAVE_GCC_SYNC_OPERATIONS)
 
 #define ref_get(ref) __sync_add_and_fetch(ref, 1)
 #define ref_put(ref) (!__sync_sub_and_fetch(ref, 1))
+#define ref_cur(ref) __sync_fetch_and_add(ref, 0)
 
 #define cas_bool(ptr, oldval, newval) \
 					(__sync_bool_compare_and_swap(ptr, oldval, newval))
 #define cas_ptr(ptr, oldval, newval) \
 					(__sync_bool_compare_and_swap(ptr, oldval, newval))
 
-#else /* !HAVE_GCC_ATOMIC_OPERATIONS */
+#else /* !HAVE_GCC_ATOMIC_OPERATIONS && !HAVE_GCC_SYNC_OPERATIONS */
 
 /**
  * Get a new reference.
  *
- * Increments the reference counter atomic.
+ * Increments the reference counter atomically.
  *
  * @param ref	pointer to ref counter
  * @return		new value of ref
@@ -773,13 +922,21 @@ refcount_t ref_get(refcount_t *ref);
 /**
  * Put back a unused reference.
  *
- * Decrements the reference counter atomic and
+ * Decrements the reference counter atomically and
  * says if more references available.
  *
  * @param ref	pointer to ref counter
  * @return		TRUE if no more references counted
  */
 bool ref_put(refcount_t *ref);
+
+/**
+ * Get the current value of the reference counter.
+ *
+ * @param ref	pointer to ref counter
+ * @return		current value of ref
+ */
+refcount_t ref_cur(refcount_t *ref);
 
 /**
  * Atomically replace value of ptr with newval if it currently equals oldval.

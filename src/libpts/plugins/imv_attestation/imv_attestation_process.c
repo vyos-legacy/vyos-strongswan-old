@@ -46,10 +46,12 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 							 pts_database_t *pts_db,
 							 credential_manager_t *pts_credmgr)
 {
+	imv_session_t *session;
 	imv_attestation_state_t *attestation_state;
 	pen_type_t attr_type;
 	pts_t *pts;
 
+	session = state->get_session(state);
 	attestation_state = (imv_attestation_state_t*)state;
 	pts = attestation_state->get_pts(attestation_state);
 	attr_type = attr->get_type(attr);
@@ -80,7 +82,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 				return FALSE;
 			}
 			pts->set_meas_algorithm(pts, selected_algorithm);
-			state->set_action_flags(state, IMV_ATTESTATION_FLAG_ALGO);
+			state->set_action_flags(state, IMV_ATTESTATION_ALGO);
 			break;
 		}
 		case TCG_PTS_DH_NONCE_PARAMS_RESP:
@@ -140,6 +142,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			{
 				return FALSE;
 			}
+			state->set_action_flags(state, IMV_ATTESTATION_DH_NONCE);
 			break;
 		}
 		case TCG_PTS_TPM_VERSION_INFO:
@@ -157,9 +160,10 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			tcg_pts_attr_aik_t *attr_cast;
 			certificate_t *aik, *issuer;
 			public_key_t *public;
-			chunk_t keyid;
+			chunk_t keyid, keyid_hex, device_id;
+			int aik_id;
 			enumerator_t *e;
-			bool trusted = FALSE;
+			bool trusted = FALSE, trusted_chain = FALSE;
 
 			attr_cast = (tcg_pts_attr_aik_t*)attr;
 			aik = attr_cast->get_aik(attr_cast);
@@ -170,12 +174,27 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 									IMV_ATTESTATION_ERROR_NO_TRUSTED_AIK);
 				break;
 			}
+
+			/* check trust into public key as stored in the database */
+			public = aik->get_public_key(aik);
+			public->get_fingerprint(public, KEYID_PUBKEY_INFO_SHA1, &keyid);
+			DBG1(DBG_IMV, "verifying AIK with keyid %#B", &keyid);
+			keyid_hex = chunk_to_hex(keyid, NULL, FALSE);
+			if (session->get_device_id(session, &device_id) &&
+				chunk_equals(keyid_hex, device_id))
+			{
+				trusted = session->get_device_trust(session);
+			}
+			else
+			{
+				DBG1(DBG_IMV, "device ID unknown or different from AIK keyid");
+			}
+			DBG1(DBG_IMV, "AIK public key is %strusted", trusted ? "" : "not ");
+			public->destroy(public);
+			chunk_free(&keyid_hex);
+
 			if (aik->get_type(aik) == CERT_X509)
 			{
-				public = aik->get_public_key(aik);
-				public->get_fingerprint(public, KEYID_PUBKEY_INFO_SHA1, &keyid);
-				DBG1(DBG_IMV, "verifying AIK certificate with keyid %#B", &keyid);
-				public->destroy(public);
 
 				e = pts_credmgr->create_trusted_enumerator(pts_credmgr,
 							KEY_ANY, aik->get_issuer(aik), FALSE);
@@ -183,21 +202,22 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 				{
 					if (aik->issued_by(aik, issuer, NULL))
 					{
-						trusted = TRUE;
+						trusted_chain = TRUE;
 						break;
 					}
 				}
 				e->destroy(e);
 				DBG1(DBG_IMV, "AIK certificate is %strusted",
-							   trusted ? "" : "not ");
-				if (!trusted)
+							   trusted_chain ? "" : "not ");
+				if (!trusted || !trusted_chain)
 				{
 					attestation_state->set_measurement_error(attestation_state,
 										IMV_ATTESTATION_ERROR_NO_TRUSTED_AIK);
 					break;
 				}
 			}
-			pts->set_aik(pts, aik);
+			session->get_session_id(session, NULL, &aik_id);
+			pts->set_aik(pts, aik, aik_id);
 			break;
 		}
 		case TCG_PTS_FILE_MEAS:
@@ -205,21 +225,18 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			TNC_IMV_Evaluation_Result eval;
 			TNC_IMV_Action_Recommendation rec;
 			tcg_pts_attr_file_meas_t *attr_cast;
-			u_int16_t request_id;
+			uint16_t request_id;
 			int arg_int, file_count;
 			pts_meas_algorithms_t algo;
 			pts_file_meas_t *measurements;
-			imv_session_t *session;
 			imv_workitem_t *workitem, *found = NULL;
 			imv_workitem_type_t type;
-			char result_str[BUF_LEN], *platform_info;
+			char result_str[BUF_LEN];
 			bool is_dir, correct;
 			enumerator_t *enumerator;
 
 			eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
-			session = state->get_session(state);
 			algo = pts->get_meas_algorithm(pts);
-			platform_info = pts->get_platform_info(pts);
 			attr_cast = (tcg_pts_attr_file_meas_t*)attr;
 			measurements = attr_cast->get_measurements(attr_cast);
 			request_id = measurements->get_request_id(measurements);
@@ -272,7 +289,8 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 
 						/* check hashes from database against measurements */
 						e = pts_db->create_file_hash_enumerator(pts_db,
-										platform_info, algo, is_dir, arg_int);
+											pts->get_platform_id(pts), 
+											algo, is_dir, arg_int);
 						if (!e)
 						{
 							eval = TNC_IMV_EVALUATION_RESULT_ERROR;
@@ -304,8 +322,8 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 						while (e->enumerate(e, &filename, &measurement))
 						{
 							if (pts_db->add_file_measurement(pts_db,
-									platform_info, algo, measurement, filename,
-									is_dir, arg_int) != SUCCESS)
+									pts->get_platform_id(pts), algo, measurement,
+									filename, is_dir, arg_int) != SUCCESS)
 							{
 								eval = TNC_IMV_EVALUATION_RESULT_ERROR;
 							}
@@ -328,7 +346,8 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			}
 			else
 			{
-				measurements->check(measurements, pts_db, platform_info, algo);
+				measurements->check(measurements, pts_db,
+									pts->get_platform_id(pts), algo);
 			}
 			break;
 		}
@@ -373,7 +392,7 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 			pts_comp_func_name_t *name;
 			pts_comp_evidence_t *evidence;
 			pts_component_t *comp;
-			u_int32_t depth;
+			uint32_t depth;
 			status_t status;
 
 			attr_cast = (tcg_pts_attr_simple_comp_evid_t*)attr;
@@ -398,14 +417,15 @@ bool imv_attestation_process(pa_tnc_attr_t *attr, imv_msg_t *out_msg,
 		case TCG_PTS_SIMPLE_EVID_FINAL:
 		{
 			tcg_pts_attr_simple_evid_final_t *attr_cast;
-			u_int8_t flags;
+			uint8_t flags;
 			pts_meas_algorithms_t comp_hash_algorithm;
 			chunk_t pcr_comp, tpm_quote_sig, evid_sig;
-			chunk_t pcr_composite, quote_info;
-			imv_session_t *session;
+			chunk_t pcr_composite, quote_info, result_buf;
 			imv_workitem_t *workitem;
+			imv_reason_string_t *reason_string;
 			enumerator_t *enumerator;
 			bool use_quote2, use_ver_info;
+			bio_writer_t *result;
 
 			attr_cast = (tcg_pts_attr_simple_evid_final_t*)attr;
 			flags = attr_cast->get_quote_info(attr_cast, &comp_hash_algorithm,
@@ -451,9 +471,10 @@ quote_error:
 				 * Finalize any pending measurement registrations and check
 				 * if all expected component measurements were received
 				 */
-				attestation_state->finalize_components(attestation_state);
+				result = bio_writer_create(128);
+				attestation_state->finalize_components(attestation_state,
+													   result);
 
-				session = state->get_session(state);
 				enumerator = session->create_workitem_enumerator(session);
 				while (enumerator->enumerate(enumerator, &workitem))
 				{
@@ -461,8 +482,7 @@ quote_error:
 					{
 						TNC_IMV_Action_Recommendation rec;
 						TNC_IMV_Evaluation_Result eval;
-						char *result_str;
-						u_int32_t error;
+						uint32_t error;
 
 						error = attestation_state->get_measurement_error(
 														attestation_state);
@@ -470,34 +490,35 @@ quote_error:
 									 IMV_ATTESTATION_ERROR_COMP_EVID_PEND |
 									 IMV_ATTESTATION_ERROR_TPM_QUOTE_FAIL))
 						{
-							imv_reason_string_t *reason_string;
-							chunk_t result;
-
 							reason_string = imv_reason_string_create("en", ", ");
 							attestation_state->add_comp_evid_reasons(
 											attestation_state, reason_string);
-							result = reason_string->get_encoding(reason_string);
-							result_str = strndup(result.ptr, result.len);
+							result->write_data(result, chunk_from_str("; "));
+							result->write_data(result,
+									reason_string->get_encoding(reason_string));
 							reason_string->destroy(reason_string);
 							eval = TNC_IMV_EVALUATION_RESULT_NONCOMPLIANT_MINOR;
 						}
 						else
 						{
-							result_str = strdup("attestation successful");
 							eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
 						}
 						session->remove_workitem(session, enumerator);
-						rec = workitem->set_result(workitem, result_str, eval);
+
+						result->write_uint8(result, '\0');
+						result_buf = result->get_buf(result);
+						rec = workitem->set_result(workitem, result_buf.ptr,
+															 eval);
 						state->update_recommendation(state, rec, eval);
 						imcv_db->finalize_workitem(imcv_db, workitem);
 						workitem->destroy(workitem);
-						free(result_str);
 						attestation_state->set_handshake_state(attestation_state,
 													IMV_ATTESTATION_STATE_END);
 						break;
 					}
 				}
 				enumerator->destroy(enumerator);
+				result->destroy(result);
 			}
 
 			if (attr_cast->get_evid_sig(attr_cast, &evid_sig))

@@ -49,7 +49,6 @@ struct pts_ita_comp_tgrub_t {
 	 */
 	pts_database_t *pts_db;
 
-
 	/**
 	 * Reference count
 	 */
@@ -126,7 +125,8 @@ METHOD(pts_component_t, verify, status_t,
 	pts_pcr_transform_t transform;
 	pts_pcr_t *pcrs;
 	time_t measurement_time;
-	chunk_t measurement, pcr_before, pcr_after;
+	chunk_t pcr_before, pcr_after;
+	chunk_t measurement __attribute__((unused));
 
 	pcrs = pts->get_pcrs(pts);
 	measurement = evidence->get_measurement(evidence, &extended_pcr,
@@ -155,7 +155,7 @@ METHOD(pts_component_t, verify, status_t,
 }
 
 METHOD(pts_component_t, finalize, bool,
-	pts_ita_comp_tgrub_t *this, u_int8_t qualifier)
+	pts_ita_comp_tgrub_t *this, u_int8_t qualifier, bio_writer_t *result)
 {
 	return FALSE;
 }
@@ -206,4 +206,3 @@ pts_component_t *pts_ita_comp_tgrub_create(u_int32_t depth,
 
 	return &this->public;
 }
-

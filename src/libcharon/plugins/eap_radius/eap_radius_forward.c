@@ -232,8 +232,8 @@ static void ike2queue(message_t *message, linked_list_t *queue,
 	enumerator = message->create_payload_enumerator(message);
 	while (enumerator->enumerate(enumerator, &payload))
 	{
-		if (payload->get_type(payload) == NOTIFY ||
-			payload->get_type(payload) == NOTIFY_V1)
+		if (payload->get_type(payload) == PLV2_NOTIFY ||
+			payload->get_type(payload) == PLV1_NOTIFY)
 		{
 			notify = (notify_payload_t*)payload;
 			if (notify->get_notify_type(notify) == RADIUS_ATTRIBUTE)
@@ -362,8 +362,7 @@ static linked_list_t* parse_selector(char *selector)
 			vendor = atoi(token);
 			token = pos;
 		}
-		type = enum_from_name(radius_attribute_type_names, token);
-		if (type == -1)
+		if (!enum_from_name(radius_attribute_type_names, token, &type))
 		{
 			type = atoi(token);
 		}

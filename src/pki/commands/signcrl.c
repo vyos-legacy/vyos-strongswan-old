@@ -142,8 +142,7 @@ static int sign_crl()
 			case 'h':
 				goto usage;
 			case 'g':
-				digest = enum_from_name(hash_algorithm_short_names, arg);
-				if (digest == -1)
+				if (!enum_from_name(hash_algorithm_short_names, arg, &digest))
 				{
 					error = "invalid --digest type";
 					goto usage;
@@ -406,6 +405,7 @@ static int sign_crl()
 		error = "encoding CRL failed";
 		goto error;
 	}
+	set_file_mode(stdout, form);
 	if (fwrite(encoding.ptr, encoding.len, 1, stdout) != 1)
 	{
 		error = "writing CRL failed";

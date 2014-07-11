@@ -252,8 +252,9 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	private_kernel_libipsec_ipsec_t *this, host_t *src, host_t *dst,
 	u_int32_t spi, u_int8_t protocol, u_int32_t reqid, mark_t mark,
 	u_int32_t tfc, lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
-	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode, u_int16_t ipcomp,
-	u_int16_t cpi, bool initiator, bool encap, bool esn, bool inbound,
+	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode,
+	u_int16_t ipcomp, u_int16_t cpi, u_int32_t replay_window,
+	bool initiator, bool encap, bool esn, bool inbound,
 	traffic_selector_t *src_ts, traffic_selector_t *dst_ts)
 {
 	return ipsec->sas->add_sa(ipsec->sas, src, dst, spi, protocol, reqid, mark,
@@ -313,7 +314,7 @@ static void add_exclude_route(private_kernel_libipsec_ipsec_t *this,
 	{
 		DBG2(DBG_KNL, "installing new exclude route for %H src %H", dst, src);
 		gtw = hydra->kernel_interface->get_nexthop(hydra->kernel_interface,
-												   dst, NULL);
+												   dst, -1, NULL);
 		if (gtw)
 		{
 			char *if_name = NULL;
@@ -444,7 +445,7 @@ static bool install_route(private_kernel_libipsec_ipsec_t *this,
 #ifndef __linux__
 	/* on Linux we cant't install a gateway */
 	route->gateway = hydra->kernel_interface->get_nexthop(
-											hydra->kernel_interface, dst, src);
+										hydra->kernel_interface, dst, -1, src);
 #endif
 
 	if (policy->route)

@@ -20,7 +20,9 @@
 #include <utils/utils.h>
 #include <pen/pen.h>
 
+#ifdef HAVE_SYSLOG
 #include <syslog.h>
+#endif
 
 #define IMCV_DEBUG_LEVEL			1
 #define IMCV_DEFAULT_POLICY_SCRIPT	"ipsec _imv_policy"
@@ -30,6 +32,11 @@
  * PA-TNC attribute manager
  */
 pa_tnc_attr_manager_t *imcv_pa_tnc_attributes;
+
+/**
+ * Global list of IMV sessions
+ */
+imv_session_manager_t *imcv_sessions;
 
 /**
  * Global IMV database
@@ -57,9 +64,6 @@ static bool imcv_stderr_quiet;
  */
 static void imcv_dbg(debug_t group, level_t level, char *fmt, ...)
 {
-	int priority = LOG_INFO;
-	char buffer[8192];
-	char *current = buffer, *next;
 	va_list args;
 
 	if (level <= imcv_debug_level)
@@ -73,22 +77,30 @@ static void imcv_dbg(debug_t group, level_t level, char *fmt, ...)
 			va_end(args);
 		}
 
-		/* write in memory buffer first */
-		va_start(args, fmt);
-		vsnprintf(buffer, sizeof(buffer), fmt, args);
-		va_end(args);
-
-		/* do a syslog with every line */
-		while (current)
+#ifdef HAVE_SYSLOG
 		{
-			next = strchr(current, '\n');
-			if (next)
+			int priority = LOG_INFO;
+			char buffer[8192];
+			char *current = buffer, *next;
+
+			/* write in memory buffer first */
+			va_start(args, fmt);
+			vsnprintf(buffer, sizeof(buffer), fmt, args);
+			va_end(args);
+
+			/* do a syslog with every line */
+			while (current)
 			{
-				*(next++) = '\0';
+				next = strchr(current, '\n');
+				if (next)
+				{
+					*(next++) = '\0';
+				}
+				syslog(priority, "[HSR] %s\n", current);
+				current = next;
 			}
-			syslog(priority, "[HSR] %s\n", current);
-			current = next;
 		}
+#endif /* HAVE_SYSLOG */
 	}
 }
 
@@ -122,7 +134,9 @@ bool libimcv_init(bool is_imv)
 
 		/* activate the imcv debugging hook */
 		dbg = imcv_dbg;
+#ifdef HAVE_SYSLOG
 		openlog("imcv", 0, LOG_DAEMON);
+#endif
 
 		if (!lib->plugins->load(lib->plugins,
 				lib->settings->get_str(lib->settings, "libimcv.load",
@@ -149,9 +163,12 @@ bool libimcv_init(bool is_imv)
 		imcv_pa_tnc_attributes->add_vendor(imcv_pa_tnc_attributes, PEN_ITA,
 							ita_attr_create_from_data, ita_attr_names);
 
-		/* attach global IMV database */
 		if (is_imv)
 		{
+			/* instantiate global IMV session manager */
+			imcv_sessions = imv_session_manager_create();
+
+			/* instantiate and attach global IMV database if URI is valid */
 			uri = lib->settings->get_str(lib->settings,
 						"%s.imcv.database", NULL, lib->ns);
 			script = lib->settings->get_str(lib->settings,
@@ -181,6 +198,7 @@ void libimcv_deinit(void)
 		DESTROY_IF(imcv_pa_tnc_attributes);
 		imcv_pa_tnc_attributes = NULL;
 		DESTROY_IF(imcv_db);
+		DESTROY_IF(imcv_sessions);
 		DBG1(DBG_LIB, "libimcv terminated");
 	}
 	if (ref_put(&libstrongswan_ref))
@@ -188,4 +206,3 @@ void libimcv_deinit(void)
 		library_deinit();
 	}
 }
-

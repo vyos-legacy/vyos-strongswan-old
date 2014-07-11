@@ -2001,6 +2001,26 @@ METHOD(ike_sa_t, add_configuration_attribute, void,
 	array_insert(this->attributes, ARRAY_TAIL, &entry);
 }
 
+/**
+ * Enumerator filter for attributes
+ */
+static bool filter_attribute(void *null, attribute_entry_t **in,
+							 configuration_attribute_type_t *type, void *in2,
+							 chunk_t *data, void *in3, bool *handled)
+{
+	*type = (*in)->type;
+	*data = (*in)->data;
+	*handled = (*in)->handler != NULL;
+	return TRUE;
+}
+
+METHOD(ike_sa_t, create_attribute_enumerator, enumerator_t*,
+	private_ike_sa_t *this)
+{
+	return enumerator_create_filter(array_create_enumerator(this->attributes),
+									(void*)filter_attribute, NULL, NULL);
+}
+
 METHOD(ike_sa_t, create_task_enumerator, enumerator_t*,
 	private_ike_sa_t *this, task_queue_t queue)
 {
@@ -2019,7 +2039,24 @@ METHOD(ike_sa_t, queue_task, void,
 	this->task_manager->queue_task(this->task_manager, task);
 }
 
-METHOD(ike_sa_t, inherit, void,
+METHOD(ike_sa_t, inherit_pre, void,
+	private_ike_sa_t *this, ike_sa_t *other_public)
+{
+	private_ike_sa_t *other = (private_ike_sa_t*)other_public;
+
+	/* apply config and hosts */
+	set_peer_cfg(this, other->peer_cfg);
+	set_my_host(this, other->my_host->clone(other->my_host));
+	set_other_host(this, other->other_host->clone(other->other_host));
+
+	/* apply extensions and conditions with a few exceptions */
+	this->extensions = other->extensions;
+	this->conditions = other->conditions;
+	this->conditions &= ~COND_STALE;
+	this->conditions &= ~COND_REAUTHENTICATING;
+}
+
+METHOD(ike_sa_t, inherit_post, void,
 	private_ike_sa_t *this, ike_sa_t *other_public)
 {
 	private_ike_sa_t *other = (private_ike_sa_t*)other_public;
@@ -2131,10 +2168,14 @@ METHOD(ike_sa_t, destroy, void,
 	}
 
 	/* remove attributes first, as we pass the IKE_SA to the handler */
+	charon->bus->handle_vips(charon->bus, &this->public, FALSE);
 	while (array_remove(this->attributes, ARRAY_TAIL, &entry))
 	{
-		hydra->attributes->release(hydra->attributes, entry.handler,
-								   this->other_id, entry.type, entry.data);
+		if (entry.handler)
+		{
+			hydra->attributes->release(hydra->attributes, entry.handler,
+									   this->other_id, entry.type, entry.data);
+		}
 		free(entry.data.ptr);
 	}
 	/* uninstall CHILD_SAs before virtual IPs, otherwise we might kill
@@ -2288,7 +2329,8 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.reestablish = _reestablish,
 			.set_auth_lifetime = _set_auth_lifetime,
 			.roam = _roam,
-			.inherit = _inherit,
+			.inherit_pre = _inherit_pre,
+			.inherit_post = _inherit_post,
 			.generate_message = _generate_message,
 			.reset = _reset,
 			.get_unique_id = _get_unique_id,
@@ -2296,6 +2338,7 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.clear_virtual_ips = _clear_virtual_ips,
 			.create_virtual_ip_enumerator = _create_virtual_ip_enumerator,
 			.add_configuration_attribute = _add_configuration_attribute,
+			.create_attribute_enumerator = _create_attribute_enumerator,
 			.set_kmaddress = _set_kmaddress,
 			.create_task_enumerator = _create_task_enumerator,
 			.flush_queue = _flush_queue,

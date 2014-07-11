@@ -67,8 +67,8 @@
 /* Define to 1 if you have the `funopen' function. */
 #undef HAVE_FUNOPEN
 
-/* have GCC __sync_* atomic operations */
-#undef HAVE_GCC_ATOMIC_OPERATIONS
+/* have GCC __sync_* operations */
+#undef HAVE_GCC_SYNC_OPERATIONS
 
 /* have GCRY_CIPHER_CAMELLIA128 */
 #undef HAVE_GCRY_CIPHER_CAMELLIA
@@ -193,6 +193,9 @@
 /* Define to 1 if you have the `sem_timedwait' function. */
 #undef HAVE_SEM_TIMEDWAIT
 
+/* Define to 1 if you have the `setlinebuf' function. */
+#undef HAVE_SETLINEBUF
+
 /* have sqlite3_prepare_v2() */
 #undef HAVE_SQLITE3_PREPARE_V2
 
@@ -214,12 +217,18 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define to 1 if you have the `strptime' function. */
+#undef HAVE_STRPTIME
+
 /* Define to 1 if `sadb_x_policy_priority' is a member of `struct
    sadb_x_policy'. */
 #undef HAVE_STRUCT_SADB_X_POLICY_SADB_X_POLICY_PRIORITY
 
 /* Define to 1 if `sa_len' is a member of `struct sockaddr'. */
 #undef HAVE_STRUCT_SOCKADDR_SA_LEN
+
+/* have syslog(3) and friends */
+#undef HAVE_SYSLOG
 
 /* have sys/capability.h */
 #undef HAVE_SYS_CAPABILITY_H
@@ -257,9 +266,6 @@
 
 /* monolithic build embedding plugins */
 #undef MONOLITHIC
-
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
 
 /* Name of package */
 #undef PACKAGE

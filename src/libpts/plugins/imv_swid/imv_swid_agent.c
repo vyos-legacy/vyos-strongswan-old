@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Andreas Steffen
+ * Copyright (C) 2013-2014 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -13,8 +13,12 @@
  * for more details.
  */
 
+#define _GNU_SOURCE
+#include <stdio.h>
+
 #include "imv_swid_agent.h"
 #include "imv_swid_state.h"
+#include "imv_swid_rest.h"
 
 #include "libpts.h"
 #include "swid/swid_error.h"
@@ -27,6 +31,8 @@
 #include <ietf/ietf_attr_pa_tnc_error.h>
 #include <imv/imv_agent.h>
 #include <imv/imv_msg.h>
+#include <ita/ita_attr.h>
+#include <ita/ita_attr_angel.h>
 
 #include <tncif_names.h>
 #include <tncif_pa_subtypes.h>
@@ -43,6 +49,14 @@ static pen_type_t msg_types[] = {
 };
 
 /**
+ * Flag set when corresponding attribute has been received
+ */
+enum imv_swid_attr_t {
+	IMV_SWID_ATTR_TAG_INV =    (1<<0),
+	IMV_SWID_ATTR_TAG_ID_INV = (1<<1)
+};
+
+/**
  * Private data of an imv_swid_agent_t object.
  */
 struct private_imv_swid_agent_t {
@@ -56,6 +70,11 @@ struct private_imv_swid_agent_t {
 	 * IMV agent responsible for generic functions
 	 */
 	imv_agent_t *agent;
+
+	/**
+	 * REST API to strongTNC manager
+	 */
+	imv_swid_rest_t *rest_api;
 
 };
 
@@ -89,8 +108,8 @@ METHOD(imv_agent_if_t, notify_connection_change, TNC_Result,
 static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 							  imv_state_t *state, imv_msg_t *in_msg)
 {
+	imv_swid_state_t *swid_state;
 	imv_msg_t *out_msg;
-	imv_session_t *session;
 	enumerator_t *enumerator;
 	pa_tnc_attr_t *attr;
 	TNC_Result result;
@@ -103,22 +122,16 @@ static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 		return result;
 	}
 
-	session = state->get_session(state);
+	swid_state = (imv_swid_state_t*)state;
 
 	/* analyze PA-TNC attributes */
 	enumerator = in_msg->create_attribute_enumerator(in_msg);
 	while (enumerator->enumerate(enumerator, &attr))
 	{
-		TNC_IMV_Evaluation_Result eval;
-		TNC_IMV_Action_Recommendation rec;
-		pen_type_t type;
-		u_int32_t request_id, last_eid, eid_epoch;
+		uint32_t request_id = 0, last_eid, eid_epoch;
 		swid_inventory_t *inventory;
-		int tag_count;
-		char result_str[BUF_LEN], *tag_item;
-		imv_workitem_t *workitem, *found = NULL;
-		enumerator_t *et, *ew;
-		
+		pen_type_t type;
+
 		type = attr->get_type(attr);
 
 		if (type.vendor_id == PEN_IETF && type.type == IETF_ATTR_PA_TNC_ERROR)
@@ -127,7 +140,7 @@ static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 			pen_type_t error_code;
 			chunk_t msg_info, description;
 			bio_reader_t *reader;
-			u_int32_t request_id = 0, max_attr_size;
+			uint32_t max_attr_size;
 			bool success;
 
 			error_attr = (ietf_attr_pa_tnc_error_t*)attr;
@@ -166,6 +179,20 @@ static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 				reader->destroy(reader);
 			}
 		}
+		else if (type.vendor_id == PEN_ITA)
+		{
+			switch (type.type)
+			{
+				case ITA_ATTR_START_ANGEL:
+					swid_state->set_angel_count(swid_state, TRUE);
+					continue;
+				case ITA_ATTR_STOP_ANGEL:
+					swid_state->set_angel_count(swid_state, FALSE);
+					continue;
+				default:
+					continue;
+			}
+		}
 		else if (type.vendor_id != PEN_TCG)
 		{
 			continue;
@@ -176,33 +203,30 @@ static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 			case TCG_SWID_TAG_ID_INVENTORY:
 			{
 				tcg_swid_attr_tag_id_inv_t *attr_cast;
-				swid_tag_id_t *tag_id;
-				chunk_t tag_creator, unique_sw_id;
+				int tag_id_count;
+
+				state->set_action_flags(state, IMV_SWID_ATTR_TAG_ID_INV);
 
 				attr_cast = (tcg_swid_attr_tag_id_inv_t*)attr;
 				request_id = attr_cast->get_request_id(attr_cast);
 				last_eid = attr_cast->get_last_eid(attr_cast, &eid_epoch);
 				inventory = attr_cast->get_inventory(attr_cast);
-				tag_item = "tag ID";
-				DBG2(DBG_IMV, "received SWID %s inventory for request %d "
-							  "at eid %d of epoch 0x%08x", tag_item,
+				tag_id_count = inventory->get_count(inventory);
+
+				DBG2(DBG_IMV, "received SWID tag ID inventory with %d item%s "
+							  "for request %d at eid %d of epoch 0x%08x",
+							   tag_id_count, (tag_id_count == 1) ? "" : "s",
 							   request_id, last_eid, eid_epoch);
 
-				et = inventory->create_enumerator(inventory);
-				while (et->enumerate(et, &tag_id))
+				if (request_id == swid_state->get_request_id(swid_state))
 				{
-					tag_creator = tag_id->get_tag_creator(tag_id);
-					unique_sw_id = tag_id->get_unique_sw_id(tag_id, NULL);
-					DBG3(DBG_IMV, "  %.*s_%.*s.swidtag",
-						 tag_creator.len, tag_creator.ptr,
-						 unique_sw_id.len, unique_sw_id.ptr);
+					swid_state->set_swid_inventory(swid_state, inventory);
+					swid_state->set_count(swid_state, tag_id_count, 0);
 				}
-				et->destroy(et);
-
-				if (request_id == 0)
+				else
 				{
-					/* TODO handle subscribed messages */
-					break;
+					DBG1(DBG_IMV, "no workitem found for SWID tag ID inventory "
+								  "with request ID %d", request_id);
 				}
 				break;
 			 }
@@ -211,62 +235,64 @@ static TNC_Result receive_msg(private_imv_swid_agent_t *this,
 				tcg_swid_attr_tag_inv_t *attr_cast;
 				swid_tag_t *tag;
 				chunk_t tag_encoding;
+				json_object *jobj, *jarray, *jstring;
+				char *tag_str;
+				int tag_count;
+				enumerator_t *e;
+
+				state->set_action_flags(state, IMV_SWID_ATTR_TAG_INV);
 
 				attr_cast = (tcg_swid_attr_tag_inv_t*)attr;
 				request_id = attr_cast->get_request_id(attr_cast);
 				last_eid = attr_cast->get_last_eid(attr_cast, &eid_epoch);
 				inventory = attr_cast->get_inventory(attr_cast);
-				tag_item = "tag";
-				DBG2(DBG_IMV, "received SWID %s inventory for request %d "
-							  "at eid %d of epoch 0x%08x", tag_item,
+				tag_count = inventory->get_count(inventory);
+
+				DBG2(DBG_IMV, "received SWID tag inventory with %d item%s for "
+							  "request %d at eid %d of epoch 0x%08x",
+							   tag_count, (tag_count == 1) ? "" : "s",
 							   request_id, last_eid, eid_epoch);
 
-				et = inventory->create_enumerator(inventory);
-				while (et->enumerate(et, &tag))
-				{
-					tag_encoding = tag->get_encoding(tag);
-					DBG3(DBG_IMV, "%.*s", tag_encoding.len, tag_encoding.ptr);
-				}
-				et->destroy(et);
 
-				if (request_id == 0)
+				if (request_id == swid_state->get_request_id(swid_state))
 				{
-					/* TODO handle subscribed messages */
-					break;
+					swid_state->set_count(swid_state, 0, tag_count);
+
+					if (this->rest_api)
+					{
+						jobj = json_object_new_object();
+						jarray = json_object_new_array();
+						json_object_object_add(jobj, "data", jarray);
+
+						e = inventory->create_enumerator(inventory);
+						while (e->enumerate(e, &tag))
+						{
+							tag_encoding = tag->get_encoding(tag);
+							tag_str = strndup(tag_encoding.ptr, tag_encoding.len);
+							DBG3(DBG_IMV, "%s", tag_str);
+							jstring = json_object_new_string(tag_str);
+							json_object_array_add(jarray, jstring);
+							free(tag_str);
+						}
+						e->destroy(e);
+
+						if (this->rest_api->post(this->rest_api,
+								"swid/add-tags/", jobj, NULL) != SUCCESS)
+						{
+							DBG1(DBG_IMV, "error in REST API add-tags request");
+						}
+						json_object_put(jobj);
+					}
 				}
-				break;
+				else
+				{
+					DBG1(DBG_IMV, "no workitem found for SWID tag inventory "
+								  "with request ID %d", request_id);
+				}
 			}
 			default:
 				continue;
 		 }
-
-		ew = session->create_workitem_enumerator(session);
-		while (ew->enumerate(ew, &workitem))
-		{
-			if (workitem->get_id(workitem) == request_id)
-			{
-				found = workitem;
-				break;
-			}
-		}
-		if (!found)
-		{
-			DBG1(DBG_IMV, "no workitem found for SWID %s inventory "
-						  "with request ID %d", tag_item, request_id);
-			ew->destroy(ew);
-			continue;
-		}
-
-		eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
-		tag_count = inventory->get_count(inventory);
-		snprintf(result_str, BUF_LEN, "received inventory of %d SWID %s%s",
-				 tag_count, tag_item, (tag_count == 1) ? "" : "s");
-		session->remove_workitem(session, ew);
-		ew->destroy(ew);
-		rec = found->set_result(found, result_str, eval);
-		state->update_recommendation(state, rec, eval);
-		imcv_db->finalize_workitem(imcv_db, found);
-		found->destroy(found);
 	}
 	enumerator->destroy(enumerator);
 
@@ -342,8 +368,8 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 	TNC_IMVID imv_id;
 	TNC_Result result = TNC_RESULT_SUCCESS;
 	bool no_workitems = TRUE;
-	u_int32_t request_id;
-	u_int8_t flags;
+	uint32_t request_id, received;
+	uint8_t flags;
 	enumerator_t *enumerator;
 
 	if (!this->agent->get_state(this->agent, id, &state))
@@ -360,11 +386,11 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 		return TNC_RESULT_SUCCESS;
 	}
 
-	/* create an empty out message - we might need it */
+	/* Create an empty out message - we might need it */
 	out_msg = imv_msg_create(this->agent, state, id, imv_id, TNC_IMCID_ANY,
 							 msg_types[0]);
 
-	if (!session)
+	if (!imcv_db)
 	{
 		DBG2(DBG_IMV, "no workitems available - no evaluation possible");
 		state->set_recommendation(state,
@@ -381,7 +407,9 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 		return this->agent->provide_recommendation(this->agent, state);
 	}
 
-	if (handshake_state == IMV_SWID_STATE_INIT)
+	/* Look for SWID tag workitem and create SWID tag request */
+	if (handshake_state == IMV_SWID_STATE_INIT &&
+		session->get_policy_started(session))
 	{
 		enumerator = session->create_workitem_enumerator(session);
 		if (enumerator)
@@ -408,13 +436,14 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 					flags |= TCG_SWID_ATTR_REQ_FLAG_C;
 				}
 				request_id = workitem->get_id(workitem);
-
+				swid_state->set_request_id(swid_state, request_id);
 				attr = tcg_swid_attr_req_create(flags, request_id, 0);
 				out_msg->add_attribute(out_msg, attr);
 				workitem->set_imv_id(workitem, imv_id);
 				no_workitems = FALSE;
 				DBG2(DBG_IMV, "IMV %d issues SWID request %d",
 						 imv_id, request_id);
+				break;
 			}
 			enumerator->destroy(enumerator);
 
@@ -428,6 +457,171 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 			}
 			handshake_state = IMV_SWID_STATE_WORKITEMS;
 			swid_state->set_handshake_state(swid_state, handshake_state);
+		}
+	}
+
+	received = state->get_action_flags(state);
+
+	if (handshake_state == IMV_SWID_STATE_WORKITEMS &&
+	   (received & (IMV_SWID_ATTR_TAG_INV|IMV_SWID_ATTR_TAG_ID_INV)) &&
+		swid_state->get_angel_count(swid_state) <= 0)
+	{
+		TNC_IMV_Evaluation_Result eval;
+		TNC_IMV_Action_Recommendation rec;
+		char result_str[BUF_LEN], *error_str = "", *command;
+		char *target, *separator;
+		int tag_id_count, tag_count, i;
+		size_t max_attr_size, attr_size, entry_size;
+		chunk_t tag_creator, unique_sw_id;
+		json_object *jrequest, *jresponse, *jvalue;
+		tcg_swid_attr_req_t *cast_attr;
+		swid_tag_id_t *tag_id;
+		status_t status = SUCCESS;
+
+		if (this->rest_api && (received & IMV_SWID_ATTR_TAG_ID_INV))
+		{
+			if (asprintf(&command, "sessions/%d/swid-measurement/",
+						 session->get_session_id(session, NULL, NULL)) < 0)
+			{
+				error_str = "allocation of command string failed";
+				status = FAILED;
+			}
+			else
+			{
+				jrequest = swid_state->get_swid_inventory(swid_state);
+				status = this->rest_api->post(this->rest_api, command,
+											  jrequest, &jresponse);
+				if (status == FAILED)
+				{
+					error_str = "error in REST API swid-measurement request";
+				}
+				free(command);
+			}
+		}
+
+		switch (status)
+		{
+			case SUCCESS:
+				enumerator = session->create_workitem_enumerator(session);
+				while (enumerator->enumerate(enumerator, &workitem))
+				{
+					if (workitem->get_type(workitem) == IMV_WORKITEM_SWID_TAGS)
+					{
+						swid_state->get_count(swid_state, &tag_id_count,
+														  &tag_count);
+						snprintf(result_str, BUF_LEN, "received inventory of "
+								 "%d SWID tag ID%s and %d SWID tag%s",
+								 tag_id_count, (tag_id_count == 1) ? "" : "s",
+								 tag_count, (tag_count == 1) ? "" : "s");
+						session->remove_workitem(session, enumerator);
+
+						eval = TNC_IMV_EVALUATION_RESULT_COMPLIANT;
+						rec = workitem->set_result(workitem, result_str, eval);
+						state->update_recommendation(state, rec, eval);
+						imcv_db->finalize_workitem(imcv_db, workitem);
+						workitem->destroy(workitem);
+						break;
+					}
+				}
+				enumerator->destroy(enumerator);
+				break;
+			case NEED_MORE:
+				if (received & IMV_SWID_ATTR_TAG_INV)
+				{
+					error_str = "not all requested SWID tags were received";
+					status = FAILED;
+					json_object_put(jresponse);
+					break;
+				}
+				if (json_object_get_type(jresponse) != json_type_array)
+				{
+					error_str = "response was not a json_array";
+					status = FAILED;
+					json_object_put(jresponse);
+					break;
+				}
+
+				/* Compute the maximum TCG SWID Request attribute size */
+				max_attr_size = state->get_max_msg_len(state) -
+								PA_TNC_HEADER_SIZE;
+
+				/* Create the [first] TCG SWID Request attribute */
+				attr_size = PA_TNC_ATTR_HEADER_SIZE + TCG_SWID_REQ_MIN_SIZE;			
+				attr = tcg_swid_attr_req_create(TCG_SWID_ATTR_REQ_FLAG_NONE,
+								swid_state->get_request_id(swid_state), 0);
+
+				tag_id_count = json_object_array_length(jresponse);
+				DBG1(DBG_IMV, "%d SWID tag target%s", tag_id_count,
+							  (tag_id_count == 1) ? "" : "s");
+
+				for (i = 0; i < tag_id_count; i++)
+				{
+					jvalue = json_object_array_get_idx(jresponse, i);
+					if (json_object_get_type(jvalue) != json_type_string)
+					{
+						error_str = "json_string element expected in json_array";
+						status = FAILED;
+						json_object_put(jresponse);
+						break;
+					}
+					target = (char*)json_object_get_string(jvalue);
+					DBG1(DBG_IMV, "  %s", target);
+
+					/* Separate target into tag_creator and unique_sw_id */
+					separator = strchr(target, '_');
+					if (!separator)
+					{
+						error_str = "separation of regid from "
+									"unique software ID failed";
+						break;
+					}
+					tag_creator = chunk_create(target, separator - target);
+					separator++;
+					unique_sw_id = chunk_create(separator, strlen(target) -
+												tag_creator.len - 1);
+					tag_id = swid_tag_id_create(tag_creator, unique_sw_id,
+												chunk_empty);
+					entry_size = 2 + tag_creator.len + 2 + unique_sw_id.len;
+
+					/* Have we reached the maximum attribute size? */
+					if (attr_size + entry_size > max_attr_size)
+					{
+						out_msg->add_attribute(out_msg, attr);
+						attr_size = PA_TNC_ATTR_HEADER_SIZE + 
+									TCG_SWID_REQ_MIN_SIZE;			
+						attr = tcg_swid_attr_req_create(
+									TCG_SWID_ATTR_REQ_FLAG_NONE,
+									swid_state->get_request_id(swid_state), 0);
+					}
+					cast_attr = (tcg_swid_attr_req_t*)attr;
+					cast_attr->add_target(cast_attr, tag_id);
+				}
+				json_object_put(jresponse);
+
+				out_msg->add_attribute(out_msg, attr);
+				break;
+			case FAILED:
+			default:
+				break;
+		}
+
+		if (status == FAILED)
+		{
+			enumerator = session->create_workitem_enumerator(session);
+			while (enumerator->enumerate(enumerator, &workitem))
+			{
+				if (workitem->get_type(workitem) == IMV_WORKITEM_SWID_TAGS)
+				{
+					session->remove_workitem(session, enumerator);
+					eval = TNC_IMV_EVALUATION_RESULT_ERROR;
+					rec = workitem->set_result(workitem, error_str, eval);
+					state->update_recommendation(state, rec, eval);
+					imcv_db->finalize_workitem(imcv_db, workitem);
+					workitem->destroy(workitem);
+					break;
+				}
+			}
+			enumerator->destroy(enumerator);
 		}
 	}
 
@@ -471,6 +665,7 @@ METHOD(imv_agent_if_t, solicit_recommendation, TNC_Result,
 METHOD(imv_agent_if_t, destroy, void,
 	private_imv_swid_agent_t *this)
 {
+	DESTROY_IF(this->rest_api);
 	this->agent->destroy(this->agent);
 	free(this);
 	libpts_deinit();
@@ -484,6 +679,8 @@ imv_agent_if_t *imv_swid_agent_create(const char *name, TNC_IMVID id,
 {
 	private_imv_swid_agent_t *this;
 	imv_agent_t *agent;
+	char *rest_api_uri;
+	u_int rest_api_timeout;
 
 	agent = imv_agent_create(name, msg_types, countof(msg_types), id,
 							 actual_version);
@@ -505,6 +702,14 @@ imv_agent_if_t *imv_swid_agent_create(const char *name, TNC_IMVID id,
 		.agent = agent,
 	);
 
+	rest_api_uri = lib->settings->get_str(lib->settings,
+						"%s.plugins.imv-swid.rest_api_uri", NULL, lib->ns);
+	rest_api_timeout = lib->settings->get_int(lib->settings,
+						"%s.plugins.imv-swid.rest_api_timeout", 120, lib->ns);
+	if (rest_api_uri)
+	{
+		this->rest_api = imv_swid_rest_create(rest_api_uri, rest_api_timeout);
+	}
 	libpts_init();
 
 	return &this->public;

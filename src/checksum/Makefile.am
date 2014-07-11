@@ -22,7 +22,7 @@ AM_CPPFLAGS = \
 	-DPLUGINDIR=\"${DESTDIR}${plugindir}\"
 
 AM_CFLAGS = \
-	-rdynamic
+	$(PLUGIN_CFLAGS)
 
 # we keep track of build dependencies in deps and use libs to store the paths
 # to the installed libraries. for executables we use the built files directly
@@ -99,9 +99,16 @@ if USE_CMD
   exes += $(DESTDIR)$(sbindir)/charon-cmd
 endif
 
-if USE_TOOLS
+if USE_SCEPCLIENT
   exes += $(DESTDIR)$(ipsecdir)/scepclient
+endif
+
+if USE_PKI
   exes += $(DESTDIR)$(bindir)/pki
+endif
+
+if USE_SWANCTL
+  exes += $(DESTDIR)$(sbindir)/swanctl
 endif
 
 if USE_ATTR_SQL

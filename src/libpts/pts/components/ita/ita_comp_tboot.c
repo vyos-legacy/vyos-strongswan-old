@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Andreas Steffen
+ * Copyright (C) 2011-2014 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -41,11 +41,6 @@ struct pts_ita_comp_tboot_t {
 	pts_comp_func_name_t *name;
 
 	/**
-	 * AIK keyid
-	 */
-	chunk_t keyid;
-
-	/**
 	 * Sub-component depth
 	 */
 	u_int32_t depth;
@@ -54,6 +49,11 @@ struct pts_ita_comp_tboot_t {
 	 * PTS measurement database
 	 */
 	pts_database_t *pts_db;
+
+	/**
+	 * Primary key for AIK database entry
+	 */
+	int aik_id;
 
 	/**
 	 * Primary key for Component Functional Name database entry
@@ -201,51 +201,38 @@ METHOD(pts_component_t, verify, status_t,
 	chunk_t measurement, pcr_before, pcr_after;
 	status_t status;
 
+	this->aik_id = pts->get_aik_id(pts);
 	pcrs = pts->get_pcrs(pts);
 	measurement = evidence->get_measurement(evidence, &extended_pcr,
 								&algo, &transform, &measurement_time);
 
-	if (!this->keyid.ptr)
+	status = this->pts_db->get_comp_measurement_count(this->pts_db,
+									this->name, this->aik_id, algo,
+									&this->cid, &this->count);
+	if (status != SUCCESS)
 	{
-		if (!pts->get_aik_keyid(pts, &this->keyid))
-		{
-			return FAILED;
-		}
-		this->keyid = chunk_clone(this->keyid);
+		return status;
+	}
+	vid = this->name->get_vendor_id(this->name);
+	name = this->name->get_name(this->name);
+	names = pts_components->get_comp_func_names(pts_components, vid);
 
-		if (!this->pts_db)
-		{
-			DBG1(DBG_PTS, "pts database not available");
-			return FAILED;
-		}
-		status = this->pts_db->get_comp_measurement_count(this->pts_db,
-								this->name, this->keyid, algo, &this->cid,
-								&this->kid, &this->count);
-		if (status != SUCCESS)
-		{
-			return status;
-		}
-		vid = this->name->get_vendor_id(this->name);
-		name = this->name->get_name(this->name);
-		names = pts_components->get_comp_func_names(pts_components, vid);
-
-		if (this->count)
-		{
-			DBG1(DBG_PTS, "checking %d %N '%N' functional component evidence "
-				 "measurements", this->count, pen_names, vid, names, name);
-		}
-		else
-		{
-			DBG1(DBG_PTS, "registering %N '%N' functional component evidence "
-				 "measurements", pen_names, vid, names, name);
-			this->is_registering = TRUE;
-		}
+	if (this->count)
+	{
+		DBG1(DBG_PTS, "checking %d %N '%N' functional component evidence "
+			 "measurements", this->count, pen_names, vid, names, name);
+	}
+	else
+	{
+		DBG1(DBG_PTS, "registering %N '%N' functional component evidence "
+			 "measurements", pen_names, vid, names, name);
+		this->is_registering = TRUE;
 	}
 
 	if (this->is_registering)
 	{
 		status = this->pts_db->insert_comp_measurement(this->pts_db,
-								measurement, this->cid, this->kid,
+								measurement, this->cid, this->aik_id,
 								++this->seq_no, extended_pcr, algo);
 		if (status != SUCCESS)
 		{
@@ -282,30 +269,31 @@ METHOD(pts_component_t, verify, status_t,
 }
 
 METHOD(pts_component_t, finalize, bool,
-	pts_ita_comp_tboot_t *this, u_int8_t qualifier)
+	pts_ita_comp_tboot_t *this, u_int8_t qualifier, bio_writer_t *result)
 {
-	u_int32_t vid, name;
-	enum_name_t *names;
-
-	vid = this->name->get_vendor_id(this->name);
-	name = this->name->get_name(this->name);
-	names = pts_components->get_comp_func_names(pts_components, vid);
+	char result_buf[BUF_LEN];
 
 	if (this->is_registering)
 	{
 		/* close registration */
 		this->is_registering = FALSE;
 
-		DBG1(DBG_PTS, "registered %d %N '%N' functional component evidence "
-					  "measurements", this->seq_no, pen_names, vid, names, name);
+		snprintf(result_buf, BUF_LEN, "registered %d evidence measurements",
+				 this->seq_no);
 	}
 	else if (this->seq_no < this->count)
 	{
-		DBG1(DBG_PTS, "%d of %d %N '%N' functional component evidence "
-					  "measurements missing", this->count - this->seq_no,
-					   this->count, pen_names, vid, names, name);
+		snprintf(result_buf, BUF_LEN, "%d of %d evidence measurements "
+				 "missing", this->count - this->seq_no, this->count);
 		return FALSE;
 	}
+	else
+	{
+		snprintf(result_buf, BUF_LEN, "%d evidence measurements are ok",
+				 this->count);
+	}
+	DBG1(DBG_PTS, "%s", result_buf);
+	result->write_data(result, chunk_from_str(result_buf));
 
 	return TRUE;
 }
@@ -329,7 +317,7 @@ METHOD(pts_component_t, destroy, void,
 		if (this->is_registering)
 		{
 			count = this->pts_db->delete_comp_measurements(this->pts_db,
-													this->cid, this->kid);
+												this->cid, this->aik_id);
 			vid = this->name->get_vendor_id(this->name);
 			name = this->name->get_name(this->name);
 			names = pts_components->get_comp_func_names(pts_components, vid);
@@ -337,7 +325,6 @@ METHOD(pts_component_t, destroy, void,
 				 "evidence measurements", count, pen_names, vid, names, name);
 		}
 		this->name->destroy(this->name);
-		free(this->keyid.ptr);
 		free(this);
 	}
 }

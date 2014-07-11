@@ -72,8 +72,16 @@ if USE_UPDOWN
   SUBDIRS += _updown _updown_espmark
 endif
 
-if USE_TOOLS
-  SUBDIRS += scepclient pki
+if USE_SCEPCLIENT
+  SUBDIRS += scepclient
+endif
+
+if USE_PKI
+  SUBDIRS += pki
+endif
+
+if USE_SWANCTL
+  SUBDIRS += swanctl
 endif
 
 if USE_CONFTEST
@@ -112,10 +120,18 @@ if USE_CMD
   SUBDIRS += charon-cmd
 endif
 
+if USE_SVC
+  SUBDIRS += charon-svc
+endif
+
 if USE_LIBPTTLS
   SUBDIRS += pt-tls-client
 endif
 
 if USE_INTEGRITY_TEST
   SUBDIRS += checksum
+endif
+
+if USE_AIKGEN
+  SUBDIRS += aikgen
 endif

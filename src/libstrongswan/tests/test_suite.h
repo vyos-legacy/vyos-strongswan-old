@@ -174,7 +174,11 @@ void test_suite_add_case(test_suite_t *suite, test_case_t *tcase);
 /**
  * sigjmp restore point used by test_restore_point
  */
+#ifdef WIN32
+extern jmp_buf test_restore_point_env;
+#else
 extern sigjmp_buf test_restore_point_env;
+#endif
 
 /**
  * Set or return from an execution restore point
@@ -185,7 +189,11 @@ extern sigjmp_buf test_restore_point_env;
  *
  * @return			TRUE if restore point set, FALSE when restored
  */
-#define test_restore_point() (sigsetjmp(test_restore_point_env, 1) == 0)
+#ifdef WIN32
+# define test_restore_point() (setjmp(test_restore_point_env) == 0)
+#else
+# define test_restore_point() (sigsetjmp(test_restore_point_env, 1) == 0)
+#endif
 
 /**
  * Set up signal handlers for test cases
@@ -237,6 +245,12 @@ void test_fail_vmsg(const char *file, int line, char *fmt, va_list args);
 void test_fail_msg(const char *file, int line, char *fmt, ...);
 
 /**
+ * Let a test fail if one of the worker threads has failed (only if called from
+ * the main thread).
+ */
+void test_fail_if_worker_failed();
+
+/**
  * Check if two integers equal, fail test if not
  *
  * @param a			first integer
@@ -246,6 +260,7 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
 ({ \
 	typeof(a) _a = a; \
 	typeof(b) _b = b; \
+	test_fail_if_worker_failed(); \
 	if (_a != _b) \
 	{ \
 		test_fail_msg(__FILE__, __LINE__, #a " != " #b " (%d != %d)", _a, _b); \
@@ -262,10 +277,29 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
 ({ \
 	char* _a = (char*)a; \
 	char* _b = (char*)b; \
+	test_fail_if_worker_failed(); \
 	if (!_a || !_b || !streq(_a, _b)) \
 	{ \
 		test_fail_msg(__FILE__, __LINE__, \
 					  #a " != " #b " (\"%s\" != \"%s\")", _a, _b); \
+	} \
+})
+
+/**
+ * Check if two chunks are equal, fail test if not
+ *
+ * @param a			first chunk
+ * @param b			second chunk
+ */
+#define test_chunk_eq(a, b) \
+({ \
+	chunk_t _a = (chunk_t)a; \
+	chunk_t _b = (chunk_t)b; \
+	test_fail_if_worker_failed(); \
+	if (_a.len != _b.len || !memeq(a.ptr, b.ptr, a.len)) \
+	{ \
+		test_fail_msg(__FILE__, __LINE__, \
+					  #a " != " #b " (\"%#B\" != \"%#B\")", &_a, &_b); \
 	} \
 })
 
@@ -276,6 +310,7 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
  */
 #define test_assert(x) \
 ({ \
+	test_fail_if_worker_failed(); \
 	if (!(x)) \
 	{ \
 		test_fail_msg(__FILE__, __LINE__, #x); \
@@ -291,6 +326,7 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
  */
 #define test_assert_msg(x, fmt, ...) \
 ({ \
+	test_fail_if_worker_failed(); \
 	if (!(x)) \
 	{ \
 		test_fail_msg(__FILE__, __LINE__, #x ": " fmt, ##__VA_ARGS__); \
@@ -306,9 +342,11 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
 #define ck_assert test_assert
 #define ck_assert_msg test_assert_msg
 #define ck_assert_str_eq test_str_eq
+#define ck_assert_chunk_eq test_chunk_eq
 #define fail(fmt, ...) test_fail_msg(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define fail_if(x, fmt, ...) \
 ({ \
+	test_fail_if_worker_failed(); \
 	if (x) \
 	{ \
 		test_fail_msg(__FILE__, __LINE__, #x ": " fmt, ##__VA_ARGS__); \
@@ -323,10 +361,10 @@ void test_fail_msg(const char *file, int line, char *fmt, ...);
 #define tcase_set_timeout test_case_set_timeout
 #define suite_add_tcase test_suite_add_case
 #define START_TEST(name) static void name (int _i) {
-#define END_TEST }
+#define END_TEST test_fail_if_worker_failed(); }
 #define START_SETUP(name) static void name() {
-#define END_SETUP }
+#define END_SETUP test_fail_if_worker_failed(); }
 #define START_TEARDOWN(name) static void name() {
-#define END_TEARDOWN }
+#define END_TEARDOWN test_fail_if_worker_failed(); }
 
 #endif /** TEST_SUITE_H_ @}*/

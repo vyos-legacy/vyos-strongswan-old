@@ -5,7 +5,6 @@ bus/bus.c bus/bus.h \
 bus/listeners/listener.h \
 bus/listeners/logger.h \
 bus/listeners/file_logger.c bus/listeners/file_logger.h \
-bus/listeners/sys_logger.c bus/listeners/sys_logger.h \
 config/backend_manager.c config/backend_manager.h config/backend.h \
 config/child_cfg.c config/child_cfg.h \
 config/ike_cfg.c config/ike_cfg.h \
@@ -125,6 +124,10 @@ processing/jobs/dpd_timeout_job.c processing/jobs/dpd_timeout_job.h \
 processing/jobs/adopt_children_job.c processing/jobs/adopt_children_job.h
 endif
 
+if USE_SYSLOG
+  libcharon_la_SOURCES += \
+    bus/listeners/sys_logger.c bus/listeners/sys_logger.h
+endif
 
 daemon.lo :		$(top_builddir)/config.status
 
@@ -143,6 +146,10 @@ libcharon_la_LIBADD = \
   $(top_builddir)/src/libstrongswan/libstrongswan.la \
   $(top_builddir)/src/libhydra/libhydra.la \
   -lm $(PTHREADLIB) $(DLLIB) $(SOCKLIB)
+
+if USE_WINDOWS
+  libcharon_la_LIBADD += -lws2_32
+endif
 
 EXTRA_DIST = Android.mk
 
@@ -188,6 +195,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_SOCKET_WIN
+  SUBDIRS += plugins/socket_win
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/socket_win/libstrongswan-socket-win.la
+endif
+endif
+
 if USE_FARP
   SUBDIRS += plugins/farp
 if MONOLITHIC
@@ -199,6 +213,13 @@ if USE_STROKE
   SUBDIRS += plugins/stroke
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/stroke/libstrongswan-stroke.la
+endif
+endif
+
+if USE_VICI
+  SUBDIRS += plugins/vici
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/vici/libstrongswan-vici.la
 endif
 endif
 
@@ -465,6 +486,20 @@ if USE_KERNEL_LIBIPSEC
   SUBDIRS += plugins/kernel_libipsec
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
+endif
+endif
+
+if USE_KERNEL_WFP
+  SUBDIRS += plugins/kernel_wfp
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/kernel_wfp/libstrongswan-kernel-wfp.la
+endif
+endif
+
+if USE_KERNEL_IPH
+  SUBDIRS += plugins/kernel_iph
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/kernel_iph/libstrongswan-kernel-iph.la
 endif
 endif
 

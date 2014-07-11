@@ -722,12 +722,23 @@ METHOD(child_sa_t, install, status_t,
 				src, dst, spi, proto_ike2ip(this->protocol), this->reqid,
 				inbound ? this->mark_in : this->mark_out, tfc,
 				lifetime, enc_alg, encr, int_alg, integ, this->mode,
-				this->ipcomp, cpi, initiator, this->encap, esn, update,
-				src_ts, dst_ts);
+				this->ipcomp, cpi, this->config->get_replay_window(this->config),
+				initiator, this->encap, esn, update, src_ts, dst_ts);
 
 	free(lifetime);
 
 	return status;
+}
+
+/**
+ * Check kernel interface if policy updates are required
+ */
+static bool require_policy_update()
+{
+	kernel_feature_t f;
+
+	f = hydra->kernel_interface->get_features(hydra->kernel_interface);
+	return !(f & KERNEL_NO_POLICY_UPDATES);
 }
 
 /**
@@ -836,13 +847,21 @@ METHOD(child_sa_t, add_policies, status_t,
 		priority = this->trap ? POLICY_PRIORITY_ROUTED
 							  : POLICY_PRIORITY_DEFAULT;
 
+		enumerator = create_policy_enumerator(this);
+		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
+		{
+			my_sa.policy_count++;
+			other_sa.policy_count++;
+		}
+		enumerator->destroy(enumerator);
+
 		/* enumerate pairs of traffic selectors */
 		enumerator = create_policy_enumerator(this);
 		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 		{
 			/* install outbound drop policy to avoid packets leaving unencrypted
 			 * when updating policies */
-			if (priority == POLICY_PRIORITY_DEFAULT)
+			if (priority == POLICY_PRIORITY_DEFAULT && require_policy_update())
 			{
 				status |= install_policies_internal(this, this->my_addr,
 									this->other_addr, my_ts, other_ts,
@@ -916,6 +935,7 @@ METHOD(child_sa_t, update, status_t,
 							this->other_addr, this->my_addr, other, me,
 							this->encap, encap, this->mark_in) == NOT_SUPPORTED)
 			{
+				set_state(this, old);
 				return NOT_SUPPORTED;
 			}
 		}
@@ -929,12 +949,13 @@ METHOD(child_sa_t, update, status_t,
 							this->my_addr, this->other_addr, me, other,
 							this->encap, encap, this->mark_out) == NOT_SUPPORTED)
 			{
+				set_state(this, old);
 				return NOT_SUPPORTED;
 			}
 		}
 	}
 
-	if (this->config->install_policy(this->config))
+	if (this->config->install_policy(this->config) && require_policy_update())
 	{
 		ipsec_sa_cfg_t my_sa = {
 			.mode = this->mode,
@@ -1073,7 +1094,7 @@ METHOD(child_sa_t, destroy, void,
 		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 		{
 			del_policies_internal(this, my_ts, other_ts, priority);
-			if (priority == POLICY_PRIORITY_DEFAULT)
+			if (priority == POLICY_PRIORITY_DEFAULT && require_policy_update())
 			{
 				del_policies_internal(this, my_ts, other_ts,
 									  POLICY_PRIORITY_FALLBACK);

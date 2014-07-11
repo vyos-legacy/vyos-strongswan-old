@@ -19,8 +19,12 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <time.h>
+#include <errno.h>
+
+#ifdef HAVE_SYSLOG
+#include <syslog.h>
+#endif
 
 #include "daemon.h"
 
@@ -178,6 +182,7 @@ static bool logger_entry_match(logger_entry_t *this, char *target, bool *file)
  */
 static void handle_syslog_identifier(private_daemon_t *this)
 {
+#ifdef HAVE_SYSLOG
 	char *identifier;
 
 	identifier = lib->settings->get_str(lib->settings, "%s.syslog.identifier",
@@ -197,6 +202,7 @@ static void handle_syslog_identifier(private_daemon_t *this)
 		closelog();
 		this->syslog_identifier = NULL;
 	}
+#endif /* HAVE_SYSLOG */
 }
 
 /**
@@ -205,6 +211,7 @@ static void handle_syslog_identifier(private_daemon_t *this)
  */
 static int get_syslog_facility(char *facility)
 {
+#ifdef HAVE_SYSLOG
 	if (streq(facility, "daemon"))
 	{
 		return LOG_DAEMON;
@@ -213,6 +220,7 @@ static int get_syslog_facility(char *facility)
 	{
 		return LOG_AUTHPRIV;
 	}
+#endif /* HAVE_SYSLOG */
 	return -1;
 }
 
@@ -236,10 +244,12 @@ static logger_entry_t *get_logger_entry(char *target, bool is_file_logger,
 		{
 			entry->logger.file = file_logger_create(target);
 		}
+#ifdef HAVE_SYSLOG
 		else
 		{
 			entry->logger.sys = sys_logger_create(get_syslog_facility(target));
 		}
+#endif /* HAVE_SYSLOG */
 	}
 	else
 	{
@@ -380,18 +390,27 @@ METHOD(daemon_t, load_loggers, void,
 
 		for (group = 0; group < DBG_MAX; group++)
 		{
-			sys_logger->set_level(sys_logger, group, levels[group]);
+			if (sys_logger)
+			{
+				sys_logger->set_level(sys_logger, group, levels[group]);
+			}
 			if (to_stderr)
 			{
 				file_logger->set_level(file_logger, group, levels[group]);
 			}
 		}
-		charon->bus->add_logger(charon->bus, &sys_logger->logger);
+		if (sys_logger)
+		{
+			charon->bus->add_logger(charon->bus, &sys_logger->logger);
+		}
 		charon->bus->add_logger(charon->bus, &file_logger->logger);
 
 		sys_logger = add_sys_logger(this, "auth", current_loggers);
-		sys_logger->set_level(sys_logger, DBG_ANY, LEVEL_AUDIT);
-		charon->bus->add_logger(charon->bus, &sys_logger->logger);
+		if (sys_logger)
+		{
+			sys_logger->set_level(sys_logger, DBG_ANY, LEVEL_AUDIT);
+			charon->bus->add_logger(charon->bus, &sys_logger->logger);
+		}
 	}
 	/* unregister and destroy any unused remaining loggers */
 	current_loggers->destroy_function(current_loggers,
@@ -476,6 +495,53 @@ static void destroy(private_daemon_t *this)
 	free(this);
 }
 
+/**
+ * Run a set of configured scripts
+ */
+static void run_scripts(private_daemon_t *this, char *verb)
+{
+	enumerator_t *enumerator;
+	char *key, *value, *pos, buf[1024];
+	FILE *cmd;
+
+	enumerator = lib->settings->create_key_value_enumerator(lib->settings,
+												"%s.%s-scripts", lib->ns, verb);
+	while (enumerator->enumerate(enumerator, &key, &value))
+	{
+		DBG1(DBG_DMN, "executing %s script '%s' (%s):", verb, key, value);
+		cmd = popen(value, "r");
+		if (!cmd)
+		{
+			DBG1(DBG_DMN, "executing %s script '%s' (%s) failed: %s",
+				 verb, key, value, strerror(errno));
+			continue;
+		}
+		while (TRUE)
+		{
+			if (!fgets(buf, sizeof(buf), cmd))
+			{
+				if (ferror(cmd))
+				{
+					DBG1(DBG_DMN, "reading from %s script '%s' (%s) failed",
+						 verb, key, value);
+				}
+				break;
+			}
+			else
+			{
+				pos = buf + strlen(buf);
+				if (pos > buf && pos[-1] == '\n')
+				{
+					pos[-1] = '\0';
+				}
+				DBG1(DBG_DMN, "%s: %s", key, buf);
+			}
+		}
+		pclose(cmd);
+	}
+	enumerator->destroy(enumerator);
+}
+
 METHOD(daemon_t, start, void,
 	   private_daemon_t *this)
 {
@@ -483,6 +549,8 @@ METHOD(daemon_t, start, void,
 	lib->processor->set_threads(lib->processor,
 						lib->settings->get_int(lib->settings, "%s.threads",
 											   DEFAULT_THREADS, lib->ns));
+
+	run_scripts(this, "start");
 }
 
 
@@ -597,6 +665,8 @@ void libcharon_deinit()
 	{	/* have more users */
 		return;
 	}
+
+	run_scripts(this, "stop");
 
 	destroy(this);
 	charon = NULL;

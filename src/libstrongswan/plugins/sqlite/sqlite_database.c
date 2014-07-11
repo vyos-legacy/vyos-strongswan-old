@@ -101,13 +101,15 @@ static sqlite3_stmt* run(private_sqlite_database_t *this, char *sql,
 				case DB_TEXT:
 				{
 					const char *text = va_arg(*args, const char*);
-					res = sqlite3_bind_text(stmt, i, text, -1, SQLITE_STATIC);
+					res = sqlite3_bind_text(stmt, i, text, -1,
+											SQLITE_TRANSIENT);
 					break;
 				}
 				case DB_BLOB:
 				{
 					chunk_t c = va_arg(*args, chunk_t);
-					res = sqlite3_bind_blob(stmt, i, c.ptr, c.len, SQLITE_STATIC);
+					res = sqlite3_bind_blob(stmt, i, c.ptr, c.len,
+											SQLITE_TRANSIENT);
 					break;
 				}
 				case DB_DOUBLE:
@@ -365,7 +367,7 @@ static bool finalize_transaction(private_sqlite_database_t *this,
 	return TRUE;
 }
 
-METHOD(database_t, commit, bool,
+METHOD(database_t, commit_, bool,
 	private_sqlite_database_t *this)
 {
 	return finalize_transaction(this, FALSE);
@@ -429,7 +431,7 @@ sqlite_database_t *sqlite_database_create(char *uri)
 				.query = _query,
 				.execute = _execute,
 				.transaction = _transaction,
-				.commit = _commit,
+				.commit = _commit_,
 				.rollback = _rollback,
 				.get_driver = _get_driver,
 				.destroy = _destroy,
