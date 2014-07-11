@@ -1,3 +1,2 @@
 01_fix-manpages.patch
 02_disable-libtls-tests.patch
-03_pfkey-Always-include-stdint.h.patch
