@@ -5,12 +5,11 @@ strongswan (5.2.0-2) UNRELEASED; urgency=medium
     + Alias strongswan.service to ipsec.service to match the sysv init script.
     + Drop After=syslog.target, as syslog is socket-activated nowadays.
     + Add ExecReload for reload action, since the starter script has one.
-    + On linux-any, add build-dep on systemd to ensure that the pkg-config
-      metadata file can be found.
+    + Add --with-systemdsystemunitdir to configure options.
     + Add build-dep on dh-systemd, and use systemd dh addon.
   * Remove debian/patches/03_include-stdint.patch.
 
- -- Romain Francoise <rfrancoise@debian.org>  Fri, 25 Jul 2014 22:51:04 +0200
+ -- Romain Francoise <rfrancoise@debian.org>  Sat, 26 Jul 2014 10:46:04 +0200
 
 strongswan (5.2.0-1) unstable; urgency=medium
 
