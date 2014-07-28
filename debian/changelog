@@ -7,11 +7,12 @@ strongswan (5.2.0-2) UNRELEASED; urgency=medium
       add After=network.target to ensure that charon gets the chance to send
       deletes on exit.
     + Add ExecReload for reload action, since the starter script has one.
-    + Add --with-systemdsystemunitdir to configure options.
+    + On linux-any, add build-dep on systemd to ensure that the pkg-config
+      metadata file can be found.
     + Add build-dep on dh-systemd, and use systemd dh addon.
   * Remove debian/patches/03_include-stdint.patch.
 
- -- Romain Francoise <rfrancoise@debian.org>  Sat, 26 Jul 2014 17:54:05 +0200
+ -- Romain Francoise <rfrancoise@debian.org>  Fri, 25 Jul 2014 22:51:04 +0200
 
 strongswan (5.2.0-1) unstable; urgency=medium
 
