@@ -1,9 +1,9 @@
-strongswan (5.2.1-1) UNRELEASED; urgency=medium
+strongswan (5.2.1-1) unstable; urgency=medium
 
   * New upstream release.
   * Stop shipping /etc/strongswan.conf.d in libstrongswan.
 
- -- Romain Francoise <rfrancoise@debian.org>  Tue, 21 Oct 2014 19:31:07 +0200
+ -- Romain Francoise <rfrancoise@debian.org>  Tue, 21 Oct 2014 19:38:25 +0200
 
 strongswan (5.2.0-2) unstable; urgency=medium
 
