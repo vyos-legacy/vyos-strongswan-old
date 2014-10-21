@@ -91,7 +91,6 @@ METHOD(tls_aead_t, encrypt, bool,
 	/* encrypt inline */
 	if (!this->crypter->encrypt(this->crypter, *data, iv, NULL))
 	{
-		free(data->ptr);
 		return FALSE;
 	}
 	/* prepend IV */
@@ -106,6 +105,7 @@ METHOD(tls_aead_t, decrypt, bool,
 	chunk_t assoc, mac, iv;
 	u_int8_t bs, padlen;
 	sigheader_t hdr;
+	size_t i;
 
 	iv.len = this->crypter->get_iv_size(this->crypter);
 	if (data->len < iv.len)
@@ -126,6 +126,13 @@ METHOD(tls_aead_t, decrypt, bool,
 	padlen = data->ptr[data->len - 1];
 	if (padlen < data->len)
 	{	/* If padding looks valid, remove it */
+		for (i = data->len - padlen - 1; i < data->len - 1; i++)
+		{
+			if (data->ptr[i] != padlen)
+			{
+				return FALSE;
+			}
+		}
 		data->len -= padlen + 1;
 	}
 

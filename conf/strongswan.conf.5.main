@@ -165,9 +165,11 @@ are released to free memory once an IKE_SA is established. Enabling this might
 conflict with plugins that later need access to e.g. the used certificates.
 
 .TP
-.BR charon.fragment_size " [512]"
-Maximum size (in bytes) of a sent fragment when using the proprietary IKEv1
-fragmentation extension.
+.BR charon.fragment_size " [0]"
+Maximum size (complete IP datagram size in bytes) of a sent IKE fragment when
+using proprietary IKEv1 or standardized IKEv2 fragmentation (0 for address
+family specific        default values). If specified this limit is used for both
+IPv4 and IPv6.
 
 .TP
 .BR charon.group " []"
@@ -511,6 +513,11 @@ Send RADIUS accounting information to RADIUS servers.
 Close the IKE_SA if there is a timeout during interim RADIUS accounting updates.
 
 .TP
+.BR charon.plugins.eap-radius.accounting_interval " [0]"
+Interval for interim RADIUS accounting updates, if not specified by the RADIUS
+server in the Access\-Accept message.
+
+.TP
 .BR charon.plugins.eap-radius.accounting_requires_vip " [no]"
 If enabled, accounting is disabled unless an IKE_SA has at least one virtual IP.
 
@@ -732,6 +739,29 @@ Request peer authentication based on a client certificate.
 Socket provided by the error\-notify plugin.
 
 .TP
+.BR charon.plugins.ext-auth.script " []"
+Command to pass to the system shell for peer authorization. Authorization is
+considered successful if the command executes normally with an exit code of
+zero. For all other exit codes IKE_SA authorization is rejected.
+
+The following environment variables get passed to the script:
+.RI "" "IKE_UNIQUE_ID" ":"
+The IKE_SA numerical unique identifier.
+.RI "" "IKE_NAME" ":"
+The peer configuration
+connection name.
+.RI "" "IKE_LOCAL_HOST" ":"
+Local IKE IP address.
+.RI "" "IKE_REMOTE_HOST" ":"
+Remote IKE IP address.
+.RI "" "IKE_LOCAL_ID" ":"
+Local IKE identity.
+.RI "" "IKE_REMOTE_ID" ":"
+Remote IKE identity.
+.RI "" "IKE_REMOTE_EAP_ID" ":"
+Remote EAP or XAuth identity, if used.
+
+.TP
 .BR charon.plugins.gcrypt.quick_random " [no]"
 Use faster random numbers in gcrypt; for testing only, produces weak keys!
 
@@ -782,8 +812,22 @@ table. The format is [!]mark[/mask], where the optional exclamation mark inverts
 the meaning (i.e. the rule only applies to packets that don't match the mark).
 
 .TP
+.BR charon.plugins.kernel-netlink.mss " [0]"
+MSS to set on installed routes, 0 to disable.
+
+.TP
+.BR charon.plugins.kernel-netlink.mtu " [0]"
+MTU to set on installed routes, 0 to disable.
+
+.TP
 .BR charon.plugins.kernel-netlink.roam_events " [yes]"
 Whether to trigger roam events when interfaces, addresses or routes change.
+
+.TP
+.BR charon.plugins.kernel-netlink.set_proto_port_transport_sa " [no]"
+Whether to set protocol and ports in the selector installed on transport mode
+IPsec SAs in the kernel. While doing so enforces policies for inbound traffic,
+it also prevents the use of a single IPsec SA by more than one traffic selector.
 
 .TP
 .BR charon.plugins.kernel-netlink.xfrm_acq_expires " [165]"
@@ -1121,6 +1165,10 @@ Maximum number of stroke messages handled concurrently.
 .TP
 .BR charon.plugins.stroke.prevent_loglevel_changes " [no]"
 If enabled log level changes via stroke socket are not allowed.
+
+.TP
+.BR charon.plugins.stroke.secrets_file " [${sysconfdir}/ipsec.secrets]"
+Location of the ipsec.secrets file
 
 .TP
 .BR charon.plugins.stroke.socket " [unix://${piddir}/charon.ctl]"
@@ -1483,6 +1531,23 @@ Name of the user the daemon changes to after startup.
 Discard certificates with unsupported or unknown critical extensions.
 
 .TP
+.B charon-systemd.journal
+.br
+Section to configure native systemd journal logger, very similar to the syslog
+logger as described in LOGGER CONFIGURATION in
+.RB "" "strongswan.conf" "(5)."
+
+
+.TP
+.BR charon-systemd.journal.<subsystem> " [<default>]"
+Loglevel for a specific subsystem.
+
+.TP
+.BR charon-systemd.journal.default " [1]"
+Specifies the default loglevel to be used for subsystems for which no specific
+loglevel is defined.
+
+.TP
 .BR libimcv.debug_level " [1]"
 Debug level for a stand\-alone
 .RI "" "libimcv" ""
@@ -1739,6 +1804,10 @@ Plugins to load in ipsec pool tool.
 .TP
 .BR scepclient.load " []"
 Plugins to load in ipsec scepclient tool.
+
+.TP
+.BR starter.config_file " [${sysconfdir}/ipsec.conf]"
+Location of the ipsec.conf file
 
 .TP
 .BR starter.load " []"

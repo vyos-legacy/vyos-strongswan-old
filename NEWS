@@ -1,3 +1,28 @@
+strongswan-5.2.1
+----------------
+
+- The new charon-systemd IKE daemon implements an IKE daemon tailored for use
+  with systemd. It avoids the dependency on ipsec starter and uses swanctl
+  as configuration backend, building a simple and lightweight solution. It
+  supports native systemd journal logging.
+
+- Support for IKEv2 fragmentation as per RFC 7383 has been added.  Like IKEv1
+  fragmentation it can be enabled by setting fragmentation=yes in ipsec.conf.
+
+- Support of the TCG TNC IF-M Attribute Segmentation specification proposal.
+  All attributes can be segmented. Additionally TCG/SWID Tag, TCG/SWID Tag ID
+  and IETF/Installed Packages attributes can be processed incrementally on a
+  per segment basis.
+
+- The new ext-auth plugin calls an external script to implement custom IKE_SA
+  authorization logic, courtesy of Vyronas Tsingaras.
+
+- For the vici plugin a ruby gem has been added to allow ruby applications
+  to control or monitor the IKE daemon. The vici documentation has been updated
+  to include a description of the available operations and some simple examples
+  using both the libvici C interface and the ruby gem.
+
+
 strongswan-5.2.0
 ----------------
 

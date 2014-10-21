@@ -334,9 +334,9 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
 	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
 	utils/capabilities.c utils/backtrace.c utils/parser_helper.c \
-	utils/test.c utils/utils/strerror.c threading/thread.c \
-	threading/thread_value.c threading/mutex.c threading/rwlock.c \
-	threading/spinlock.c threading/semaphore.c \
+	utils/test.c utils/process.c utils/utils/strerror.c \
+	threading/thread.c threading/thread_value.c threading/mutex.c \
+	threading/rwlock.c threading/spinlock.c threading/semaphore.c \
 	networking/streams/stream_unix.c \
 	networking/streams/stream_service_unix.c \
 	threading/windows/thread.c threading/windows/thread_value.c \
@@ -412,10 +412,10 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	utils/utils.lo utils/chunk.lo utils/debug.lo utils/enum.lo \
 	utils/identification.lo utils/lexparser.lo \
 	utils/optionsfrom.lo utils/capabilities.lo utils/backtrace.lo \
-	utils/parser_helper.lo utils/test.lo utils/utils/strerror.lo \
-	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4) $(am__objects_5) $(am__objects_6) \
-	$(am__objects_7)
+	utils/parser_helper.lo utils/test.lo utils/process.lo \
+	utils/utils/strerror.lo $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7)
 libstrongswan_la_OBJECTS = $(am_libstrongswan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -549,7 +549,7 @@ am__nobase_strongswan_include_HEADERS_DIST = library.h asn1/asn1.h \
 	utils/printf_hook/printf_hook_vstr.h \
 	utils/printf_hook/printf_hook_builtin.h utils/parser_helper.h \
 	utils/test.h utils/integrity_checker.h utils/windows.h \
-	utils/utils/strerror.h
+	utils/process.h utils/utils/strerror.h
 HEADERS = $(nobase_strongswan_include_HEADERS) $(noinst_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -648,6 +648,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -708,6 +709,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -773,6 +775,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -820,6 +824,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -875,9 +883,10 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
 	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
 	utils/capabilities.c utils/backtrace.c utils/parser_helper.c \
-	utils/test.c utils/utils/strerror.c $(am__append_1) \
-	$(am__append_3) $(am__append_8) $(am__append_11) \
-	$(am__append_12) $(am__append_14) $(am__append_16)
+	utils/test.c utils/process.c utils/utils/strerror.c \
+	$(am__append_1) $(am__append_3) $(am__append_8) \
+	$(am__append_11) $(am__append_12) $(am__append_14) \
+	$(am__append_16)
 
 # private header files
 noinst_HEADERS = \
@@ -931,7 +940,7 @@ settings/settings_types.h
 @USE_DEV_HEADERS_TRUE@utils/leak_detective.h utils/printf_hook/printf_hook.h \
 @USE_DEV_HEADERS_TRUE@utils/printf_hook/printf_hook_vstr.h utils/printf_hook/printf_hook_builtin.h \
 @USE_DEV_HEADERS_TRUE@utils/parser_helper.h utils/test.h utils/integrity_checker.h utils/windows.h \
-@USE_DEV_HEADERS_TRUE@utils/utils/strerror.h
+@USE_DEV_HEADERS_TRUE@utils/process.h utils/utils/strerror.h
 
 libstrongswan_la_LIBADD = $(DLLIB) $(BTLIB) $(SOCKLIB) $(RTLIB) \
 	$(BFDLIB) $(UNWINDLIB) $(am__append_2) $(am__append_4) \
@@ -1457,6 +1466,8 @@ utils/backtrace.lo: utils/$(am__dirstamp) \
 utils/parser_helper.lo: utils/$(am__dirstamp) \
 	utils/$(DEPDIR)/$(am__dirstamp)
 utils/test.lo: utils/$(am__dirstamp) utils/$(DEPDIR)/$(am__dirstamp)
+utils/process.lo: utils/$(am__dirstamp) \
+	utils/$(DEPDIR)/$(am__dirstamp)
 utils/utils/$(am__dirstamp):
 	@$(MKDIR_P) utils/utils
 	@: > utils/utils/$(am__dirstamp)
@@ -1707,6 +1718,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/lexparser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/optionsfrom.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/parser_helper.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/process.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/test.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/utils.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/windows.Plo@am__quote@

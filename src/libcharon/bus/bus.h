@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Tobias Brunner
+ * Copyright (C) 2012-2014 Tobias Brunner
  * Copyright (C) 2006-2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -101,9 +101,11 @@ enum alert_t {
 	/** received IKE message with invalid body, argument is message_t*,
 	 *  followed by a status_t result returned by message_t.parse_body(). */
 	ALERT_PARSE_ERROR_BODY,
-	/** sending a retransmit for a message, argument is packet_t */
+	/** sending a retransmit for a message, argument is packet_t, if the message
+	 *  got fragmented only the first fragment is passed */
 	ALERT_RETRANSMIT_SEND,
-	/** sending retransmits timed out, argument is packet_t, if available */
+	/** sending retransmits timed out, argument is packet_t, if available and if
+	 *  the message got fragmented only the first fragment is passed */
 	ALERT_RETRANSMIT_SEND_TIMEOUT,
 	/** received a retransmit for a message, argument is message_t */
 	ALERT_RETRANSMIT_RECEIVE,
@@ -380,12 +382,23 @@ struct bus_t {
 	void (*ike_rekey)(bus_t *this, ike_sa_t *old, ike_sa_t *new);
 
 	/**
-	 * IKE_SA reestablishing hook.
+	 * IKE_SA reestablishing hook (before resolving hosts).
 	 *
 	 * @param old		reestablished and obsolete IKE_SA
 	 * @param new		new IKE_SA replacing old
 	 */
-	void (*ike_reestablish)(bus_t *this, ike_sa_t *old, ike_sa_t *new);
+	void (*ike_reestablish_pre)(bus_t *this, ike_sa_t *old, ike_sa_t *new);
+
+	/**
+	 * IKE_SA reestablishing hook (after configuring and initiating the new
+	 * IKE_SA).
+	 *
+	 * @param old		reestablished and obsolete IKE_SA
+	 * @param new		new IKE_SA replacing old
+	 * @param initiated	TRUE if initiated successfully, FALSE otherwise
+	 */
+	void (*ike_reestablish_post)(bus_t *this, ike_sa_t *old, ike_sa_t *new,
+								 bool initiated);
 
 	/**
 	 * CHILD_SA up/down hook.

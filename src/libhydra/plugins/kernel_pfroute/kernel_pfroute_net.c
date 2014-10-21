@@ -875,6 +875,41 @@ static void process_link(private_kernel_pfroute_net_t *this,
 	}
 }
 
+#ifdef HAVE_RTM_IFANNOUNCE
+
+/**
+ * Process an RTM_IFANNOUNCE message from the kernel
+ */
+static void process_announce(private_kernel_pfroute_net_t *this,
+							 struct if_announcemsghdr *msg)
+{
+	enumerator_t *enumerator;
+	iface_entry_t *iface;
+
+	if (msg->ifan_what != IFAN_DEPARTURE)
+	{
+		/* we handle new interfaces in process_link() */
+		return;
+	}
+
+	this->lock->write_lock(this->lock);
+	enumerator = this->ifaces->create_enumerator(this->ifaces);
+	while (enumerator->enumerate(enumerator, &iface))
+	{
+		if (iface->ifindex == msg->ifan_index)
+		{
+			DBG1(DBG_KNL, "interface %s disappeared", iface->ifname);
+			this->ifaces->remove_at(this->ifaces, enumerator);
+			iface_entry_destroy(iface);
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	this->lock->unlock(this->lock);
+}
+
+#endif /* HAVE_RTM_IFANNOUNCE */
+
 /**
  * Process an RTM_*ROUTE message from the kernel
  */
@@ -895,6 +930,9 @@ static bool receive_events(private_kernel_pfroute_net_t *this, int fd,
 			struct rt_msghdr rtm;
 			struct if_msghdr ifm;
 			struct ifa_msghdr ifam;
+#ifdef HAVE_RTM_IFANNOUNCE
+			struct if_announcemsghdr ifanm;
+#endif
 		};
 		char buf[sizeof(struct sockaddr_storage) * RTAX_MAX];
 	} msg;
@@ -935,6 +973,11 @@ static bool receive_events(private_kernel_pfroute_net_t *this, int fd,
 		case RTM_IFINFO:
 			hdrlen = sizeof(msg.ifm);
 			break;
+#ifdef HAVE_RTM_IFANNOUNCE
+		case RTM_IFANNOUNCE:
+			hdrlen = sizeof(msg.ifanm);
+			break;
+#endif /* HAVE_RTM_IFANNOUNCE */
 		case RTM_ADD:
 		case RTM_DELETE:
 		case RTM_GET:
@@ -957,6 +1000,11 @@ static bool receive_events(private_kernel_pfroute_net_t *this, int fd,
 		case RTM_IFINFO:
 			process_link(this, &msg.ifm);
 			break;
+#ifdef HAVE_RTM_IFANNOUNCE
+		case RTM_IFANNOUNCE:
+			process_announce(this, &msg.ifanm);
+			break;
+#endif /* HAVE_RTM_IFANNOUNCE */
 		case RTM_ADD:
 		case RTM_DELETE:
 			process_route(this, &msg.rtm);
@@ -1518,8 +1566,7 @@ retry:
 			{	/* timed out? */
 				break;
 			}
-			if (this->reply->rtm_msglen < sizeof(*this->reply) ||
-				msg.hdr.rtm_seq != this->reply->rtm_seq)
+			if (!this->reply)
 			{
 				continue;
 			}
@@ -1559,6 +1606,8 @@ retry:
 	{
 		failed = TRUE;
 	}
+	free(this->reply);
+	this->reply = NULL;
 	/* signal completion of query to a waiting thread */
 	this->waiting_seq = 0;
 	this->condvar->signal(this->condvar);

@@ -30,7 +30,6 @@
 #include <ita/ita_attr.h>
 #include <ita/ita_attr_get_settings.h>
 #include <ita/ita_attr_settings.h>
-#include <ita/ita_attr_angel.h>
 #include <ita/ita_attr_device_id.h>
 
 #include <tncif_pa_subtypes.h>
@@ -341,69 +340,24 @@ static void add_device_id(imc_msg_t *msg)
  */
 static void add_installed_packages(imc_state_t *state, imc_msg_t *msg)
 {
-	pa_tnc_attr_t *attr = NULL, *attr_angel;
+	pa_tnc_attr_t *attr;
 	ietf_attr_installed_packages_t *attr_cast;
 	enumerator_t *enumerator;
 	chunk_t name, version;
-	size_t max_attr_size, attr_size, entry_size;
-	bool first = TRUE;
 
-	/**
-	 * Compute the maximum IETF Installed Packages attribute size
-	 * leaving space for an additional ITA Angel attribute
-	 */
-	max_attr_size = state->get_max_msg_len(state) -
-					PA_TNC_HEADER_SIZE - PA_TNC_ATTR_HEADER_SIZE;
-
-	/* At least one IETF Installed Packages attribute is sent */
 	attr = ietf_attr_installed_packages_create();
-	attr_size = PA_TNC_ATTR_HEADER_SIZE + IETF_INSTALLED_PACKAGES_MIN_SIZE;
 
 	enumerator = os->create_package_enumerator(os);
-	if (enumerator)
+	while (enumerator->enumerate(enumerator, &name, &version))
 	{
-		while (enumerator->enumerate(enumerator, &name, &version))
-		{
-			DBG2(DBG_IMC, "package '%.*s' (%.*s)",
-						   name.len, name.ptr, version.len, version.ptr);
-
-			entry_size = 2 + name.len + version.len;
-			if (attr_size + entry_size > max_attr_size)
-			{
-				if (first)
-				{
-					/**
-					 * Send an ITA Start Angel attribute to the IMV signalling
-					 * that multiple ITA Installed Package attributes follow.
-					 */
-					attr_angel = ita_attr_angel_create(TRUE);
-					msg->add_attribute(msg, attr_angel);
-					first = FALSE;
-				}
-				msg->add_attribute(msg, attr);
-
-				/* create the next IETF Installed Packages attribute */
-				attr = ietf_attr_installed_packages_create();
-				attr_size = PA_TNC_ATTR_HEADER_SIZE +
-							IETF_INSTALLED_PACKAGES_MIN_SIZE;
-			}
-			attr_cast = (ietf_attr_installed_packages_t*)attr;
-			attr_cast->add(attr_cast, name, version);
-			attr_size += entry_size;
-		}
-		enumerator->destroy(enumerator);
+		DBG2(DBG_IMC, "package '%.*s' (%.*s)",
+					   name.len, name.ptr, version.len, version.ptr);
+		attr_cast = (ietf_attr_installed_packages_t*)attr;
+		attr_cast->add(attr_cast, name, version);
 	}
+	enumerator->destroy(enumerator);
+
 	msg->add_attribute(msg, attr);
-
-	if (!first)
-	{
-		/**
-		 * If we sent an ITA Start Angel attribute in the first place,
-		 * terminate by appending a matching ITA Stop Angel attribute.
-		 */
-		attr_angel = ita_attr_angel_create(FALSE);
-		msg->add_attribute(msg, attr_angel);
-	}
 }
 
 /**
@@ -491,13 +445,16 @@ static TNC_Result receive_message(imc_state_t *state, imc_msg_t *in_msg)
 	TNC_Result result;
 	bool fatal_error = FALSE;
 
+	/* generate an outgoing PA-TNC message - we might need it */
+	out_msg = imc_msg_create_as_reply(in_msg);
+
 	/* parse received PA-TNC message and handle local and remote errors */
-	result = in_msg->receive(in_msg, &fatal_error);
+	result = in_msg->receive(in_msg, out_msg, &fatal_error);
 	if (result != TNC_RESULT_SUCCESS)
 	{
+		out_msg->destroy(out_msg);
 		return result;
 	}
-	out_msg = imc_msg_create_as_reply(in_msg);
 
 	/* analyze PA-TNC attributes */
 	enumerator = in_msg->create_attribute_enumerator(in_msg);
@@ -582,6 +539,7 @@ static TNC_Result receive_message(imc_state_t *state, imc_msg_t *in_msg)
 	}
 	else
 	{
+		/* send PA-TNC message with the EXCL flag set */
 		result = out_msg->send(out_msg, TRUE);
 	}
 	out_msg->destroy(out_msg);

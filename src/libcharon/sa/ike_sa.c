@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2013 Tobias Brunner
+ * Copyright (C) 2006-2014 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -14,6 +14,28 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
+ */
+
+/*
+ * Copyright (c) 2014 Volker Rümelin
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 #include <string.h>
@@ -251,6 +273,11 @@ struct private_ike_sa_t {
 	 * Flush auth configs once established?
 	 */
 	bool flush_auth_cfg;
+
+	/**
+	 * Maximum length of a single fragment, 0 for address-specific defaults
+	 */
+	size_t fragment_size;
 };
 
 /**
@@ -909,11 +936,14 @@ METHOD(ike_sa_t, update_hosts, void,
 			update = TRUE;
 		}
 
-		if (!other->equals(other, this->other_host))
+		if (!other->equals(other, this->other_host) &&
+			(force || has_condition(this, COND_NAT_THERE)))
 		{
-			/* update others address if we are NOT NATed */
-			if ((has_condition(this, COND_NAT_THERE) &&
-				 !has_condition(this, COND_NAT_HERE)) || force )
+			/* only update other's address if we are behind a static NAT,
+			 * which we assume is the case if we are not initiator */
+			if (force ||
+				(!has_condition(this, COND_NAT_HERE) ||
+				 !has_condition(this, COND_ORIGINAL_INITIATOR)))
 			{
 				set_other_host(this, other->clone(other));
 				update = TRUE;
@@ -990,6 +1020,69 @@ METHOD(ike_sa_t, generate_message, status_t,
 	{
 		set_dscp(this, *packet);
 		charon->bus->message(charon->bus, message, FALSE, FALSE);
+	}
+	return status;
+}
+
+static bool filter_fragments(private_ike_sa_t *this, packet_t **fragment,
+							 packet_t **packet)
+{
+	*packet = (*fragment)->clone(*fragment);
+	set_dscp(this, *packet);
+	return TRUE;
+}
+
+METHOD(ike_sa_t, generate_message_fragmented, status_t,
+	private_ike_sa_t *this, message_t *message, enumerator_t **packets)
+{
+	enumerator_t *fragments;
+	packet_t *packet;
+	status_t status;
+	bool use_frags = FALSE;
+
+	if (this->ike_cfg)
+	{
+		switch (this->ike_cfg->fragmentation(this->ike_cfg))
+		{
+			case FRAGMENTATION_FORCE:
+				use_frags = TRUE;
+				break;
+			case FRAGMENTATION_YES:
+				use_frags = supports_extension(this, EXT_IKE_FRAGMENTATION);
+				if (use_frags && this->version == IKEV1 &&
+					supports_extension(this, EXT_MS_WINDOWS))
+				{
+					/* It seems Windows 7 and 8 peers only accept proprietary
+					 * fragmented messages if they expect certificates. */
+					use_frags = message->get_payload(message,
+													 PLV1_CERTIFICATE) != NULL;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	if (!use_frags)
+	{
+		status = generate_message(this, message, &packet);
+		if (status != SUCCESS)
+		{
+			return status;
+		}
+		*packets = enumerator_create_single(packet, NULL);
+		return SUCCESS;
+	}
+
+	this->stats[STAT_OUTBOUND] = time_monotonic(NULL);
+	message->set_ike_sa_id(message, this->ike_sa_id);
+	charon->bus->message(charon->bus, message, FALSE, TRUE);
+	status = message->fragment(message, this->keymat, this->fragment_size,
+							   &fragments);
+	if (status == SUCCESS)
+	{
+		charon->bus->message(charon->bus, message, FALSE, FALSE);
+		*packets = enumerator_create_filter(fragments, (void*)filter_fragments,
+											this, NULL);
 	}
 	return status;
 }
@@ -1487,6 +1580,14 @@ METHOD(ike_sa_t, reauth, status_t,
 	{
 		return INVALID_STATE;
 	}
+	if (this->state == IKE_CONNECTING)
+	{
+		DBG0(DBG_IKE, "reinitiating IKE_SA %s[%d]",
+			 get_name(this), this->unique_id);
+		reset(this);
+		this->task_manager->queue_ike(this->task_manager);
+		return this->task_manager->initiate(this->task_manager);
+	}
 	/* we can't reauthenticate as responder when we use EAP or virtual IPs.
 	 * If the peer does not support RFC4478, there is no way to keep the
 	 * IKE_SA up. */
@@ -1650,6 +1751,7 @@ METHOD(ike_sa_t, reestablish, status_t,
 	new->set_other_host(new, host->clone(host));
 	host = this->my_host;
 	new->set_my_host(new, host->clone(host));
+	charon->bus->ike_reestablish_pre(charon->bus, &this->public, new);
 	/* resolve hosts but use the old addresses above as fallback */
 	resolve_hosts((private_ike_sa_t*)new);
 	/* if we already have a virtual IP, we reuse it */
@@ -1734,12 +1836,15 @@ METHOD(ike_sa_t, reestablish, status_t,
 
 	if (status == DESTROY_ME)
 	{
+		charon->bus->ike_reestablish_post(charon->bus, &this->public, new,
+										  FALSE);
 		charon->ike_sa_manager->checkin_and_destroy(charon->ike_sa_manager, new);
 		status = FAILED;
 	}
 	else
 	{
-		charon->bus->ike_reestablish(charon->bus, &this->public, new);
+		charon->bus->ike_reestablish_post(charon->bus, &this->public, new,
+										  TRUE);
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, new);
 		status = SUCCESS;
 	}
@@ -1899,11 +2004,29 @@ static bool is_any_path_valid(private_ike_sa_t *this)
 	bool valid = FALSE;
 	enumerator_t *enumerator;
 	host_t *src = NULL, *addr;
+	int family = AF_UNSPEC;
+
+	switch (charon->socket->supported_families(charon->socket))
+	{
+		case SOCKET_FAMILY_IPV4:
+			family = AF_INET;
+			break;
+		case SOCKET_FAMILY_IPV6:
+			family = AF_INET6;
+			break;
+		case SOCKET_FAMILY_BOTH:
+		case SOCKET_FAMILY_NONE:
+			break;
+	}
 
 	DBG1(DBG_IKE, "old path is not available anymore, try to find another");
 	enumerator = create_peer_address_enumerator(this);
 	while (enumerator->enumerate(enumerator, &addr))
 	{
+		if (family != AF_UNSPEC && addr->get_family(addr) != family)
+		{
+			continue;
+		}
 		DBG1(DBG_IKE, "looking for a route to %H ...", addr);
 		src = hydra->kernel_interface->get_source_addr(
 										hydra->kernel_interface, addr, NULL);
@@ -2332,6 +2455,7 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.inherit_pre = _inherit_pre,
 			.inherit_post = _inherit_post,
 			.generate_message = _generate_message,
+			.generate_message_fragmented = _generate_message_fragmented,
 			.reset = _reset,
 			.get_unique_id = _get_unique_id,
 			.add_virtual_ip = _add_virtual_ip,
@@ -2377,6 +2501,8 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 								"%s.retry_initiate_interval", 0, lib->ns),
 		.flush_auth_cfg = lib->settings->get_bool(lib->settings,
 								"%s.flush_auth_cfg", FALSE, lib->ns),
+		.fragment_size = lib->settings->get_int(lib->settings,
+								"%s.fragment_size", 0, lib->ns),
 	);
 
 	if (version == IKEV2)

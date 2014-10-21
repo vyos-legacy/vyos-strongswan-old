@@ -76,6 +76,11 @@ struct private_imv_os_state_t {
 	imv_session_t *session;
 
 	/**
+	 * PA-TNC attribute segmentation contracts associated with TNCCS connection
+	 */
+	seg_contract_manager_t *contracts;
+
+	/**
 	 * IMV action recommendation
 	 */
 	TNC_IMV_Action_Recommendation rec;
@@ -136,9 +141,9 @@ struct private_imv_os_state_t {
 	u_int os_settings;
 
 	/**
-	 * Angel count
+	 * Number of installed packages still missing
 	 */
-	int angel_count;
+	uint16_t missing;
 
 };
 
@@ -327,6 +332,12 @@ METHOD(imv_state_t, get_session, imv_session_t*,
 	return this->session;
 }
 
+METHOD(imv_state_t, get_contracts, seg_contract_manager_t*,
+	private_imv_os_state_t *this)
+{
+	return this->contracts;
+}
+
 METHOD(imv_state_t, get_recommendation, void,
 	private_imv_os_state_t *this, TNC_IMV_Action_Recommendation *rec,
 								  TNC_IMV_Evaluation_Result *eval)
@@ -461,6 +472,7 @@ METHOD(imv_state_t, destroy, void,
 	DESTROY_IF(this->session);
 	DESTROY_IF(this->reason_string);
 	DESTROY_IF(this->remediation_string);
+	this->contracts->destroy(this->contracts);
 	this->update_packages->destroy_function(this->update_packages, free);
 	this->remove_packages->destroy_function(this->remove_packages, free);
 	free(this);
@@ -523,16 +535,16 @@ METHOD(imv_os_state_t, get_os_settings, u_int,
 	return this->os_settings;
 }
 
-METHOD(imv_os_state_t, set_angel_count, void,
-	private_imv_os_state_t *this, bool start)
+METHOD(imv_os_state_t, set_missing, void,
+	private_imv_os_state_t *this, uint16_t missing)
 {
-	this->angel_count += start ? 1 : -1;
+	this->missing = missing;
 }
 
-METHOD(imv_os_state_t, get_angel_count, int,
+METHOD(imv_os_state_t, get_missing, uint16_t,
 	private_imv_os_state_t *this)
 {
-	return this->angel_count;
+	return this->missing;
 }
 
 METHOD(imv_os_state_t, add_bad_package, void,
@@ -571,6 +583,7 @@ imv_state_t *imv_os_state_create(TNC_ConnectionID connection_id)
 				.get_action_flags = _get_action_flags,
 				.set_session = _set_session,
 				.get_session = _get_session,
+				.get_contracts = _get_contracts,
 				.change_state = _change_state,
 				.get_recommendation = _get_recommendation,
 				.set_recommendation = _set_recommendation,
@@ -585,14 +598,15 @@ imv_state_t *imv_os_state_create(TNC_ConnectionID connection_id)
 			.get_count = _get_count,
 			.set_os_settings = _set_os_settings,
 			.get_os_settings = _get_os_settings,
-			.set_angel_count = _set_angel_count,
-			.get_angel_count = _get_angel_count,
+			.set_missing = _set_missing,
+			.get_missing = _get_missing,
 			.add_bad_package = _add_bad_package,
 		},
 		.state = TNC_CONNECTION_STATE_CREATE,
 		.rec = TNC_IMV_ACTION_RECOMMENDATION_NO_RECOMMENDATION,
 		.eval = TNC_IMV_EVALUATION_RESULT_DONT_KNOW,
 		.connection_id = connection_id,
+		.contracts = seg_contract_manager_create(),
 		.update_packages = linked_list_create(),
 		.remove_packages = linked_list_create(),
 	);

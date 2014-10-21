@@ -181,11 +181,12 @@ default of
 .RI "" "ifasked" ""
 the daemon sends certificate payloads only if certificate
 requests have been received.
-.RI "" "no" ""
-disables sending of certificate payloads,
-.RI "" "yes" ""
-always sends certificate payloads whenever certificate authentication is
-used.
+.RI "" "never" ""
+disables sending of certificate payloads
+altogether,
+.RI "" "always" ""
+causes certificate payloads to be sent unconditionally
+whenever certificate authentication is used.
 
 .TP
 .BR connections.<conn>.keyingtries " [1]"
@@ -220,6 +221,14 @@ existing connection if a new one for the same user gets established.
 To compare connections for uniqueness, the remote IKE identity is used. If EAP
 or XAuth authentication is involved, the EAP\-Identity or XAuth username is used
 to enforce the uniqueness policy instead.
+
+On initiators this setting specifies whether an INITIAL_CONTACT notify is sent
+during IKE_AUTH if no existing connection is found with the remote peer
+(determined by the identities of the first authentication round). Only if set to
+.RI "" "keep" ""
+or
+.RI "" "replace" ""
+will the client send a notify.
 
 .TP
 .BR connections.<conn>.reauth_time " [0s]"
@@ -409,7 +418,7 @@ directory, or
 an absolute path.
 
 .TP
-.BR connections.<conn>.remote<suffix>.cacert " []"
+.BR connections.<conn>.remote<suffix>.cacerts " []"
 Comma separated list of CA certificates to accept for authentication. The
 certificates may use a relative path from the
 .RB "" "swanctl" ""
