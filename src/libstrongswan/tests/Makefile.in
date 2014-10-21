@@ -126,6 +126,7 @@ am_tests_OBJECTS = tests-tests.$(OBJEXT) \
 	suites/tests-test_hashtable.$(OBJEXT) \
 	suites/tests-test_identification.$(OBJEXT) \
 	suites/tests-test_threading.$(OBJEXT) \
+	suites/tests-test_process.$(OBJEXT) \
 	suites/tests-test_watcher.$(OBJEXT) \
 	suites/tests-test_stream.$(OBJEXT) \
 	suites/tests-test_fetch_http.$(OBJEXT) \
@@ -265,6 +266,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -325,6 +327,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -390,6 +393,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -437,6 +442,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -472,6 +481,7 @@ tests_SOURCES = tests.h tests.c \
   suites/test_hashtable.c \
   suites/test_identification.c \
   suites/test_threading.c \
+  suites/test_process.c \
   suites/test_watcher.c \
   suites/test_stream.c \
   suites/test_fetch_http.c \
@@ -595,6 +605,8 @@ suites/tests-test_identification.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_threading.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_process.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_watcher.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_stream.$(OBJEXT): suites/$(am__dirstamp) \
@@ -671,6 +683,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ntru.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_pen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_printf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_process.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_rsa.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_stream.Po@am__quote@
@@ -879,6 +892,20 @@ suites/tests-test_threading.obj: suites/test_threading.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/tests-test_threading.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
+
+suites/tests-test_process.o: suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_process.o -MD -MP -MF suites/$(DEPDIR)/tests-test_process.Tpo -c -o suites/tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_process.Tpo suites/$(DEPDIR)/tests-test_process.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/tests-test_process.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
+
+suites/tests-test_process.obj: suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_process.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_process.Tpo -c -o suites/tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_process.Tpo suites/$(DEPDIR)/tests-test_process.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/tests-test_process.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
 
 suites/tests-test_watcher.o: suites/test_watcher.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_watcher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_watcher.Tpo -c -o suites/tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c

@@ -186,6 +186,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -246,6 +247,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -311,6 +313,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -358,6 +362,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -381,6 +389,7 @@ options = \
 	options/attest.opt \
 	options/charon.opt \
 	options/charon-logging.opt \
+	options/charon-systemd.opt \
 	options/imcv.opt \
 	options/manager.opt \
 	options/medsrv.opt \
@@ -413,6 +422,7 @@ plugins = \
 	plugins/eap-tnc.opt \
 	plugins/eap-ttls.opt \
 	plugins/error-notify.opt \
+	plugins/ext-auth.opt \
 	plugins/gcrypt.opt \
 	plugins/ha.opt \
 	plugins/imc-attestation.opt \
@@ -839,9 +849,9 @@ maintainer-clean-local:
 		rm -f $(confsnippets) default.conf plugins/*.conf plugins/*.tmp
 
 install-data-local: $(plugins_install_src)
-	test -e "$(DESTDIR)${strongswanconfdir}" || $(INSTALL) -d "$(DESTDIR)$(strongswanconfdir)"
-	test -e "$(DESTDIR)${strongswanddir}" || $(INSTALL) -d "$(DESTDIR)$(strongswanddir)"
-	test -e "$(DESTDIR)${charonconfdir}" || $(INSTALL) -d "$(DESTDIR)$(charonconfdir)"
+	test -e "$(DESTDIR)${strongswanconfdir}" || $(INSTALL) -d "$(DESTDIR)$(strongswanconfdir)" || true
+	test -e "$(DESTDIR)${strongswanddir}" || $(INSTALL) -d "$(DESTDIR)$(strongswanddir)" || true
+	test -e "$(DESTDIR)${charonconfdir}" || $(INSTALL) -d "$(DESTDIR)$(charonconfdir)" || true
 	test -e "$(DESTDIR)$(strongswanconfdir)/strongswan.conf" || $(INSTALL) -m 644 $(srcdir)/strongswan.conf $(DESTDIR)$(strongswanconfdir)/strongswan.conf || true
 	for f in $(options_install_src); do \
 		name=`basename $$f`; \

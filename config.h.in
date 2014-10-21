@@ -190,6 +190,9 @@
 /* have netlink RTA_TABLE defined */
 #undef HAVE_RTA_TABLE
 
+/* have PF_ROUTE RTM_IFANNOUNCE defined */
+#undef HAVE_RTM_IFANNOUNCE
+
 /* Define to 1 if you have the `sem_timedwait' function. */
 #undef HAVE_SEM_TIMEDWAIT
 

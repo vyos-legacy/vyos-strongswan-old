@@ -81,14 +81,21 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@USE_WINDOWS_TRUE@am__append_1 = -lws2_32
+@USE_TROUSERS_TRUE@am__append_1 = -ltspi
+@USE_WINDOWS_TRUE@am__append_2 = -lws2_32
 ipsec_PROGRAMS = imv_policy_manager$(EXEEXT)
-@USE_IMC_TEST_TRUE@am__append_2 = plugins/imc_test
-@USE_IMV_TEST_TRUE@am__append_3 = plugins/imv_test
-@USE_IMC_SCANNER_TRUE@am__append_4 = plugins/imc_scanner
-@USE_IMV_SCANNER_TRUE@am__append_5 = plugins/imv_scanner
-@USE_IMC_OS_TRUE@am__append_6 = plugins/imc_os
-@USE_IMV_OS_TRUE@am__append_7 = plugins/imv_os
+@USE_IMC_TEST_TRUE@am__append_3 = plugins/imc_test
+@USE_IMV_TEST_TRUE@am__append_4 = plugins/imv_test
+@USE_IMC_SCANNER_TRUE@am__append_5 = plugins/imc_scanner
+@USE_IMV_SCANNER_TRUE@am__append_6 = plugins/imv_scanner
+@USE_IMC_OS_TRUE@am__append_7 = plugins/imc_os
+@USE_IMV_OS_TRUE@am__append_8 = plugins/imv_os
+@USE_IMC_ATTESTATION_TRUE@am__append_9 = plugins/imc_attestation
+@USE_IMV_ATTESTATION_TRUE@am__append_10 = plugins/imv_attestation
+@USE_IMC_SWID_TRUE@am__append_11 = plugins/imc_swid
+@USE_IMV_SWID_TRUE@am__append_12 = plugins/imv_swid
+TESTS = imcv_tests$(EXEEXT)
+check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libimcv
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp $(dist_templates_DATA)
@@ -142,7 +149,8 @@ LTLIBRARIES = $(ipseclib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libimcv_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libtncif/libtncif.la $(am__DEPENDENCIES_1)
+	$(top_builddir)/src/libtncif/libtncif.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	imc/imc_os_info.lo imv/imv_agent.lo imv/imv_database.lo \
@@ -163,7 +171,42 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	ita/ita_attr_get_settings.lo ita/ita_attr_settings.lo \
 	ita/ita_attr_angel.lo ita/ita_attr_device_id.lo \
 	os_info/os_info.lo pa_tnc/pa_tnc_msg.lo \
-	pa_tnc/pa_tnc_attr_manager.lo
+	pa_tnc/pa_tnc_attr_manager.lo pts/pts.lo pts/pts_error.lo \
+	pts/pts_pcr.lo pts/pts_creds.lo pts/pts_database.lo \
+	pts/pts_dh_group.lo pts/pts_file_meas.lo pts/pts_file_meta.lo \
+	pts/pts_file_type.lo pts/pts_ima_bios_list.lo \
+	pts/pts_ima_event_list.lo pts/pts_meas_algo.lo \
+	pts/components/pts_component_manager.lo \
+	pts/components/pts_comp_evidence.lo \
+	pts/components/pts_comp_func_name.lo \
+	pts/components/ita/ita_comp_func_name.lo \
+	pts/components/ita/ita_comp_ima.lo \
+	pts/components/ita/ita_comp_tboot.lo \
+	pts/components/ita/ita_comp_tgrub.lo \
+	pts/components/tcg/tcg_comp_func_name.lo seg/seg_contract.lo \
+	seg/seg_contract_manager.lo seg/seg_env.lo swid/swid_error.lo \
+	swid/swid_inventory.lo swid/swid_tag.lo swid/swid_tag_id.lo \
+	tcg/tcg_attr.lo tcg/pts/tcg_pts_attr_proto_caps.lo \
+	tcg/pts/tcg_pts_attr_dh_nonce_params_req.lo \
+	tcg/pts/tcg_pts_attr_dh_nonce_params_resp.lo \
+	tcg/pts/tcg_pts_attr_dh_nonce_finish.lo \
+	tcg/pts/tcg_pts_attr_meas_algo.lo \
+	tcg/pts/tcg_pts_attr_get_tpm_version_info.lo \
+	tcg/pts/tcg_pts_attr_tpm_version_info.lo \
+	tcg/pts/tcg_pts_attr_get_aik.lo tcg/pts/tcg_pts_attr_aik.lo \
+	tcg/pts/tcg_pts_attr_req_func_comp_evid.lo \
+	tcg/pts/tcg_pts_attr_gen_attest_evid.lo \
+	tcg/pts/tcg_pts_attr_simple_comp_evid.lo \
+	tcg/pts/tcg_pts_attr_simple_evid_final.lo \
+	tcg/pts/tcg_pts_attr_req_file_meas.lo \
+	tcg/pts/tcg_pts_attr_file_meas.lo \
+	tcg/pts/tcg_pts_attr_req_file_meta.lo \
+	tcg/pts/tcg_pts_attr_unix_file_meta.lo \
+	tcg/seg/tcg_seg_attr_max_size.lo \
+	tcg/seg/tcg_seg_attr_seg_env.lo \
+	tcg/seg/tcg_seg_attr_next_seg.lo tcg/swid/tcg_swid_attr_req.lo \
+	tcg/swid/tcg_swid_attr_tag_id_inv.lo \
+	tcg/swid/tcg_swid_attr_tag_inv.lo
 libimcv_la_OBJECTS = $(am_libimcv_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -172,7 +215,24 @@ am__v_lt_1 =
 libimcv_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libimcv_la_LDFLAGS) $(LDFLAGS) -o $@
+am__EXEEXT_1 = imcv_tests$(EXEEXT)
 PROGRAMS = $(ipsec_PROGRAMS)
+am_imcv_tests_OBJECTS = ita/imcv_tests-ita_attr_command.$(OBJEXT) \
+	pa_tnc/imcv_tests-pa_tnc_attr_manager.$(OBJEXT) \
+	seg/imcv_tests-seg_env.$(OBJEXT) \
+	seg/imcv_tests-seg_contract.$(OBJEXT) \
+	seg/imcv_tests-seg_contract_manager.$(OBJEXT) \
+	suites/imcv_tests-test_imcv_seg.$(OBJEXT) \
+	ietf/imcv_tests-ietf_attr_pa_tnc_error.$(OBJEXT) \
+	tcg/seg/imcv_tests-tcg_seg_attr_seg_env.$(OBJEXT) \
+	imcv_tests-imcv.$(OBJEXT) imcv_tests-imcv_tests.$(OBJEXT)
+imcv_tests_OBJECTS = $(am_imcv_tests_OBJECTS)
+imcv_tests_DEPENDENCIES = $(top_builddir)/src/libimcv/libimcv.la \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(top_builddir)/src/libstrongswan/tests/libtest.la
+imcv_tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(imcv_tests_CFLAGS) \
+	$(CFLAGS) $(imcv_tests_LDFLAGS) $(LDFLAGS) -o $@
 am_imv_policy_manager_OBJECTS = imv/imv_policy_manager.$(OBJEXT) \
 	imv/imv_policy_manager_usage.$(OBJEXT)
 imv_policy_manager_OBJECTS = $(am_imv_policy_manager_OBJECTS)
@@ -213,8 +273,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libimcv_la_SOURCES) $(imv_policy_manager_SOURCES)
-DIST_SOURCES = $(libimcv_la_SOURCES) $(imv_policy_manager_SOURCES)
+SOURCES = $(libimcv_la_SOURCES) $(imcv_tests_SOURCES) \
+	$(imv_policy_manager_SOURCES)
+DIST_SOURCES = $(libimcv_la_SOURCES) $(imcv_tests_SOURCES) \
+	$(imv_policy_manager_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -256,8 +318,32 @@ am__define_uniq_tagged_files = \
   done | $(am__uniquify_input)`
 ETAGS = etags
 CTAGS = ctags
+am__tty_colors_dummy = \
+  mgn= red= grn= lgn= blu= brg= std=; \
+  am__color_tests=no
+am__tty_colors = { \
+  $(am__tty_colors_dummy); \
+  if test "X$(AM_COLOR_TESTS)" = Xno; then \
+    am__color_tests=no; \
+  elif test "X$(AM_COLOR_TESTS)" = Xalways; then \
+    am__color_tests=yes; \
+  elif test "X$$TERM" != Xdumb && { test -t 1; } 2>/dev/null; then \
+    am__color_tests=yes; \
+  fi; \
+  if test $$am__color_tests = yes; then \
+    red='[0;31m'; \
+    grn='[0;32m'; \
+    lgn='[1;32m'; \
+    blu='[1;34m'; \
+    mgn='[0;35m'; \
+    brg='[1m'; \
+    std='[m'; \
+  fi; \
+}
 DIST_SUBDIRS = . plugins/imc_test plugins/imv_test plugins/imc_scanner \
-	plugins/imv_scanner plugins/imc_os plugins/imv_os
+	plugins/imv_scanner plugins/imc_os plugins/imv_os \
+	plugins/imc_attestation plugins/imv_attestation \
+	plugins/imc_swid plugins/imv_swid
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -315,6 +401,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -375,6 +462,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -440,6 +528,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -487,6 +577,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -498,7 +592,8 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libtncif
+	-I$(top_srcdir)/src/libtncif \
+	-DIPSEC_SCRIPT=\"${ipsec_script}\"
 
 ipseclib_LTLIBRARIES = libimcv.la
 libimcv_la_LDFLAGS = \
@@ -506,7 +601,8 @@ libimcv_la_LDFLAGS = \
 
 libimcv_la_LIBADD =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libtncif/libtncif.la $(am__append_1)
+	$(top_builddir)/src/libtncif/libtncif.la $(am__append_1) \
+	$(am__append_2)
 libimcv_la_SOURCES = \
 	imcv.h imcv.c \
 	imc/imc_agent.h imc/imc_agent.c imc/imc_state.h \
@@ -546,7 +642,62 @@ libimcv_la_SOURCES = \
 	os_info/os_info.h os_info/os_info.c \
 	pa_tnc/pa_tnc_attr.h \
 	pa_tnc/pa_tnc_msg.h pa_tnc/pa_tnc_msg.c \
-	pa_tnc/pa_tnc_attr_manager.h pa_tnc/pa_tnc_attr_manager.c
+	pa_tnc/pa_tnc_attr_manager.h pa_tnc/pa_tnc_attr_manager.c \
+	pts/pts.h pts/pts.c \
+	pts/pts_error.h pts/pts_error.c \
+	pts/pts_pcr.h pts/pts_pcr.c \
+	pts/pts_proto_caps.h \
+	pts/pts_req_func_comp_evid.h \
+	pts/pts_simple_evid_final.h \
+	pts/pts_creds.h pts/pts_creds.c \
+	pts/pts_database.h pts/pts_database.c \
+	pts/pts_dh_group.h pts/pts_dh_group.c \
+	pts/pts_file_meas.h pts/pts_file_meas.c \
+	pts/pts_file_meta.h pts/pts_file_meta.c \
+	pts/pts_file_type.h pts/pts_file_type.c \
+	pts/pts_ima_bios_list.h pts/pts_ima_bios_list.c \
+	pts/pts_ima_event_list.h pts/pts_ima_event_list.c \
+	pts/pts_meas_algo.h pts/pts_meas_algo.c \
+	pts/components/pts_component.h \
+	pts/components/pts_component_manager.h pts/components/pts_component_manager.c \
+	pts/components/pts_comp_evidence.h pts/components/pts_comp_evidence.c \
+	pts/components/pts_comp_func_name.h pts/components/pts_comp_func_name.c \
+	pts/components/ita/ita_comp_func_name.h pts/components/ita/ita_comp_func_name.c \
+	pts/components/ita/ita_comp_ima.h pts/components/ita/ita_comp_ima.c \
+	pts/components/ita/ita_comp_tboot.h pts/components/ita/ita_comp_tboot.c \
+	pts/components/ita/ita_comp_tgrub.h pts/components/ita/ita_comp_tgrub.c \
+	pts/components/tcg/tcg_comp_func_name.h pts/components/tcg/tcg_comp_func_name.c \
+	seg/seg_contract.h seg/seg_contract.c \
+	seg/seg_contract_manager.h seg/seg_contract_manager.c \
+	seg/seg_env.h seg/seg_env.c \
+	swid/swid_error.h swid/swid_error.c \
+	swid/swid_inventory.h swid/swid_inventory.c \
+	swid/swid_tag.h swid/swid_tag.c \
+	swid/swid_tag_id.h swid/swid_tag_id.c \
+	tcg/tcg_attr.h tcg/tcg_attr.c \
+	tcg/pts/tcg_pts_attr_proto_caps.h tcg/pts/tcg_pts_attr_proto_caps.c \
+	tcg/pts/tcg_pts_attr_dh_nonce_params_req.h tcg/pts/tcg_pts_attr_dh_nonce_params_req.c \
+	tcg/pts/tcg_pts_attr_dh_nonce_params_resp.h tcg/pts/tcg_pts_attr_dh_nonce_params_resp.c \
+	tcg/pts/tcg_pts_attr_dh_nonce_finish.h tcg/pts/tcg_pts_attr_dh_nonce_finish.c \
+	tcg/pts/tcg_pts_attr_meas_algo.h tcg/pts/tcg_pts_attr_meas_algo.c \
+	tcg/pts/tcg_pts_attr_get_tpm_version_info.h tcg/pts/tcg_pts_attr_get_tpm_version_info.c \
+	tcg/pts/tcg_pts_attr_tpm_version_info.h tcg/pts/tcg_pts_attr_tpm_version_info.c \
+	tcg/pts/tcg_pts_attr_get_aik.h tcg/pts/tcg_pts_attr_get_aik.c \
+	tcg/pts/tcg_pts_attr_aik.h tcg/pts/tcg_pts_attr_aik.c \
+	tcg/pts/tcg_pts_attr_req_func_comp_evid.h tcg/pts/tcg_pts_attr_req_func_comp_evid.c \
+	tcg/pts/tcg_pts_attr_gen_attest_evid.h tcg/pts/tcg_pts_attr_gen_attest_evid.c \
+	tcg/pts/tcg_pts_attr_simple_comp_evid.h tcg/pts/tcg_pts_attr_simple_comp_evid.c \
+	tcg/pts/tcg_pts_attr_simple_evid_final.h tcg/pts/tcg_pts_attr_simple_evid_final.c \
+	tcg/pts/tcg_pts_attr_req_file_meas.h tcg/pts/tcg_pts_attr_req_file_meas.c \
+	tcg/pts/tcg_pts_attr_file_meas.h tcg/pts/tcg_pts_attr_file_meas.c \
+	tcg/pts/tcg_pts_attr_req_file_meta.h tcg/pts/tcg_pts_attr_req_file_meta.c \
+	tcg/pts/tcg_pts_attr_unix_file_meta.h tcg/pts/tcg_pts_attr_unix_file_meta.c \
+	tcg/seg/tcg_seg_attr_max_size.h tcg/seg/tcg_seg_attr_max_size.c \
+	tcg/seg/tcg_seg_attr_seg_env.h tcg/seg/tcg_seg_attr_seg_env.c \
+	tcg/seg/tcg_seg_attr_next_seg.h tcg/seg/tcg_seg_attr_next_seg.c \
+	tcg/swid/tcg_swid_attr_req.h tcg/swid/tcg_swid_attr_req.c \
+	tcg/swid/tcg_swid_attr_tag_id_inv.h tcg/swid/tcg_swid_attr_tag_id_inv.c \
+	tcg/swid/tcg_swid_attr_tag_inv.h tcg/swid/tcg_swid_attr_tag_inv.c
 
 ipsec_SCRIPTS = imv/_imv_policy
 EXTRA_DIST = imv/_imv_policy Android.mk
@@ -560,8 +711,32 @@ imv_policy_manager_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
 
 #imv/imv_policy_manager.o :	$(top_builddir)/config.status
-SUBDIRS = . $(am__append_2) $(am__append_3) $(am__append_4) \
-	$(am__append_5) $(am__append_6) $(am__append_7)
+SUBDIRS = . $(am__append_3) $(am__append_4) $(am__append_5) \
+	$(am__append_6) $(am__append_7) $(am__append_8) \
+	$(am__append_9) $(am__append_10) $(am__append_11) \
+	$(am__append_12)
+imcv_tests_SOURCES = \
+	ita/ita_attr_command.c \
+	pa_tnc/pa_tnc_attr_manager.c \
+	seg/seg_env.c seg/seg_contract.c \
+	seg/seg_contract_manager.c \
+	suites/test_imcv_seg.c \
+	ietf/ietf_attr_pa_tnc_error.c \
+	tcg/seg/tcg_seg_attr_seg_env.c \
+	imcv.c imcv_tests.h imcv_tests.c
+
+imcv_tests_CFLAGS = \
+	-I$(top_srcdir)/src/libimcv \
+	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libstrongswan/tests \
+	@COVERAGE_CFLAGS@
+
+imcv_tests_LDFLAGS = @COVERAGE_LDFLAGS@
+imcv_tests_LDADD = \
+	$(top_builddir)/src/libimcv/libimcv.la \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(top_builddir)/src/libstrongswan/tests/libtest.la
+
 all: all-recursive
 
 .SUFFIXES:
@@ -728,9 +903,176 @@ pa_tnc/pa_tnc_msg.lo: pa_tnc/$(am__dirstamp) \
 	pa_tnc/$(DEPDIR)/$(am__dirstamp)
 pa_tnc/pa_tnc_attr_manager.lo: pa_tnc/$(am__dirstamp) \
 	pa_tnc/$(DEPDIR)/$(am__dirstamp)
+pts/$(am__dirstamp):
+	@$(MKDIR_P) pts
+	@: > pts/$(am__dirstamp)
+pts/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) pts/$(DEPDIR)
+	@: > pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_error.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_pcr.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_creds.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_database.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_dh_group.lo: pts/$(am__dirstamp) pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_file_meas.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_file_meta.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_file_type.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_ima_bios_list.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_ima_event_list.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/pts_meas_algo.lo: pts/$(am__dirstamp) \
+	pts/$(DEPDIR)/$(am__dirstamp)
+pts/components/$(am__dirstamp):
+	@$(MKDIR_P) pts/components
+	@: > pts/components/$(am__dirstamp)
+pts/components/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) pts/components/$(DEPDIR)
+	@: > pts/components/$(DEPDIR)/$(am__dirstamp)
+pts/components/pts_component_manager.lo:  \
+	pts/components/$(am__dirstamp) \
+	pts/components/$(DEPDIR)/$(am__dirstamp)
+pts/components/pts_comp_evidence.lo: pts/components/$(am__dirstamp) \
+	pts/components/$(DEPDIR)/$(am__dirstamp)
+pts/components/pts_comp_func_name.lo: pts/components/$(am__dirstamp) \
+	pts/components/$(DEPDIR)/$(am__dirstamp)
+pts/components/ita/$(am__dirstamp):
+	@$(MKDIR_P) pts/components/ita
+	@: > pts/components/ita/$(am__dirstamp)
+pts/components/ita/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) pts/components/ita/$(DEPDIR)
+	@: > pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+pts/components/ita/ita_comp_func_name.lo:  \
+	pts/components/ita/$(am__dirstamp) \
+	pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+pts/components/ita/ita_comp_ima.lo:  \
+	pts/components/ita/$(am__dirstamp) \
+	pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+pts/components/ita/ita_comp_tboot.lo:  \
+	pts/components/ita/$(am__dirstamp) \
+	pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+pts/components/ita/ita_comp_tgrub.lo:  \
+	pts/components/ita/$(am__dirstamp) \
+	pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+pts/components/tcg/$(am__dirstamp):
+	@$(MKDIR_P) pts/components/tcg
+	@: > pts/components/tcg/$(am__dirstamp)
+pts/components/tcg/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) pts/components/tcg/$(DEPDIR)
+	@: > pts/components/tcg/$(DEPDIR)/$(am__dirstamp)
+pts/components/tcg/tcg_comp_func_name.lo:  \
+	pts/components/tcg/$(am__dirstamp) \
+	pts/components/tcg/$(DEPDIR)/$(am__dirstamp)
+seg/$(am__dirstamp):
+	@$(MKDIR_P) seg
+	@: > seg/$(am__dirstamp)
+seg/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) seg/$(DEPDIR)
+	@: > seg/$(DEPDIR)/$(am__dirstamp)
+seg/seg_contract.lo: seg/$(am__dirstamp) seg/$(DEPDIR)/$(am__dirstamp)
+seg/seg_contract_manager.lo: seg/$(am__dirstamp) \
+	seg/$(DEPDIR)/$(am__dirstamp)
+seg/seg_env.lo: seg/$(am__dirstamp) seg/$(DEPDIR)/$(am__dirstamp)
+swid/$(am__dirstamp):
+	@$(MKDIR_P) swid
+	@: > swid/$(am__dirstamp)
+swid/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) swid/$(DEPDIR)
+	@: > swid/$(DEPDIR)/$(am__dirstamp)
+swid/swid_error.lo: swid/$(am__dirstamp) \
+	swid/$(DEPDIR)/$(am__dirstamp)
+swid/swid_inventory.lo: swid/$(am__dirstamp) \
+	swid/$(DEPDIR)/$(am__dirstamp)
+swid/swid_tag.lo: swid/$(am__dirstamp) swid/$(DEPDIR)/$(am__dirstamp)
+swid/swid_tag_id.lo: swid/$(am__dirstamp) \
+	swid/$(DEPDIR)/$(am__dirstamp)
+tcg/$(am__dirstamp):
+	@$(MKDIR_P) tcg
+	@: > tcg/$(am__dirstamp)
+tcg/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tcg/$(DEPDIR)
+	@: > tcg/$(DEPDIR)/$(am__dirstamp)
+tcg/tcg_attr.lo: tcg/$(am__dirstamp) tcg/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/$(am__dirstamp):
+	@$(MKDIR_P) tcg/pts
+	@: > tcg/pts/$(am__dirstamp)
+tcg/pts/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tcg/pts/$(DEPDIR)
+	@: > tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_proto_caps.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_dh_nonce_params_req.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_dh_nonce_params_resp.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_dh_nonce_finish.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_meas_algo.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_get_tpm_version_info.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_tpm_version_info.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_get_aik.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_aik.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_req_func_comp_evid.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_gen_attest_evid.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_simple_comp_evid.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_simple_evid_final.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_req_file_meas.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_file_meas.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_req_file_meta.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/pts/tcg_pts_attr_unix_file_meta.lo: tcg/pts/$(am__dirstamp) \
+	tcg/pts/$(DEPDIR)/$(am__dirstamp)
+tcg/seg/$(am__dirstamp):
+	@$(MKDIR_P) tcg/seg
+	@: > tcg/seg/$(am__dirstamp)
+tcg/seg/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tcg/seg/$(DEPDIR)
+	@: > tcg/seg/$(DEPDIR)/$(am__dirstamp)
+tcg/seg/tcg_seg_attr_max_size.lo: tcg/seg/$(am__dirstamp) \
+	tcg/seg/$(DEPDIR)/$(am__dirstamp)
+tcg/seg/tcg_seg_attr_seg_env.lo: tcg/seg/$(am__dirstamp) \
+	tcg/seg/$(DEPDIR)/$(am__dirstamp)
+tcg/seg/tcg_seg_attr_next_seg.lo: tcg/seg/$(am__dirstamp) \
+	tcg/seg/$(DEPDIR)/$(am__dirstamp)
+tcg/swid/$(am__dirstamp):
+	@$(MKDIR_P) tcg/swid
+	@: > tcg/swid/$(am__dirstamp)
+tcg/swid/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tcg/swid/$(DEPDIR)
+	@: > tcg/swid/$(DEPDIR)/$(am__dirstamp)
+tcg/swid/tcg_swid_attr_req.lo: tcg/swid/$(am__dirstamp) \
+	tcg/swid/$(DEPDIR)/$(am__dirstamp)
+tcg/swid/tcg_swid_attr_tag_id_inv.lo: tcg/swid/$(am__dirstamp) \
+	tcg/swid/$(DEPDIR)/$(am__dirstamp)
+tcg/swid/tcg_swid_attr_tag_inv.lo: tcg/swid/$(am__dirstamp) \
+	tcg/swid/$(DEPDIR)/$(am__dirstamp)
 
 libimcv.la: $(libimcv_la_OBJECTS) $(libimcv_la_DEPENDENCIES) $(EXTRA_libimcv_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libimcv_la_LINK) -rpath $(ipseclibdir) $(libimcv_la_OBJECTS) $(libimcv_la_LIBADD) $(LIBS)
+
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
 install-ipsecPROGRAMS: $(ipsec_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	@list='$(ipsec_PROGRAMS)'; test -n "$(ipsecdir)" || list=; \
@@ -780,6 +1122,32 @@ clean-ipsecPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+ita/imcv_tests-ita_attr_command.$(OBJEXT): ita/$(am__dirstamp) \
+	ita/$(DEPDIR)/$(am__dirstamp)
+pa_tnc/imcv_tests-pa_tnc_attr_manager.$(OBJEXT):  \
+	pa_tnc/$(am__dirstamp) pa_tnc/$(DEPDIR)/$(am__dirstamp)
+seg/imcv_tests-seg_env.$(OBJEXT): seg/$(am__dirstamp) \
+	seg/$(DEPDIR)/$(am__dirstamp)
+seg/imcv_tests-seg_contract.$(OBJEXT): seg/$(am__dirstamp) \
+	seg/$(DEPDIR)/$(am__dirstamp)
+seg/imcv_tests-seg_contract_manager.$(OBJEXT): seg/$(am__dirstamp) \
+	seg/$(DEPDIR)/$(am__dirstamp)
+suites/$(am__dirstamp):
+	@$(MKDIR_P) suites
+	@: > suites/$(am__dirstamp)
+suites/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) suites/$(DEPDIR)
+	@: > suites/$(DEPDIR)/$(am__dirstamp)
+suites/imcv_tests-test_imcv_seg.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
+ietf/imcv_tests-ietf_attr_pa_tnc_error.$(OBJEXT):  \
+	ietf/$(am__dirstamp) ietf/$(DEPDIR)/$(am__dirstamp)
+tcg/seg/imcv_tests-tcg_seg_attr_seg_env.$(OBJEXT):  \
+	tcg/seg/$(am__dirstamp) tcg/seg/$(DEPDIR)/$(am__dirstamp)
+
+imcv_tests$(EXEEXT): $(imcv_tests_OBJECTS) $(imcv_tests_DEPENDENCIES) $(EXTRA_imcv_tests_DEPENDENCIES) 
+	@rm -f imcv_tests$(EXEEXT)
+	$(AM_V_CCLD)$(imcv_tests_LINK) $(imcv_tests_OBJECTS) $(imcv_tests_LDADD) $(LIBS)
 imv/imv_policy_manager.$(OBJEXT): imv/$(am__dirstamp) \
 	imv/$(DEPDIR)/$(am__dirstamp)
 imv/imv_policy_manager_usage.$(OBJEXT): imv/$(am__dirstamp) \
@@ -838,11 +1206,34 @@ mostlyclean-compile:
 	-rm -f os_info/*.lo
 	-rm -f pa_tnc/*.$(OBJEXT)
 	-rm -f pa_tnc/*.lo
+	-rm -f pts/*.$(OBJEXT)
+	-rm -f pts/*.lo
+	-rm -f pts/components/*.$(OBJEXT)
+	-rm -f pts/components/*.lo
+	-rm -f pts/components/ita/*.$(OBJEXT)
+	-rm -f pts/components/ita/*.lo
+	-rm -f pts/components/tcg/*.$(OBJEXT)
+	-rm -f pts/components/tcg/*.lo
+	-rm -f seg/*.$(OBJEXT)
+	-rm -f seg/*.lo
+	-rm -f suites/*.$(OBJEXT)
+	-rm -f swid/*.$(OBJEXT)
+	-rm -f swid/*.lo
+	-rm -f tcg/*.$(OBJEXT)
+	-rm -f tcg/*.lo
+	-rm -f tcg/pts/*.$(OBJEXT)
+	-rm -f tcg/pts/*.lo
+	-rm -f tcg/seg/*.$(OBJEXT)
+	-rm -f tcg/seg/*.lo
+	-rm -f tcg/swid/*.$(OBJEXT)
+	-rm -f tcg/swid/*.lo
 
 distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv_tests-imcv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv_tests-imcv_tests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_assess_result.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_attr_request.Plo@am__quote@
@@ -856,6 +1247,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_product_info.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_remediation_instr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_string_version.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_agent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_os_info.Plo@am__quote@
@@ -871,6 +1263,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@imv/$(DEPDIR)/imv_session.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imv/$(DEPDIR)/imv_session_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imv/$(DEPDIR)/imv_workitem.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/imcv_tests-ita_attr_command.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_angel.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_command.Plo@am__quote@
@@ -879,8 +1272,65 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_get_settings.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_settings.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@os_info/$(DEPDIR)/os_info.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pa_tnc/$(DEPDIR)/pa_tnc_attr_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pa_tnc/$(DEPDIR)/pa_tnc_msg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_creds.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_database.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_dh_group.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_error.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_file_meas.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_file_meta.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_file_type.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_ima_bios_list.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_ima_event_list.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_meas_algo.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/$(DEPDIR)/pts_pcr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/$(DEPDIR)/pts_comp_evidence.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/$(DEPDIR)/pts_comp_func_name.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/$(DEPDIR)/pts_component_manager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_func_name.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_ima.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_tboot.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_tgrub.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pts/components/tcg/$(DEPDIR)/tcg_comp_func_name.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_env.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/seg_contract.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/seg_contract_manager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/seg_env.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_error.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_inventory.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_tag.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_tag_id.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/$(DEPDIR)/tcg_attr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_aik.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_dh_nonce_finish.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_dh_nonce_params_req.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_dh_nonce_params_resp.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_file_meas.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_gen_attest_evid.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_get_aik.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_get_tpm_version_info.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_meas_algo.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_proto_caps.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_req_file_meas.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_req_file_meta.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_req_func_comp_evid.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_simple_comp_evid.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_simple_evid_final.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_tpm_version_info.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_unix_file_meta.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/seg/$(DEPDIR)/tcg_seg_attr_max_size.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/seg/$(DEPDIR)/tcg_seg_attr_next_seg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/seg/$(DEPDIR)/tcg_seg_attr_seg_env.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/swid/$(DEPDIR)/tcg_swid_attr_req.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/swid/$(DEPDIR)/tcg_swid_attr_tag_id_inv.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tcg/swid/$(DEPDIR)/tcg_swid_attr_tag_inv.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -906,6 +1356,146 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
+ita/imcv_tests-ita_attr_command.o: ita/ita_attr_command.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ita/imcv_tests-ita_attr_command.o -MD -MP -MF ita/$(DEPDIR)/imcv_tests-ita_attr_command.Tpo -c -o ita/imcv_tests-ita_attr_command.o `test -f 'ita/ita_attr_command.c' || echo '$(srcdir)/'`ita/ita_attr_command.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ita/$(DEPDIR)/imcv_tests-ita_attr_command.Tpo ita/$(DEPDIR)/imcv_tests-ita_attr_command.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ita/ita_attr_command.c' object='ita/imcv_tests-ita_attr_command.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ita/imcv_tests-ita_attr_command.o `test -f 'ita/ita_attr_command.c' || echo '$(srcdir)/'`ita/ita_attr_command.c
+
+ita/imcv_tests-ita_attr_command.obj: ita/ita_attr_command.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ita/imcv_tests-ita_attr_command.obj -MD -MP -MF ita/$(DEPDIR)/imcv_tests-ita_attr_command.Tpo -c -o ita/imcv_tests-ita_attr_command.obj `if test -f 'ita/ita_attr_command.c'; then $(CYGPATH_W) 'ita/ita_attr_command.c'; else $(CYGPATH_W) '$(srcdir)/ita/ita_attr_command.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ita/$(DEPDIR)/imcv_tests-ita_attr_command.Tpo ita/$(DEPDIR)/imcv_tests-ita_attr_command.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ita/ita_attr_command.c' object='ita/imcv_tests-ita_attr_command.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ita/imcv_tests-ita_attr_command.obj `if test -f 'ita/ita_attr_command.c'; then $(CYGPATH_W) 'ita/ita_attr_command.c'; else $(CYGPATH_W) '$(srcdir)/ita/ita_attr_command.c'; fi`
+
+pa_tnc/imcv_tests-pa_tnc_attr_manager.o: pa_tnc/pa_tnc_attr_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT pa_tnc/imcv_tests-pa_tnc_attr_manager.o -MD -MP -MF pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Tpo -c -o pa_tnc/imcv_tests-pa_tnc_attr_manager.o `test -f 'pa_tnc/pa_tnc_attr_manager.c' || echo '$(srcdir)/'`pa_tnc/pa_tnc_attr_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Tpo pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pa_tnc/pa_tnc_attr_manager.c' object='pa_tnc/imcv_tests-pa_tnc_attr_manager.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o pa_tnc/imcv_tests-pa_tnc_attr_manager.o `test -f 'pa_tnc/pa_tnc_attr_manager.c' || echo '$(srcdir)/'`pa_tnc/pa_tnc_attr_manager.c
+
+pa_tnc/imcv_tests-pa_tnc_attr_manager.obj: pa_tnc/pa_tnc_attr_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT pa_tnc/imcv_tests-pa_tnc_attr_manager.obj -MD -MP -MF pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Tpo -c -o pa_tnc/imcv_tests-pa_tnc_attr_manager.obj `if test -f 'pa_tnc/pa_tnc_attr_manager.c'; then $(CYGPATH_W) 'pa_tnc/pa_tnc_attr_manager.c'; else $(CYGPATH_W) '$(srcdir)/pa_tnc/pa_tnc_attr_manager.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Tpo pa_tnc/$(DEPDIR)/imcv_tests-pa_tnc_attr_manager.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='pa_tnc/pa_tnc_attr_manager.c' object='pa_tnc/imcv_tests-pa_tnc_attr_manager.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o pa_tnc/imcv_tests-pa_tnc_attr_manager.obj `if test -f 'pa_tnc/pa_tnc_attr_manager.c'; then $(CYGPATH_W) 'pa_tnc/pa_tnc_attr_manager.c'; else $(CYGPATH_W) '$(srcdir)/pa_tnc/pa_tnc_attr_manager.c'; fi`
+
+seg/imcv_tests-seg_env.o: seg/seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_env.o -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_env.Tpo -c -o seg/imcv_tests-seg_env.o `test -f 'seg/seg_env.c' || echo '$(srcdir)/'`seg/seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_env.Tpo seg/$(DEPDIR)/imcv_tests-seg_env.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_env.c' object='seg/imcv_tests-seg_env.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_env.o `test -f 'seg/seg_env.c' || echo '$(srcdir)/'`seg/seg_env.c
+
+seg/imcv_tests-seg_env.obj: seg/seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_env.obj -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_env.Tpo -c -o seg/imcv_tests-seg_env.obj `if test -f 'seg/seg_env.c'; then $(CYGPATH_W) 'seg/seg_env.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_env.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_env.Tpo seg/$(DEPDIR)/imcv_tests-seg_env.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_env.c' object='seg/imcv_tests-seg_env.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_env.obj `if test -f 'seg/seg_env.c'; then $(CYGPATH_W) 'seg/seg_env.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_env.c'; fi`
+
+seg/imcv_tests-seg_contract.o: seg/seg_contract.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_contract.o -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_contract.Tpo -c -o seg/imcv_tests-seg_contract.o `test -f 'seg/seg_contract.c' || echo '$(srcdir)/'`seg/seg_contract.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_contract.Tpo seg/$(DEPDIR)/imcv_tests-seg_contract.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_contract.c' object='seg/imcv_tests-seg_contract.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_contract.o `test -f 'seg/seg_contract.c' || echo '$(srcdir)/'`seg/seg_contract.c
+
+seg/imcv_tests-seg_contract.obj: seg/seg_contract.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_contract.obj -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_contract.Tpo -c -o seg/imcv_tests-seg_contract.obj `if test -f 'seg/seg_contract.c'; then $(CYGPATH_W) 'seg/seg_contract.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_contract.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_contract.Tpo seg/$(DEPDIR)/imcv_tests-seg_contract.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_contract.c' object='seg/imcv_tests-seg_contract.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_contract.obj `if test -f 'seg/seg_contract.c'; then $(CYGPATH_W) 'seg/seg_contract.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_contract.c'; fi`
+
+seg/imcv_tests-seg_contract_manager.o: seg/seg_contract_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_contract_manager.o -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Tpo -c -o seg/imcv_tests-seg_contract_manager.o `test -f 'seg/seg_contract_manager.c' || echo '$(srcdir)/'`seg/seg_contract_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Tpo seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_contract_manager.c' object='seg/imcv_tests-seg_contract_manager.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_contract_manager.o `test -f 'seg/seg_contract_manager.c' || echo '$(srcdir)/'`seg/seg_contract_manager.c
+
+seg/imcv_tests-seg_contract_manager.obj: seg/seg_contract_manager.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT seg/imcv_tests-seg_contract_manager.obj -MD -MP -MF seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Tpo -c -o seg/imcv_tests-seg_contract_manager.obj `if test -f 'seg/seg_contract_manager.c'; then $(CYGPATH_W) 'seg/seg_contract_manager.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_contract_manager.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Tpo seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='seg/seg_contract_manager.c' object='seg/imcv_tests-seg_contract_manager.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_contract_manager.obj `if test -f 'seg/seg_contract_manager.c'; then $(CYGPATH_W) 'seg/seg_contract_manager.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_contract_manager.c'; fi`
+
+suites/imcv_tests-test_imcv_seg.o: suites/test_imcv_seg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT suites/imcv_tests-test_imcv_seg.o -MD -MP -MF suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo -c -o suites/imcv_tests-test_imcv_seg.o `test -f 'suites/test_imcv_seg.c' || echo '$(srcdir)/'`suites/test_imcv_seg.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_imcv_seg.c' object='suites/imcv_tests-test_imcv_seg.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o suites/imcv_tests-test_imcv_seg.o `test -f 'suites/test_imcv_seg.c' || echo '$(srcdir)/'`suites/test_imcv_seg.c
+
+suites/imcv_tests-test_imcv_seg.obj: suites/test_imcv_seg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT suites/imcv_tests-test_imcv_seg.obj -MD -MP -MF suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo -c -o suites/imcv_tests-test_imcv_seg.obj `if test -f 'suites/test_imcv_seg.c'; then $(CYGPATH_W) 'suites/test_imcv_seg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_imcv_seg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_imcv_seg.c' object='suites/imcv_tests-test_imcv_seg.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o suites/imcv_tests-test_imcv_seg.obj `if test -f 'suites/test_imcv_seg.c'; then $(CYGPATH_W) 'suites/test_imcv_seg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_imcv_seg.c'; fi`
+
+ietf/imcv_tests-ietf_attr_pa_tnc_error.o: ietf/ietf_attr_pa_tnc_error.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/imcv_tests-ietf_attr_pa_tnc_error.o -MD -MP -MF ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.o `test -f 'ietf/ietf_attr_pa_tnc_error.c' || echo '$(srcdir)/'`ietf/ietf_attr_pa_tnc_error.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/ietf_attr_pa_tnc_error.c' object='ietf/imcv_tests-ietf_attr_pa_tnc_error.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.o `test -f 'ietf/ietf_attr_pa_tnc_error.c' || echo '$(srcdir)/'`ietf/ietf_attr_pa_tnc_error.c
+
+ietf/imcv_tests-ietf_attr_pa_tnc_error.obj: ietf/ietf_attr_pa_tnc_error.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/imcv_tests-ietf_attr_pa_tnc_error.obj -MD -MP -MF ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.obj `if test -f 'ietf/ietf_attr_pa_tnc_error.c'; then $(CYGPATH_W) 'ietf/ietf_attr_pa_tnc_error.c'; else $(CYGPATH_W) '$(srcdir)/ietf/ietf_attr_pa_tnc_error.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/ietf_attr_pa_tnc_error.c' object='ietf/imcv_tests-ietf_attr_pa_tnc_error.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.obj `if test -f 'ietf/ietf_attr_pa_tnc_error.c'; then $(CYGPATH_W) 'ietf/ietf_attr_pa_tnc_error.c'; else $(CYGPATH_W) '$(srcdir)/ietf/ietf_attr_pa_tnc_error.c'; fi`
+
+tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o: tcg/seg/tcg_seg_attr_seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o -MD -MP -MF tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Tpo -c -o tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o `test -f 'tcg/seg/tcg_seg_attr_seg_env.c' || echo '$(srcdir)/'`tcg/seg/tcg_seg_attr_seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Tpo tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tcg/seg/tcg_seg_attr_seg_env.c' object='tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o `test -f 'tcg/seg/tcg_seg_attr_seg_env.c' || echo '$(srcdir)/'`tcg/seg/tcg_seg_attr_seg_env.c
+
+tcg/seg/imcv_tests-tcg_seg_attr_seg_env.obj: tcg/seg/tcg_seg_attr_seg_env.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT tcg/seg/imcv_tests-tcg_seg_attr_seg_env.obj -MD -MP -MF tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Tpo -c -o tcg/seg/imcv_tests-tcg_seg_attr_seg_env.obj `if test -f 'tcg/seg/tcg_seg_attr_seg_env.c'; then $(CYGPATH_W) 'tcg/seg/tcg_seg_attr_seg_env.c'; else $(CYGPATH_W) '$(srcdir)/tcg/seg/tcg_seg_attr_seg_env.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Tpo tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tcg/seg/tcg_seg_attr_seg_env.c' object='tcg/seg/imcv_tests-tcg_seg_attr_seg_env.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o tcg/seg/imcv_tests-tcg_seg_attr_seg_env.obj `if test -f 'tcg/seg/tcg_seg_attr_seg_env.c'; then $(CYGPATH_W) 'tcg/seg/tcg_seg_attr_seg_env.c'; else $(CYGPATH_W) '$(srcdir)/tcg/seg/tcg_seg_attr_seg_env.c'; fi`
+
+imcv_tests-imcv.o: imcv.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT imcv_tests-imcv.o -MD -MP -MF $(DEPDIR)/imcv_tests-imcv.Tpo -c -o imcv_tests-imcv.o `test -f 'imcv.c' || echo '$(srcdir)/'`imcv.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/imcv_tests-imcv.Tpo $(DEPDIR)/imcv_tests-imcv.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='imcv.c' object='imcv_tests-imcv.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o imcv_tests-imcv.o `test -f 'imcv.c' || echo '$(srcdir)/'`imcv.c
+
+imcv_tests-imcv.obj: imcv.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT imcv_tests-imcv.obj -MD -MP -MF $(DEPDIR)/imcv_tests-imcv.Tpo -c -o imcv_tests-imcv.obj `if test -f 'imcv.c'; then $(CYGPATH_W) 'imcv.c'; else $(CYGPATH_W) '$(srcdir)/imcv.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/imcv_tests-imcv.Tpo $(DEPDIR)/imcv_tests-imcv.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='imcv.c' object='imcv_tests-imcv.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o imcv_tests-imcv.obj `if test -f 'imcv.c'; then $(CYGPATH_W) 'imcv.c'; else $(CYGPATH_W) '$(srcdir)/imcv.c'; fi`
+
+imcv_tests-imcv_tests.o: imcv_tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT imcv_tests-imcv_tests.o -MD -MP -MF $(DEPDIR)/imcv_tests-imcv_tests.Tpo -c -o imcv_tests-imcv_tests.o `test -f 'imcv_tests.c' || echo '$(srcdir)/'`imcv_tests.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/imcv_tests-imcv_tests.Tpo $(DEPDIR)/imcv_tests-imcv_tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='imcv_tests.c' object='imcv_tests-imcv_tests.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o imcv_tests-imcv_tests.o `test -f 'imcv_tests.c' || echo '$(srcdir)/'`imcv_tests.c
+
+imcv_tests-imcv_tests.obj: imcv_tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT imcv_tests-imcv_tests.obj -MD -MP -MF $(DEPDIR)/imcv_tests-imcv_tests.Tpo -c -o imcv_tests-imcv_tests.obj `if test -f 'imcv_tests.c'; then $(CYGPATH_W) 'imcv_tests.c'; else $(CYGPATH_W) '$(srcdir)/imcv_tests.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/imcv_tests-imcv_tests.Tpo $(DEPDIR)/imcv_tests-imcv_tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='imcv_tests.c' object='imcv_tests-imcv_tests.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o imcv_tests-imcv_tests.obj `if test -f 'imcv_tests.c'; then $(CYGPATH_W) 'imcv_tests.c'; else $(CYGPATH_W) '$(srcdir)/imcv_tests.c'; fi`
+
 mostlyclean-libtool:
 	-rm -f *.lo
 
@@ -917,6 +1507,16 @@ clean-libtool:
 	-rm -rf ita/.libs ita/_libs
 	-rm -rf os_info/.libs os_info/_libs
 	-rm -rf pa_tnc/.libs pa_tnc/_libs
+	-rm -rf pts/.libs pts/_libs
+	-rm -rf pts/components/.libs pts/components/_libs
+	-rm -rf pts/components/ita/.libs pts/components/ita/_libs
+	-rm -rf pts/components/tcg/.libs pts/components/tcg/_libs
+	-rm -rf seg/.libs seg/_libs
+	-rm -rf swid/.libs swid/_libs
+	-rm -rf tcg/.libs tcg/_libs
+	-rm -rf tcg/pts/.libs tcg/pts/_libs
+	-rm -rf tcg/seg/.libs tcg/seg/_libs
+	-rm -rf tcg/swid/.libs tcg/swid/_libs
 install-dist_templatesDATA: $(dist_templates_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(dist_templates_DATA)'; test -n "$(templatesdir)" || list=; \
@@ -1038,6 +1638,99 @@ cscopelist-am: $(am__tagged_files)
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
+check-TESTS: $(TESTS)
+	@failed=0; all=0; xfail=0; xpass=0; skip=0; \
+	srcdir=$(srcdir); export srcdir; \
+	list=' $(TESTS) '; \
+	$(am__tty_colors); \
+	if test -n "$$list"; then \
+	  for tst in $$list; do \
+	    if test -f ./$$tst; then dir=./; \
+	    elif test -f $$tst; then dir=; \
+	    else dir="$(srcdir)/"; fi; \
+	    if $(TESTS_ENVIRONMENT) $${dir}$$tst $(AM_TESTS_FD_REDIRECT); then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xpass=`expr $$xpass + 1`; \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=XPASS; \
+	      ;; \
+	      *) \
+		col=$$grn; res=PASS; \
+	      ;; \
+	      esac; \
+	    elif test $$? -ne 77; then \
+	      all=`expr $$all + 1`; \
+	      case " $(XFAIL_TESTS) " in \
+	      *[\ \	]$$tst[\ \	]*) \
+		xfail=`expr $$xfail + 1`; \
+		col=$$lgn; res=XFAIL; \
+	      ;; \
+	      *) \
+		failed=`expr $$failed + 1`; \
+		col=$$red; res=FAIL; \
+	      ;; \
+	      esac; \
+	    else \
+	      skip=`expr $$skip + 1`; \
+	      col=$$blu; res=SKIP; \
+	    fi; \
+	    echo "$${col}$$res$${std}: $$tst"; \
+	  done; \
+	  if test "$$all" -eq 1; then \
+	    tests="test"; \
+	    All=""; \
+	  else \
+	    tests="tests"; \
+	    All="All "; \
+	  fi; \
+	  if test "$$failed" -eq 0; then \
+	    if test "$$xfail" -eq 0; then \
+	      banner="$$All$$all $$tests passed"; \
+	    else \
+	      if test "$$xfail" -eq 1; then failures=failure; else failures=failures; fi; \
+	      banner="$$All$$all $$tests behaved as expected ($$xfail expected $$failures)"; \
+	    fi; \
+	  else \
+	    if test "$$xpass" -eq 0; then \
+	      banner="$$failed of $$all $$tests failed"; \
+	    else \
+	      if test "$$xpass" -eq 1; then passes=pass; else passes=passes; fi; \
+	      banner="$$failed of $$all $$tests did not behave as expected ($$xpass unexpected $$passes)"; \
+	    fi; \
+	  fi; \
+	  dashes="$$banner"; \
+	  skipped=""; \
+	  if test "$$skip" -ne 0; then \
+	    if test "$$skip" -eq 1; then \
+	      skipped="($$skip test was not run)"; \
+	    else \
+	      skipped="($$skip tests were not run)"; \
+	    fi; \
+	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$skipped"; \
+	  fi; \
+	  report=""; \
+	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
+	    report="Please report to $(PACKAGE_BUGREPORT)"; \
+	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
+	      dashes="$$report"; \
+	  fi; \
+	  dashes=`echo "$$dashes" | sed s/./=/g`; \
+	  if test "$$failed" -eq 0; then \
+	    col="$$grn"; \
+	  else \
+	    col="$$red"; \
+	  fi; \
+	  echo "$${col}$$dashes$${std}"; \
+	  echo "$${col}$$banner$${std}"; \
+	  test -z "$$skipped" || echo "$${col}$$skipped$${std}"; \
+	  test -z "$$report" || echo "$${col}$$report$${std}"; \
+	  echo "$${col}$$dashes$${std}"; \
+	  test "$$failed" -eq 0; \
+	else :; fi
+
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -1094,6 +1787,8 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
+	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS) $(DATA)
 installdirs: installdirs-recursive
@@ -1139,17 +1834,39 @@ distclean-generic:
 	-rm -f os_info/$(am__dirstamp)
 	-rm -f pa_tnc/$(DEPDIR)/$(am__dirstamp)
 	-rm -f pa_tnc/$(am__dirstamp)
+	-rm -f pts/$(DEPDIR)/$(am__dirstamp)
+	-rm -f pts/$(am__dirstamp)
+	-rm -f pts/components/$(DEPDIR)/$(am__dirstamp)
+	-rm -f pts/components/$(am__dirstamp)
+	-rm -f pts/components/ita/$(DEPDIR)/$(am__dirstamp)
+	-rm -f pts/components/ita/$(am__dirstamp)
+	-rm -f pts/components/tcg/$(DEPDIR)/$(am__dirstamp)
+	-rm -f pts/components/tcg/$(am__dirstamp)
+	-rm -f seg/$(DEPDIR)/$(am__dirstamp)
+	-rm -f seg/$(am__dirstamp)
+	-rm -f suites/$(DEPDIR)/$(am__dirstamp)
+	-rm -f suites/$(am__dirstamp)
+	-rm -f swid/$(DEPDIR)/$(am__dirstamp)
+	-rm -f swid/$(am__dirstamp)
+	-rm -f tcg/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tcg/$(am__dirstamp)
+	-rm -f tcg/pts/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tcg/pts/$(am__dirstamp)
+	-rm -f tcg/seg/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tcg/seg/$(am__dirstamp)
+	-rm -f tcg/swid/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tcg/swid/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-recursive
 
-clean-am: clean-generic clean-ipsecPROGRAMS clean-ipseclibLTLIBRARIES \
-	clean-libtool mostlyclean-am
+clean-am: clean-checkPROGRAMS clean-generic clean-ipsecPROGRAMS \
+	clean-ipseclibLTLIBRARIES clean-libtool mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1196,7 +1913,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -1216,17 +1933,17 @@ ps-am:
 uninstall-am: uninstall-dist_templatesDATA uninstall-ipsecPROGRAMS \
 	uninstall-ipsecSCRIPTS uninstall-ipseclibLTLIBRARIES
 
-.MAKE: $(am__recursive_targets) install-am install-strip
+.MAKE: $(am__recursive_targets) check-am install-am install-strip
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am check \
-	check-am clean clean-generic clean-ipsecPROGRAMS \
-	clean-ipseclibLTLIBRARIES clean-libtool cscopelist-am ctags \
-	ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dist_templatesDATA install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am \
+	check-TESTS check-am clean clean-checkPROGRAMS clean-generic \
+	clean-ipsecPROGRAMS clean-ipseclibLTLIBRARIES clean-libtool \
+	cscopelist-am ctags ctags-am distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-dist_templatesDATA \
+	install-dvi install-dvi-am install-exec install-exec-am \
+	install-html install-html-am install-info install-info-am \
 	install-ipsecPROGRAMS install-ipsecSCRIPTS \
 	install-ipseclibLTLIBRARIES install-man install-pdf \
 	install-pdf-am install-ps install-ps-am install-strip \

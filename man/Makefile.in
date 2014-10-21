@@ -77,6 +77,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@USE_FILE_CONFIG_TRUE@am__append_1 = \
+@USE_FILE_CONFIG_TRUE@	ipsec.conf.5 \
+@USE_FILE_CONFIG_TRUE@	ipsec.secrets.5
+
 subdir = man
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(srcdir)/ipsec.conf.5.in $(srcdir)/ipsec.secrets.5.in
@@ -180,6 +184,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -240,6 +245,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -305,6 +311,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -352,6 +360,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -361,10 +373,7 @@ top_srcdir = @top_srcdir@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-man_MANS = \
-	ipsec.conf.5 \
-	ipsec.secrets.5
-
+man_MANS = $(am__append_1)
 CLEANFILES = $(man_MANS)
 all: all-am
 

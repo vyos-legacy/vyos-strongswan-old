@@ -23,7 +23,8 @@ encoding/payloads/cp_payload.c encoding/payloads/cp_payload.h \
 encoding/payloads/delete_payload.c encoding/payloads/delete_payload.h \
 encoding/payloads/eap_payload.c encoding/payloads/eap_payload.h \
 encoding/payloads/encodings.c encoding/payloads/encodings.h \
-encoding/payloads/encryption_payload.c encoding/payloads/encryption_payload.h \
+encoding/payloads/encrypted_payload.c encoding/payloads/encrypted_payload.h \
+encoding/payloads/encrypted_fragment_payload.h \
 encoding/payloads/id_payload.c encoding/payloads/id_payload.h \
 encoding/payloads/ike_header.c encoding/payloads/ike_header.h \
 encoding/payloads/ke_payload.c  encoding/payloads/ke_payload.h \
@@ -255,6 +256,13 @@ if USE_UPDOWN
   SUBDIRS += plugins/updown
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/updown/libstrongswan-updown.la
+endif
+endif
+
+if USE_EXT_AUTH
+  SUBDIRS += plugins/ext_auth
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/ext_auth/libstrongswan-ext-auth.la
 endif
 endif
 

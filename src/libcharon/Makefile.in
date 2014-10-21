@@ -162,106 +162,108 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_IPSECKEY_TRUE@am__append_27 = plugins/ipseckey/libstrongswan-ipseckey.la
 @USE_UPDOWN_TRUE@am__append_28 = plugins/updown
 @MONOLITHIC_TRUE@@USE_UPDOWN_TRUE@am__append_29 = plugins/updown/libstrongswan-updown.la
-@USE_EAP_IDENTITY_TRUE@am__append_30 = plugins/eap_identity
-@MONOLITHIC_TRUE@@USE_EAP_IDENTITY_TRUE@am__append_31 = plugins/eap_identity/libstrongswan-eap-identity.la
-@USE_EAP_SIM_TRUE@am__append_32 = plugins/eap_sim
-@MONOLITHIC_TRUE@@USE_EAP_SIM_TRUE@am__append_33 = plugins/eap_sim/libstrongswan-eap-sim.la
-@USE_EAP_SIM_FILE_TRUE@am__append_34 = plugins/eap_sim_file
-@MONOLITHIC_TRUE@@USE_EAP_SIM_FILE_TRUE@am__append_35 = plugins/eap_sim_file/libstrongswan-eap-sim-file.la
-@USE_EAP_SIM_PCSC_TRUE@am__append_36 = plugins/eap_sim_pcsc
-@MONOLITHIC_TRUE@@USE_EAP_SIM_PCSC_TRUE@am__append_37 = plugins/eap_sim_pcsc/libstrongswan-eap-sim-pcsc.la
-@USE_EAP_SIMAKA_SQL_TRUE@am__append_38 = plugins/eap_simaka_sql
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_SQL_TRUE@am__append_39 = plugins/eap_simaka_sql/libstrongswan-eap-simaka-sql.la
-@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_40 = plugins/eap_simaka_pseudonym
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_41 = plugins/eap_simaka_pseudonym/libstrongswan-eap-simaka-pseudonym.la
-@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_42 = plugins/eap_simaka_reauth
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_43 = plugins/eap_simaka_reauth/libstrongswan-eap-simaka-reauth.la
-@USE_EAP_AKA_TRUE@am__append_44 = plugins/eap_aka
-@MONOLITHIC_TRUE@@USE_EAP_AKA_TRUE@am__append_45 = plugins/eap_aka/libstrongswan-eap-aka.la
-@USE_EAP_AKA_3GPP2_TRUE@am__append_46 = plugins/eap_aka_3gpp2
-@MONOLITHIC_TRUE@@USE_EAP_AKA_3GPP2_TRUE@am__append_47 = plugins/eap_aka_3gpp2/libstrongswan-eap-aka-3gpp2.la
-@MONOLITHIC_TRUE@@USE_SIMAKA_TRUE@am__append_48 = $(top_builddir)/src/libsimaka/libsimaka.la
-@USE_EAP_MD5_TRUE@am__append_49 = plugins/eap_md5
-@MONOLITHIC_TRUE@@USE_EAP_MD5_TRUE@am__append_50 = plugins/eap_md5/libstrongswan-eap-md5.la
-@USE_EAP_GTC_TRUE@am__append_51 = plugins/eap_gtc
-@MONOLITHIC_TRUE@@USE_EAP_GTC_TRUE@am__append_52 = plugins/eap_gtc/libstrongswan-eap-gtc.la
-@USE_EAP_MSCHAPV2_TRUE@am__append_53 = plugins/eap_mschapv2
-@MONOLITHIC_TRUE@@USE_EAP_MSCHAPV2_TRUE@am__append_54 = plugins/eap_mschapv2/libstrongswan-eap-mschapv2.la
-@USE_EAP_DYNAMIC_TRUE@am__append_55 = plugins/eap_dynamic
-@MONOLITHIC_TRUE@@USE_EAP_DYNAMIC_TRUE@am__append_56 = plugins/eap_dynamic/libstrongswan-eap-dynamic.la
-@USE_EAP_RADIUS_TRUE@am__append_57 = plugins/eap_radius
-@MONOLITHIC_TRUE@@USE_EAP_RADIUS_TRUE@am__append_58 = plugins/eap_radius/libstrongswan-eap-radius.la
-@USE_EAP_TLS_TRUE@am__append_59 = plugins/eap_tls
-@MONOLITHIC_TRUE@@USE_EAP_TLS_TRUE@am__append_60 = plugins/eap_tls/libstrongswan-eap-tls.la
-@USE_EAP_TTLS_TRUE@am__append_61 = plugins/eap_ttls
-@MONOLITHIC_TRUE@@USE_EAP_TTLS_TRUE@am__append_62 = plugins/eap_ttls/libstrongswan-eap-ttls.la
-@USE_EAP_PEAP_TRUE@am__append_63 = plugins/eap_peap
-@MONOLITHIC_TRUE@@USE_EAP_PEAP_TRUE@am__append_64 = plugins/eap_peap/libstrongswan-eap-peap.la
-@USE_EAP_TNC_TRUE@am__append_65 = plugins/eap_tnc
-@MONOLITHIC_TRUE@@USE_EAP_TNC_TRUE@am__append_66 = plugins/eap_tnc/libstrongswan-eap-tnc.la
-@MONOLITHIC_TRUE@@USE_TLS_TRUE@am__append_67 = $(top_builddir)/src/libtls/libtls.la
-@MONOLITHIC_TRUE@@USE_RADIUS_TRUE@am__append_68 = $(top_builddir)/src/libradius/libradius.la
-@USE_TNC_IFMAP_TRUE@am__append_69 = plugins/tnc_ifmap
-@MONOLITHIC_TRUE@@USE_TNC_IFMAP_TRUE@am__append_70 = plugins/tnc_ifmap/libstrongswan-tnc-ifmap.la
-@USE_TNC_PDP_TRUE@am__append_71 = plugins/tnc_pdp
-@MONOLITHIC_TRUE@@USE_TNC_PDP_TRUE@am__append_72 = plugins/tnc_pdp/libstrongswan-tnc-pdp.la
-@MONOLITHIC_TRUE@@USE_LIBTNCCS_TRUE@am__append_73 = $(top_builddir)/src/libtnccs/libtnccs.la
-@USE_MEDSRV_TRUE@am__append_74 = plugins/medsrv
-@MONOLITHIC_TRUE@@USE_MEDSRV_TRUE@am__append_75 = plugins/medsrv/libstrongswan-medsrv.la
-@USE_MEDCLI_TRUE@am__append_76 = plugins/medcli
-@MONOLITHIC_TRUE@@USE_MEDCLI_TRUE@am__append_77 = plugins/medcli/libstrongswan-medcli.la
-@USE_DHCP_TRUE@am__append_78 = plugins/dhcp
-@MONOLITHIC_TRUE@@USE_DHCP_TRUE@am__append_79 = plugins/dhcp/libstrongswan-dhcp.la
-@USE_OSX_ATTR_TRUE@am__append_80 = plugins/osx_attr
-@MONOLITHIC_TRUE@@USE_OSX_ATTR_TRUE@am__append_81 = plugins/osx_attr/libstrongswan-osx-attr.la
-@USE_ANDROID_DNS_TRUE@am__append_82 = plugins/android_dns
-@MONOLITHIC_TRUE@@USE_ANDROID_DNS_TRUE@am__append_83 = plugins/android_dns/libstrongswan-android-dns.la
-@USE_ANDROID_LOG_TRUE@am__append_84 = plugins/android_log
-@MONOLITHIC_TRUE@@USE_ANDROID_LOG_TRUE@am__append_85 = plugins/android_log/libstrongswan-android-log.la
-@USE_MAEMO_TRUE@am__append_86 = plugins/maemo
-@MONOLITHIC_TRUE@@USE_MAEMO_TRUE@am__append_87 = plugins/maemo/libstrongswan-maemo.la
-@USE_HA_TRUE@am__append_88 = plugins/ha
-@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_89 = plugins/ha/libstrongswan-ha.la
-@USE_KERNEL_LIBIPSEC_TRUE@am__append_90 = plugins/kernel_libipsec
-@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_91 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
-@USE_KERNEL_WFP_TRUE@am__append_92 = plugins/kernel_wfp
-@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_93 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
-@USE_KERNEL_IPH_TRUE@am__append_94 = plugins/kernel_iph
-@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_95 = plugins/kernel_iph/libstrongswan-kernel-iph.la
-@USE_WHITELIST_TRUE@am__append_96 = plugins/whitelist
-@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_97 = plugins/whitelist/libstrongswan-whitelist.la
-@USE_LOOKIP_TRUE@am__append_98 = plugins/lookip
-@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_99 = plugins/lookip/libstrongswan-lookip.la
-@USE_ERROR_NOTIFY_TRUE@am__append_100 = plugins/error_notify
-@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_101 = plugins/error_notify/libstrongswan-error-notify.la
-@USE_CERTEXPIRE_TRUE@am__append_102 = plugins/certexpire
-@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_103 = plugins/certexpire/libstrongswan-certexpire.la
-@USE_SYSTIME_FIX_TRUE@am__append_104 = plugins/systime_fix
-@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_105 = plugins/systime_fix/libstrongswan-systime-fix.la
-@USE_LED_TRUE@am__append_106 = plugins/led
-@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_107 = plugins/led/libstrongswan-led.la
-@USE_DUPLICHECK_TRUE@am__append_108 = plugins/duplicheck
-@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_109 = plugins/duplicheck/libstrongswan-duplicheck.la
-@USE_COUPLING_TRUE@am__append_110 = plugins/coupling
-@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_111 = plugins/coupling/libstrongswan-coupling.la
-@USE_RADATTR_TRUE@am__append_112 = plugins/radattr
-@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_113 = plugins/radattr/libstrongswan-radattr.la
-@USE_UCI_TRUE@am__append_114 = plugins/uci
-@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_115 = plugins/uci/libstrongswan-uci.la
-@USE_ADDRBLOCK_TRUE@am__append_116 = plugins/addrblock
-@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_117 = plugins/addrblock/libstrongswan-addrblock.la
-@USE_UNITY_TRUE@am__append_118 = plugins/unity
-@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_119 = plugins/unity/libstrongswan-unity.la
-@USE_UNIT_TESTS_TRUE@am__append_120 = plugins/unit_tester
-@MONOLITHIC_TRUE@@USE_UNIT_TESTS_TRUE@am__append_121 = plugins/unit_tester/libstrongswan-unit-tester.la
-@USE_XAUTH_GENERIC_TRUE@am__append_122 = plugins/xauth_generic
-@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_123 = plugins/xauth_generic/libstrongswan-xauth-generic.la
-@USE_XAUTH_EAP_TRUE@am__append_124 = plugins/xauth_eap
-@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_125 = plugins/xauth_eap/libstrongswan-xauth-eap.la
-@USE_XAUTH_PAM_TRUE@am__append_126 = plugins/xauth_pam
-@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_127 = plugins/xauth_pam/libstrongswan-xauth-pam.la
-@USE_XAUTH_NOAUTH_TRUE@am__append_128 = plugins/xauth_noauth
-@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_129 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
+@USE_EXT_AUTH_TRUE@am__append_30 = plugins/ext_auth
+@MONOLITHIC_TRUE@@USE_EXT_AUTH_TRUE@am__append_31 = plugins/ext_auth/libstrongswan-ext-auth.la
+@USE_EAP_IDENTITY_TRUE@am__append_32 = plugins/eap_identity
+@MONOLITHIC_TRUE@@USE_EAP_IDENTITY_TRUE@am__append_33 = plugins/eap_identity/libstrongswan-eap-identity.la
+@USE_EAP_SIM_TRUE@am__append_34 = plugins/eap_sim
+@MONOLITHIC_TRUE@@USE_EAP_SIM_TRUE@am__append_35 = plugins/eap_sim/libstrongswan-eap-sim.la
+@USE_EAP_SIM_FILE_TRUE@am__append_36 = plugins/eap_sim_file
+@MONOLITHIC_TRUE@@USE_EAP_SIM_FILE_TRUE@am__append_37 = plugins/eap_sim_file/libstrongswan-eap-sim-file.la
+@USE_EAP_SIM_PCSC_TRUE@am__append_38 = plugins/eap_sim_pcsc
+@MONOLITHIC_TRUE@@USE_EAP_SIM_PCSC_TRUE@am__append_39 = plugins/eap_sim_pcsc/libstrongswan-eap-sim-pcsc.la
+@USE_EAP_SIMAKA_SQL_TRUE@am__append_40 = plugins/eap_simaka_sql
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_SQL_TRUE@am__append_41 = plugins/eap_simaka_sql/libstrongswan-eap-simaka-sql.la
+@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_42 = plugins/eap_simaka_pseudonym
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_43 = plugins/eap_simaka_pseudonym/libstrongswan-eap-simaka-pseudonym.la
+@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_44 = plugins/eap_simaka_reauth
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_45 = plugins/eap_simaka_reauth/libstrongswan-eap-simaka-reauth.la
+@USE_EAP_AKA_TRUE@am__append_46 = plugins/eap_aka
+@MONOLITHIC_TRUE@@USE_EAP_AKA_TRUE@am__append_47 = plugins/eap_aka/libstrongswan-eap-aka.la
+@USE_EAP_AKA_3GPP2_TRUE@am__append_48 = plugins/eap_aka_3gpp2
+@MONOLITHIC_TRUE@@USE_EAP_AKA_3GPP2_TRUE@am__append_49 = plugins/eap_aka_3gpp2/libstrongswan-eap-aka-3gpp2.la
+@MONOLITHIC_TRUE@@USE_SIMAKA_TRUE@am__append_50 = $(top_builddir)/src/libsimaka/libsimaka.la
+@USE_EAP_MD5_TRUE@am__append_51 = plugins/eap_md5
+@MONOLITHIC_TRUE@@USE_EAP_MD5_TRUE@am__append_52 = plugins/eap_md5/libstrongswan-eap-md5.la
+@USE_EAP_GTC_TRUE@am__append_53 = plugins/eap_gtc
+@MONOLITHIC_TRUE@@USE_EAP_GTC_TRUE@am__append_54 = plugins/eap_gtc/libstrongswan-eap-gtc.la
+@USE_EAP_MSCHAPV2_TRUE@am__append_55 = plugins/eap_mschapv2
+@MONOLITHIC_TRUE@@USE_EAP_MSCHAPV2_TRUE@am__append_56 = plugins/eap_mschapv2/libstrongswan-eap-mschapv2.la
+@USE_EAP_DYNAMIC_TRUE@am__append_57 = plugins/eap_dynamic
+@MONOLITHIC_TRUE@@USE_EAP_DYNAMIC_TRUE@am__append_58 = plugins/eap_dynamic/libstrongswan-eap-dynamic.la
+@USE_EAP_RADIUS_TRUE@am__append_59 = plugins/eap_radius
+@MONOLITHIC_TRUE@@USE_EAP_RADIUS_TRUE@am__append_60 = plugins/eap_radius/libstrongswan-eap-radius.la
+@USE_EAP_TLS_TRUE@am__append_61 = plugins/eap_tls
+@MONOLITHIC_TRUE@@USE_EAP_TLS_TRUE@am__append_62 = plugins/eap_tls/libstrongswan-eap-tls.la
+@USE_EAP_TTLS_TRUE@am__append_63 = plugins/eap_ttls
+@MONOLITHIC_TRUE@@USE_EAP_TTLS_TRUE@am__append_64 = plugins/eap_ttls/libstrongswan-eap-ttls.la
+@USE_EAP_PEAP_TRUE@am__append_65 = plugins/eap_peap
+@MONOLITHIC_TRUE@@USE_EAP_PEAP_TRUE@am__append_66 = plugins/eap_peap/libstrongswan-eap-peap.la
+@USE_EAP_TNC_TRUE@am__append_67 = plugins/eap_tnc
+@MONOLITHIC_TRUE@@USE_EAP_TNC_TRUE@am__append_68 = plugins/eap_tnc/libstrongswan-eap-tnc.la
+@MONOLITHIC_TRUE@@USE_TLS_TRUE@am__append_69 = $(top_builddir)/src/libtls/libtls.la
+@MONOLITHIC_TRUE@@USE_RADIUS_TRUE@am__append_70 = $(top_builddir)/src/libradius/libradius.la
+@USE_TNC_IFMAP_TRUE@am__append_71 = plugins/tnc_ifmap
+@MONOLITHIC_TRUE@@USE_TNC_IFMAP_TRUE@am__append_72 = plugins/tnc_ifmap/libstrongswan-tnc-ifmap.la
+@USE_TNC_PDP_TRUE@am__append_73 = plugins/tnc_pdp
+@MONOLITHIC_TRUE@@USE_TNC_PDP_TRUE@am__append_74 = plugins/tnc_pdp/libstrongswan-tnc-pdp.la
+@MONOLITHIC_TRUE@@USE_LIBTNCCS_TRUE@am__append_75 = $(top_builddir)/src/libtnccs/libtnccs.la
+@USE_MEDSRV_TRUE@am__append_76 = plugins/medsrv
+@MONOLITHIC_TRUE@@USE_MEDSRV_TRUE@am__append_77 = plugins/medsrv/libstrongswan-medsrv.la
+@USE_MEDCLI_TRUE@am__append_78 = plugins/medcli
+@MONOLITHIC_TRUE@@USE_MEDCLI_TRUE@am__append_79 = plugins/medcli/libstrongswan-medcli.la
+@USE_DHCP_TRUE@am__append_80 = plugins/dhcp
+@MONOLITHIC_TRUE@@USE_DHCP_TRUE@am__append_81 = plugins/dhcp/libstrongswan-dhcp.la
+@USE_OSX_ATTR_TRUE@am__append_82 = plugins/osx_attr
+@MONOLITHIC_TRUE@@USE_OSX_ATTR_TRUE@am__append_83 = plugins/osx_attr/libstrongswan-osx-attr.la
+@USE_ANDROID_DNS_TRUE@am__append_84 = plugins/android_dns
+@MONOLITHIC_TRUE@@USE_ANDROID_DNS_TRUE@am__append_85 = plugins/android_dns/libstrongswan-android-dns.la
+@USE_ANDROID_LOG_TRUE@am__append_86 = plugins/android_log
+@MONOLITHIC_TRUE@@USE_ANDROID_LOG_TRUE@am__append_87 = plugins/android_log/libstrongswan-android-log.la
+@USE_MAEMO_TRUE@am__append_88 = plugins/maemo
+@MONOLITHIC_TRUE@@USE_MAEMO_TRUE@am__append_89 = plugins/maemo/libstrongswan-maemo.la
+@USE_HA_TRUE@am__append_90 = plugins/ha
+@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_91 = plugins/ha/libstrongswan-ha.la
+@USE_KERNEL_LIBIPSEC_TRUE@am__append_92 = plugins/kernel_libipsec
+@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_93 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
+@USE_KERNEL_WFP_TRUE@am__append_94 = plugins/kernel_wfp
+@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_95 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
+@USE_KERNEL_IPH_TRUE@am__append_96 = plugins/kernel_iph
+@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_97 = plugins/kernel_iph/libstrongswan-kernel-iph.la
+@USE_WHITELIST_TRUE@am__append_98 = plugins/whitelist
+@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_99 = plugins/whitelist/libstrongswan-whitelist.la
+@USE_LOOKIP_TRUE@am__append_100 = plugins/lookip
+@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_101 = plugins/lookip/libstrongswan-lookip.la
+@USE_ERROR_NOTIFY_TRUE@am__append_102 = plugins/error_notify
+@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_103 = plugins/error_notify/libstrongswan-error-notify.la
+@USE_CERTEXPIRE_TRUE@am__append_104 = plugins/certexpire
+@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_105 = plugins/certexpire/libstrongswan-certexpire.la
+@USE_SYSTIME_FIX_TRUE@am__append_106 = plugins/systime_fix
+@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_107 = plugins/systime_fix/libstrongswan-systime-fix.la
+@USE_LED_TRUE@am__append_108 = plugins/led
+@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_109 = plugins/led/libstrongswan-led.la
+@USE_DUPLICHECK_TRUE@am__append_110 = plugins/duplicheck
+@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_111 = plugins/duplicheck/libstrongswan-duplicheck.la
+@USE_COUPLING_TRUE@am__append_112 = plugins/coupling
+@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_113 = plugins/coupling/libstrongswan-coupling.la
+@USE_RADATTR_TRUE@am__append_114 = plugins/radattr
+@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_115 = plugins/radattr/libstrongswan-radattr.la
+@USE_UCI_TRUE@am__append_116 = plugins/uci
+@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_117 = plugins/uci/libstrongswan-uci.la
+@USE_ADDRBLOCK_TRUE@am__append_118 = plugins/addrblock
+@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_119 = plugins/addrblock/libstrongswan-addrblock.la
+@USE_UNITY_TRUE@am__append_120 = plugins/unity
+@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_121 = plugins/unity/libstrongswan-unity.la
+@USE_UNIT_TESTS_TRUE@am__append_122 = plugins/unit_tester
+@MONOLITHIC_TRUE@@USE_UNIT_TESTS_TRUE@am__append_123 = plugins/unit_tester/libstrongswan-unit-tester.la
+@USE_XAUTH_GENERIC_TRUE@am__append_124 = plugins/xauth_generic
+@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_125 = plugins/xauth_generic/libstrongswan-xauth-generic.la
+@USE_XAUTH_EAP_TRUE@am__append_126 = plugins/xauth_eap
+@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_127 = plugins/xauth_eap/libstrongswan-xauth-eap.la
+@USE_XAUTH_PAM_TRUE@am__append_128 = plugins/xauth_pam
+@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_129 = plugins/xauth_pam/libstrongswan-xauth-pam.la
+@USE_XAUTH_NOAUTH_TRUE@am__append_130 = plugins/xauth_noauth
+@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_131 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
 subdir = src/libcharon
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -323,12 +325,12 @@ libcharon_la_DEPENDENCIES =  \
 	$(am__append_29) $(am__append_31) $(am__append_33) \
 	$(am__append_35) $(am__append_37) $(am__append_39) \
 	$(am__append_41) $(am__append_43) $(am__append_45) \
-	$(am__append_47) $(am__append_48) $(am__append_50) \
+	$(am__append_47) $(am__append_49) $(am__append_50) \
 	$(am__append_52) $(am__append_54) $(am__append_56) \
 	$(am__append_58) $(am__append_60) $(am__append_62) \
-	$(am__append_64) $(am__append_66) $(am__append_67) \
-	$(am__append_68) $(am__append_70) $(am__append_72) \
-	$(am__append_73) $(am__append_75) $(am__append_77) \
+	$(am__append_64) $(am__append_66) $(am__append_68) \
+	$(am__append_69) $(am__append_70) $(am__append_72) \
+	$(am__append_74) $(am__append_75) $(am__append_77) \
 	$(am__append_79) $(am__append_81) $(am__append_83) \
 	$(am__append_85) $(am__append_87) $(am__append_89) \
 	$(am__append_91) $(am__append_93) $(am__append_95) \
@@ -337,7 +339,7 @@ libcharon_la_DEPENDENCIES =  \
 	$(am__append_109) $(am__append_111) $(am__append_113) \
 	$(am__append_115) $(am__append_117) $(am__append_119) \
 	$(am__append_121) $(am__append_123) $(am__append_125) \
-	$(am__append_127) $(am__append_129)
+	$(am__append_127) $(am__append_129) $(am__append_131)
 am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
 	bus/listeners/listener.h bus/listeners/logger.h \
 	bus/listeners/file_logger.c bus/listeners/file_logger.h \
@@ -362,8 +364,9 @@ am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
 	encoding/payloads/eap_payload.c \
 	encoding/payloads/eap_payload.h encoding/payloads/encodings.c \
 	encoding/payloads/encodings.h \
-	encoding/payloads/encryption_payload.c \
-	encoding/payloads/encryption_payload.h \
+	encoding/payloads/encrypted_payload.c \
+	encoding/payloads/encrypted_payload.h \
+	encoding/payloads/encrypted_fragment_payload.h \
 	encoding/payloads/id_payload.c encoding/payloads/id_payload.h \
 	encoding/payloads/ike_header.c encoding/payloads/ike_header.h \
 	encoding/payloads/ke_payload.c encoding/payloads/ke_payload.h \
@@ -553,7 +556,7 @@ am_libcharon_la_OBJECTS = bus/bus.lo bus/listeners/file_logger.lo \
 	encoding/payloads/delete_payload.lo \
 	encoding/payloads/eap_payload.lo \
 	encoding/payloads/encodings.lo \
-	encoding/payloads/encryption_payload.lo \
+	encoding/payloads/encrypted_payload.lo \
 	encoding/payloads/id_payload.lo \
 	encoding/payloads/ike_header.lo \
 	encoding/payloads/ke_payload.lo \
@@ -676,22 +679,23 @@ DIST_SUBDIRS = . plugins/load_tester plugins/socket_default \
 	plugins/socket_dynamic plugins/socket_win plugins/farp \
 	plugins/stroke plugins/vici plugins/smp plugins/sql \
 	plugins/dnscert plugins/ipseckey plugins/updown \
-	plugins/eap_identity plugins/eap_sim plugins/eap_sim_file \
-	plugins/eap_sim_pcsc plugins/eap_simaka_sql \
-	plugins/eap_simaka_pseudonym plugins/eap_simaka_reauth \
-	plugins/eap_aka plugins/eap_aka_3gpp2 plugins/eap_md5 \
-	plugins/eap_gtc plugins/eap_mschapv2 plugins/eap_dynamic \
-	plugins/eap_radius plugins/eap_tls plugins/eap_ttls \
-	plugins/eap_peap plugins/eap_tnc plugins/tnc_ifmap \
-	plugins/tnc_pdp plugins/medsrv plugins/medcli plugins/dhcp \
-	plugins/osx_attr plugins/android_dns plugins/android_log \
-	plugins/maemo plugins/ha plugins/kernel_libipsec \
-	plugins/kernel_wfp plugins/kernel_iph plugins/whitelist \
-	plugins/lookip plugins/error_notify plugins/certexpire \
-	plugins/systime_fix plugins/led plugins/duplicheck \
-	plugins/coupling plugins/radattr plugins/uci plugins/addrblock \
-	plugins/unity plugins/unit_tester plugins/xauth_generic \
-	plugins/xauth_eap plugins/xauth_pam plugins/xauth_noauth
+	plugins/ext_auth plugins/eap_identity plugins/eap_sim \
+	plugins/eap_sim_file plugins/eap_sim_pcsc \
+	plugins/eap_simaka_sql plugins/eap_simaka_pseudonym \
+	plugins/eap_simaka_reauth plugins/eap_aka \
+	plugins/eap_aka_3gpp2 plugins/eap_md5 plugins/eap_gtc \
+	plugins/eap_mschapv2 plugins/eap_dynamic plugins/eap_radius \
+	plugins/eap_tls plugins/eap_ttls plugins/eap_peap \
+	plugins/eap_tnc plugins/tnc_ifmap plugins/tnc_pdp \
+	plugins/medsrv plugins/medcli plugins/dhcp plugins/osx_attr \
+	plugins/android_dns plugins/android_log plugins/maemo \
+	plugins/ha plugins/kernel_libipsec plugins/kernel_wfp \
+	plugins/kernel_iph plugins/whitelist plugins/lookip \
+	plugins/error_notify plugins/certexpire plugins/systime_fix \
+	plugins/led plugins/duplicheck plugins/coupling \
+	plugins/radattr plugins/uci plugins/addrblock plugins/unity \
+	plugins/unit_tester plugins/xauth_generic plugins/xauth_eap \
+	plugins/xauth_pam plugins/xauth_noauth
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -749,6 +753,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -809,6 +814,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -874,6 +880,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -921,6 +929,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -954,8 +966,9 @@ libcharon_la_SOURCES = bus/bus.c bus/bus.h bus/listeners/listener.h \
 	encoding/payloads/eap_payload.c \
 	encoding/payloads/eap_payload.h encoding/payloads/encodings.c \
 	encoding/payloads/encodings.h \
-	encoding/payloads/encryption_payload.c \
-	encoding/payloads/encryption_payload.h \
+	encoding/payloads/encrypted_payload.c \
+	encoding/payloads/encrypted_payload.h \
+	encoding/payloads/encrypted_fragment_payload.h \
 	encoding/payloads/id_payload.c encoding/payloads/id_payload.h \
 	encoding/payloads/ike_header.c encoding/payloads/ike_header.h \
 	encoding/payloads/ke_payload.c encoding/payloads/ke_payload.h \
@@ -1043,12 +1056,12 @@ libcharon_la_LIBADD =  \
 	$(am__append_27) $(am__append_29) $(am__append_31) \
 	$(am__append_33) $(am__append_35) $(am__append_37) \
 	$(am__append_39) $(am__append_41) $(am__append_43) \
-	$(am__append_45) $(am__append_47) $(am__append_48) \
+	$(am__append_45) $(am__append_47) $(am__append_49) \
 	$(am__append_50) $(am__append_52) $(am__append_54) \
 	$(am__append_56) $(am__append_58) $(am__append_60) \
 	$(am__append_62) $(am__append_64) $(am__append_66) \
-	$(am__append_67) $(am__append_68) $(am__append_70) \
-	$(am__append_72) $(am__append_73) $(am__append_75) \
+	$(am__append_68) $(am__append_69) $(am__append_70) \
+	$(am__append_72) $(am__append_74) $(am__append_75) \
 	$(am__append_77) $(am__append_79) $(am__append_81) \
 	$(am__append_83) $(am__append_85) $(am__append_87) \
 	$(am__append_89) $(am__append_91) $(am__append_93) \
@@ -1057,7 +1070,8 @@ libcharon_la_LIBADD =  \
 	$(am__append_107) $(am__append_109) $(am__append_111) \
 	$(am__append_113) $(am__append_115) $(am__append_117) \
 	$(am__append_119) $(am__append_121) $(am__append_123) \
-	$(am__append_125) $(am__append_127) $(am__append_129)
+	$(am__append_125) $(am__append_127) $(am__append_129) \
+	$(am__append_131)
 EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@SUBDIRS = . $(am__append_6) $(am__append_8) \
 @MONOLITHIC_FALSE@	$(am__append_10) $(am__append_12) \
@@ -1069,13 +1083,13 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_34) $(am__append_36) \
 @MONOLITHIC_FALSE@	$(am__append_38) $(am__append_40) \
 @MONOLITHIC_FALSE@	$(am__append_42) $(am__append_44) \
-@MONOLITHIC_FALSE@	$(am__append_46) $(am__append_49) \
+@MONOLITHIC_FALSE@	$(am__append_46) $(am__append_48) \
 @MONOLITHIC_FALSE@	$(am__append_51) $(am__append_53) \
 @MONOLITHIC_FALSE@	$(am__append_55) $(am__append_57) \
 @MONOLITHIC_FALSE@	$(am__append_59) $(am__append_61) \
 @MONOLITHIC_FALSE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_FALSE@	$(am__append_69) $(am__append_71) \
-@MONOLITHIC_FALSE@	$(am__append_74) $(am__append_76) \
+@MONOLITHIC_FALSE@	$(am__append_67) $(am__append_71) \
+@MONOLITHIC_FALSE@	$(am__append_73) $(am__append_76) \
 @MONOLITHIC_FALSE@	$(am__append_78) $(am__append_80) \
 @MONOLITHIC_FALSE@	$(am__append_82) $(am__append_84) \
 @MONOLITHIC_FALSE@	$(am__append_86) $(am__append_88) \
@@ -1088,7 +1102,8 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_114) $(am__append_116) \
 @MONOLITHIC_FALSE@	$(am__append_118) $(am__append_120) \
 @MONOLITHIC_FALSE@	$(am__append_122) $(am__append_124) \
-@MONOLITHIC_FALSE@	$(am__append_126) $(am__append_128)
+@MONOLITHIC_FALSE@	$(am__append_126) $(am__append_128) \
+@MONOLITHIC_FALSE@	$(am__append_130)
 
 # build optional plugins
 ########################
@@ -1102,13 +1117,13 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_34) $(am__append_36) \
 @MONOLITHIC_TRUE@	$(am__append_38) $(am__append_40) \
 @MONOLITHIC_TRUE@	$(am__append_42) $(am__append_44) \
-@MONOLITHIC_TRUE@	$(am__append_46) $(am__append_49) \
+@MONOLITHIC_TRUE@	$(am__append_46) $(am__append_48) \
 @MONOLITHIC_TRUE@	$(am__append_51) $(am__append_53) \
 @MONOLITHIC_TRUE@	$(am__append_55) $(am__append_57) \
 @MONOLITHIC_TRUE@	$(am__append_59) $(am__append_61) \
 @MONOLITHIC_TRUE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_TRUE@	$(am__append_69) $(am__append_71) \
-@MONOLITHIC_TRUE@	$(am__append_74) $(am__append_76) \
+@MONOLITHIC_TRUE@	$(am__append_67) $(am__append_71) \
+@MONOLITHIC_TRUE@	$(am__append_73) $(am__append_76) \
 @MONOLITHIC_TRUE@	$(am__append_78) $(am__append_80) \
 @MONOLITHIC_TRUE@	$(am__append_82) $(am__append_84) \
 @MONOLITHIC_TRUE@	$(am__append_86) $(am__append_88) \
@@ -1121,7 +1136,8 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_114) $(am__append_116) \
 @MONOLITHIC_TRUE@	$(am__append_118) $(am__append_120) \
 @MONOLITHIC_TRUE@	$(am__append_122) $(am__append_124) \
-@MONOLITHIC_TRUE@	$(am__append_126) $(am__append_128)
+@MONOLITHIC_TRUE@	$(am__append_126) $(am__append_128) \
+@MONOLITHIC_TRUE@	$(am__append_130)
 all: all-recursive
 
 .SUFFIXES:
@@ -1267,7 +1283,7 @@ encoding/payloads/eap_payload.lo: encoding/payloads/$(am__dirstamp) \
 	encoding/payloads/$(DEPDIR)/$(am__dirstamp)
 encoding/payloads/encodings.lo: encoding/payloads/$(am__dirstamp) \
 	encoding/payloads/$(DEPDIR)/$(am__dirstamp)
-encoding/payloads/encryption_payload.lo:  \
+encoding/payloads/encrypted_payload.lo:  \
 	encoding/payloads/$(am__dirstamp) \
 	encoding/payloads/$(DEPDIR)/$(am__dirstamp)
 encoding/payloads/id_payload.lo: encoding/payloads/$(am__dirstamp) \
@@ -1619,7 +1635,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/delete_payload.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/eap_payload.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/encodings.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/encryption_payload.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/encrypted_payload.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/endpoint_notify.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/fragment_payload.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@encoding/payloads/$(DEPDIR)/hash_payload.Plo@am__quote@

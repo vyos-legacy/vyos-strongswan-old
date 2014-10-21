@@ -108,10 +108,11 @@ am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
 	commands/terminate.$(OBJEXT) commands/install.$(OBJEXT) \
 	commands/list_sas.$(OBJEXT) commands/list_pols.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
-	commands/list_pools.$(OBJEXT) commands/load_conns.$(OBJEXT) \
-	commands/load_creds.$(OBJEXT) commands/load_pools.$(OBJEXT) \
-	commands/log.$(OBJEXT) commands/version.$(OBJEXT) \
-	commands/stats.$(OBJEXT) swanctl.$(OBJEXT)
+	commands/list_pools.$(OBJEXT) commands/load_all.$(OBJEXT) \
+	commands/load_conns.$(OBJEXT) commands/load_creds.$(OBJEXT) \
+	commands/load_pools.$(OBJEXT) commands/log.$(OBJEXT) \
+	commands/version.$(OBJEXT) commands/stats.$(OBJEXT) \
+	commands/reload_settings.$(OBJEXT) swanctl.$(OBJEXT)
 swanctl_OBJECTS = $(am_swanctl_OBJECTS)
 swanctl_DEPENDENCIES =  \
 	$(top_builddir)/src/libcharon/plugins/vici/libvici.la \
@@ -243,6 +244,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
 GPRBUILD = @GPRBUILD@
@@ -303,6 +305,7 @@ PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
+RUBYGEMDIR = @RUBYGEMDIR@
 RUBYINCLUDE = @RUBYINCLUDE@
 RUBYLIB = @RUBYLIB@
 SED = @SED@
@@ -368,6 +371,8 @@ ipsecdir = @ipsecdir@
 ipsecgroup = @ipsecgroup@
 ipseclibdir = @ipseclibdir@
 ipsecuser = @ipsecuser@
+json_CFLAGS = @json_CFLAGS@
+json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 linux_headers = @linux_headers@
@@ -415,6 +420,10 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
+systemd_daemon_LIBS = @systemd_daemon_LIBS@
+systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
+systemd_journal_LIBS = @systemd_journal_LIBS@
 systemdsystemunitdir = @systemdsystemunitdir@
 t_plugins = @t_plugins@
 target_alias = @target_alias@
@@ -434,12 +443,14 @@ swanctl_SOURCES = \
 	commands/list_conns.c \
 	commands/list_certs.c \
 	commands/list_pools.c \
-	commands/load_conns.c \
-	commands/load_creds.c \
-	commands/load_pools.c \
+	commands/load_all.c \
+	commands/load_conns.c commands/load_conns.h \
+	commands/load_creds.c commands/load_creds.h \
+	commands/load_pools.c commands/load_pools.h \
 	commands/log.c \
 	commands/version.c \
 	commands/stats.c \
+	commands/reload_settings.c \
 	swanctl.c swanctl.h
 
 swanctl_LDADD = \
@@ -571,6 +582,8 @@ commands/list_certs.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_pools.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/load_all.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_conns.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_creds.$(OBJEXT): commands/$(am__dirstamp) \
@@ -582,6 +595,8 @@ commands/log.$(OBJEXT): commands/$(am__dirstamp) \
 commands/version.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/stats.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
+commands/reload_settings.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 
 swanctl$(EXEEXT): $(swanctl_OBJECTS) $(swanctl_DEPENDENCIES) $(EXTRA_swanctl_DEPENDENCIES) 
@@ -604,10 +619,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_pols.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_pools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_sas.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_all.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_conns.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_creds.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_pools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/log.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/reload_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/stats.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/terminate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/version.Po@am__quote@
@@ -955,7 +972,7 @@ swanctl.o :		$(top_builddir)/config.status
 
 swanctl.conf.5.main: swanctl.opt
 	$(AM_V_GEN) \
-	$(PYTHON) $(top_srcdir)/conf/format-options.py -n -f man $< > $(srcdir)/$@
+	$(PYTHON) $(top_srcdir)/conf/format-options.py -n -f man swanctl.opt > $(srcdir)/$@
 
 swanctl.conf.5: swanctl.conf.5.head swanctl.conf.5.main swanctl.conf.5.tail
 	$(AM_V_GEN) \
@@ -965,7 +982,7 @@ maintainer-clean-local:
 	cd $(srcdir) && rm -f swanctl.conf swanctl.conf.5.main
 
 install-data-local: swanctl.conf
-	test -e "$(DESTDIR)$(swanctldir)" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)"
+	test -e "$(DESTDIR)$(swanctldir)" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ca" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ca" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509aa" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509aa" || true
