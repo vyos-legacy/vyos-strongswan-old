@@ -2,7 +2,7 @@
 +++ b/init/systemd/strongswan.service.in
 @@ -1,10 +1,12 @@
  [Unit]
- Description=strongSwan IPsec
+ Description=strongSwan IPsec IKEv1/IKEv2 daemon using ipsec.conf
 -After=syslog.target
 +After=network.target
  
