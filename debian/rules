@@ -33,17 +33,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 # get the various DEB_BUILD/DEB_HOST variables
 include /usr/share/dpkg/architecture.mk
 
-# use reduced keylength in testsuite for !linux and !x86
-ifneq ($(DEB_BUILD_ARCH_OS),linux)
-	export TESTS_REDUCED_KEYLENGTHS=true
-endif
-ifneq ($(DEB_BUILD_ARCH_CPU),i386)
-ifneq ($(DEB_BUILD_ARCH_CPU),amd64)
-	export TESTS_REDUCED_KEYLENGTHS=true
-endif
-endif
-
-# the padlock plugin only makes sense on i386 
+# the padlock plugin only makes sense on i386
 # RdRand only makes sense on i386 and amd64
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock --enable-rdrand
@@ -197,6 +187,16 @@ override_dh_makeshlibs:
 
 override_dh_installlogcheck:
 	dh_installlogcheck --name strongswan
+
+override_dh_auto_test:
+# run the test suite only on fast archs, but try to get some portability
+# coverage by running on:
+# - amd64 (64-bit, little-endian)
+# - i386 (32-bit, little-endian)
+# - s390x (64-bit, big-endian)
+ifneq (,$(filter amd64 i386 s390x,$(DEB_BUILD_ARCH)))
+	dh_auto_test
+endif
 
 %:
 	dh $@ --parallel --with autoreconf,systemd

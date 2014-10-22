@@ -1,10 +1,14 @@
 strongswan (5.2.1-2) UNRELEASED; urgency=medium
 
-  * Re-enable libtls test suite.
+  * Run the test suite only on amd64, i386, and s390x. It requires lots of
+    entropy and CPU time, which are typically hard to come by on slower
+    archs.
+  * Re-enable normal keylengths in test suite.
+  * Re-enable libtls tests.
   * Update Dutch translation, thanks to Frans Spiesschaert (closes: #763798).
   * Bump Standards-Version to 3.9.6.
 
- -- Romain Francoise <rfrancoise@debian.org>  Wed, 22 Oct 2014 20:58:40 +0200
+ -- Romain Francoise <rfrancoise@debian.org>  Wed, 22 Oct 2014 21:06:49 +0200
 
 strongswan (5.2.1-1) unstable; urgency=medium
 
