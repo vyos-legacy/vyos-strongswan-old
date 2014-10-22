@@ -1,2 +1,3 @@
 01_fix-manpages.patch
+02_chunk-endianness.patch
 03_systemd-service.patch
