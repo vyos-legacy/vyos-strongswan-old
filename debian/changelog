@@ -1,3 +1,10 @@
+strongswan (5.2.1-3) unstable; urgency=medium
+
+  * Disable libtls tests again, they are still too intensive for the buildd
+    network...
+
+ -- Romain Francoise <rfrancoise@debian.org>  Thu, 23 Oct 2014 18:09:27 +0200
+
 strongswan (5.2.1-2) unstable; urgency=medium
 
   * Cherry-pick commits 701d6ed and 1c70c6e from upstream to fix checksum
