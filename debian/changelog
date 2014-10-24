@@ -1,3 +1,10 @@
+strongswan (5.2.1-4) unstable; urgency=medium
+
+  * Give up on trying to run the test suite on !amd64, it now times out on
+    both i386 and s390x, our chosen "fast" archs.
+
+ -- Romain Francoise <rfrancoise@debian.org>  Fri, 24 Oct 2014 21:08:17 +0200
+
 strongswan (5.2.1-3) unstable; urgency=medium
 
   * Disable libtls tests again, they are still too intensive for the buildd

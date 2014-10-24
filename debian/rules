@@ -189,12 +189,7 @@ override_dh_installlogcheck:
 	dh_installlogcheck --name strongswan
 
 override_dh_auto_test:
-# run the test suite only on fast archs, but try to get some portability
-# coverage by running on:
-# - amd64 (64-bit, little-endian)
-# - i386 (32-bit, little-endian)
-# - s390x (64-bit, big-endian)
-ifneq (,$(filter amd64 i386 s390x,$(DEB_BUILD_ARCH)))
+ifeq ($(DEB_BUILD_ARCH),amd64)
 	dh_auto_test
 endif
 
