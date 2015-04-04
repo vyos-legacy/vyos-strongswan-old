@@ -1,3 +1,13 @@
+strongswan (5.2.1-6) unstable; urgency=medium
+
+  * Ship /lib/systemd/system/ipsec.service as a symlink to
+    strongswan.service in strongswan-starter instead of using Alias= in
+    the service file. This makes the ipsec name available to invoke-rc.d
+    before the service gets actually enabled, which avoids some confusion
+    (closes: #781209).
+
+ -- Romain Francoise <rfrancoise@debian.org>  Sat, 04 Apr 2015 17:55:38 +0200
+
 strongswan (5.2.1-5) unstable; urgency=high
 
   * debian/patches:

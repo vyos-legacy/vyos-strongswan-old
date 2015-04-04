@@ -1,6 +1,6 @@
 --- a/init/systemd/strongswan.service.in
 +++ b/init/systemd/strongswan.service.in
-@@ -1,10 +1,12 @@
+@@ -1,9 +1,10 @@
  [Unit]
  Description=strongSwan IPsec IKEv1/IKEv2 daemon using ipsec.conf
 -After=syslog.target
@@ -12,5 +12,3 @@
  StandardOutput=syslog
  
  [Install]
- WantedBy=multi-user.target
-+Alias=ipsec.service
