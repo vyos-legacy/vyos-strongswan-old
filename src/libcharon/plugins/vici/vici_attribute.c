@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2014 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2014 Martin Willi
  * Copyright (C) 2014 revosec AG
  *
@@ -93,7 +96,8 @@ static void pool_destroy(pool_t *pool)
  * Find an existing or not yet existing lease
  */
 static host_t *find_addr(private_vici_attribute_t *this, linked_list_t *pools,
-					identification_t *id, host_t *requested, mem_pool_op_t op)
+						 identification_t *id, host_t *requested,
+						 mem_pool_op_t op, host_t *peer)
 {
 	enumerator_t *enumerator;
 	host_t *addr = NULL;
@@ -106,7 +110,8 @@ static host_t *find_addr(private_vici_attribute_t *this, linked_list_t *pools,
 		pool = this->pools->get(this->pools, name);
 		if (pool)
 		{
-			addr = pool->vips->acquire_address(pool->vips, id, requested, op);
+			addr = pool->vips->acquire_address(pool->vips, id, requested,
+											   op, peer);
 			if (addr)
 			{
 				break;
@@ -119,20 +124,24 @@ static host_t *find_addr(private_vici_attribute_t *this, linked_list_t *pools,
 }
 
 METHOD(attribute_provider_t, acquire_address, host_t*,
-	private_vici_attribute_t *this, linked_list_t *pools, identification_t *id,
+	private_vici_attribute_t *this, linked_list_t *pools, ike_sa_t *ike_sa,
 	host_t *requested)
 {
-	host_t *addr;
+	identification_t *id;
+	host_t *addr, *peer;
+
+	id = ike_sa->get_other_eap_id(ike_sa);
+	peer = ike_sa->get_other_host(ike_sa);
 
 	this->lock->read_lock(this->lock);
 
-	addr = find_addr(this, pools, id, requested, MEM_POOL_EXISTING);
+	addr = find_addr(this, pools, id, requested, MEM_POOL_EXISTING, peer);
 	if (!addr)
 	{
-		addr = find_addr(this, pools, id, requested, MEM_POOL_NEW);
+		addr = find_addr(this, pools, id, requested, MEM_POOL_NEW, peer);
 		if (!addr)
 		{
-			addr = find_addr(this, pools, id, requested, MEM_POOL_REASSIGN);
+			addr = find_addr(this, pools, id, requested, MEM_POOL_REASSIGN, peer);
 		}
 	}
 
@@ -143,12 +152,15 @@ METHOD(attribute_provider_t, acquire_address, host_t*,
 
 METHOD(attribute_provider_t, release_address, bool,
 	private_vici_attribute_t *this, linked_list_t *pools, host_t *address,
-	identification_t *id)
+	ike_sa_t *ike_sa)
 {
 	enumerator_t *enumerator;
+	identification_t *id;
 	bool found = FALSE;
 	pool_t *pool;
 	char *name;
+
+	id = ike_sa->get_other_eap_id(ike_sa);
 
 	this->lock->read_lock(this->lock);
 
@@ -256,7 +268,7 @@ static bool have_vips_from_pool(mem_pool_t *pool, linked_list_t *vips)
 
 METHOD(attribute_provider_t, create_attribute_enumerator, enumerator_t*,
 	private_vici_attribute_t *this, linked_list_t *pools,
-	identification_t *id, linked_list_t *vips)
+	ike_sa_t *ike_sa, linked_list_t *vips)
 {
 	enumerator_t *enumerator;
 	nested_data_t *data;
@@ -352,6 +364,24 @@ static vici_message_t* create_reply(char *fmt, ...)
 		va_end(args);
 	}
 	return builder->finalize(builder);
+}
+
+/**
+ * Parse a range definition of an address pool
+ */
+static mem_pool_t *create_pool_range(char *name, char *buf)
+{
+	mem_pool_t *pool;
+	host_t *from, *to;
+
+	if (!host_create_from_range(buf, &from, &to))
+	{
+		return NULL;
+	}
+	pool = mem_pool_create_range(name, from, to);
+	from->destroy(from);
+	to->destroy(to);
+	return pool;
 }
 
 /**
@@ -490,7 +520,8 @@ CALLBACK(pool_kv, bool,
 	if (streq(name, "addrs"))
 	{
 		char buf[128];
-		host_t *base;
+		mem_pool_t *pool;
+		host_t *base = NULL;
 		int bits;
 
 		if (data->pool->vips)
@@ -503,14 +534,22 @@ CALLBACK(pool_kv, bool,
 			data->request->reply = create_reply("invalid addrs value");
 			return FALSE;
 		}
-		base = host_create_from_subnet(buf, &bits);
-		if (!base)
+		pool = create_pool_range(data->name, buf);
+		if (!pool)
+		{
+			base = host_create_from_subnet(buf, &bits);
+			if (base)
+			{
+				pool = mem_pool_create(data->name, base, bits);
+				base->destroy(base);
+			}
+		}
+		if (!pool)
 		{
 			data->request->reply = create_reply("invalid addrs value: %s", buf);
 			return FALSE;
 		}
-		data->pool->vips = mem_pool_create(data->name, base, bits);
-		base->destroy(base);
+		data->pool->vips = pool;
 		return TRUE;
 	}
 	data->request->reply = create_reply("invalid attribute: %s", name);

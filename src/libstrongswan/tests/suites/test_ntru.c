@@ -16,19 +16,16 @@
 #include "test_suite.h"
 
 #include <tests/utils/test_rng.h>
+#include <utils/test.h>
+#include <crypto/mgf1/mgf1.h>
 #include <plugins/ntru/ntru_drbg.h>
-#include <plugins/ntru/ntru_mgf1.h>
 #include <plugins/ntru/ntru_trits.h>
 #include <plugins/ntru/ntru_poly.h>
 #include <plugins/ntru/ntru_param_set.h>
 #include <plugins/ntru/ntru_private_key.h>
-#include <utils/test.h>
 
 IMPORT_FUNCTION_FOR_TESTS(ntru, ntru_drbg_create, ntru_drbg_t*,
 						  u_int32_t strength, chunk_t pers_str, rng_t *entropy)
-
-IMPORT_FUNCTION_FOR_TESTS(ntru, ntru_mgf1_create, ntru_mgf1_t*,
-						  hash_algorithm_t alg, chunk_t seed, bool hash_seed)
 
 IMPORT_FUNCTION_FOR_TESTS(ntru, ntru_trits_create, ntru_trits_t*,
 						  size_t len, hash_algorithm_t alg, chunk_t seed)
@@ -334,13 +331,11 @@ typedef struct {
 typedef struct {
 	hash_algorithm_t alg;
 	size_t hash_size;
-	size_t ml1, ml2, ml3, seed_len;
+	size_t seed_len;
 	chunk_t seed;
-	chunk_t hashed_seed;
-	chunk_t mask;
 	chunk_t trits;
 	poly_test_t poly_test[2];
-} mgf1_test_t;
+} trits_test_t;
 
 uint16_t indices_ees439ep1[] = {
 	367, 413,  16, 214, 114, 128,  42, 268, 346, 329, 119, 303, 208, 287, 150,
@@ -386,10 +381,10 @@ uint16_t indices_ees1171ep1[] = {
 };
 
 /**
- * MGF1 Mask Generation Function Test Vectors
+ * Trits and Polynomial Test Vectors
  */
-mgf1_test_t mgf1_tests[] = {
-	{	HASH_SHA1, 20, 60, 20, 15, 24,
+static trits_test_t trits_tests[] = {
+	{	HASH_SHA1, 20, 24,
 		chunk_from_chars(
 						0xED, 0xA5, 0xC3, 0xBC, 0xAF, 0xB3, 0x20, 0x7D,
 						0x14, 0xA1, 0x54, 0xF7, 0x8B, 0x37, 0xF2, 0x8D,
@@ -405,26 +400,6 @@ mgf1_test_t mgf1_tests[] = {
 						0xA8, 0x68, 0xFF, 0x97, 0x36, 0x8A, 0xF4, 0xD6,
 						0xF1, 0xB6, 0x7E, 0x1F, 0x06, 0xCB, 0x57, 0xCB,
 						0x35, 0x38, 0xF2, 0x2D, 0xF6, 0x20),
-		chunk_from_chars(
-						0xF3, 0x9B, 0x0B, 0xB4, 0x97, 0x50, 0xB5, 0xA7,
-						0xE6, 0xBD, 0xDA, 0xD0, 0x9A, 0x52, 0xBE, 0xA0,
-						0x21, 0xC4, 0x90, 0xB6),
-		chunk_from_chars(
-						0x10, 0x43, 0x76, 0x72, 0x6C, 0xDE, 0xA0, 0x0E,
-						0x77, 0x51, 0xFB, 0x58, 0x39, 0x8A, 0x36, 0xE1,
-						0x63, 0x2B, 0xC9, 0x17, 0x56, 0x0C, 0x4B, 0x46,
-						0xA4, 0x07, 0xA4, 0x3B, 0x8E, 0x33, 0x4D, 0xD1,
-						0x65, 0xF1, 0xAC, 0xC8, 0x59, 0x21, 0x32, 0x16,
-						0x44, 0x2B, 0x7F, 0xB2, 0xA8, 0xA7, 0x26, 0x5D,
-						0xE8, 0x02, 0xBE, 0x8E, 0xDC, 0x34, 0xEB, 0x10,
-						0x76, 0x16, 0x8C, 0xDD, 0x90, 0x92, 0x3D, 0x29,
-						0x90, 0x98, 0x46, 0x11, 0x73, 0x53, 0x47, 0xB1,
-						0x2C, 0xD4, 0x83, 0x78, 0x9B, 0x93, 0x2F, 0x5B,
-						0xFC, 0x26, 0xFF, 0x42, 0x08, 0x1F, 0x70, 0x66,
-						0x40, 0x4B, 0xE7, 0x22, 0x3A, 0x56, 0x10, 0x6D,
-						0x4D, 0x29, 0x0B, 0xCE, 0xA6, 0x21, 0xB5, 0x5C,
-						0x71, 0x66, 0x2F, 0x70, 0x35, 0xD8, 0x8A, 0x92,
-						0x33, 0xF0, 0x16, 0xD4, 0x0E, 0x43, 0x8A, 0x14),
 		chunk_from_chars(
 				1, 2, 1, 0, 0,  1, 1, 1, 2, 0,  1, 0, 1, 1, 1,  0, 2, 0, 1, 1,
 				0, 0, 0, 1, 1,  0, 2, 0, 2, 2,	1, 2, 2, 2, 1,  2, 1, 1, 0, 0,
@@ -457,7 +432,7 @@ mgf1_test_t mgf1_tests[] = {
 			}
 		}
 	},
-	{	HASH_SHA256, 32, 64, 32, 33, 40,
+	{	HASH_SHA256, 32, 40,
 		chunk_from_chars(
 						0x52, 0xC5, 0xDD, 0x1E, 0xEF, 0x76, 0x1B, 0x53,
 						0x08, 0xE4, 0x86, 0x3F, 0x91, 0x12, 0x98, 0x69,
@@ -478,32 +453,6 @@ mgf1_test_t mgf1_tests[] = {
 						0x3A, 0x12, 0xC0, 0x1F, 0x3A, 0x00, 0xD0, 0x91,
 						0x18, 0xDD, 0x53, 0xE4, 0x22, 0xF5, 0x26, 0xA4,
 						0x54, 0xEE, 0x20, 0xF0, 0x80),
-		chunk_from_chars(
-						0x76, 0x89, 0x8B, 0x1B, 0x60, 0xEC, 0x10, 0x9D,
-						0x8F, 0x13, 0xF2, 0xFE, 0xD9, 0x85, 0xC1, 0xAB,
-						0x7E, 0xEE, 0xB1, 0x31, 0xDD, 0xF7, 0x7F, 0x0C,
-						0x7D, 0xF9, 0x6B, 0x7B, 0x19, 0x80, 0xBD, 0x28),
-		chunk_from_chars(
-						0xF1, 0x19, 0x02, 0x4F, 0xDA, 0x58, 0x05, 0x9A,
-						0x07, 0xDF, 0x61, 0x81, 0x22, 0x0E, 0x15, 0x46,
-						0xCB, 0x35, 0x3C, 0xDC, 0xAD, 0x20, 0xD9, 0x3F,
-						0x0D, 0xD1, 0xAA, 0x64, 0x66, 0x5C, 0xFA, 0x4A,
-						0xFE, 0xD6, 0x8F, 0x55, 0x57, 0x15, 0xB2, 0xA6,
-						0xA0, 0xE6, 0xA8, 0xC6, 0xBD, 0x28, 0xB4, 0xD5,
-						0x6E, 0x5B, 0x4B, 0xB0, 0x97, 0x09, 0xF5, 0xAC,
-						0x57, 0x65, 0x13, 0x97, 0x71, 0x2C, 0x45, 0x13,
-						0x3D, 0xEE, 0xFB, 0xBF, 0xFE, 0xAF, 0xBB, 0x4B,
-						0x0D, 0x5C, 0x45, 0xD4, 0x2F, 0x17, 0x92, 0x07,
-						0x66, 0x11, 0xF5, 0x46, 0xF8, 0x0C, 0x03, 0x92,
-						0xF5, 0xF5, 0xFF, 0xA4, 0xF3, 0x52, 0xF4, 0x08,
-						0x2C, 0x49, 0x32, 0x1A, 0x93, 0x51, 0x98, 0xB6,
-						0x94, 0x83, 0x39, 0xCF, 0x6B, 0x1F, 0x2F, 0xFC,
-						0x2B, 0xFF, 0x10, 0x71, 0x7D, 0x35, 0x6C, 0xEA,
-						0xC5, 0x66, 0xC7, 0x26, 0x7D, 0x9E, 0xAC, 0xDD,
-						0x35, 0xD7, 0x06, 0x3F, 0x40, 0x82, 0xDA, 0xC3,
-						0x2B, 0x3C, 0x91, 0x3A, 0x32, 0xF8, 0xB2, 0xC6,
-						0x44, 0x4D, 0xCD, 0xB6, 0x54, 0x5F, 0x81, 0x95,
-						0x59, 0xA1, 0xE5, 0x4E, 0xA5, 0x0A, 0x4A, 0x42),
 		chunk_from_chars(
 				1, 2, 2, 2, 2,  1, 2, 2, 0, 0,  2, 0, 0, 0, 0,  1, 2, 2, 2, 0,
 				2, 0, 0, 2, 2,  1, 2, 0, 0, 1,  2, 1, 0, 0, 0,  1, 0, 2, 2, 1,
@@ -546,104 +495,34 @@ mgf1_test_t mgf1_tests[] = {
 	}
 };
 
-START_TEST(test_ntru_mgf1)
-{
-	ntru_mgf1_t *mgf1;
-	chunk_t mask, mask1, mask2, mask3;
-
-	mask1 = mgf1_tests[_i].mask;
-	mask2 = chunk_skip(mask1, mgf1_tests[_i].ml1);
-	mask3 = chunk_skip(mask2, mgf1_tests[_i].ml2);
-	mask1.len = mgf1_tests[_i].ml1;
-	mask2.len = mgf1_tests[_i].ml2;
-	mask3.len = mgf1_tests[_i].ml3;
-
-	mgf1 = TEST_FUNCTION(ntru, ntru_mgf1_create, HASH_UNKNOWN,
-						 mgf1_tests[_i].seed, TRUE);
-	ck_assert(mgf1 == NULL);
-
-	mgf1 = TEST_FUNCTION(ntru, ntru_mgf1_create, mgf1_tests[_i].alg,
-						 chunk_empty, TRUE);
-	ck_assert(mgf1 == NULL);
-
-	/* return mask in allocated chunk */
-	mgf1 = TEST_FUNCTION(ntru, ntru_mgf1_create, mgf1_tests[_i].alg,
-						 mgf1_tests[_i].seed, TRUE);
-	ck_assert(mgf1);
-
-	/* check hash size */
-	ck_assert(mgf1->get_hash_size(mgf1) == mgf1_tests[_i].hash_size);
-
-	/* get zero number of octets */
-	ck_assert(mgf1->allocate_mask(mgf1, 0, &mask));
-	ck_assert(mask.len == 0 && mask.ptr == NULL);
-
-	/* get non-zero number of octets */
-	ck_assert(mgf1->allocate_mask(mgf1, mgf1_tests[_i].mask.len, &mask));
-	ck_assert(chunk_equals(mask, mgf1_tests[_i].mask));
-	mgf1->destroy(mgf1);
-
-	/* copy mask to pre-allocated buffer */
-	mgf1 = TEST_FUNCTION(ntru, ntru_mgf1_create, mgf1_tests[_i].alg,
-						 mgf1_tests[_i].seed, TRUE);
-	ck_assert(mgf1);
-	ck_assert(mgf1->get_mask(mgf1, mgf1_tests[_i].mask.len, mask.ptr));
-	ck_assert(chunk_equals(mask, mgf1_tests[_i].mask));
-	mgf1->destroy(mgf1);
-
-	/* get mask in batches without hashing the seed */
-	mgf1 = TEST_FUNCTION(ntru, ntru_mgf1_create, mgf1_tests[_i].alg,
-						 mgf1_tests[_i].hashed_seed, FALSE);
-	ck_assert(mgf1);
-
-	/* first batch */
-	ck_assert(mgf1->get_mask(mgf1, mask1.len, mask.ptr));
-	mask.len = mask1.len;
-	ck_assert(chunk_equals(mask, mask1));
-
-	/* second batch */
-	ck_assert(mgf1->get_mask(mgf1, mask2.len, mask.ptr));
-	mask.len = mask2.len;
-	ck_assert(chunk_equals(mask, mask2));
-
-	/* third batch */
-	ck_assert(mgf1->get_mask(mgf1, mask3.len, mask.ptr));
-	mask.len = mask3.len;
-	ck_assert(chunk_equals(mask, mask3));
-
-	mgf1->destroy(mgf1);
-	chunk_free(&mask);
-}
-END_TEST
-
 START_TEST(test_ntru_trits)
 {
 	ntru_trits_t *mask;
 	chunk_t trits;
 
-	mask = TEST_FUNCTION(ntru, ntru_trits_create, mgf1_tests[_i].trits.len,
-						 HASH_UNKNOWN, mgf1_tests[_i].seed);
+	mask = TEST_FUNCTION(ntru, ntru_trits_create, trits_tests[_i].trits.len,
+						 HASH_UNKNOWN, trits_tests[_i].seed);
 	ck_assert(mask == NULL);
 
-	mask = TEST_FUNCTION(ntru, ntru_trits_create, mgf1_tests[_i].trits.len,
-						 mgf1_tests[_i].alg, chunk_empty);
+	mask = TEST_FUNCTION(ntru, ntru_trits_create, trits_tests[_i].trits.len,
+						 trits_tests[_i].alg, chunk_empty);
 	ck_assert(mask == NULL);
 
-	mask = TEST_FUNCTION(ntru, ntru_trits_create, mgf1_tests[_i].trits.len,
-						 mgf1_tests[_i].alg, mgf1_tests[_i].seed);
+	mask = TEST_FUNCTION(ntru, ntru_trits_create, trits_tests[_i].trits.len,
+						 trits_tests[_i].alg, trits_tests[_i].seed);
 	ck_assert(mask);
 
 	trits = chunk_create(mask->get_trits(mask), mask->get_size(mask));
-	ck_assert(chunk_equals(trits, mgf1_tests[_i].trits));
+	ck_assert(chunk_equals(trits, trits_tests[_i].trits));
 	mask->destroy(mask);
 
 	/* generate a multiple of 5 trits */
-	mask = TEST_FUNCTION(ntru, ntru_trits_create, 10, mgf1_tests[_i].alg,
-						 mgf1_tests[_i].seed);
+	mask = TEST_FUNCTION(ntru, ntru_trits_create, 10, trits_tests[_i].alg,
+						 trits_tests[_i].seed);
 	ck_assert(mask);
 
 	trits = chunk_create(mask->get_trits(mask), mask->get_size(mask));
-	ck_assert(chunk_equals(trits, chunk_create(mgf1_tests[_i].trits.ptr, 10)));
+	ck_assert(chunk_equals(trits, chunk_create(trits_tests[_i].trits.ptr, 10)));
 	mask->destroy(mask);
 }
 END_TEST
@@ -656,10 +535,10 @@ START_TEST(test_ntru_poly)
 	poly_test_t *p;
 	int j, n;
 
-	seed = mgf1_tests[_i].seed;
-	seed.len = mgf1_tests[_i].seed_len;
+	seed = trits_tests[_i].seed;
+	seed.len = trits_tests[_i].seed_len;
 
-	p = &mgf1_tests[_i].poly_test[0];
+	p = &trits_tests[_i].poly_test[0];
 	poly = TEST_FUNCTION(ntru, ntru_poly_create_from_seed, HASH_UNKNOWN, seed,
 						 p->c_bits, p->N, p->q, p->indices_len, p->indices_len,
 						 p->is_product_form);
@@ -667,9 +546,9 @@ START_TEST(test_ntru_poly)
 
 	for (n = 0; n < 2; n++)
 	{
-		p = &mgf1_tests[_i].poly_test[n];
+		p = &trits_tests[_i].poly_test[n];
 		poly = TEST_FUNCTION(ntru, ntru_poly_create_from_seed,
-							mgf1_tests[_i].alg, seed, p->c_bits, p->N, p->q,
+							trits_tests[_i].alg, seed, p->c_bits, p->N, p->q,
 							p->indices_len, p->indices_len, p->is_product_form);
 		ck_assert(poly != NULL && poly->get_size(poly) == p->indices_size);
 
@@ -1182,7 +1061,6 @@ START_TEST(test_ntru_ke)
 	diffie_hellman_t *i_ntru, *r_ntru;
 	char buf[10];
 	int k, n, len;
-	status_t status;
 
 	k = (_i) / countof(parameter_sets);
 	n = (_i) % countof(parameter_sets);
@@ -1199,23 +1077,21 @@ START_TEST(test_ntru_ke)
 	ck_assert(i_ntru != NULL);
 	ck_assert(i_ntru->get_dh_group(i_ntru) == params[k].group);
 
-	i_ntru->get_my_public_value(i_ntru, &pub_key);
+	ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key));
 	ck_assert(pub_key.len > 0);
 
 	r_ntru = lib->crypto->create_dh(lib->crypto, params[k].group);
 	ck_assert(r_ntru != NULL);
 
-	r_ntru->set_other_public_value(r_ntru, pub_key);
-	r_ntru->get_my_public_value(r_ntru, &cipher_text);
+	ck_assert(r_ntru->set_other_public_value(r_ntru, pub_key));
+	ck_assert(r_ntru->get_my_public_value(r_ntru, &cipher_text));
 	ck_assert(cipher_text.len > 0);
 
-	status = r_ntru->get_shared_secret(r_ntru, &r_shared_secret);
-	ck_assert(status == SUCCESS);
+	ck_assert(r_ntru->get_shared_secret(r_ntru, &r_shared_secret));
 	ck_assert(r_shared_secret.len > 0);
 
-	i_ntru->set_other_public_value(i_ntru, cipher_text);
-	status = i_ntru->get_shared_secret(i_ntru, &i_shared_secret);
-	ck_assert(status == SUCCESS);
+	ck_assert(i_ntru->set_other_public_value(i_ntru, cipher_text));
+	ck_assert(i_ntru->get_shared_secret(i_ntru, &i_shared_secret));
 	ck_assert(chunk_equals(i_shared_secret, r_shared_secret));
 
 	chunk_clear(&i_shared_secret);
@@ -1233,8 +1109,8 @@ START_TEST(test_ntru_retransmission)
 	chunk_t pub_key1, pub_key2;
 
 	i_ntru = lib->crypto->create_dh(lib->crypto, NTRU_256_BIT);
-	i_ntru->get_my_public_value(i_ntru, &pub_key1);
-	i_ntru->get_my_public_value(i_ntru, &pub_key2);
+	ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key1));
+	ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key2));
 	ck_assert(chunk_equals(pub_key1, pub_key2));
 
 	chunk_free(&pub_key1);
@@ -1260,8 +1136,8 @@ START_TEST(test_ntru_pubkey_oid)
 	chunk_t cipher_text;
 
 	r_ntru = lib->crypto->create_dh(lib->crypto, NTRU_128_BIT);
-	r_ntru->set_other_public_value(r_ntru, oid_tests[_i]);
-	r_ntru->get_my_public_value(r_ntru, &cipher_text);
+	ck_assert(!r_ntru->set_other_public_value(r_ntru, oid_tests[_i]));
+	ck_assert(r_ntru->get_my_public_value(r_ntru, &cipher_text));
 	ck_assert(cipher_text.len == 0);
 	r_ntru->destroy(r_ntru);
 }
@@ -1276,14 +1152,14 @@ START_TEST(test_ntru_wrong_set)
 						  "libstrongswan.plugins.ntru.parameter_set",
 			 			  "x9_98_bandwidth");
 	i_ntru = lib->crypto->create_dh(lib->crypto, NTRU_112_BIT);
-	i_ntru->get_my_public_value(i_ntru, &pub_key);
+	ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key));
 
 	lib->settings->set_str(lib->settings,
 						  "libstrongswan.plugins.ntru.parameter_set",
 						  "optimum");
 	r_ntru = lib->crypto->create_dh(lib->crypto, NTRU_112_BIT);
-	r_ntru->set_other_public_value(r_ntru, pub_key);
-	r_ntru->get_my_public_value(r_ntru, &cipher_text);
+	ck_assert(!r_ntru->set_other_public_value(r_ntru, pub_key));
+	ck_assert(r_ntru->get_my_public_value(r_ntru, &cipher_text));
 	ck_assert(cipher_text.len == 0);
 
 	chunk_free(&pub_key);
@@ -1314,9 +1190,9 @@ START_TEST(test_ntru_ciphertext)
 	for (i = 0; i < countof(test); i++)
 	{
 		i_ntru = lib->crypto->create_dh(lib->crypto, NTRU_128_BIT);
-		i_ntru->get_my_public_value(i_ntru, &pub_key);
-		i_ntru->set_other_public_value(i_ntru, test[i]);
-		ck_assert(i_ntru->get_shared_secret(i_ntru, &shared_secret) != SUCCESS);
+		ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key));
+		ck_assert(!i_ntru->set_other_public_value(i_ntru, test[i]));
+		ck_assert(!i_ntru->get_shared_secret(i_ntru, &shared_secret));
 		ck_assert(shared_secret.len == 0);
 
 		chunk_free(&pub_key);
@@ -1334,12 +1210,12 @@ START_TEST(test_ntru_wrong_ciphertext)
 	r_ntru = lib->crypto->create_dh(lib->crypto, NTRU_128_BIT);
 	m_ntru = lib->crypto->create_dh(lib->crypto, NTRU_128_BIT);
 
-	i_ntru->get_my_public_value(i_ntru, &pub_key_i);
-	m_ntru->get_my_public_value(m_ntru, &pub_key_m);
-	r_ntru->set_other_public_value(r_ntru, pub_key_m);
-	r_ntru->get_my_public_value(r_ntru, &cipher_text);
-	i_ntru->set_other_public_value(i_ntru, cipher_text);
-	ck_assert(i_ntru->get_shared_secret(i_ntru, &shared_secret) != SUCCESS);
+	ck_assert(i_ntru->get_my_public_value(i_ntru, &pub_key_i));
+	ck_assert(m_ntru->get_my_public_value(m_ntru, &pub_key_m));
+	ck_assert(r_ntru->set_other_public_value(r_ntru, pub_key_m));
+	ck_assert(r_ntru->get_my_public_value(r_ntru, &cipher_text));
+	ck_assert(!i_ntru->set_other_public_value(i_ntru, cipher_text));
+	ck_assert(!i_ntru->get_shared_secret(i_ntru, &shared_secret));
 	ck_assert(shared_secret.len == 0);
 
 	chunk_free(&pub_key_i);
@@ -1370,16 +1246,12 @@ Suite *ntru_suite_create()
 	tcase_add_test(tc, test_ntru_drbg_reseed);
 	suite_add_tcase(s, tc);
 
-	tc = tcase_create("mgf1");
-	tcase_add_loop_test(tc, test_ntru_mgf1, 0, countof(mgf1_tests));
-	suite_add_tcase(s, tc);
-
 	tc = tcase_create("trits");
-	tcase_add_loop_test(tc, test_ntru_trits, 0, countof(mgf1_tests));
+	tcase_add_loop_test(tc, test_ntru_trits, 0, countof(trits_tests));
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("poly");
-	tcase_add_loop_test(tc, test_ntru_poly, 0, countof(mgf1_tests));
+	tcase_add_loop_test(tc, test_ntru_poly, 0, countof(trits_tests));
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("ring_mult");

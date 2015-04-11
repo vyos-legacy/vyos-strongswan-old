@@ -79,8 +79,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = src/_updown
-DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(dist_man8_MANS)
+DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -125,7 +124,7 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(man8dir)"
+am__installdirs = "$(DESTDIR)$(ipsecdir)"
 SCRIPTS = $(ipsec_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -146,9 +145,6 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-man8dir = $(mandir)/man8
-NROFF = nroff
-MANS = $(dist_man8_MANS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
@@ -176,6 +172,7 @@ DLLIB = @DLLIB@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
+EASY_INSTALL = @EASY_INSTALL@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -236,10 +233,12 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PLUGIN_CFLAGS = @PLUGIN_CFLAGS@
 PTHREADLIB = @PTHREADLIB@
 PYTHON = @PYTHON@
+PYTHONEGGINSTALLDIR = @PYTHONEGGINSTALLDIR@
 PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
 PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
+PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -313,6 +312,8 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libiptc_CFLAGS = @libiptc_CFLAGS@
+libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
@@ -373,7 +374,6 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 ipsec_SCRIPTS = _updown
 CLEANFILES = _updown
-dist_man8_MANS = _updown.8
 EXTRA_DIST = _updown.in
 all: all-am
 
@@ -449,47 +449,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-man8: $(dist_man8_MANS)
-	@$(NORMAL_INSTALL)
-	@list1='$(dist_man8_MANS)'; \
-	list2=''; \
-	test -n "$(man8dir)" \
-	  && test -n "`echo $$list1$$list2`" \
-	  || exit 0; \
-	echo " $(MKDIR_P) '$(DESTDIR)$(man8dir)'"; \
-	$(MKDIR_P) "$(DESTDIR)$(man8dir)" || exit 1; \
-	{ for i in $$list1; do echo "$$i"; done;  \
-	if test -n "$$list2"; then \
-	  for i in $$list2; do echo "$$i"; done \
-	    | sed -n '/\.8[a-z]*$$/p'; \
-	fi; \
-	} | while read p; do \
-	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; echo "$$p"; \
-	done | \
-	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
-	sed 'N;N;s,\n, ,g' | { \
-	list=; while read file base inst; do \
-	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
-	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man8dir)/$$inst'"; \
-	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man8dir)/$$inst" || exit $$?; \
-	  fi; \
-	done; \
-	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
-	while read files; do \
-	  test -z "$$files" || { \
-	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man8dir)'"; \
-	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man8dir)" || exit $$?; }; \
-	done; }
-
-uninstall-man8:
-	@$(NORMAL_UNINSTALL)
-	@list='$(dist_man8_MANS)'; test -n "$(man8dir)" || exit 0; \
-	files=`{ for i in $$list; do echo "$$i"; done; \
-	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
-	dir='$(DESTDIR)$(man8dir)'; $(am__uninstall_files_from_dir)
 tags TAGS:
 
 ctags CTAGS:
@@ -529,9 +488,9 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(SCRIPTS) $(MANS)
+all-am: Makefile $(SCRIPTS)
 installdirs:
-	for dir in "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(man8dir)"; do \
+	for dir in "$(DESTDIR)$(ipsecdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -585,7 +544,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-ipsecSCRIPTS install-man
+install-data-am: install-ipsecSCRIPTS
 
 install-dvi: install-dvi-am
 
@@ -601,7 +560,7 @@ install-info: install-info-am
 
 install-info-am:
 
-install-man: install-man8
+install-man:
 
 install-pdf: install-pdf-am
 
@@ -629,9 +588,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-ipsecSCRIPTS uninstall-man
-
-uninstall-man: uninstall-man8
+uninstall-am: uninstall-ipsecSCRIPTS
 
 .MAKE: install-am install-strip
 
@@ -641,13 +598,12 @@ uninstall-man: uninstall-man8
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am \
-	install-ipsecSCRIPTS install-man install-man8 install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-ipsecSCRIPTS install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-generic \
 	mostlyclean-libtool pdf pdf-am ps ps-am tags-am uninstall \
-	uninstall-am uninstall-ipsecSCRIPTS uninstall-man \
-	uninstall-man8
+	uninstall-am uninstall-ipsecSCRIPTS
 
 
 _updown : _updown.in

@@ -63,11 +63,13 @@ static void list_child(private_vici_query_t *this, vici_builder_t *b,
 	enumerator_t *enumerator;
 	traffic_selector_t *ts;
 
+	b->add_kv(b, "uniqueid", "%u", child->get_unique_id(child));
 	b->add_kv(b, "reqid", "%u", child->get_reqid(child));
 	b->add_kv(b, "state", "%N", child_sa_state_names, child->get_state(child));
 	b->add_kv(b, "mode", "%N", ipsec_mode_names, child->get_mode(child));
 	if (child->get_state(child) == CHILD_INSTALLED ||
-		child->get_state(child) == CHILD_REKEYING)
+		child->get_state(child) == CHILD_REKEYING ||
+		child->get_state(child) == CHILD_REKEYED)
 	{
 		b->add_kv(b, "protocol", "%N", protocol_id_names,
 				  child->get_protocol(child));
@@ -507,11 +509,14 @@ static void build_auth_cfgs(peer_cfg_t *peer_cfg, bool local, vici_builder_t *b)
 		certificate_t *cert;
 		char *str;
 	} v;
+	char buf[32];
+	int i = 0;
 
 	enumerator = peer_cfg->create_auth_cfg_enumerator(peer_cfg, local);
 	while (enumerator->enumerate(enumerator, &auth))
 	{
-		b->begin_section(b, local ? "local" : "remote");
+		snprintf(buf, sizeof(buf), "%s-%d", local ? "local" : "remote", ++i);
+		b->begin_section(b, buf);
 
 		rules = auth->create_enumerator(auth);
 		while (rules->enumerate(rules, &rule, &v))
@@ -976,10 +981,10 @@ CALLBACK(stats, vici_message_t*,
 		struct mallinfo mi = mallinfo();
 
 		b->begin_section(b, "mallinfo");
-		b->add_kv(b, "sbrk", "%d", mi.arena);
-		b->add_kv(b, "mmap", "%d", mi.hblkhd);
-		b->add_kv(b, "used", "%d", mi.uordblks);
-		b->add_kv(b, "free", "%d", mi.fordblks);
+		b->add_kv(b, "sbrk", "%u", mi.arena);
+		b->add_kv(b, "mmap", "%u", mi.hblkhd);
+		b->add_kv(b, "used", "%u", mi.uordblks);
+		b->add_kv(b, "free", "%u", mi.fordblks);
 		b->end_section(b);
 	}
 #endif /* HAVE_MALLINFO */

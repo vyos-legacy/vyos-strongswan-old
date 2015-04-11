@@ -474,12 +474,15 @@ static void destroy(private_daemon_t *this)
 	DESTROY_IF(this->public.connect_manager);
 	DESTROY_IF(this->public.mediation_manager);
 #endif /* ME */
-	/* make sure the cache is clear before unloading plugins */
+	/* make sure the cache and scheduler are clear before unloading plugins */
 	lib->credmgr->flush_cache(lib->credmgr, CERT_ANY);
+	lib->scheduler->flush(lib->scheduler);
 	lib->plugins->unload(lib->plugins);
+	DESTROY_IF(this->public.attributes);
 	DESTROY_IF(this->kernel_handler);
 	DESTROY_IF(this->public.traps);
 	DESTROY_IF(this->public.shunts);
+	DESTROY_IF(this->public.child_sa_manager);
 	DESTROY_IF(this->public.ike_sa_manager);
 	DESTROY_IF(this->public.controller);
 	DESTROY_IF(this->public.eap);
@@ -606,6 +609,7 @@ METHOD(daemon_t, initialize, bool,
 	{
 		return FALSE;
 	}
+	this->public.child_sa_manager = child_sa_manager_create();
 
 	/* Queue start_action job */
 	lib->processor->queue_job(lib->processor, (job_t*)start_action_job_create());
@@ -642,6 +646,7 @@ private_daemon_t *daemon_create()
 		.ref = 1,
 	);
 	charon = &this->public;
+	this->public.attributes = attribute_manager_create();
 	this->public.controller = controller_create();
 	this->public.eap = eap_manager_create();
 	this->public.xauth = xauth_manager_create();

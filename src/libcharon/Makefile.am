@@ -1,6 +1,10 @@
 ipseclib_LTLIBRARIES = libcharon.la
 
 libcharon_la_SOURCES = \
+attributes/attributes.c attributes/attributes.h \
+attributes/attribute_provider.h attributes/attribute_handler.h \
+attributes/attribute_manager.c attributes/attribute_manager.h \
+attributes/mem_pool.c attributes/mem_pool.h \
 bus/bus.c bus/bus.h \
 bus/listeners/listener.h \
 bus/listeners/logger.h \
@@ -60,6 +64,7 @@ processing/jobs/start_action_job.c processing/jobs/start_action_job.h \
 processing/jobs/roam_job.c processing/jobs/roam_job.h \
 processing/jobs/update_sa_job.c processing/jobs/update_sa_job.h \
 processing/jobs/inactivity_job.c processing/jobs/inactivity_job.h \
+processing/jobs/initiate_tasks_job.c processing/jobs/initiate_tasks_job.h \
 sa/eap/eap_method.c sa/eap/eap_method.h sa/eap/eap_inner_method.h \
 sa/eap/eap_manager.c sa/eap/eap_manager.h \
 sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
@@ -70,6 +75,7 @@ sa/ike_sa.c sa/ike_sa.h \
 sa/ike_sa_id.c sa/ike_sa_id.h \
 sa/keymat.h sa/keymat.c \
 sa/ike_sa_manager.c sa/ike_sa_manager.h \
+sa/child_sa_manager.c sa/child_sa_manager.h \
 sa/task_manager.h sa/task_manager.c \
 sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
@@ -96,6 +102,7 @@ sa/ikev2/tasks/ike_natd.c sa/ikev2/tasks/ike_natd.h \
 sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
 sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
 sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
+sa/ikev2/tasks/ike_reauth_complete.c sa/ikev2/tasks/ike_reauth_complete.h \
 sa/ikev2/tasks/ike_auth_lifetime.c sa/ikev2/tasks/ike_auth_lifetime.h \
 sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h
 endif
@@ -200,6 +207,20 @@ if USE_SOCKET_WIN
   SUBDIRS += plugins/socket_win
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/socket_win/libstrongswan-socket-win.la
+endif
+endif
+
+if USE_CONNMARK
+  SUBDIRS += plugins/connmark
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/connmark/libstrongswan-connmark.la
+endif
+endif
+
+if USE_FORECAST
+  SUBDIRS += plugins/forecast
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/forecast/libstrongswan-forecast.la
 endif
 endif
 
@@ -595,13 +616,6 @@ if MONOLITHIC
 endif
 endif
 
-if USE_UNIT_TESTS
-  SUBDIRS += plugins/unit_tester
-if MONOLITHIC
-  libcharon_la_LIBADD += plugins/unit_tester/libstrongswan-unit-tester.la
-endif
-endif
-
 if USE_XAUTH_GENERIC
   SUBDIRS += plugins/xauth_generic
 if MONOLITHIC
@@ -629,3 +643,29 @@ if MONOLITHIC
   libcharon_la_LIBADD += plugins/xauth_noauth/libstrongswan-xauth-noauth.la
 endif
 endif
+
+if USE_RESOLVE
+  SUBDIRS += plugins/resolve
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/resolve/libstrongswan-resolve.la
+endif
+endif
+
+if USE_ATTR
+  SUBDIRS += plugins/attr
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/attr/libstrongswan-attr.la
+endif
+endif
+
+if USE_ATTR_SQL
+  SUBDIRS += plugins/attr_sql
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/attr_sql/libstrongswan-attr-sql.la
+endif
+endif
+
+if MONOLITHIC
+  SUBDIRS += .
+endif
+SUBDIRS += tests

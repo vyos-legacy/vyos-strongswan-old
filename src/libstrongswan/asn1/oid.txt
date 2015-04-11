@@ -208,6 +208,24 @@
             0xA0             ""
               0x2A           "ITA"
                 0x01         "strongSwan"				OID_STRONGSWAN
+                0x02         "cps"
+                0x03         "e-voting"
+                0x05         "BLISS"
+                  0x01       "keyType"
+                    0x01     "blissPublicKey"			OID_BLISS_PUBLICKEY
+                  0x02       "parameters"
+                    0x01     "BLISS-I"					OID_BLISS_I
+                    0x02     "BLISS-II"					OID_BLISS_II
+                    0x03     "BLISS-III"				OID_BLISS_III
+                    0x04     "BLISS-IV"					OID_BLISS_IV
+                    0x05     "BLISS-B-I"				OID_BLISS_B_I
+                    0x06     "BLISS-B-II"				OID_BLISS_B_II
+                    0x07     "BLISS-B-III"				OID_BLISS_B_III
+                    0x08     "BLISS-B-IV"				OID_BLISS_B_IV
+                  0x03       "blissSigType"
+                    0x01     "BLISS-with-SHA512"		OID_BLISS_WITH_SHA512
+                    0x02     "BLISS-with-SHA384"		OID_BLISS_WITH_SHA384
+                    0x03     "BLISS-with-SHA256"		OID_BLISS_WITH_SHA256
           0x89               ""
             0x31             ""
               0x01           ""
@@ -215,6 +233,10 @@
                   0x02       ""
                     0x02     ""
                       0x4B   "TCGID"					OID_TCGID
+          0x97               ""
+            0x55             ""
+              0x01           ""
+                0x02         "blowfish-cbc"				OID_BLOWFISH_CBC
           0xC1               ""
             0x16             "ntruCryptosystems"
               0x01           "eess"

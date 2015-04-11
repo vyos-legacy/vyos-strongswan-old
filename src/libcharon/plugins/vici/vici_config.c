@@ -1551,8 +1551,8 @@ static void clear_start_action(private_vici_config_t *this,
 	enumerator_t *enumerator, *children;
 	child_sa_t *child_sa;
 	ike_sa_t *ike_sa;
-	u_int32_t reqid = 0, *del;
-	array_t *reqids = NULL;
+	u_int32_t id = 0, *del;
+	array_t *ids = NULL;
 	char *name;
 
 	name = child_cfg->get_name(child_cfg);
@@ -1568,23 +1568,23 @@ static void clear_start_action(private_vici_config_t *this,
 				{
 					if (streq(name, child_sa->get_name(child_sa)))
 					{
-						reqid = child_sa->get_reqid(child_sa);
-						array_insert_create(&reqids, ARRAY_TAIL, &reqid);
+						id = child_sa->get_unique_id(child_sa);
+						array_insert_create(&ids, ARRAY_TAIL, &id);
 					}
 				}
 				children->destroy(children);
 			}
 			enumerator->destroy(enumerator);
 
-			if (array_count(reqids))
+			if (array_count(ids))
 			{
-				while (array_remove(reqids, ARRAY_HEAD, &del))
+				while (array_remove(ids, ARRAY_HEAD, &del))
 				{
 					DBG1(DBG_CFG, "closing '%s' #%u", name, *del);
 					charon->controller->terminate_child(charon->controller,
 														*del, NULL, NULL, 0);
 				}
-				array_destroy(reqids);
+				array_destroy(ids);
 			}
 			break;
 		case ACTION_ROUTE:
@@ -1601,14 +1601,14 @@ static void clear_start_action(private_vici_config_t *this,
 					{
 						if (streq(name, child_sa->get_name(child_sa)))
 						{
-							reqid = child_sa->get_reqid(child_sa);
+							id = child_sa->get_reqid(child_sa);
 							break;
 						}
 					}
 					enumerator->destroy(enumerator);
-					if (reqid)
+					if (id)
 					{
-						charon->traps->uninstall(charon->traps, reqid);
+						charon->traps->uninstall(charon->traps, id);
 					}
 					break;
 			}
@@ -1751,7 +1751,8 @@ CALLBACK(config_sn, bool,
 		.fragmentation = FRAGMENTATION_NO,
 		.unique = UNIQUE_NO,
 		.keyingtries = 1,
-		.rekey_time = LFT_DEFAULT_IKE_REKEY,
+		.rekey_time = LFT_UNDEFINED,
+		.reauth_time = LFT_UNDEFINED,
 		.over_time = LFT_UNDEFINED,
 		.rand_time = LFT_UNDEFINED,
 	};
@@ -1809,6 +1810,20 @@ CALLBACK(config_sn, bool,
 		peer.local_port = charon->socket->get_port(charon->socket, FALSE);
 	}
 
+	if (peer.rekey_time == LFT_UNDEFINED && peer.reauth_time == LFT_UNDEFINED)
+	{
+		/* apply a default rekey time if no rekey/reauth time set */
+		peer.rekey_time = LFT_DEFAULT_IKE_REKEY;
+		peer.reauth_time = 0;
+	}
+	if (peer.rekey_time == LFT_UNDEFINED)
+	{
+		peer.rekey_time = 0;
+	}
+	if (peer.reauth_time == LFT_UNDEFINED)
+	{
+		peer.reauth_time = 0;
+	}
 	if (peer.over_time == LFT_UNDEFINED)
 	{
 		/* default over_time to 10% of rekey/reauth time if not given */
@@ -1816,9 +1831,17 @@ CALLBACK(config_sn, bool,
 	}
 	if (peer.rand_time == LFT_UNDEFINED)
 	{
-		/* default rand_time to over_time if not given */
-		peer.rand_time = min(peer.over_time,
-							 max(peer.rekey_time, peer.reauth_time) / 2);
+		/* default rand_time to over_time if not given, but don't make it
+		 * longer than half of rekey/rauth time */
+		if (peer.rekey_time && peer.reauth_time)
+		{
+			peer.rand_time = min(peer.rekey_time, peer.reauth_time);
+		}
+		else
+		{
+			peer.rand_time = max(peer.rekey_time, peer.reauth_time);
+		}
+		peer.rand_time = min(peer.over_time, peer.rand_time / 2);
 	}
 
 	log_peer_data(&peer);

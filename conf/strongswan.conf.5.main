@@ -198,6 +198,15 @@ keys, which is discouraged due to security concerns (offline attacks on the
 openly transmitted hash of the PSK).
 
 .TP
+.BR charon.ignore_acquire_ts " [no]"
+If this is disabled the traffic selectors from the kernel's acquire events,
+which are derived from the triggering packet, are prepended to the traffic
+selectors from the configuration for IKEv2 connection. By enabling this, such
+specific traffic selectors will be ignored and only the ones in the config will
+be sent. This always happens for IKEv1 connections as the protocol only supports
+one set of traffic selectors per CHILD_SA.
+
+.TP
 .BR charon.ignore_routing_tables " []"
 A space\-separated list of routing tables to be excluded from route lookups.
 
@@ -322,6 +331,15 @@ preserved. Enabled plugins not found in that list are ordered alphabetically
 before other plugins with the same priority.
 
 .TP
+.BR charon.make_before_break " [no]"
+Initiate IKEv2 reauthentication with a make\-before\-break instead of a
+break\-before\-make scheme. Make\-before\-break uses overlapping IKE and CHILD_SA
+during reauthentication by first recreating all new SAs before deleting the old
+ones. This behavior can be beneficial to avoid connectivity gaps during
+reauthentication, but requires support for overlapping SAs by the peer.
+strongSwan can handle such overlapping SAs since version 5.3.0.
+
+.TP
 .BR charon.max_packet " [10000]"
 Maximum packet size accepted by charon.
 
@@ -372,6 +390,10 @@ sure to adjust the permissions of the config file accordingly.
 .TP
 .BR charon.plugins.attr-sql.lease_history " [yes]"
 Enable logging of SQL IP pool leases.
+
+.TP
+.BR charon.plugins.bliss.use_bliss_b " [yes]"
+Use the enhanced BLISS\-B key generation and signature algorithm.
 
 .TP
 .BR charon.plugins.certexpire.csv.cron " []"
@@ -762,6 +784,31 @@ Remote IKE identity.
 Remote EAP or XAuth identity, if used.
 
 .TP
+.BR charon.plugins.forecast.groups " [224.0.0.1,224.0.0.22,224.0.0.251,224.0.0.252,239.255.255.250]"
+Comma separated list of multicast groups to join locally. The local host
+receives and forwards packets in the local LAN for joined multicast groups only.
+Packets matching the list of multicast groups get forwarded to connected
+clients. The default group includes host multicasts, IGMP, mDNS, LLMNR and
+SSDP/WS\-Discovery, and is usually a good choice for Windows clients.
+
+.TP
+.BR charon.plugins.forecast.interface " []"
+Name of the local interface to listen for broadcasts messages to forward. If no
+interface is configured, the first usable interface is used, which is usually
+just fine for single\-homed hosts. If your host has multiple interfaces, set this
+option to the local LAN interface you want to forward broadcasts from/to.
+
+.TP
+.BR charon.plugins.forecast.reinject " []"
+Comma separated list of CHILD_SA configuration names for which to perform
+multi/broadcast reinjection. For clients connecting over such a configuration,
+any multi/broadcast received over the tunnel gets reinjected to all active
+tunnels. This makes the broadcasts visible to other peers, and for examples
+allows clients to see others shares. If disabled, multi/broadcast messages
+received over a tunnel are injected to the local network only, but not to other
+IPsec clients.
+
+.TP
 .BR charon.plugins.gcrypt.quick_random " [no]"
 Use faster random numbers in gcrypt; for testing only, produces weak keys!
 
@@ -812,12 +859,42 @@ table. The format is [!]mark[/mask], where the optional exclamation mark inverts
 the meaning (i.e. the rule only applies to packets that don't match the mark).
 
 .TP
+.BR charon.plugins.kernel-netlink.ignore_retransmit_errors " [no]"
+Whether to ignore errors potentially resulting from a retransmission.
+
+.TP
 .BR charon.plugins.kernel-netlink.mss " [0]"
 MSS to set on installed routes, 0 to disable.
 
 .TP
 .BR charon.plugins.kernel-netlink.mtu " [0]"
 MTU to set on installed routes, 0 to disable.
+
+.TP
+.BR charon.plugins.kernel-netlink.parallel_route " [no]"
+Whether to perform concurrent Netlink ROUTE queries on a single socket. While
+parallel queries can improve throughput, it has more overhead. On vanilla Linux,
+DUMP queries fail with EBUSY and must be retried, further decreasing
+performance.
+
+.TP
+.BR charon.plugins.kernel-netlink.parallel_xfrm " [no]"
+Whether to perform concurrent Netlink XFRM queries on a single socket.
+
+.TP
+.BR charon.plugins.kernel-netlink.policy_update " [no]"
+Whether to always use XFRM_MSG_UPDPOLICY to install policies.
+
+.TP
+.BR charon.plugins.kernel-netlink.port_bypass " [no]"
+Whether to use port or socket based IKE XFRM bypass policies. IKE bypass
+policies are used to exempt IKE traffic from XFRM processing. The default socket
+based policies are directly tied to the IKE UDP sockets, port based policies use
+global XFRM bypass policies for the used IKE UDP ports.
+
+.TP
+.BR charon.plugins.kernel-netlink.retries " [0]"
+Number of Netlink message retransmissions to send on timeout.
 
 .TP
 .BR charon.plugins.kernel-netlink.roam_events " [yes]"
@@ -830,10 +907,21 @@ IPsec SAs in the kernel. While doing so enforces policies for inbound traffic,
 it also prevents the use of a single IPsec SA by more than one traffic selector.
 
 .TP
+.BR charon.plugins.kernel-netlink.timeout " [0]"
+Netlink message retransmission timeout, 0 to disable retransmissions.
+
+.TP
 .BR charon.plugins.kernel-netlink.xfrm_acq_expires " [165]"
 Lifetime of XFRM acquire state in kernel. The value gets written to
 /proc/sys/net/core/xfrm_acq_expires. Indirectly controls the delay of XFRM
 acquire messages sent.
+
+.TP
+.BR charon.plugins.kernel-pfkey.events_buffer_size " [0]"
+Size of the receive buffer for the event socket (0 for default size). Because
+events are received asynchronously installing e.g. lots of policies may require
+a larger buffer than the default on certain platforms in order to receive all
+messages.
 
 .TP
 .BR charon.plugins.kernel-pfroute.vip_wait " [1000]"
@@ -1291,6 +1379,18 @@ Maximum size of a PB\-TNC batch (upper limit via PT\-EAP = 65529).
 Maximum size of a PA\-TNC message (upper limit via PT\-EAP = 65497).
 
 .TP
+.BR charon.plugins.tnccs-20.mutual " [no]"
+Enable PB\-TNC mutual protocol.
+
+.TP
+.BR charon.plugins.tnccs-20.tests.pb_tnc_noskip " [no]"
+Send an unsupported PB\-TNC message type with the NOSKIP flag set.
+
+.TP
+.BR charon.plugins.tnccs-20.tests.pb_tnc_version " [2]"
+Send a PB\-TNC batch with a modified PB\-TNC version.
+
+.TP
 .BR charon.plugins.unbound.dlv_anchors " []"
 File to read trusted keys for DLV (DNSSEC Lookaside Validation) from. It uses
 the same format as
@@ -1444,6 +1544,19 @@ Specific IKEv2 message type to delay, 0 for any.
 Send strongSwan vendor ID payload
 
 .TP
+.BR charon.signature_authentication " [yes]"
+Whether to enable Signature Authentication as per RFC 7427.
+
+.TP
+.BR charon.signature_authentication_constraints " [yes]"
+If enabled, signature schemes configured in
+.RI "" "rightauth" ","
+in addition to getting
+used as constraints against signature schemes employed in the certificate chain,
+are also used as constraints against the signature scheme used by peers during
+IKEv2.
+
+.TP
 .B charon.start-scripts
 .br
 Section containing a list of scripts (name = path) that are executed when the
@@ -1581,27 +1694,27 @@ DH nonce length.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr17_after " []"
-Dummy data if the TBOOT log is not retrieved.
+PCR17 value after measurement.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr17_before " []"
-Dummy data if the TBOOT log is not retrieved.
+PCR17 value before measurement.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr17_meas " []"
-Dummy data if the TBOOT log is not retrieved.
+Dummy measurement value extended into PCR17 if the TBOOT log is not available.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr18_after " []"
-Dummy data if the TBOOT log is not retrieved.
+PCR18 value after measurement.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr18_before " []"
-Dummy data if the TBOOT log is not retrieved.
+PCR18 value before measurement.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr18_meas " []"
-Dummy data if the TBOOT log is not retrieved.
+Dummy measurement value extended into PCR17 if the TBOOT log is not available.
 
 .TP
 .BR libimcv.plugins.imc-attestation.pcr_info " [no]"

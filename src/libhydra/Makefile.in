@@ -79,18 +79,12 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @USE_WINDOWS_TRUE@am__append_1 = -lws2_32
-@USE_ATTR_TRUE@am__append_2 = plugins/attr
-@MONOLITHIC_TRUE@@USE_ATTR_TRUE@am__append_3 = plugins/attr/libstrongswan-attr.la
-@USE_ATTR_SQL_TRUE@am__append_4 = plugins/attr_sql
-@MONOLITHIC_TRUE@@USE_ATTR_SQL_TRUE@am__append_5 = plugins/attr_sql/libstrongswan-attr-sql.la
-@USE_KERNEL_PFKEY_TRUE@am__append_6 = plugins/kernel_pfkey
-@MONOLITHIC_TRUE@@USE_KERNEL_PFKEY_TRUE@am__append_7 = plugins/kernel_pfkey/libstrongswan-kernel-pfkey.la
-@USE_KERNEL_PFROUTE_TRUE@am__append_8 = plugins/kernel_pfroute
-@MONOLITHIC_TRUE@@USE_KERNEL_PFROUTE_TRUE@am__append_9 = plugins/kernel_pfroute/libstrongswan-kernel-pfroute.la
-@USE_KERNEL_NETLINK_TRUE@am__append_10 = plugins/kernel_netlink
-@MONOLITHIC_TRUE@@USE_KERNEL_NETLINK_TRUE@am__append_11 = plugins/kernel_netlink/libstrongswan-kernel-netlink.la
-@USE_RESOLVE_TRUE@am__append_12 = plugins/resolve
-@MONOLITHIC_TRUE@@USE_RESOLVE_TRUE@am__append_13 = plugins/resolve/libstrongswan-resolve.la
+@USE_KERNEL_PFKEY_TRUE@am__append_2 = plugins/kernel_pfkey
+@MONOLITHIC_TRUE@@USE_KERNEL_PFKEY_TRUE@am__append_3 = plugins/kernel_pfkey/libstrongswan-kernel-pfkey.la
+@USE_KERNEL_PFROUTE_TRUE@am__append_4 = plugins/kernel_pfroute
+@MONOLITHIC_TRUE@@USE_KERNEL_PFROUTE_TRUE@am__append_5 = plugins/kernel_pfroute/libstrongswan-kernel-pfroute.la
+@USE_KERNEL_NETLINK_TRUE@am__append_6 = plugins/kernel_netlink
+@MONOLITHIC_TRUE@@USE_KERNEL_NETLINK_TRUE@am__append_7 = plugins/kernel_netlink/libstrongswan-kernel-netlink.la
 subdir = src/libhydra
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -144,13 +138,10 @@ am__DEPENDENCIES_1 =
 libhydra_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(am__DEPENDENCIES_1) $(am__append_3) $(am__append_5) \
-	$(am__append_7) $(am__append_9) $(am__append_11) \
-	$(am__append_13)
+	$(am__append_7)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_libhydra_la_OBJECTS = hydra.lo attributes/attributes.lo \
-	attributes/attribute_manager.lo attributes/mem_pool.lo \
-	kernel/kernel_interface.lo kernel/kernel_ipsec.lo \
-	kernel/kernel_net.lo
+am_libhydra_la_OBJECTS = hydra.lo kernel/kernel_interface.lo \
+	kernel/kernel_ipsec.lo kernel/kernel_net.lo
 libhydra_la_OBJECTS = $(am_libhydra_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -232,8 +223,8 @@ am__define_uniq_tagged_files = \
   done | $(am__uniquify_input)`
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = . plugins/attr plugins/attr_sql plugins/kernel_pfkey \
-	plugins/kernel_pfroute plugins/kernel_netlink plugins/resolve
+DIST_SUBDIRS = . plugins/kernel_pfkey plugins/kernel_pfroute \
+	plugins/kernel_netlink tests
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -285,6 +276,7 @@ DLLIB = @DLLIB@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
+EASY_INSTALL = @EASY_INSTALL@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -345,10 +337,12 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PLUGIN_CFLAGS = @PLUGIN_CFLAGS@
 PTHREADLIB = @PTHREADLIB@
 PYTHON = @PYTHON@
+PYTHONEGGINSTALLDIR = @PYTHONEGGINSTALLDIR@
 PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
 PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
+PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -422,6 +416,8 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libiptc_CFLAGS = @libiptc_CFLAGS@
+libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
@@ -483,10 +479,6 @@ xml_LIBS = @xml_LIBS@
 ipseclib_LTLIBRARIES = libhydra.la
 libhydra_la_SOURCES = \
 hydra.c hydra.h \
-attributes/attributes.c attributes/attributes.h \
-attributes/attribute_provider.h attributes/attribute_handler.h \
-attributes/attribute_manager.c attributes/attribute_manager.h \
-attributes/mem_pool.c attributes/mem_pool.h \
 kernel/kernel_interface.c kernel/kernel_interface.h \
 kernel/kernel_ipsec.c kernel/kernel_ipsec.h \
 kernel/kernel_net.c kernel/kernel_net.h \
@@ -495,8 +487,7 @@ kernel/kernel_listener.h
 libhydra_la_LIBADD =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(am__append_1) $(am__append_3) $(am__append_5) \
-	$(am__append_7) $(am__append_9) $(am__append_11) \
-	$(am__append_13)
+	$(am__append_7)
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-DIPSEC_DIR=\"${ipsecdir}\" \
@@ -507,14 +498,12 @@ AM_LDFLAGS = \
 
 EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@SUBDIRS = . $(am__append_2) $(am__append_4) \
-@MONOLITHIC_FALSE@	$(am__append_6) $(am__append_8) \
-@MONOLITHIC_FALSE@	$(am__append_10) $(am__append_12)
+@MONOLITHIC_FALSE@	$(am__append_6) tests
 
 # build optional plugins
 ########################
 @MONOLITHIC_TRUE@SUBDIRS = $(am__append_2) $(am__append_4) \
-@MONOLITHIC_TRUE@	$(am__append_6) $(am__append_8) \
-@MONOLITHIC_TRUE@	$(am__append_10) $(am__append_12)
+@MONOLITHIC_TRUE@	$(am__append_6) . tests
 all: all-recursive
 
 .SUFFIXES:
@@ -584,18 +573,6 @@ clean-ipseclibLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
-attributes/$(am__dirstamp):
-	@$(MKDIR_P) attributes
-	@: > attributes/$(am__dirstamp)
-attributes/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) attributes/$(DEPDIR)
-	@: > attributes/$(DEPDIR)/$(am__dirstamp)
-attributes/attributes.lo: attributes/$(am__dirstamp) \
-	attributes/$(DEPDIR)/$(am__dirstamp)
-attributes/attribute_manager.lo: attributes/$(am__dirstamp) \
-	attributes/$(DEPDIR)/$(am__dirstamp)
-attributes/mem_pool.lo: attributes/$(am__dirstamp) \
-	attributes/$(DEPDIR)/$(am__dirstamp)
 kernel/$(am__dirstamp):
 	@$(MKDIR_P) kernel
 	@: > kernel/$(am__dirstamp)
@@ -614,8 +591,6 @@ libhydra.la: $(libhydra_la_OBJECTS) $(libhydra_la_DEPENDENCIES) $(EXTRA_libhydra
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f attributes/*.$(OBJEXT)
-	-rm -f attributes/*.lo
 	-rm -f kernel/*.$(OBJEXT)
 	-rm -f kernel/*.lo
 
@@ -623,9 +598,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hydra.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/attribute_manager.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/attributes.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/mem_pool.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@kernel/$(DEPDIR)/kernel_interface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@kernel/$(DEPDIR)/kernel_ipsec.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@kernel/$(DEPDIR)/kernel_net.Plo@am__quote@
@@ -659,7 +631,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-	-rm -rf attributes/.libs attributes/_libs
 	-rm -rf kernel/.libs kernel/_libs
 
 # This directory's subdirectories are mostly independent; you can cd
@@ -850,8 +821,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f attributes/$(DEPDIR)/$(am__dirstamp)
-	-rm -f attributes/$(am__dirstamp)
 	-rm -f kernel/$(DEPDIR)/$(am__dirstamp)
 	-rm -f kernel/$(am__dirstamp)
 
@@ -864,7 +833,7 @@ clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) attributes/$(DEPDIR) kernel/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) kernel/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -910,7 +879,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) attributes/$(DEPDIR) kernel/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) kernel/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -220,7 +220,9 @@ connections.<conn>.rekey_time = 4h
 	IKEv1 performs a reauthentication procedure instead.
 
 	With the default value IKE rekeying is scheduled every 4 hours, minus the
-	configured **rand_time**.
+	configured **rand_time**. If a **reauth_time** is configured, **rekey_time**
+	defaults to zero disabling rekeying; explicitly set both to enforce
+	rekeying and reauthentication.
 
 connections.<conn>.over_time = 10% of rekey_time/reauth_time
 	Hard IKE_SA lifetime if rekey/reauth does not complete, as time.
@@ -303,6 +305,22 @@ connections.<conn>.local<suffix>.id =
 	authentication, the IKE identity must be contained in the certificate,
 	either as subject or as subjectAltName.
 
+	The identity can be an IP address, a fully-qualified domain name, an email
+	address or a Distinguished Name for which the ID type is determined
+	automatically and the string is converted to the appropriate encoding. To
+	enforce a specific identity type, a prefix may be used, followed by a colon
+	(:). If the number sign (#) follows the colon, the remaining data is
+	interpreted as hex encoding, otherwise the string is used as-is as the
+	identification data. Note that this implies that no conversion is performed
+	for non-string identities. For example, _ipv4:10.0.0.1_ does not create a
+	valid ID_IPV4_ADDR IKE identity, as it does not get converted to binary
+	0x0a000001. Instead, one could use _ipv4:#0a000001_ to get a valid identity,
+	but just using the implicit type with automatic conversion is usually
+	simpler. The same applies to the ASN1 encoded types. The following prefixes
+	are known: _ipv4_, _ipv6_, _rfc822_, _email_, _userfqdn_, _fqdn_, _dns_,
+	_asn1dn_, _asn1gn_ and _keyid_. Custom type prefixes may be specified by
+	surrounding the numerical type value by curly brackets.
+
 connections.<conn>.local<suffix>.eap_id = id
 	Client EAP-Identity to use in EAP-Identity exchange and the EAP method.
 
@@ -335,9 +353,8 @@ connections.<conn>.remote<suffix> {}
 connections.<conn>.remote<suffix>.id = %any
 	IKE identity to expect for authentication round.
 
-	IKE identity to expect for authentication round. When using certificate
-	authentication, the IKE identity must be contained in the certificate,
-	either as subject or as subjectAltName.
+	IKE identity to expect for authentication round. Refer to the _local_ _id_
+	section for details.
 
 connections.<conn>.remote<suffix>.groups =
 	Authorization group memberships to require.
@@ -607,9 +624,10 @@ connections.<conn>.children.<child>.reqid = 0
 connections.<conn>.children.<child>.mark_in = 0/0x00000000
 	Netfilter mark and mask for input traffic.
 
-	Netfilter mark and mask for input traffic. On Linux Netfilter may apply
-	marks to each packet coming from a tunnel having that option set. The
-	mark may then be used by Netfilter to match rules.
+	Netfilter mark and mask for input traffic. On Linux Netfilter may require
+	marks on each packet to match an SA having that option set. This allows
+	Netfilter rules to select specific tunnels for incoming traffic. The
+	special value _%unique_ sets a unique mark on each CHILD_SA instance.
 
 	An additional mask may be appended to the mark, separated by _/_. The
 	default mask if omitted is 0xffffffff.
@@ -619,7 +637,8 @@ connections.<conn>.children.<child>.mark_out = 0/0x00000000
 
 	Netfilter mark and mask for output traffic. On Linux Netfilter may require
 	marks on each packet to match a policy having that option set. This allows
-	Netfilter rules to select specific tunnels for outgoing traffic.
+	Netfilter rules to select specific tunnels for outgoing traffic. The
+	special value _%unique_ sets a unique mark on each CHILD_SA instance.
 
 	An additional mask may be appended to the mark, separated by _/_. The
 	default mask if omitted is 0xffffffff.
@@ -756,6 +775,15 @@ secrets.pkcs8<suffix>.file =
 secrets.pkcs8<suffix>.secret
 	Value of decryption passphrase for PKCS#8 key.
 
+secrets.pkcs12<suffix> { # }
+	PKCS#12 decryption passphrase for a container in the _pkcs12_ folder.
+
+secrets.pkcs12<suffix>.file =
+	File name in the _pkcs12_ folder for which this passphrase should be used.
+
+secrets.pkcs12<suffix>.secret
+	Value of decryption passphrase for PKCS#12 container.
+
 pools { # }
 	Section defining named pools.
 
@@ -767,11 +795,11 @@ pools.<name> { # }
 	Section defining a single pool with a unique name.
 
 pools.<name>.addrs =
-	Subnet defining addresses allocated in pool.
+	Addresses allocated in pool.
 
-	Subnet defining addresses allocated in pool. Accepts a single CIDR subnet
-	defining the pool to allocate addresses from. Pools must be unique and
-	non-overlapping.
+	Subnet or range defining addresses allocated in pool. Accepts a single CIDR
+	subnet defining the pool to allocate addresses from, or an address range
+	(<from>-<to>).  Pools must be unique and non-overlapping.
 
 pools.<name>.<attr> =
 	Comma separated list of additional attributes from type <attr>.

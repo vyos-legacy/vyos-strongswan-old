@@ -131,6 +131,11 @@ enum ike_extension_t {
 	 * peer supports proprietary IKEv1 or standardized IKEv2 fragmentation
 	 */
 	EXT_IKE_FRAGMENTATION = (1<<11),
+
+	/**
+	 * Signature Authentication, RFC 7427
+	 */
+	EXT_SIGNATURE_AUTH = (1<<12),
 };
 
 /**
@@ -936,8 +941,9 @@ struct ike_sa_t {
 	/**
 	 * Reauthenticate the IKE_SA.
 	 *
-	 * Create a completely new IKE_SA with authentication, recreates all children
-	 * within the IKE_SA, closes this IKE_SA.
+	 * Triggers a new IKE_SA that replaces this one. IKEv1 implicitly inherits
+	 * all Quick Modes, while IKEv2 recreates all active and queued CHILD_SAs
+	 * in the new IKE_SA.
 	 *
 	 * @return				DESTROY_ME to destroy the IKE_SA
 	 */

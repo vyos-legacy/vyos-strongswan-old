@@ -18,6 +18,8 @@ endif
 
 libstrongswan_tnccs_20_la_SOURCES = \
 	tnccs_20_plugin.h tnccs_20_plugin.c tnccs_20.h tnccs_20.c \
+	tnccs_20_handler.h \
+	tnccs_20_server.h tnccs_20_server.c tnccs_20_client.h tnccs_20_client.c \
 	batch/pb_tnc_batch.h batch/pb_tnc_batch.c \
 	messages/pb_tnc_msg.h messages/pb_tnc_msg.c \
 	messages/ietf/pb_experimental_msg.h messages/ietf/pb_experimental_msg.c \
@@ -28,6 +30,8 @@ libstrongswan_tnccs_20_la_SOURCES = \
 	messages/ietf/pb_language_preference_msg.h messages/ietf/pb_language_preference_msg.c \
 	messages/ietf/pb_reason_string_msg.h messages/ietf/pb_reason_string_msg.c \
 	messages/ietf/pb_remediation_parameters_msg.h messages/ietf/pb_remediation_parameters_msg.c \
+	messages/ita/pb_mutual_capability_msg.h messages/ita/pb_mutual_capability_msg.c \
+	messages/ita/pb_noskip_test_msg.h messages/ita/pb_noskip_test_msg.c \
 	messages/tcg/pb_pdp_referral_msg.h messages/tcg/pb_pdp_referral_msg.c \
 	state_machine/pb_tnc_state_machine.h state_machine/pb_tnc_state_machine.c
 

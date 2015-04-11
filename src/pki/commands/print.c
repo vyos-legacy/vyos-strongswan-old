@@ -32,9 +32,12 @@
 static void print_pubkey(public_key_t *key)
 {
 	chunk_t chunk;
+	key_type_t type;
 
-	printf("pubkey:    %N %d bits\n", key_type_names, key->get_type(key),
-		   key->get_keysize(key));
+	type = key->get_type(key);
+	printf("pubkey:    %N %d bits%s\n", key_type_names, type,
+			key->get_keysize(key), (type == KEY_BLISS) ? " strength" : "");
+
 	if (key->get_fingerprint(key, KEYID_PUBKEY_INFO_SHA1, &chunk))
 	{
 		printf("keyid:     %#B\n", &chunk);
@@ -62,6 +65,22 @@ static void print_key(private_key_t *key)
 	else
 	{
 		printf("extracting public from private key failed\n");
+	}
+}
+
+/**
+ * Get a prefix for a named constraint identity type
+ */
+static char* get_type_pfx(identification_t *id)
+{
+	switch (id->get_type(id))
+	{
+		case ID_RFC822_ADDR:
+			return "email:";
+		case ID_FQDN:
+			return "dns:";
+		default:
+			return "";
 	}
 }
 
@@ -202,7 +221,7 @@ static void print_x509(x509_t *x509)
 			printf("Permitted NameConstraints:\n");
 			first = FALSE;
 		}
-		printf("           %Y\n", id);
+		printf("           %s%Y\n", get_type_pfx(id), id);
 	}
 	enumerator->destroy(enumerator);
 	first = TRUE;
@@ -214,7 +233,7 @@ static void print_x509(x509_t *x509)
 			printf("Excluded NameConstraints:\n");
 			first = FALSE;
 		}
-		printf("           %Y\n", id);
+		printf("           %s%Y\n", get_type_pfx(id), id);
 	}
 	enumerator->destroy(enumerator);
 
@@ -580,6 +599,11 @@ static int print()
 					type = CRED_PRIVATE_KEY;
 					subtype = KEY_ECDSA;
 				}
+				else if (streq(arg, "bliss-priv"))
+				{
+					type = CRED_PRIVATE_KEY;
+					subtype = KEY_BLISS;
+				}
 				else
 				{
 					return command_usage( "invalid input type");
@@ -652,7 +676,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t)
 		{ print, 'a', "print",
 		"print a credential in a human readable form",
-		{"[--in file] [--type rsa-priv|ecdsa-priv|pub|x509|crl|ac]"},
+		{"[--in file] [--type rsa-priv|ecdsa-priv|bliss-priv|pub|x509|crl|ac]"},
 		{
 			{"help",	'h', 0, "show usage information"},
 			{"in",		'i', 1, "input file, default: stdin"},

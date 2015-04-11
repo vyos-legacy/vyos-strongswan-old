@@ -145,25 +145,25 @@ the following C array:
 
 	char msg[] = {
 		/* key1 = value1 */
-		2, 4,'k','e','y','1', 0,6,'v','a','l','u','e','1',
+		3, 4,'k','e','y','1', 0,6,'v','a','l','u','e','1',
 		/* section1 */
-		0, 8,'s','e','c','t','i','o','n','1',
+		1, 8,'s','e','c','t','i','o','n','1',
 		/* sub-section */
-		0, 11,'s','u','b','-','s','e','c','t','i','o','n',
+		1, 11,'s','u','b','-','s','e','c','t','i','o','n',
 		/* key2 = value2 */
-		2, 4,'k','e','y','2', 0,6,'v','a','l','u','e','2',
+		3, 4,'k','e','y','2', 0,6,'v','a','l','u','e','2',
 		/* sub-section end */
-		1,
+		2,
 		/* list1 */
-		3, 5, 'l','i','s','t','1',
+		4, 5, 'l','i','s','t','1',
 		/* item1 */
-		4, 0,5,'i','t','e','m','1',
+		5, 0,5,'i','t','e','m','1',
 		/* item2 */
-		4, 0,5,'i','t','e','m','2',
+		5, 0,5,'i','t','e','m','2',
 		/* list1 end */
-		5,
+		6,
 		/* section1 end */
-		1,
+		2,
 	};
 
 ## Client-initiated commands ##
@@ -559,6 +559,7 @@ command.
 			]
 			child-sas = {
 				<child-sa-name>* = {
+					uniqueid = <unique CHILD_SA identifier>
 					reqid = <reqid of CHILD_SA>
 					state = <state string of CHILD_SA>
 					mode = <IPsec mode, tunnel|transport|beet>
@@ -820,9 +821,9 @@ during encoding.
 
 ## Connecting to the daemon ##
 
-To create a connection to the daemon, a socket must be passed to the
-_Connection_ constructor. There is no default, but on Unix systems usually
-a Unix socket over _/var/run/charon.vici_ is used:
+To create a connection to the daemon, a socket can be passed to the
+_Connection_ constructor. If none is passed, a default Unix socket at
+_/var/run/charon.vici_ is used:
 
 	require "vici"
 	require "socket"
@@ -854,3 +855,73 @@ _list-conns_ command and implicitly the _list-conn_ event:
 
 For more details about the ruby gem refer to the comments in the gem source
 code or the generated documentation.
+
+# vici Python egg #
+
+The _vici Python egg_ is a pure Python implementation of the VICI protocol to
+implement client applications. It is provided in the _python_ subdirectory, and
+gets built and installed if strongSwan has been _./configure_'d with
+_--enable-vici_ and _--enable-python-eggs_.
+
+The _vici_ module provides a _Session()_ constructor for a high level interface,
+the underlying classes are usually not required to build Python applications
+using VICI. The _Session_ class provides methods for the supported VICI
+commands.
+
+To represent the VICI message data tree, the library converts the binary
+encoding to Python data types. The _Session_ class takes and returns Python
+objects for the exchanged message data:
+ * Sections get encoded as OrderedDict, containing other sections, or
+ * Key/Values, where the values are strings as dictionary values
+ * Lists get encoded as Python Lists with string values
+Values that do not conform to Python dict or list get converted to strings using
+str().
+
+## Connecting to the daemon ##
+
+To create a connection to the daemon, a socket can be passed to the _Session_
+constructor. If none is passed, a default Unix socket at _/var/run/charon.vici_
+is used:
+
+	import vici
+	import socket
+
+	s = socket.socket(socket.AF_UNIX)
+	s.connect("/var/run/charon.vici")
+	v = vici.Session(s)
+
+## A simple client request ##
+
+An example to print the daemon version information is as simple as:
+
+	ver = v.version()
+
+	print "{daemon} {version} ({sysname}, {release}, {machine})".format(**ver)
+
+## A request with response iteration ##
+
+The _Session_ class returns an iterable Python generator for streamed events to
+continuously stream objects to the caller. The following example lists all
+loaded connections using the _list-conns_ command and implicitly the _list-conn_
+event:
+
+	for conn in v.list_conns():
+		for key in conn:
+			print key
+
+Please note that if the returned generator is not iterated completely, it must
+be closed using _close()_. This is implicitly done when breaking from a loop,
+but an explicit call may be required when directly iterating the generator with
+_next()_.
+
+## Sorting in dictionaries ##
+
+In VICI, in some message trees the order of objects in dictionary matters. In
+contrast to ruby Hashes, Python dictionaries do not preserve order of added
+objects. It is therefore recommended to use OrderedDicts instead of the default
+dictionaries. Objects returned by the library use OrderedDicts.
+
+## API documentation ##
+
+For more details about the Python egg refer to the comments in the Python source
+code.

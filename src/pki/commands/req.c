@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Martin Willi
- * Copyright (C) 2009 Andreas Steffen
+ * Copyright (C) 2009-2015 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * HSR Hochschule fuer Technik Rapperswil
  *
@@ -30,7 +31,7 @@ static int req()
 {
 	cred_encoding_type_t form = CERT_ASN1_DER;
 	key_type_t type = KEY_RSA;
-	hash_algorithm_t digest = HASH_SHA1;
+	hash_algorithm_t digest = HASH_UNKNOWN;
 	certificate_t *cert = NULL;
 	private_key_t *private = NULL;
 	char *file = NULL, *dn = NULL, *error = NULL;
@@ -56,6 +57,10 @@ static int req()
 				else if (streq(arg, "ecdsa"))
 				{
 					type = KEY_ECDSA;
+				}
+				else if (streq(arg, "bliss"))
+				{
+					type = KEY_BLISS;
 				}
 				else
 				{
@@ -134,6 +139,10 @@ static int req()
 		error = "parsing private key failed";
 		goto end;
 	}
+	if (digest == HASH_UNKNOWN)
+	{
+		digest = get_default_digest(private);
+	}
 	cert = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_PKCS10_REQUEST,
 							  BUILD_SIGNING_KEY, private,
 							  BUILD_SUBJECT, id,
@@ -185,7 +194,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		req, 'r', "req",
 		"create a PKCS#10 certificate request",
-		{"  [--in file] [--type rsa|ecdsa] --dn distinguished-name",
+		{"  [--in file] [--type rsa|ecdsa|bliss] --dn distinguished-name",
 		 "[--san subjectAltName]+ [--password challengePassword]",
 		 "[--digest md5|sha1|sha224|sha256|sha384|sha512] [--outform der|pem]"},
 		{
@@ -195,7 +204,7 @@ static void __attribute__ ((constructor))reg()
 			{"dn",		'd', 1, "subject distinguished name"},
 			{"san",		'a', 1, "subjectAltName to include in cert request"},
 			{"password",'p', 1, "challengePassword to include in cert request"},
-			{"digest",	'g', 1, "digest for signature creation, default: sha1"},
+			{"digest",	'g', 1, "digest for signature creation, default: key-specific"},
 			{"outform",	'f', 1, "encoding of generated request, default: der"},
 		}
 	});

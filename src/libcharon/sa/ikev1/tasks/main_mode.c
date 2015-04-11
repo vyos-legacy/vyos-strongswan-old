@@ -205,6 +205,43 @@ static status_t send_delete(private_main_mode_t *this)
 	return ALREADY_DONE;
 }
 
+/**
+ * Add an INITIAL_CONTACT notify if first contact with peer
+ */
+static void add_initial_contact(private_main_mode_t *this, message_t *message,
+								identification_t *idi)
+{
+	identification_t *idr;
+	host_t *host;
+	notify_payload_t *notify;
+	ike_sa_id_t *ike_sa_id;
+	u_int64_t spi_i, spi_r;
+	chunk_t spi;
+
+	idr = this->ph1->get_id(this->ph1, this->peer_cfg, FALSE);
+	if (idr && !idr->contains_wildcards(idr))
+	{
+		if (this->peer_cfg->get_unique_policy(this->peer_cfg) != UNIQUE_NO &&
+			this->peer_cfg->get_unique_policy(this->peer_cfg) != UNIQUE_NEVER)
+		{
+			host = this->ike_sa->get_other_host(this->ike_sa);
+			if (!charon->ike_sa_manager->has_contact(charon->ike_sa_manager,
+										idi, idr, host->get_family(host)))
+			{
+				notify = notify_payload_create_from_protocol_and_type(
+								PLV1_NOTIFY, PROTO_IKE, INITIAL_CONTACT_IKEV1);
+				ike_sa_id = this->ike_sa->get_id(this->ike_sa);
+				spi_i = ike_sa_id->get_initiator_spi(ike_sa_id);
+				spi_r = ike_sa_id->get_responder_spi(ike_sa_id);
+				spi = chunk_cata("cc", chunk_from_thing(spi_i),
+								 chunk_from_thing(spi_r));
+				notify->set_spi_data(notify, spi);
+				message->add_payload(message, (payload_t*)notify);
+			}
+		}
+	}
+}
+
 METHOD(task_t, build_i, status_t,
 	private_main_mode_t *this, message_t *message)
 {
@@ -310,6 +347,8 @@ METHOD(task_t, build_i, status_t,
 			{
 				return send_notify(this, AUTHENTICATION_FAILED);
 			}
+
+			add_initial_contact(this, message, id);
 
 			this->state = MM_AUTH;
 			return NEED_MORE;

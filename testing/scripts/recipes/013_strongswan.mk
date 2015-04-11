@@ -70,6 +70,8 @@ CONFIG_OPTS = \
 	--enable-socket-dynamic \
 	--enable-dhcp \
 	--enable-farp \
+	--enable-connmark \
+	--enable-forecast \
 	--enable-addrblock \
 	--enable-ctr \
 	--enable-ccm \
@@ -92,7 +94,8 @@ CONFIG_OPTS = \
 	--enable-tkm \
 	--enable-ntru \
 	--enable-lookip \
-	--enable-swanctl
+	--enable-swanctl \
+	--enable-bliss
 
 export ADA_PROJECT_PATH=/usr/local/ada/lib/gnat
 

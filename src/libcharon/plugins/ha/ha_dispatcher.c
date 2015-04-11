@@ -81,17 +81,18 @@ struct ha_diffie_hellman_t {
 	chunk_t pub;
 };
 
-METHOD(diffie_hellman_t, dh_get_shared_secret, status_t,
+METHOD(diffie_hellman_t, dh_get_shared_secret, bool,
 	ha_diffie_hellman_t *this, chunk_t *secret)
 {
 	*secret = chunk_clone(this->secret);
-	return SUCCESS;
+	return TRUE;
 }
 
-METHOD(diffie_hellman_t, dh_get_my_public_value, void,
+METHOD(diffie_hellman_t, dh_get_my_public_value, bool,
 	ha_diffie_hellman_t *this, chunk_t *value)
 {
 	*value = chunk_clone(this->pub);
+	return TRUE;
 }
 
 METHOD(diffie_hellman_t, dh_destroy, void,
@@ -373,6 +374,9 @@ static void process_ike_update(private_ha_dispatcher_t *this,
 				else
 				{
 					DBG1(DBG_IKE, "HA is missing nodes peer configuration");
+					charon->ike_sa_manager->checkin_and_destroy(
+												charon->ike_sa_manager, ike_sa);
+					ike_sa = NULL;
 				}
 				break;
 			case HA_EXTENSIONS:
@@ -718,7 +722,8 @@ static void process_child_add(private_ha_dispatcher_t *this,
 
 	child_sa = child_sa_create(ike_sa->get_my_host(ike_sa),
 							   ike_sa->get_other_host(ike_sa), config, 0,
-							   ike_sa->has_condition(ike_sa, COND_NAT_ANY));
+							   ike_sa->has_condition(ike_sa, COND_NAT_ANY),
+							   0, 0);
 	child_sa->set_mode(child_sa, mode);
 	child_sa->set_protocol(child_sa, PROTO_ESP);
 	child_sa->set_ipcomp(child_sa, ipcomp);
@@ -835,7 +840,7 @@ static void process_child_add(private_ha_dispatcher_t *this,
 
 	DBG1(DBG_CFG, "installed HA CHILD_SA %s{%d} %#R=== %#R "
 		"(segment in: %d%s, out: %d%s)", child_sa->get_name(child_sa),
-		child_sa->get_reqid(child_sa), local_ts, remote_ts,
+		child_sa->get_unique_id(child_sa), local_ts, remote_ts,
 		seg_i, this->segments->is_active(this->segments, seg_i) ? "*" : "",
 		seg_o, this->segments->is_active(this->segments, seg_o) ? "*" : "");
 	child_sa->add_policies(child_sa, local_ts, remote_ts);

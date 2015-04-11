@@ -19,6 +19,9 @@
 /**
  * @defgroup libcharon libcharon
  *
+ * @defgroup attributes attributes
+ * @ingroup libcharon
+ *
  * @defgroup bus bus
  * @ingroup libcharon
  *
@@ -152,12 +155,14 @@
 
 typedef struct daemon_t daemon_t;
 
+#include <attributes/attribute_manager.h>
 #include <network/sender.h>
 #include <network/receiver.h>
 #include <network/socket_manager.h>
 #include <control/controller.h>
 #include <bus/bus.h>
 #include <sa/ike_sa_manager.h>
+#include <sa/child_sa_manager.h>
 #include <sa/trap_manager.h>
 #include <sa/shunt_manager.h>
 #include <config/backend_manager.h>
@@ -215,6 +220,11 @@ struct daemon_t {
 	ike_sa_manager_t *ike_sa_manager;
 
 	/**
+	 * A child_sa_manager_t instance.
+	 */
+	child_sa_manager_t *child_sa_manager;
+
+	/**
 	 * Manager for triggering policies, called traps
 	 */
 	trap_manager_t *traps;
@@ -238,6 +248,11 @@ struct daemon_t {
 	 * The Receiver-Thread.
 	 */
 	receiver_t *receiver;
+
+	/**
+	 * Manager for IKE configuration attributes
+	 */
+	attribute_manager_t *attributes;
 
 	/**
 	 * The signaling bus.

@@ -6,12 +6,14 @@ asn1/asn1.c asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c bio/bio_writer.c \
 collections/blocking_queue.c collections/enumerator.c collections/hashtable.c \
 collections/array.c \
 collections/linked_list.c crypto/crypters/crypter.c crypto/hashers/hasher.c \
+crypto/hashers/hash_algorithm_set.c \
 crypto/proposal/proposal_keywords.c crypto/proposal/proposal_keywords_static.c \
 crypto/prfs/prf.c crypto/prfs/mac_prf.c crypto/pkcs5.c \
 crypto/rngs/rng.c crypto/prf_plus.c crypto/signers/signer.c \
 crypto/signers/mac_signer.c crypto/crypto_factory.c crypto/crypto_tester.c \
 crypto/diffie_hellman.c crypto/aead.c crypto/transform.c \
 crypto/iv/iv_gen_rand.c crypto/iv/iv_gen_seq.c \
+crypto/mgf1/mgf1.c crypto/mgf1/mgf1_bitspender.c \
 credentials/credential_factory.c credentials/builder.c \
 credentials/cred_encoding.c credentials/keys/private_key.c \
 credentials/keys/public_key.c credentials/keys/shared_key.c \
@@ -60,13 +62,15 @@ library.h \
 asn1/asn1.h asn1/asn1_parser.h asn1/oid.h bio/bio_reader.h bio/bio_writer.h \
 collections/blocking_queue.h collections/enumerator.h collections/hashtable.h \
 collections/linked_list.h collections/array.h collections/dictionary.h \
-crypto/crypters/crypter.h crypto/hashers/hasher.h crypto/mac.h \
+crypto/crypters/crypter.h crypto/hashers/hasher.h \
+crypto/hashers/hash_algorithm_set.h crypto/mac.h \
 crypto/proposal/proposal_keywords.h crypto/proposal/proposal_keywords_static.h \
 crypto/prfs/prf.h crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
 crypto/prf_plus.h crypto/signers/signer.h crypto/signers/mac_signer.h \
 crypto/crypto_factory.h crypto/crypto_tester.h crypto/diffie_hellman.h \
 crypto/aead.h crypto/transform.h crypto/pkcs5.h crypto/iv/iv_gen.h \
 crypto/iv/iv_gen_rand.h crypto/iv/iv_gen_seq.h \
+crypto/mgf1/mgf1.h crypto/mgf1/mgf1_bitspender.h \
 credentials/credential_factory.h credentials/builder.h \
 credentials/cred_encoding.h credentials/keys/private_key.h \
 credentials/keys/public_key.h credentials/keys/shared_key.h \
@@ -101,8 +105,8 @@ utils/utils.h utils/chunk.h utils/debug.h utils/enum.h utils/identification.h \
 utils/lexparser.h utils/optionsfrom.h utils/capabilities.h utils/backtrace.h \
 utils/leak_detective.h utils/printf_hook/printf_hook.h \
 utils/printf_hook/printf_hook_vstr.h utils/printf_hook/printf_hook_builtin.h \
-utils/parser_helper.h utils/test.h utils/integrity_checker.h utils/windows.h \
-utils/process.h utils/utils/strerror.h
+utils/parser_helper.h utils/test.h utils/integrity_checker.h utils/process.h \
+utils/utils/strerror.h utils/compat/windows.h utils/compat/apple.h
 endif
 
 library.lo :	$(top_builddir)/config.status
@@ -133,7 +137,7 @@ if USE_WINDOWS
     threading/windows/rwlock.c \
     threading/windows/spinlock.c \
     threading/windows/semaphore.c \
-    utils/windows.c
+    utils/compat/windows.c
 else
   libstrongswan_la_LIBADD += $(PTHREADLIB)
 endif
@@ -425,6 +429,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_FILES
+  SUBDIRS += plugins/files
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/files/libstrongswan-files.la
+endif
+endif
+
 if USE_WINHTTP
   SUBDIRS += plugins/winhttp
 if MONOLITHIC
@@ -544,6 +555,13 @@ if MONOLITHIC
 endif
 endif
 
+if USE_BLISS
+  SUBDIRS += plugins/bliss
+if MONOLITHIC
+  libstrongswan_la_LIBADD += plugins/bliss/libstrongswan-bliss.la
+endif
+endif
+
 if USE_TEST_VECTORS
   SUBDIRS += plugins/test_vectors
 if MONOLITHIC
@@ -555,3 +573,6 @@ if MONOLITHIC
   SUBDIRS += .
 endif
 SUBDIRS += tests
+if USE_BLISS
+  SUBDIRS += plugins/bliss/tests
+endif
