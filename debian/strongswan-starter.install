@@ -15,9 +15,6 @@ usr/lib/ipsec/plugins/libstrongswan-updown.so
 usr/share/strongswan/templates/config/plugins/updown.conf
 etc/strongswan.d/charon/updown.conf
 usr/lib/ipsec/_updown
-usr/lib/ipsec/_updown_espmark
-usr/share/man/man8/_updown.8
-usr/share/man/man8/_updown_espmark.8
 #tools
 usr/bin/pki
 usr/lib/ipsec/scepclient
