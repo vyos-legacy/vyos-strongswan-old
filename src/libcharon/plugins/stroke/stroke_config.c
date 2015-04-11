@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Tobias Brunner
+ * Copyright (C) 2012-2014 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -301,7 +301,8 @@ static void build_crl_policy(auth_cfg_t *cfg, bool local, int policy)
 static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
 {
 	enumerator_t *enumerator;
-	bool rsa = FALSE, ecdsa = FALSE, rsa_len = FALSE, ecdsa_len = FALSE;
+	bool rsa = FALSE, ecdsa = FALSE, bliss = FALSE,
+		 rsa_len = FALSE, ecdsa_len = FALSE, bliss_strength = FALSE;
 	int strength;
 	char *token;
 
@@ -328,9 +329,12 @@ static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
 			{ "sha256",		SIGN_ECDSA_256,					KEY_ECDSA,	},
 			{ "sha384",		SIGN_ECDSA_384,					KEY_ECDSA,	},
 			{ "sha512",		SIGN_ECDSA_521,					KEY_ECDSA,	},
+			{ "sha256",		SIGN_BLISS_WITH_SHA256,			KEY_BLISS,	},
+			{ "sha384",		SIGN_BLISS_WITH_SHA384,			KEY_BLISS,	},
+			{ "sha512",		SIGN_BLISS_WITH_SHA512,			KEY_BLISS,	},
 		};
 
-		if (rsa_len || ecdsa_len)
+		if (rsa_len || ecdsa_len || bliss_strength)
 		{	/* expecting a key strength token */
 			strength = atoi(token);
 			if (strength)
@@ -343,8 +347,12 @@ static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
 				{
 					cfg->add(cfg, AUTH_RULE_ECDSA_STRENGTH, (uintptr_t)strength);
 				}
+				else if (bliss_strength)
+				{
+					cfg->add(cfg, AUTH_RULE_BLISS_STRENGTH, (uintptr_t)strength);
+				}
 			}
-			rsa_len = ecdsa_len = FALSE;
+			rsa_len = ecdsa_len = bliss_strength = FALSE;
 			if (strength)
 			{
 				continue;
@@ -358,6 +366,11 @@ static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
 		if (streq(token, "ecdsa"))
 		{
 			ecdsa = ecdsa_len = TRUE;
+			continue;
+		}
+		if (streq(token, "bliss"))
+		{
+			bliss = bliss_strength = TRUE;
 			continue;
 		}
 		if (streq(token, "pubkey"))
@@ -376,7 +389,8 @@ static void parse_pubkey_constraints(char *auth, auth_cfg_t *cfg)
 				 */
 				if ((rsa && schemes[i].key == KEY_RSA) ||
 					(ecdsa && schemes[i].key == KEY_ECDSA) ||
-					(!rsa && !ecdsa))
+					(bliss && schemes[i].key == KEY_BLISS) ||
+					(!rsa && !ecdsa && !bliss))
 				{
 					cfg->add(cfg, AUTH_RULE_SIGNATURE_SCHEME,
 							 (uintptr_t)schemes[i].scheme);
@@ -590,7 +604,8 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	/* authentication metod (class, actually) */
 	if (strpfx(auth, "pubkey") ||
 		strpfx(auth, "rsa") ||
-		strpfx(auth, "ecdsa"))
+		strpfx(auth, "ecdsa") ||
+		strpfx(auth, "bliss"))
 	{
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
 		build_crl_policy(cfg, local, msg->add_conn.crl_policy);
@@ -620,9 +635,16 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 	else if (strpfx(auth, "eap"))
 	{
 		eap_vendor_type_t *type;
+		char *pos;
 
 		cfg->add(cfg, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_EAP);
-
+		/* check for public key constraints for EAP-TLS etc. */
+		pos = strchr(auth, ':');
+		if (pos)
+		{
+			*pos = 0;
+			parse_pubkey_constraints(pos + 1, cfg);
+		}
 		type = eap_vendor_type_from_string(auth);
 		if (type)
 		{
@@ -664,6 +686,24 @@ static auth_cfg_t *build_auth_cfg(private_stroke_config_t *this,
 		build_crl_policy(cfg, local, msg->add_conn.crl_policy);
 	}
 	return cfg;
+}
+
+/**
+ * build a mem_pool_t from an address range
+ */
+static mem_pool_t *create_pool_range(char *str)
+{
+	mem_pool_t *pool;
+	host_t *from, *to;
+
+	if (!host_create_from_range(str, &from, &to))
+	{
+		return NULL;
+	}
+	pool = mem_pool_create_range(str, from, to);
+	from->destroy(from);
+	to->destroy(to);
+	return pool;
 }
 
 /**
@@ -789,17 +829,25 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 			}
 			else
 			{
-				/* in-memory pool, named using CIDR notation */
+				/* in-memory pool, using range or CIDR notation */
+				mem_pool_t *pool;
 				host_t *base;
 				int bits;
 
-				base = host_create_from_subnet(token, &bits);
-				if (base)
+				pool = create_pool_range(token);
+				if (!pool)
 				{
-					this->attributes->add_pool(this->attributes,
-										mem_pool_create(token, base, bits));
+					base = host_create_from_subnet(token, &bits);
+					if (base)
+					{
+						pool = mem_pool_create(token, base, bits);
+						base->destroy(base);
+					}
+				}
+				if (pool)
+				{
+					this->attributes->add_pool(this->attributes, pool);
 					peer_cfg->add_pool(peer_cfg, token);
-					base->destroy(base);
 				}
 				else
 				{

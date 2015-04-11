@@ -5,8 +5,10 @@ vici.gemspec: $(srcdir)/vici.gemspec.in
 	-e "s:@GEM_VERSION@:$(PACKAGE_VERSION):" \
 	$(srcdir)/vici.gemspec.in > $@
 
-vici-$(PACKAGE_VERSION).gem: vici.gemspec
-	$(GEM) build vici.gemspec
+vici-$(PACKAGE_VERSION).gem: vici.gemspec $(EXTRA_DIST)
+	(cd $(srcdir); $(GEM) build $(abs_builddir)/vici.gemspec)
+	[ "$(srcdir)" = "$(builddir)" ] || \
+		mv $(srcdir)/vici-$(PACKAGE_VERSION).gem $(builddir)
 
 all-local: vici-$(PACKAGE_VERSION).gem
 

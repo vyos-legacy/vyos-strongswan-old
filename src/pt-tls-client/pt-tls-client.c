@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010-2013 Martin Willi, revosec AG
- * Copyright (C) 2013-2014 Andreas Steffen
+ * Copyright (C) 2013-2015 Andreas Steffen
  * HSR Hochschule für Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -54,32 +54,44 @@ static int client(char *address, u_int16_t port, char *identity)
 {
 	pt_tls_client_t *assessment;
 	tls_t *tnccs;
-	identification_t *server, *client;
-	host_t *host;
+	identification_t *server_id, *client_id;
+	host_t *server_ip, *client_ip;
 	status_t status;
 
-	host = host_create_from_dns(address, AF_UNSPEC, port);
-	if (!host)
+	server_ip = host_create_from_dns(address, AF_UNSPEC, port);
+	if (!server_ip)
 	{
 		return 1;
 	}
-	server = identification_create_from_string(address);
-	client = identification_create_from_string(identity);
+
+	client_ip = host_create_any(server_ip->get_family(server_ip));
+	if (!client_ip)
+	{
+		server_ip->destroy(server_ip);
+		return 1;
+	}
+	server_id = identification_create_from_string(address);
+	client_id = identification_create_from_string(identity);
+
 	tnccs = (tls_t*)tnc->tnccs->create_instance(tnc->tnccs, TNCCS_2_0, FALSE,
-								server, client, TNC_IFT_TLS_2_0, NULL);
+								server_id, client_id, server_ip, client_ip,
+								TNC_IFT_TLS_2_0, NULL);
+	client_ip->destroy(client_ip);
+
 	if (!tnccs)
 	{
 		fprintf(stderr, "loading TNCCS failed: %s\n", PLUGINS);
-		host->destroy(host);
-		server->destroy(server);
-		client->destroy(client);
+		server_ip->destroy(server_ip);
+		server_id->destroy(server_id);
+		client_id->destroy(client_id);
 		return 1;
 	}
-	assessment = pt_tls_client_create(host, server, client);
+	assessment = pt_tls_client_create(server_ip, server_id, client_id);
 	status = assessment->run_assessment(assessment, (tnccs_t*)tnccs);
 	assessment->destroy(assessment);
 	tnccs->destroy(tnccs);
-	return status;
+
+	return (status != SUCCESS);
 }
 
 
@@ -258,6 +270,7 @@ int main(int argc, char *argv[])
 			{"port",		required_argument,		NULL,		'p' },
 			{"cert",		required_argument,		NULL,		'x' },
 			{"key",			required_argument,		NULL,		'k' },
+			{"mutual",		no_argument,			NULL,		'm' },
 			{"quiet",		no_argument,			NULL,		'q' },
 			{"debug",		required_argument,		NULL,		'd' },
 			{"optionsfrom",	required_argument,		NULL,		'+' },
@@ -298,6 +311,10 @@ int main(int argc, char *argv[])
 				continue;
 			case 'p':			/* --port <port> */
 				port = atoi(optarg);
+				continue;
+			case 'm':			/* --mutual */
+				lib->settings->set_bool(lib->settings,
+								"%s.plugins.tnccs-20.mutual", TRUE, lib->ns);
 				continue;
 			case 'q':       	/* --quiet */
 				log_to_stderr = FALSE;

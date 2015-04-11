@@ -180,6 +180,7 @@ static payload_order_t ike_sa_init_r_order[] = {
  */
 static payload_rule_t ike_auth_i_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	FALSE},
 	{PLV2_EAP,						0,	1,						TRUE,	TRUE},
 	{PLV2_AUTH,						0,	1,						TRUE,	TRUE},
@@ -227,6 +228,7 @@ static payload_order_t ike_auth_i_order[] = {
 	{PLV2_NOTIFY,					NO_ADDITIONAL_ADDRESSES},
 	{PLV2_NOTIFY,					0},
 	{PLV2_VENDOR_ID,				0},
+	{PLV2_FRAGMENT,					0},
 };
 
 /**
@@ -234,6 +236,7 @@ static payload_order_t ike_auth_i_order[] = {
  */
 static payload_rule_t ike_auth_r_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	TRUE},
 	{PLV2_EAP,						0,	1,						TRUE,	TRUE},
 	{PLV2_AUTH,						0,	1,						TRUE,	TRUE},
@@ -270,6 +273,7 @@ static payload_order_t ike_auth_r_order[] = {
 	{PLV2_NOTIFY,					NO_ADDITIONAL_ADDRESSES},
 	{PLV2_NOTIFY,					0},
 	{PLV2_VENDOR_ID,				0},
+	{PLV2_FRAGMENT,					0},
 };
 
 /**
@@ -277,6 +281,7 @@ static payload_order_t ike_auth_r_order[] = {
  */
 static payload_rule_t informational_i_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	FALSE},
 	{PLV2_CONFIGURATION,			0,	1,						TRUE,	FALSE},
 	{PLV2_DELETE,					0,	MAX_DELETE_PAYLOADS,	TRUE,	FALSE},
@@ -295,6 +300,7 @@ static payload_order_t informational_i_order[] = {
 	{PLV2_NOTIFY,					0},
 	{PLV2_DELETE,					0},
 	{PLV2_CONFIGURATION,			0},
+	{PLV2_FRAGMENT,					0},
 };
 
 /**
@@ -302,6 +308,7 @@ static payload_order_t informational_i_order[] = {
  */
 static payload_rule_t informational_r_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	FALSE},
 	{PLV2_CONFIGURATION,			0,	1,						TRUE,	FALSE},
 	{PLV2_DELETE,					0,	MAX_DELETE_PAYLOADS,	TRUE,	FALSE},
@@ -320,6 +327,7 @@ static payload_order_t informational_r_order[] = {
 	{PLV2_NOTIFY,					0},
 	{PLV2_DELETE,					0},
 	{PLV2_CONFIGURATION,			0},
+	{PLV2_FRAGMENT,					0},
 };
 
 /**
@@ -327,6 +335,7 @@ static payload_order_t informational_r_order[] = {
  */
 static payload_rule_t create_child_sa_i_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	FALSE},
 	{PLV2_SECURITY_ASSOCIATION,		1,	1,						TRUE,	FALSE},
 	{PLV2_NONCE,					1,	1,						TRUE,	FALSE},
@@ -353,6 +362,7 @@ static payload_order_t create_child_sa_i_order[] = {
 	{PLV2_TS_INITIATOR,				0},
 	{PLV2_TS_RESPONDER,				0},
 	{PLV2_NOTIFY,					0},
+	{PLV2_FRAGMENT,					0},
 };
 
 /**
@@ -360,6 +370,7 @@ static payload_order_t create_child_sa_i_order[] = {
  */
 static payload_rule_t create_child_sa_r_rules[] = {
 /*	payload type					min	max						encr	suff */
+	{PLV2_FRAGMENT,					0,	1,						TRUE,	TRUE},
 	{PLV2_NOTIFY,					0,	MAX_NOTIFY_PAYLOADS,	TRUE,	TRUE},
 	{PLV2_SECURITY_ASSOCIATION,		1,	1,						TRUE,	FALSE},
 	{PLV2_NONCE,					1,	1,						TRUE,	FALSE},
@@ -386,6 +397,7 @@ static payload_order_t create_child_sa_r_order[] = {
 	{PLV2_TS_RESPONDER,				0},
 	{PLV2_NOTIFY,					ADDITIONAL_TS_POSSIBLE},
 	{PLV2_NOTIFY,					0},
+	{PLV2_FRAGMENT,					0},
 };
 
 #ifdef ME
@@ -2143,6 +2155,8 @@ METHOD(message_t, parse_header, status_t,
 	}
 	ike_header->destroy(ike_header);
 
+	this->parser->set_major_version(this->parser, this->major_version);
+
 	DBG2(DBG_ENC, "parsed a %N %s header", exchange_type_names,
 		 this->exchange_type, this->major_version == IKEV1_MAJOR_VERSION ?
 		 "message" : (this->is_request ? "request" : "response"));
@@ -2463,7 +2477,7 @@ static status_t decrypt_payloads(private_message_t *this, keymat_t *keymat)
 			was_encrypted = "encrypted fragment payload";
 		}
 
-		if (payload_is_known(type) && !was_encrypted &&
+		if (payload_is_known(type, this->major_version) && !was_encrypted &&
 			!is_connectivity_check(this, payload) &&
 			this->exchange_type != AGGRESSIVE)
 		{

@@ -108,7 +108,7 @@ am_pki_OBJECTS = pki.$(OBJEXT) command.$(OBJEXT) \
 	commands/req.$(OBJEXT) commands/self.$(OBJEXT) \
 	commands/print.$(OBJEXT) commands/signcrl.$(OBJEXT) \
 	commands/acert.$(OBJEXT) commands/pkcs7.$(OBJEXT) \
-	commands/verify.$(OBJEXT)
+	commands/pkcs12.$(OBJEXT) commands/verify.$(OBJEXT)
 pki_OBJECTS = $(am_pki_OBJECTS)
 pki_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -243,6 +243,7 @@ DLLIB = @DLLIB@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
+EASY_INSTALL = @EASY_INSTALL@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -303,10 +304,12 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PLUGIN_CFLAGS = @PLUGIN_CFLAGS@
 PTHREADLIB = @PTHREADLIB@
 PYTHON = @PYTHON@
+PYTHONEGGINSTALLDIR = @PYTHONEGGINSTALLDIR@
 PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
 PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
+PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -380,6 +383,8 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libiptc_CFLAGS = @libiptc_CFLAGS@
+libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
@@ -450,6 +455,7 @@ pki_SOURCES = pki.c pki.h command.c command.h \
 	commands/signcrl.c \
 	commands/acert.c \
 	commands/pkcs7.c \
+	commands/pkcs12.c \
 	commands/verify.c
 
 pki_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -566,6 +572,8 @@ commands/acert.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/pkcs7.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/pkcs12.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/verify.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 
@@ -586,6 +594,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/issue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/keyid.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/pkcs12.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/pkcs7.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/print.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/pub.Po@am__quote@

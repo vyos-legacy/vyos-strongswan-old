@@ -132,8 +132,8 @@ LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 @MONOLITHIC_FALSE@	$(top_builddir)/src/libtnccs/libtnccs.la
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libstrongswan_tnccs_20_la_OBJECTS = tnccs_20_plugin.lo tnccs_20.lo \
-	batch/pb_tnc_batch.lo messages/pb_tnc_msg.lo \
-	messages/ietf/pb_experimental_msg.lo \
+	tnccs_20_server.lo tnccs_20_client.lo batch/pb_tnc_batch.lo \
+	messages/pb_tnc_msg.lo messages/ietf/pb_experimental_msg.lo \
 	messages/ietf/pb_pa_msg.lo \
 	messages/ietf/pb_assessment_result_msg.lo \
 	messages/ietf/pb_access_recommendation_msg.lo \
@@ -141,6 +141,8 @@ am_libstrongswan_tnccs_20_la_OBJECTS = tnccs_20_plugin.lo tnccs_20.lo \
 	messages/ietf/pb_language_preference_msg.lo \
 	messages/ietf/pb_reason_string_msg.lo \
 	messages/ietf/pb_remediation_parameters_msg.lo \
+	messages/ita/pb_mutual_capability_msg.lo \
+	messages/ita/pb_noskip_test_msg.lo \
 	messages/tcg/pb_pdp_referral_msg.lo \
 	state_machine/pb_tnc_state_machine.lo
 libstrongswan_tnccs_20_la_OBJECTS =  \
@@ -242,6 +244,7 @@ DLLIB = @DLLIB@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
+EASY_INSTALL = @EASY_INSTALL@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -302,10 +305,12 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PLUGIN_CFLAGS = @PLUGIN_CFLAGS@
 PTHREADLIB = @PTHREADLIB@
 PYTHON = @PYTHON@
+PYTHONEGGINSTALLDIR = @PYTHONEGGINSTALLDIR@
 PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
 PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
+PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -379,6 +384,8 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libiptc_CFLAGS = @libiptc_CFLAGS@
+libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
@@ -454,6 +461,8 @@ AM_CFLAGS = \
 
 libstrongswan_tnccs_20_la_SOURCES = \
 	tnccs_20_plugin.h tnccs_20_plugin.c tnccs_20.h tnccs_20.c \
+	tnccs_20_handler.h \
+	tnccs_20_server.h tnccs_20_server.c tnccs_20_client.h tnccs_20_client.c \
 	batch/pb_tnc_batch.h batch/pb_tnc_batch.c \
 	messages/pb_tnc_msg.h messages/pb_tnc_msg.c \
 	messages/ietf/pb_experimental_msg.h messages/ietf/pb_experimental_msg.c \
@@ -464,6 +473,8 @@ libstrongswan_tnccs_20_la_SOURCES = \
 	messages/ietf/pb_language_preference_msg.h messages/ietf/pb_language_preference_msg.c \
 	messages/ietf/pb_reason_string_msg.h messages/ietf/pb_reason_string_msg.c \
 	messages/ietf/pb_remediation_parameters_msg.h messages/ietf/pb_remediation_parameters_msg.c \
+	messages/ita/pb_mutual_capability_msg.h messages/ita/pb_mutual_capability_msg.c \
+	messages/ita/pb_noskip_test_msg.h messages/ita/pb_noskip_test_msg.c \
 	messages/tcg/pb_pdp_referral_msg.h messages/tcg/pb_pdp_referral_msg.c \
 	state_machine/pb_tnc_state_machine.h state_machine/pb_tnc_state_machine.c
 
@@ -590,6 +601,17 @@ messages/ietf/pb_reason_string_msg.lo: messages/ietf/$(am__dirstamp) \
 messages/ietf/pb_remediation_parameters_msg.lo:  \
 	messages/ietf/$(am__dirstamp) \
 	messages/ietf/$(DEPDIR)/$(am__dirstamp)
+messages/ita/$(am__dirstamp):
+	@$(MKDIR_P) messages/ita
+	@: > messages/ita/$(am__dirstamp)
+messages/ita/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) messages/ita/$(DEPDIR)
+	@: > messages/ita/$(DEPDIR)/$(am__dirstamp)
+messages/ita/pb_mutual_capability_msg.lo:  \
+	messages/ita/$(am__dirstamp) \
+	messages/ita/$(DEPDIR)/$(am__dirstamp)
+messages/ita/pb_noskip_test_msg.lo: messages/ita/$(am__dirstamp) \
+	messages/ita/$(DEPDIR)/$(am__dirstamp)
 messages/tcg/$(am__dirstamp):
 	@$(MKDIR_P) messages/tcg
 	@: > messages/tcg/$(am__dirstamp)
@@ -618,6 +640,8 @@ mostlyclean-compile:
 	-rm -f messages/*.lo
 	-rm -f messages/ietf/*.$(OBJEXT)
 	-rm -f messages/ietf/*.lo
+	-rm -f messages/ita/*.$(OBJEXT)
+	-rm -f messages/ita/*.lo
 	-rm -f messages/tcg/*.$(OBJEXT)
 	-rm -f messages/tcg/*.lo
 	-rm -f state_machine/*.$(OBJEXT)
@@ -627,7 +651,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tnccs_20.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tnccs_20_client.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tnccs_20_plugin.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tnccs_20_server.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@batch/$(DEPDIR)/pb_tnc_batch.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@messages/$(DEPDIR)/pb_tnc_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@messages/ietf/$(DEPDIR)/pb_access_recommendation_msg.Plo@am__quote@
@@ -638,6 +664,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@messages/ietf/$(DEPDIR)/pb_pa_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@messages/ietf/$(DEPDIR)/pb_reason_string_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@messages/ietf/$(DEPDIR)/pb_remediation_parameters_msg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@messages/ita/$(DEPDIR)/pb_mutual_capability_msg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@messages/ita/$(DEPDIR)/pb_noskip_test_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@messages/tcg/$(DEPDIR)/pb_pdp_referral_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@state_machine/$(DEPDIR)/pb_tnc_state_machine.Plo@am__quote@
 
@@ -673,6 +701,7 @@ clean-libtool:
 	-rm -rf batch/.libs batch/_libs
 	-rm -rf messages/.libs messages/_libs
 	-rm -rf messages/ietf/.libs messages/ietf/_libs
+	-rm -rf messages/ita/.libs messages/ita/_libs
 	-rm -rf messages/tcg/.libs messages/tcg/_libs
 	-rm -rf state_machine/.libs state_machine/_libs
 
@@ -797,6 +826,8 @@ distclean-generic:
 	-rm -f messages/$(am__dirstamp)
 	-rm -f messages/ietf/$(DEPDIR)/$(am__dirstamp)
 	-rm -f messages/ietf/$(am__dirstamp)
+	-rm -f messages/ita/$(DEPDIR)/$(am__dirstamp)
+	-rm -f messages/ita/$(am__dirstamp)
 	-rm -f messages/tcg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f messages/tcg/$(am__dirstamp)
 	-rm -f state_machine/$(DEPDIR)/$(am__dirstamp)
@@ -811,7 +842,7 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	clean-pluginLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR) batch/$(DEPDIR) messages/$(DEPDIR) messages/ietf/$(DEPDIR) messages/tcg/$(DEPDIR) state_machine/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) batch/$(DEPDIR) messages/$(DEPDIR) messages/ietf/$(DEPDIR) messages/ita/$(DEPDIR) messages/tcg/$(DEPDIR) state_machine/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -857,7 +888,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR) batch/$(DEPDIR) messages/$(DEPDIR) messages/ietf/$(DEPDIR) messages/tcg/$(DEPDIR) state_machine/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) batch/$(DEPDIR) messages/$(DEPDIR) messages/ietf/$(DEPDIR) messages/ita/$(DEPDIR) messages/tcg/$(DEPDIR) state_machine/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -98,6 +98,7 @@ host_triplet = @host@
 @USE_IKEV2_TRUE@sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
 @USE_IKEV2_TRUE@sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
 @USE_IKEV2_TRUE@sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
+@USE_IKEV2_TRUE@sa/ikev2/tasks/ike_reauth_complete.c sa/ikev2/tasks/ike_reauth_complete.h \
 @USE_IKEV2_TRUE@sa/ikev2/tasks/ike_auth_lifetime.c sa/ikev2/tasks/ike_auth_lifetime.h \
 @USE_IKEV2_TRUE@sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h
 
@@ -146,124 +147,132 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_SOCKET_DYNAMIC_TRUE@am__append_11 = plugins/socket_dynamic/libstrongswan-socket-dynamic.la
 @USE_SOCKET_WIN_TRUE@am__append_12 = plugins/socket_win
 @MONOLITHIC_TRUE@@USE_SOCKET_WIN_TRUE@am__append_13 = plugins/socket_win/libstrongswan-socket-win.la
-@USE_FARP_TRUE@am__append_14 = plugins/farp
-@MONOLITHIC_TRUE@@USE_FARP_TRUE@am__append_15 = plugins/farp/libstrongswan-farp.la
-@USE_STROKE_TRUE@am__append_16 = plugins/stroke
-@MONOLITHIC_TRUE@@USE_STROKE_TRUE@am__append_17 = plugins/stroke/libstrongswan-stroke.la
-@USE_VICI_TRUE@am__append_18 = plugins/vici
-@MONOLITHIC_TRUE@@USE_VICI_TRUE@am__append_19 = plugins/vici/libstrongswan-vici.la
-@USE_SMP_TRUE@am__append_20 = plugins/smp
-@MONOLITHIC_TRUE@@USE_SMP_TRUE@am__append_21 = plugins/smp/libstrongswan-smp.la
-@USE_SQL_TRUE@am__append_22 = plugins/sql
-@MONOLITHIC_TRUE@@USE_SQL_TRUE@am__append_23 = plugins/sql/libstrongswan-sql.la
-@USE_DNSCERT_TRUE@am__append_24 = plugins/dnscert
-@MONOLITHIC_TRUE@@USE_DNSCERT_TRUE@am__append_25 = plugins/dnscert/libstrongswan-dnscert.la
-@USE_IPSECKEY_TRUE@am__append_26 = plugins/ipseckey
-@MONOLITHIC_TRUE@@USE_IPSECKEY_TRUE@am__append_27 = plugins/ipseckey/libstrongswan-ipseckey.la
-@USE_UPDOWN_TRUE@am__append_28 = plugins/updown
-@MONOLITHIC_TRUE@@USE_UPDOWN_TRUE@am__append_29 = plugins/updown/libstrongswan-updown.la
-@USE_EXT_AUTH_TRUE@am__append_30 = plugins/ext_auth
-@MONOLITHIC_TRUE@@USE_EXT_AUTH_TRUE@am__append_31 = plugins/ext_auth/libstrongswan-ext-auth.la
-@USE_EAP_IDENTITY_TRUE@am__append_32 = plugins/eap_identity
-@MONOLITHIC_TRUE@@USE_EAP_IDENTITY_TRUE@am__append_33 = plugins/eap_identity/libstrongswan-eap-identity.la
-@USE_EAP_SIM_TRUE@am__append_34 = plugins/eap_sim
-@MONOLITHIC_TRUE@@USE_EAP_SIM_TRUE@am__append_35 = plugins/eap_sim/libstrongswan-eap-sim.la
-@USE_EAP_SIM_FILE_TRUE@am__append_36 = plugins/eap_sim_file
-@MONOLITHIC_TRUE@@USE_EAP_SIM_FILE_TRUE@am__append_37 = plugins/eap_sim_file/libstrongswan-eap-sim-file.la
-@USE_EAP_SIM_PCSC_TRUE@am__append_38 = plugins/eap_sim_pcsc
-@MONOLITHIC_TRUE@@USE_EAP_SIM_PCSC_TRUE@am__append_39 = plugins/eap_sim_pcsc/libstrongswan-eap-sim-pcsc.la
-@USE_EAP_SIMAKA_SQL_TRUE@am__append_40 = plugins/eap_simaka_sql
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_SQL_TRUE@am__append_41 = plugins/eap_simaka_sql/libstrongswan-eap-simaka-sql.la
-@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_42 = plugins/eap_simaka_pseudonym
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_43 = plugins/eap_simaka_pseudonym/libstrongswan-eap-simaka-pseudonym.la
-@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_44 = plugins/eap_simaka_reauth
-@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_45 = plugins/eap_simaka_reauth/libstrongswan-eap-simaka-reauth.la
-@USE_EAP_AKA_TRUE@am__append_46 = plugins/eap_aka
-@MONOLITHIC_TRUE@@USE_EAP_AKA_TRUE@am__append_47 = plugins/eap_aka/libstrongswan-eap-aka.la
-@USE_EAP_AKA_3GPP2_TRUE@am__append_48 = plugins/eap_aka_3gpp2
-@MONOLITHIC_TRUE@@USE_EAP_AKA_3GPP2_TRUE@am__append_49 = plugins/eap_aka_3gpp2/libstrongswan-eap-aka-3gpp2.la
-@MONOLITHIC_TRUE@@USE_SIMAKA_TRUE@am__append_50 = $(top_builddir)/src/libsimaka/libsimaka.la
-@USE_EAP_MD5_TRUE@am__append_51 = plugins/eap_md5
-@MONOLITHIC_TRUE@@USE_EAP_MD5_TRUE@am__append_52 = plugins/eap_md5/libstrongswan-eap-md5.la
-@USE_EAP_GTC_TRUE@am__append_53 = plugins/eap_gtc
-@MONOLITHIC_TRUE@@USE_EAP_GTC_TRUE@am__append_54 = plugins/eap_gtc/libstrongswan-eap-gtc.la
-@USE_EAP_MSCHAPV2_TRUE@am__append_55 = plugins/eap_mschapv2
-@MONOLITHIC_TRUE@@USE_EAP_MSCHAPV2_TRUE@am__append_56 = plugins/eap_mschapv2/libstrongswan-eap-mschapv2.la
-@USE_EAP_DYNAMIC_TRUE@am__append_57 = plugins/eap_dynamic
-@MONOLITHIC_TRUE@@USE_EAP_DYNAMIC_TRUE@am__append_58 = plugins/eap_dynamic/libstrongswan-eap-dynamic.la
-@USE_EAP_RADIUS_TRUE@am__append_59 = plugins/eap_radius
-@MONOLITHIC_TRUE@@USE_EAP_RADIUS_TRUE@am__append_60 = plugins/eap_radius/libstrongswan-eap-radius.la
-@USE_EAP_TLS_TRUE@am__append_61 = plugins/eap_tls
-@MONOLITHIC_TRUE@@USE_EAP_TLS_TRUE@am__append_62 = plugins/eap_tls/libstrongswan-eap-tls.la
-@USE_EAP_TTLS_TRUE@am__append_63 = plugins/eap_ttls
-@MONOLITHIC_TRUE@@USE_EAP_TTLS_TRUE@am__append_64 = plugins/eap_ttls/libstrongswan-eap-ttls.la
-@USE_EAP_PEAP_TRUE@am__append_65 = plugins/eap_peap
-@MONOLITHIC_TRUE@@USE_EAP_PEAP_TRUE@am__append_66 = plugins/eap_peap/libstrongswan-eap-peap.la
-@USE_EAP_TNC_TRUE@am__append_67 = plugins/eap_tnc
-@MONOLITHIC_TRUE@@USE_EAP_TNC_TRUE@am__append_68 = plugins/eap_tnc/libstrongswan-eap-tnc.la
-@MONOLITHIC_TRUE@@USE_TLS_TRUE@am__append_69 = $(top_builddir)/src/libtls/libtls.la
-@MONOLITHIC_TRUE@@USE_RADIUS_TRUE@am__append_70 = $(top_builddir)/src/libradius/libradius.la
-@USE_TNC_IFMAP_TRUE@am__append_71 = plugins/tnc_ifmap
-@MONOLITHIC_TRUE@@USE_TNC_IFMAP_TRUE@am__append_72 = plugins/tnc_ifmap/libstrongswan-tnc-ifmap.la
-@USE_TNC_PDP_TRUE@am__append_73 = plugins/tnc_pdp
-@MONOLITHIC_TRUE@@USE_TNC_PDP_TRUE@am__append_74 = plugins/tnc_pdp/libstrongswan-tnc-pdp.la
-@MONOLITHIC_TRUE@@USE_LIBTNCCS_TRUE@am__append_75 = $(top_builddir)/src/libtnccs/libtnccs.la
-@USE_MEDSRV_TRUE@am__append_76 = plugins/medsrv
-@MONOLITHIC_TRUE@@USE_MEDSRV_TRUE@am__append_77 = plugins/medsrv/libstrongswan-medsrv.la
-@USE_MEDCLI_TRUE@am__append_78 = plugins/medcli
-@MONOLITHIC_TRUE@@USE_MEDCLI_TRUE@am__append_79 = plugins/medcli/libstrongswan-medcli.la
-@USE_DHCP_TRUE@am__append_80 = plugins/dhcp
-@MONOLITHIC_TRUE@@USE_DHCP_TRUE@am__append_81 = plugins/dhcp/libstrongswan-dhcp.la
-@USE_OSX_ATTR_TRUE@am__append_82 = plugins/osx_attr
-@MONOLITHIC_TRUE@@USE_OSX_ATTR_TRUE@am__append_83 = plugins/osx_attr/libstrongswan-osx-attr.la
-@USE_ANDROID_DNS_TRUE@am__append_84 = plugins/android_dns
-@MONOLITHIC_TRUE@@USE_ANDROID_DNS_TRUE@am__append_85 = plugins/android_dns/libstrongswan-android-dns.la
-@USE_ANDROID_LOG_TRUE@am__append_86 = plugins/android_log
-@MONOLITHIC_TRUE@@USE_ANDROID_LOG_TRUE@am__append_87 = plugins/android_log/libstrongswan-android-log.la
-@USE_MAEMO_TRUE@am__append_88 = plugins/maemo
-@MONOLITHIC_TRUE@@USE_MAEMO_TRUE@am__append_89 = plugins/maemo/libstrongswan-maemo.la
-@USE_HA_TRUE@am__append_90 = plugins/ha
-@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_91 = plugins/ha/libstrongswan-ha.la
-@USE_KERNEL_LIBIPSEC_TRUE@am__append_92 = plugins/kernel_libipsec
-@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_93 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
-@USE_KERNEL_WFP_TRUE@am__append_94 = plugins/kernel_wfp
-@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_95 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
-@USE_KERNEL_IPH_TRUE@am__append_96 = plugins/kernel_iph
-@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_97 = plugins/kernel_iph/libstrongswan-kernel-iph.la
-@USE_WHITELIST_TRUE@am__append_98 = plugins/whitelist
-@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_99 = plugins/whitelist/libstrongswan-whitelist.la
-@USE_LOOKIP_TRUE@am__append_100 = plugins/lookip
-@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_101 = plugins/lookip/libstrongswan-lookip.la
-@USE_ERROR_NOTIFY_TRUE@am__append_102 = plugins/error_notify
-@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_103 = plugins/error_notify/libstrongswan-error-notify.la
-@USE_CERTEXPIRE_TRUE@am__append_104 = plugins/certexpire
-@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_105 = plugins/certexpire/libstrongswan-certexpire.la
-@USE_SYSTIME_FIX_TRUE@am__append_106 = plugins/systime_fix
-@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_107 = plugins/systime_fix/libstrongswan-systime-fix.la
-@USE_LED_TRUE@am__append_108 = plugins/led
-@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_109 = plugins/led/libstrongswan-led.la
-@USE_DUPLICHECK_TRUE@am__append_110 = plugins/duplicheck
-@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_111 = plugins/duplicheck/libstrongswan-duplicheck.la
-@USE_COUPLING_TRUE@am__append_112 = plugins/coupling
-@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_113 = plugins/coupling/libstrongswan-coupling.la
-@USE_RADATTR_TRUE@am__append_114 = plugins/radattr
-@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_115 = plugins/radattr/libstrongswan-radattr.la
-@USE_UCI_TRUE@am__append_116 = plugins/uci
-@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_117 = plugins/uci/libstrongswan-uci.la
-@USE_ADDRBLOCK_TRUE@am__append_118 = plugins/addrblock
-@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_119 = plugins/addrblock/libstrongswan-addrblock.la
-@USE_UNITY_TRUE@am__append_120 = plugins/unity
-@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_121 = plugins/unity/libstrongswan-unity.la
-@USE_UNIT_TESTS_TRUE@am__append_122 = plugins/unit_tester
-@MONOLITHIC_TRUE@@USE_UNIT_TESTS_TRUE@am__append_123 = plugins/unit_tester/libstrongswan-unit-tester.la
-@USE_XAUTH_GENERIC_TRUE@am__append_124 = plugins/xauth_generic
-@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_125 = plugins/xauth_generic/libstrongswan-xauth-generic.la
-@USE_XAUTH_EAP_TRUE@am__append_126 = plugins/xauth_eap
-@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_127 = plugins/xauth_eap/libstrongswan-xauth-eap.la
-@USE_XAUTH_PAM_TRUE@am__append_128 = plugins/xauth_pam
-@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_129 = plugins/xauth_pam/libstrongswan-xauth-pam.la
-@USE_XAUTH_NOAUTH_TRUE@am__append_130 = plugins/xauth_noauth
-@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_131 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
+@USE_CONNMARK_TRUE@am__append_14 = plugins/connmark
+@MONOLITHIC_TRUE@@USE_CONNMARK_TRUE@am__append_15 = plugins/connmark/libstrongswan-connmark.la
+@USE_FORECAST_TRUE@am__append_16 = plugins/forecast
+@MONOLITHIC_TRUE@@USE_FORECAST_TRUE@am__append_17 = plugins/forecast/libstrongswan-forecast.la
+@USE_FARP_TRUE@am__append_18 = plugins/farp
+@MONOLITHIC_TRUE@@USE_FARP_TRUE@am__append_19 = plugins/farp/libstrongswan-farp.la
+@USE_STROKE_TRUE@am__append_20 = plugins/stroke
+@MONOLITHIC_TRUE@@USE_STROKE_TRUE@am__append_21 = plugins/stroke/libstrongswan-stroke.la
+@USE_VICI_TRUE@am__append_22 = plugins/vici
+@MONOLITHIC_TRUE@@USE_VICI_TRUE@am__append_23 = plugins/vici/libstrongswan-vici.la
+@USE_SMP_TRUE@am__append_24 = plugins/smp
+@MONOLITHIC_TRUE@@USE_SMP_TRUE@am__append_25 = plugins/smp/libstrongswan-smp.la
+@USE_SQL_TRUE@am__append_26 = plugins/sql
+@MONOLITHIC_TRUE@@USE_SQL_TRUE@am__append_27 = plugins/sql/libstrongswan-sql.la
+@USE_DNSCERT_TRUE@am__append_28 = plugins/dnscert
+@MONOLITHIC_TRUE@@USE_DNSCERT_TRUE@am__append_29 = plugins/dnscert/libstrongswan-dnscert.la
+@USE_IPSECKEY_TRUE@am__append_30 = plugins/ipseckey
+@MONOLITHIC_TRUE@@USE_IPSECKEY_TRUE@am__append_31 = plugins/ipseckey/libstrongswan-ipseckey.la
+@USE_UPDOWN_TRUE@am__append_32 = plugins/updown
+@MONOLITHIC_TRUE@@USE_UPDOWN_TRUE@am__append_33 = plugins/updown/libstrongswan-updown.la
+@USE_EXT_AUTH_TRUE@am__append_34 = plugins/ext_auth
+@MONOLITHIC_TRUE@@USE_EXT_AUTH_TRUE@am__append_35 = plugins/ext_auth/libstrongswan-ext-auth.la
+@USE_EAP_IDENTITY_TRUE@am__append_36 = plugins/eap_identity
+@MONOLITHIC_TRUE@@USE_EAP_IDENTITY_TRUE@am__append_37 = plugins/eap_identity/libstrongswan-eap-identity.la
+@USE_EAP_SIM_TRUE@am__append_38 = plugins/eap_sim
+@MONOLITHIC_TRUE@@USE_EAP_SIM_TRUE@am__append_39 = plugins/eap_sim/libstrongswan-eap-sim.la
+@USE_EAP_SIM_FILE_TRUE@am__append_40 = plugins/eap_sim_file
+@MONOLITHIC_TRUE@@USE_EAP_SIM_FILE_TRUE@am__append_41 = plugins/eap_sim_file/libstrongswan-eap-sim-file.la
+@USE_EAP_SIM_PCSC_TRUE@am__append_42 = plugins/eap_sim_pcsc
+@MONOLITHIC_TRUE@@USE_EAP_SIM_PCSC_TRUE@am__append_43 = plugins/eap_sim_pcsc/libstrongswan-eap-sim-pcsc.la
+@USE_EAP_SIMAKA_SQL_TRUE@am__append_44 = plugins/eap_simaka_sql
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_SQL_TRUE@am__append_45 = plugins/eap_simaka_sql/libstrongswan-eap-simaka-sql.la
+@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_46 = plugins/eap_simaka_pseudonym
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_PSEUDONYM_TRUE@am__append_47 = plugins/eap_simaka_pseudonym/libstrongswan-eap-simaka-pseudonym.la
+@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_48 = plugins/eap_simaka_reauth
+@MONOLITHIC_TRUE@@USE_EAP_SIMAKA_REAUTH_TRUE@am__append_49 = plugins/eap_simaka_reauth/libstrongswan-eap-simaka-reauth.la
+@USE_EAP_AKA_TRUE@am__append_50 = plugins/eap_aka
+@MONOLITHIC_TRUE@@USE_EAP_AKA_TRUE@am__append_51 = plugins/eap_aka/libstrongswan-eap-aka.la
+@USE_EAP_AKA_3GPP2_TRUE@am__append_52 = plugins/eap_aka_3gpp2
+@MONOLITHIC_TRUE@@USE_EAP_AKA_3GPP2_TRUE@am__append_53 = plugins/eap_aka_3gpp2/libstrongswan-eap-aka-3gpp2.la
+@MONOLITHIC_TRUE@@USE_SIMAKA_TRUE@am__append_54 = $(top_builddir)/src/libsimaka/libsimaka.la
+@USE_EAP_MD5_TRUE@am__append_55 = plugins/eap_md5
+@MONOLITHIC_TRUE@@USE_EAP_MD5_TRUE@am__append_56 = plugins/eap_md5/libstrongswan-eap-md5.la
+@USE_EAP_GTC_TRUE@am__append_57 = plugins/eap_gtc
+@MONOLITHIC_TRUE@@USE_EAP_GTC_TRUE@am__append_58 = plugins/eap_gtc/libstrongswan-eap-gtc.la
+@USE_EAP_MSCHAPV2_TRUE@am__append_59 = plugins/eap_mschapv2
+@MONOLITHIC_TRUE@@USE_EAP_MSCHAPV2_TRUE@am__append_60 = plugins/eap_mschapv2/libstrongswan-eap-mschapv2.la
+@USE_EAP_DYNAMIC_TRUE@am__append_61 = plugins/eap_dynamic
+@MONOLITHIC_TRUE@@USE_EAP_DYNAMIC_TRUE@am__append_62 = plugins/eap_dynamic/libstrongswan-eap-dynamic.la
+@USE_EAP_RADIUS_TRUE@am__append_63 = plugins/eap_radius
+@MONOLITHIC_TRUE@@USE_EAP_RADIUS_TRUE@am__append_64 = plugins/eap_radius/libstrongswan-eap-radius.la
+@USE_EAP_TLS_TRUE@am__append_65 = plugins/eap_tls
+@MONOLITHIC_TRUE@@USE_EAP_TLS_TRUE@am__append_66 = plugins/eap_tls/libstrongswan-eap-tls.la
+@USE_EAP_TTLS_TRUE@am__append_67 = plugins/eap_ttls
+@MONOLITHIC_TRUE@@USE_EAP_TTLS_TRUE@am__append_68 = plugins/eap_ttls/libstrongswan-eap-ttls.la
+@USE_EAP_PEAP_TRUE@am__append_69 = plugins/eap_peap
+@MONOLITHIC_TRUE@@USE_EAP_PEAP_TRUE@am__append_70 = plugins/eap_peap/libstrongswan-eap-peap.la
+@USE_EAP_TNC_TRUE@am__append_71 = plugins/eap_tnc
+@MONOLITHIC_TRUE@@USE_EAP_TNC_TRUE@am__append_72 = plugins/eap_tnc/libstrongswan-eap-tnc.la
+@MONOLITHIC_TRUE@@USE_TLS_TRUE@am__append_73 = $(top_builddir)/src/libtls/libtls.la
+@MONOLITHIC_TRUE@@USE_RADIUS_TRUE@am__append_74 = $(top_builddir)/src/libradius/libradius.la
+@USE_TNC_IFMAP_TRUE@am__append_75 = plugins/tnc_ifmap
+@MONOLITHIC_TRUE@@USE_TNC_IFMAP_TRUE@am__append_76 = plugins/tnc_ifmap/libstrongswan-tnc-ifmap.la
+@USE_TNC_PDP_TRUE@am__append_77 = plugins/tnc_pdp
+@MONOLITHIC_TRUE@@USE_TNC_PDP_TRUE@am__append_78 = plugins/tnc_pdp/libstrongswan-tnc-pdp.la
+@MONOLITHIC_TRUE@@USE_LIBTNCCS_TRUE@am__append_79 = $(top_builddir)/src/libtnccs/libtnccs.la
+@USE_MEDSRV_TRUE@am__append_80 = plugins/medsrv
+@MONOLITHIC_TRUE@@USE_MEDSRV_TRUE@am__append_81 = plugins/medsrv/libstrongswan-medsrv.la
+@USE_MEDCLI_TRUE@am__append_82 = plugins/medcli
+@MONOLITHIC_TRUE@@USE_MEDCLI_TRUE@am__append_83 = plugins/medcli/libstrongswan-medcli.la
+@USE_DHCP_TRUE@am__append_84 = plugins/dhcp
+@MONOLITHIC_TRUE@@USE_DHCP_TRUE@am__append_85 = plugins/dhcp/libstrongswan-dhcp.la
+@USE_OSX_ATTR_TRUE@am__append_86 = plugins/osx_attr
+@MONOLITHIC_TRUE@@USE_OSX_ATTR_TRUE@am__append_87 = plugins/osx_attr/libstrongswan-osx-attr.la
+@USE_ANDROID_DNS_TRUE@am__append_88 = plugins/android_dns
+@MONOLITHIC_TRUE@@USE_ANDROID_DNS_TRUE@am__append_89 = plugins/android_dns/libstrongswan-android-dns.la
+@USE_ANDROID_LOG_TRUE@am__append_90 = plugins/android_log
+@MONOLITHIC_TRUE@@USE_ANDROID_LOG_TRUE@am__append_91 = plugins/android_log/libstrongswan-android-log.la
+@USE_MAEMO_TRUE@am__append_92 = plugins/maemo
+@MONOLITHIC_TRUE@@USE_MAEMO_TRUE@am__append_93 = plugins/maemo/libstrongswan-maemo.la
+@USE_HA_TRUE@am__append_94 = plugins/ha
+@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_95 = plugins/ha/libstrongswan-ha.la
+@USE_KERNEL_LIBIPSEC_TRUE@am__append_96 = plugins/kernel_libipsec
+@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_97 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
+@USE_KERNEL_WFP_TRUE@am__append_98 = plugins/kernel_wfp
+@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_99 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
+@USE_KERNEL_IPH_TRUE@am__append_100 = plugins/kernel_iph
+@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_101 = plugins/kernel_iph/libstrongswan-kernel-iph.la
+@USE_WHITELIST_TRUE@am__append_102 = plugins/whitelist
+@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_103 = plugins/whitelist/libstrongswan-whitelist.la
+@USE_LOOKIP_TRUE@am__append_104 = plugins/lookip
+@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_105 = plugins/lookip/libstrongswan-lookip.la
+@USE_ERROR_NOTIFY_TRUE@am__append_106 = plugins/error_notify
+@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_107 = plugins/error_notify/libstrongswan-error-notify.la
+@USE_CERTEXPIRE_TRUE@am__append_108 = plugins/certexpire
+@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_109 = plugins/certexpire/libstrongswan-certexpire.la
+@USE_SYSTIME_FIX_TRUE@am__append_110 = plugins/systime_fix
+@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_111 = plugins/systime_fix/libstrongswan-systime-fix.la
+@USE_LED_TRUE@am__append_112 = plugins/led
+@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_113 = plugins/led/libstrongswan-led.la
+@USE_DUPLICHECK_TRUE@am__append_114 = plugins/duplicheck
+@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_115 = plugins/duplicheck/libstrongswan-duplicheck.la
+@USE_COUPLING_TRUE@am__append_116 = plugins/coupling
+@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_117 = plugins/coupling/libstrongswan-coupling.la
+@USE_RADATTR_TRUE@am__append_118 = plugins/radattr
+@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_119 = plugins/radattr/libstrongswan-radattr.la
+@USE_UCI_TRUE@am__append_120 = plugins/uci
+@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_121 = plugins/uci/libstrongswan-uci.la
+@USE_ADDRBLOCK_TRUE@am__append_122 = plugins/addrblock
+@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_123 = plugins/addrblock/libstrongswan-addrblock.la
+@USE_UNITY_TRUE@am__append_124 = plugins/unity
+@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_125 = plugins/unity/libstrongswan-unity.la
+@USE_XAUTH_GENERIC_TRUE@am__append_126 = plugins/xauth_generic
+@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_127 = plugins/xauth_generic/libstrongswan-xauth-generic.la
+@USE_XAUTH_EAP_TRUE@am__append_128 = plugins/xauth_eap
+@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_129 = plugins/xauth_eap/libstrongswan-xauth-eap.la
+@USE_XAUTH_PAM_TRUE@am__append_130 = plugins/xauth_pam
+@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_131 = plugins/xauth_pam/libstrongswan-xauth-pam.la
+@USE_XAUTH_NOAUTH_TRUE@am__append_132 = plugins/xauth_noauth
+@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_133 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
+@USE_RESOLVE_TRUE@am__append_134 = plugins/resolve
+@MONOLITHIC_TRUE@@USE_RESOLVE_TRUE@am__append_135 = plugins/resolve/libstrongswan-resolve.la
+@USE_ATTR_TRUE@am__append_136 = plugins/attr
+@MONOLITHIC_TRUE@@USE_ATTR_TRUE@am__append_137 = plugins/attr/libstrongswan-attr.la
+@USE_ATTR_SQL_TRUE@am__append_138 = plugins/attr_sql
+@MONOLITHIC_TRUE@@USE_ATTR_SQL_TRUE@am__append_139 = plugins/attr_sql/libstrongswan-attr-sql.la
 subdir = src/libcharon
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -325,12 +334,12 @@ libcharon_la_DEPENDENCIES =  \
 	$(am__append_29) $(am__append_31) $(am__append_33) \
 	$(am__append_35) $(am__append_37) $(am__append_39) \
 	$(am__append_41) $(am__append_43) $(am__append_45) \
-	$(am__append_47) $(am__append_49) $(am__append_50) \
-	$(am__append_52) $(am__append_54) $(am__append_56) \
+	$(am__append_47) $(am__append_49) $(am__append_51) \
+	$(am__append_53) $(am__append_54) $(am__append_56) \
 	$(am__append_58) $(am__append_60) $(am__append_62) \
 	$(am__append_64) $(am__append_66) $(am__append_68) \
-	$(am__append_69) $(am__append_70) $(am__append_72) \
-	$(am__append_74) $(am__append_75) $(am__append_77) \
+	$(am__append_70) $(am__append_72) $(am__append_73) \
+	$(am__append_74) $(am__append_76) $(am__append_78) \
 	$(am__append_79) $(am__append_81) $(am__append_83) \
 	$(am__append_85) $(am__append_87) $(am__append_89) \
 	$(am__append_91) $(am__append_93) $(am__append_95) \
@@ -339,8 +348,14 @@ libcharon_la_DEPENDENCIES =  \
 	$(am__append_109) $(am__append_111) $(am__append_113) \
 	$(am__append_115) $(am__append_117) $(am__append_119) \
 	$(am__append_121) $(am__append_123) $(am__append_125) \
-	$(am__append_127) $(am__append_129) $(am__append_131)
-am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
+	$(am__append_127) $(am__append_129) $(am__append_131) \
+	$(am__append_133) $(am__append_135) $(am__append_137) \
+	$(am__append_139)
+am__libcharon_la_SOURCES_DIST = attributes/attributes.c \
+	attributes/attributes.h attributes/attribute_provider.h \
+	attributes/attribute_handler.h attributes/attribute_manager.c \
+	attributes/attribute_manager.h attributes/mem_pool.c \
+	attributes/mem_pool.h bus/bus.c bus/bus.h \
 	bus/listeners/listener.h bus/listeners/logger.h \
 	bus/listeners/file_logger.c bus/listeners/file_logger.h \
 	config/backend_manager.c config/backend_manager.h \
@@ -421,7 +436,9 @@ am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
 	processing/jobs/roam_job.h processing/jobs/update_sa_job.c \
 	processing/jobs/update_sa_job.h \
 	processing/jobs/inactivity_job.c \
-	processing/jobs/inactivity_job.h sa/eap/eap_method.c \
+	processing/jobs/inactivity_job.h \
+	processing/jobs/initiate_tasks_job.c \
+	processing/jobs/initiate_tasks_job.h sa/eap/eap_method.c \
 	sa/eap/eap_method.h sa/eap/eap_inner_method.h \
 	sa/eap/eap_manager.c sa/eap/eap_manager.h \
 	sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
@@ -429,7 +446,8 @@ am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
 	sa/authenticator.c sa/authenticator.h sa/child_sa.c \
 	sa/child_sa.h sa/ike_sa.c sa/ike_sa.h sa/ike_sa_id.c \
 	sa/ike_sa_id.h sa/keymat.h sa/keymat.c sa/ike_sa_manager.c \
-	sa/ike_sa_manager.h sa/task_manager.h sa/task_manager.c \
+	sa/ike_sa_manager.h sa/child_sa_manager.c \
+	sa/child_sa_manager.h sa/task_manager.h sa/task_manager.c \
 	sa/shunt_manager.c sa/shunt_manager.h sa/trap_manager.c \
 	sa/trap_manager.h sa/task.c sa/task.h sa/ikev2/keymat_v2.c \
 	sa/ikev2/keymat_v2.h sa/ikev2/task_manager_v2.c \
@@ -454,6 +472,8 @@ am__libcharon_la_SOURCES_DIST = bus/bus.c bus/bus.h \
 	sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
 	sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
 	sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
+	sa/ikev2/tasks/ike_reauth_complete.c \
+	sa/ikev2/tasks/ike_reauth_complete.h \
 	sa/ikev2/tasks/ike_auth_lifetime.c \
 	sa/ikev2/tasks/ike_auth_lifetime.h sa/ikev2/tasks/ike_vendor.c \
 	sa/ikev2/tasks/ike_vendor.h sa/ikev1/keymat_v1.c \
@@ -514,6 +534,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_mobike.lo \
 @USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_rekey.lo \
 @USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_reauth.lo \
+@USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_reauth_complete.lo \
 @USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_auth_lifetime.lo \
 @USE_IKEV2_TRUE@	sa/ikev2/tasks/ike_vendor.lo
 @USE_IKEV1_TRUE@am__objects_2 = sa/ikev1/keymat_v1.lo \
@@ -543,7 +564,9 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @USE_ME_TRUE@	sa/ikev2/connect_manager.lo \
 @USE_ME_TRUE@	sa/ikev2/mediation_manager.lo \
 @USE_ME_TRUE@	sa/ikev2/tasks/ike_me.lo
-am_libcharon_la_OBJECTS = bus/bus.lo bus/listeners/file_logger.lo \
+am_libcharon_la_OBJECTS = attributes/attributes.lo \
+	attributes/attribute_manager.lo attributes/mem_pool.lo \
+	bus/bus.lo bus/listeners/file_logger.lo \
 	config/backend_manager.lo config/child_cfg.lo \
 	config/ike_cfg.lo config/peer_cfg.lo config/proposal.lo \
 	control/controller.lo daemon.lo encoding/generator.lo \
@@ -587,13 +610,14 @@ am_libcharon_la_OBJECTS = bus/bus.lo bus/listeners/file_logger.lo \
 	processing/jobs/send_keepalive_job.lo \
 	processing/jobs/start_action_job.lo \
 	processing/jobs/roam_job.lo processing/jobs/update_sa_job.lo \
-	processing/jobs/inactivity_job.lo sa/eap/eap_method.lo \
+	processing/jobs/inactivity_job.lo \
+	processing/jobs/initiate_tasks_job.lo sa/eap/eap_method.lo \
 	sa/eap/eap_manager.lo sa/xauth/xauth_method.lo \
 	sa/xauth/xauth_manager.lo sa/authenticator.lo sa/child_sa.lo \
 	sa/ike_sa.lo sa/ike_sa_id.lo sa/keymat.lo sa/ike_sa_manager.lo \
-	sa/task_manager.lo sa/shunt_manager.lo sa/trap_manager.lo \
-	sa/task.lo $(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_4)
+	sa/child_sa_manager.lo sa/task_manager.lo sa/shunt_manager.lo \
+	sa/trap_manager.lo sa/task.lo $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4)
 libcharon_la_OBJECTS = $(am_libcharon_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -676,11 +700,11 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 DIST_SUBDIRS = . plugins/load_tester plugins/socket_default \
-	plugins/socket_dynamic plugins/socket_win plugins/farp \
-	plugins/stroke plugins/vici plugins/smp plugins/sql \
-	plugins/dnscert plugins/ipseckey plugins/updown \
-	plugins/ext_auth plugins/eap_identity plugins/eap_sim \
-	plugins/eap_sim_file plugins/eap_sim_pcsc \
+	plugins/socket_dynamic plugins/socket_win plugins/connmark \
+	plugins/forecast plugins/farp plugins/stroke plugins/vici \
+	plugins/smp plugins/sql plugins/dnscert plugins/ipseckey \
+	plugins/updown plugins/ext_auth plugins/eap_identity \
+	plugins/eap_sim plugins/eap_sim_file plugins/eap_sim_pcsc \
 	plugins/eap_simaka_sql plugins/eap_simaka_pseudonym \
 	plugins/eap_simaka_reauth plugins/eap_aka \
 	plugins/eap_aka_3gpp2 plugins/eap_md5 plugins/eap_gtc \
@@ -694,8 +718,9 @@ DIST_SUBDIRS = . plugins/load_tester plugins/socket_default \
 	plugins/error_notify plugins/certexpire plugins/systime_fix \
 	plugins/led plugins/duplicheck plugins/coupling \
 	plugins/radattr plugins/uci plugins/addrblock plugins/unity \
-	plugins/unit_tester plugins/xauth_generic plugins/xauth_eap \
-	plugins/xauth_pam plugins/xauth_noauth
+	plugins/xauth_generic plugins/xauth_eap plugins/xauth_pam \
+	plugins/xauth_noauth plugins/resolve plugins/attr \
+	plugins/attr_sql tests
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -747,6 +772,7 @@ DLLIB = @DLLIB@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
+EASY_INSTALL = @EASY_INSTALL@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -807,10 +833,12 @@ PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PLUGIN_CFLAGS = @PLUGIN_CFLAGS@
 PTHREADLIB = @PTHREADLIB@
 PYTHON = @PYTHON@
+PYTHONEGGINSTALLDIR = @PYTHONEGGINSTALLDIR@
 PYTHON_EXEC_PREFIX = @PYTHON_EXEC_PREFIX@
 PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
+PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
@@ -884,6 +912,8 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libiptc_CFLAGS = @libiptc_CFLAGS@
+libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
@@ -943,16 +973,20 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 ipseclib_LTLIBRARIES = libcharon.la
-libcharon_la_SOURCES = bus/bus.c bus/bus.h bus/listeners/listener.h \
-	bus/listeners/logger.h bus/listeners/file_logger.c \
-	bus/listeners/file_logger.h config/backend_manager.c \
-	config/backend_manager.h config/backend.h config/child_cfg.c \
-	config/child_cfg.h config/ike_cfg.c config/ike_cfg.h \
-	config/peer_cfg.c config/peer_cfg.h config/proposal.c \
-	config/proposal.h control/controller.c control/controller.h \
-	daemon.c daemon.h encoding/generator.c encoding/generator.h \
-	encoding/message.c encoding/message.h encoding/parser.c \
-	encoding/parser.h encoding/payloads/auth_payload.c \
+libcharon_la_SOURCES = attributes/attributes.c attributes/attributes.h \
+	attributes/attribute_provider.h attributes/attribute_handler.h \
+	attributes/attribute_manager.c attributes/attribute_manager.h \
+	attributes/mem_pool.c attributes/mem_pool.h bus/bus.c \
+	bus/bus.h bus/listeners/listener.h bus/listeners/logger.h \
+	bus/listeners/file_logger.c bus/listeners/file_logger.h \
+	config/backend_manager.c config/backend_manager.h \
+	config/backend.h config/child_cfg.c config/child_cfg.h \
+	config/ike_cfg.c config/ike_cfg.h config/peer_cfg.c \
+	config/peer_cfg.h config/proposal.c config/proposal.h \
+	control/controller.c control/controller.h daemon.c daemon.h \
+	encoding/generator.c encoding/generator.h encoding/message.c \
+	encoding/message.h encoding/parser.c encoding/parser.h \
+	encoding/payloads/auth_payload.c \
 	encoding/payloads/auth_payload.h \
 	encoding/payloads/cert_payload.c \
 	encoding/payloads/cert_payload.h \
@@ -1023,7 +1057,9 @@ libcharon_la_SOURCES = bus/bus.c bus/bus.h bus/listeners/listener.h \
 	processing/jobs/roam_job.h processing/jobs/update_sa_job.c \
 	processing/jobs/update_sa_job.h \
 	processing/jobs/inactivity_job.c \
-	processing/jobs/inactivity_job.h sa/eap/eap_method.c \
+	processing/jobs/inactivity_job.h \
+	processing/jobs/initiate_tasks_job.c \
+	processing/jobs/initiate_tasks_job.h sa/eap/eap_method.c \
 	sa/eap/eap_method.h sa/eap/eap_inner_method.h \
 	sa/eap/eap_manager.c sa/eap/eap_manager.h \
 	sa/xauth/xauth_method.c sa/xauth/xauth_method.h \
@@ -1031,7 +1067,8 @@ libcharon_la_SOURCES = bus/bus.c bus/bus.h bus/listeners/listener.h \
 	sa/authenticator.c sa/authenticator.h sa/child_sa.c \
 	sa/child_sa.h sa/ike_sa.c sa/ike_sa.h sa/ike_sa_id.c \
 	sa/ike_sa_id.h sa/keymat.h sa/keymat.c sa/ike_sa_manager.c \
-	sa/ike_sa_manager.h sa/task_manager.h sa/task_manager.c \
+	sa/ike_sa_manager.h sa/child_sa_manager.c \
+	sa/child_sa_manager.h sa/task_manager.h sa/task_manager.c \
 	sa/shunt_manager.c sa/shunt_manager.h sa/trap_manager.c \
 	sa/trap_manager.h sa/task.c sa/task.h $(am__append_1) \
 	$(am__append_2) $(am__append_3) $(am__append_5)
@@ -1057,12 +1094,12 @@ libcharon_la_LIBADD =  \
 	$(am__append_33) $(am__append_35) $(am__append_37) \
 	$(am__append_39) $(am__append_41) $(am__append_43) \
 	$(am__append_45) $(am__append_47) $(am__append_49) \
-	$(am__append_50) $(am__append_52) $(am__append_54) \
+	$(am__append_51) $(am__append_53) $(am__append_54) \
 	$(am__append_56) $(am__append_58) $(am__append_60) \
 	$(am__append_62) $(am__append_64) $(am__append_66) \
-	$(am__append_68) $(am__append_69) $(am__append_70) \
-	$(am__append_72) $(am__append_74) $(am__append_75) \
-	$(am__append_77) $(am__append_79) $(am__append_81) \
+	$(am__append_68) $(am__append_70) $(am__append_72) \
+	$(am__append_73) $(am__append_74) $(am__append_76) \
+	$(am__append_78) $(am__append_79) $(am__append_81) \
 	$(am__append_83) $(am__append_85) $(am__append_87) \
 	$(am__append_89) $(am__append_91) $(am__append_93) \
 	$(am__append_95) $(am__append_97) $(am__append_99) \
@@ -1071,7 +1108,8 @@ libcharon_la_LIBADD =  \
 	$(am__append_113) $(am__append_115) $(am__append_117) \
 	$(am__append_119) $(am__append_121) $(am__append_123) \
 	$(am__append_125) $(am__append_127) $(am__append_129) \
-	$(am__append_131)
+	$(am__append_131) $(am__append_133) $(am__append_135) \
+	$(am__append_137) $(am__append_139)
 EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@SUBDIRS = . $(am__append_6) $(am__append_8) \
 @MONOLITHIC_FALSE@	$(am__append_10) $(am__append_12) \
@@ -1084,13 +1122,13 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_38) $(am__append_40) \
 @MONOLITHIC_FALSE@	$(am__append_42) $(am__append_44) \
 @MONOLITHIC_FALSE@	$(am__append_46) $(am__append_48) \
-@MONOLITHIC_FALSE@	$(am__append_51) $(am__append_53) \
+@MONOLITHIC_FALSE@	$(am__append_50) $(am__append_52) \
 @MONOLITHIC_FALSE@	$(am__append_55) $(am__append_57) \
 @MONOLITHIC_FALSE@	$(am__append_59) $(am__append_61) \
 @MONOLITHIC_FALSE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_FALSE@	$(am__append_67) $(am__append_71) \
-@MONOLITHIC_FALSE@	$(am__append_73) $(am__append_76) \
-@MONOLITHIC_FALSE@	$(am__append_78) $(am__append_80) \
+@MONOLITHIC_FALSE@	$(am__append_67) $(am__append_69) \
+@MONOLITHIC_FALSE@	$(am__append_71) $(am__append_75) \
+@MONOLITHIC_FALSE@	$(am__append_77) $(am__append_80) \
 @MONOLITHIC_FALSE@	$(am__append_82) $(am__append_84) \
 @MONOLITHIC_FALSE@	$(am__append_86) $(am__append_88) \
 @MONOLITHIC_FALSE@	$(am__append_90) $(am__append_92) \
@@ -1103,7 +1141,9 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_118) $(am__append_120) \
 @MONOLITHIC_FALSE@	$(am__append_122) $(am__append_124) \
 @MONOLITHIC_FALSE@	$(am__append_126) $(am__append_128) \
-@MONOLITHIC_FALSE@	$(am__append_130)
+@MONOLITHIC_FALSE@	$(am__append_130) $(am__append_132) \
+@MONOLITHIC_FALSE@	$(am__append_134) $(am__append_136) \
+@MONOLITHIC_FALSE@	$(am__append_138) tests
 
 # build optional plugins
 ########################
@@ -1118,13 +1158,13 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_38) $(am__append_40) \
 @MONOLITHIC_TRUE@	$(am__append_42) $(am__append_44) \
 @MONOLITHIC_TRUE@	$(am__append_46) $(am__append_48) \
-@MONOLITHIC_TRUE@	$(am__append_51) $(am__append_53) \
+@MONOLITHIC_TRUE@	$(am__append_50) $(am__append_52) \
 @MONOLITHIC_TRUE@	$(am__append_55) $(am__append_57) \
 @MONOLITHIC_TRUE@	$(am__append_59) $(am__append_61) \
 @MONOLITHIC_TRUE@	$(am__append_63) $(am__append_65) \
-@MONOLITHIC_TRUE@	$(am__append_67) $(am__append_71) \
-@MONOLITHIC_TRUE@	$(am__append_73) $(am__append_76) \
-@MONOLITHIC_TRUE@	$(am__append_78) $(am__append_80) \
+@MONOLITHIC_TRUE@	$(am__append_67) $(am__append_69) \
+@MONOLITHIC_TRUE@	$(am__append_71) $(am__append_75) \
+@MONOLITHIC_TRUE@	$(am__append_77) $(am__append_80) \
 @MONOLITHIC_TRUE@	$(am__append_82) $(am__append_84) \
 @MONOLITHIC_TRUE@	$(am__append_86) $(am__append_88) \
 @MONOLITHIC_TRUE@	$(am__append_90) $(am__append_92) \
@@ -1137,7 +1177,9 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_118) $(am__append_120) \
 @MONOLITHIC_TRUE@	$(am__append_122) $(am__append_124) \
 @MONOLITHIC_TRUE@	$(am__append_126) $(am__append_128) \
-@MONOLITHIC_TRUE@	$(am__append_130)
+@MONOLITHIC_TRUE@	$(am__append_130) $(am__append_132) \
+@MONOLITHIC_TRUE@	$(am__append_134) $(am__append_136) \
+@MONOLITHIC_TRUE@	$(am__append_138) . tests
 all: all-recursive
 
 .SUFFIXES:
@@ -1207,6 +1249,18 @@ clean-ipseclibLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
+attributes/$(am__dirstamp):
+	@$(MKDIR_P) attributes
+	@: > attributes/$(am__dirstamp)
+attributes/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) attributes/$(DEPDIR)
+	@: > attributes/$(DEPDIR)/$(am__dirstamp)
+attributes/attributes.lo: attributes/$(am__dirstamp) \
+	attributes/$(DEPDIR)/$(am__dirstamp)
+attributes/attribute_manager.lo: attributes/$(am__dirstamp) \
+	attributes/$(DEPDIR)/$(am__dirstamp)
+attributes/mem_pool.lo: attributes/$(am__dirstamp) \
+	attributes/$(DEPDIR)/$(am__dirstamp)
 bus/$(am__dirstamp):
 	@$(MKDIR_P) bus
 	@: > bus/$(am__dirstamp)
@@ -1389,6 +1443,9 @@ processing/jobs/update_sa_job.lo: processing/jobs/$(am__dirstamp) \
 	processing/jobs/$(DEPDIR)/$(am__dirstamp)
 processing/jobs/inactivity_job.lo: processing/jobs/$(am__dirstamp) \
 	processing/jobs/$(DEPDIR)/$(am__dirstamp)
+processing/jobs/initiate_tasks_job.lo:  \
+	processing/jobs/$(am__dirstamp) \
+	processing/jobs/$(DEPDIR)/$(am__dirstamp)
 sa/eap/$(am__dirstamp):
 	@$(MKDIR_P) sa/eap
 	@: > sa/eap/$(am__dirstamp)
@@ -1421,6 +1478,8 @@ sa/ike_sa.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
 sa/ike_sa_id.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
 sa/keymat.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
 sa/ike_sa_manager.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
+sa/child_sa_manager.lo: sa/$(am__dirstamp) \
+	sa/$(DEPDIR)/$(am__dirstamp)
 sa/task_manager.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
 sa/shunt_manager.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
 sa/trap_manager.lo: sa/$(am__dirstamp) sa/$(DEPDIR)/$(am__dirstamp)
@@ -1483,6 +1542,8 @@ sa/ikev2/tasks/ike_mobike.lo: sa/ikev2/tasks/$(am__dirstamp) \
 sa/ikev2/tasks/ike_rekey.lo: sa/ikev2/tasks/$(am__dirstamp) \
 	sa/ikev2/tasks/$(DEPDIR)/$(am__dirstamp)
 sa/ikev2/tasks/ike_reauth.lo: sa/ikev2/tasks/$(am__dirstamp) \
+	sa/ikev2/tasks/$(DEPDIR)/$(am__dirstamp)
+sa/ikev2/tasks/ike_reauth_complete.lo: sa/ikev2/tasks/$(am__dirstamp) \
 	sa/ikev2/tasks/$(DEPDIR)/$(am__dirstamp)
 sa/ikev2/tasks/ike_auth_lifetime.lo: sa/ikev2/tasks/$(am__dirstamp) \
 	sa/ikev2/tasks/$(DEPDIR)/$(am__dirstamp)
@@ -1574,6 +1635,8 @@ libcharon.la: $(libcharon_la_OBJECTS) $(libcharon_la_DEPENDENCIES) $(EXTRA_libch
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f attributes/*.$(OBJEXT)
+	-rm -f attributes/*.lo
 	-rm -f bus/*.$(OBJEXT)
 	-rm -f bus/*.lo
 	-rm -f bus/listeners/*.$(OBJEXT)
@@ -1615,6 +1678,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daemon.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/attribute_manager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/attributes.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@attributes/$(DEPDIR)/mem_pool.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@bus/$(DEPDIR)/bus.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@bus/listeners/$(DEPDIR)/file_logger.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@bus/listeners/$(DEPDIR)/sys_logger.Plo@am__quote@
@@ -1665,6 +1731,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/dpd_timeout_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/inactivity_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/initiate_mediation_job.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/initiate_tasks_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/mediation_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/migrate_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/process_message_job.Plo@am__quote@
@@ -1679,6 +1746,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@processing/jobs/$(DEPDIR)/update_sa_job.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/authenticator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/child_sa.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/child_sa_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/ike_sa.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/ike_sa_id.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/$(DEPDIR)/ike_sa_manager.Plo@am__quote@
@@ -1730,6 +1798,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_mobike.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_natd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_reauth.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_reauth_complete.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_rekey.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/ikev2/tasks/$(DEPDIR)/ike_vendor.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@sa/xauth/$(DEPDIR)/xauth_manager.Plo@am__quote@
@@ -1764,6 +1833,7 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+	-rm -rf attributes/.libs attributes/_libs
 	-rm -rf bus/.libs bus/_libs
 	-rm -rf bus/listeners/.libs bus/listeners/_libs
 	-rm -rf config/.libs config/_libs
@@ -1971,6 +2041,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f attributes/$(DEPDIR)/$(am__dirstamp)
+	-rm -f attributes/$(am__dirstamp)
 	-rm -f bus/$(DEPDIR)/$(am__dirstamp)
 	-rm -f bus/$(am__dirstamp)
 	-rm -f bus/listeners/$(DEPDIR)/$(am__dirstamp)
@@ -2017,7 +2089,7 @@ clean-am: clean-generic clean-ipseclibLTLIBRARIES clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) bus/$(DEPDIR) bus/listeners/$(DEPDIR) config/$(DEPDIR) control/$(DEPDIR) encoding/$(DEPDIR) encoding/payloads/$(DEPDIR) kernel/$(DEPDIR) network/$(DEPDIR) processing/jobs/$(DEPDIR) sa/$(DEPDIR) sa/eap/$(DEPDIR) sa/ikev1/$(DEPDIR) sa/ikev1/authenticators/$(DEPDIR) sa/ikev1/tasks/$(DEPDIR) sa/ikev2/$(DEPDIR) sa/ikev2/authenticators/$(DEPDIR) sa/ikev2/tasks/$(DEPDIR) sa/xauth/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) attributes/$(DEPDIR) bus/$(DEPDIR) bus/listeners/$(DEPDIR) config/$(DEPDIR) control/$(DEPDIR) encoding/$(DEPDIR) encoding/payloads/$(DEPDIR) kernel/$(DEPDIR) network/$(DEPDIR) processing/jobs/$(DEPDIR) sa/$(DEPDIR) sa/eap/$(DEPDIR) sa/ikev1/$(DEPDIR) sa/ikev1/authenticators/$(DEPDIR) sa/ikev1/tasks/$(DEPDIR) sa/ikev2/$(DEPDIR) sa/ikev2/authenticators/$(DEPDIR) sa/ikev2/tasks/$(DEPDIR) sa/xauth/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -2063,7 +2135,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) bus/$(DEPDIR) bus/listeners/$(DEPDIR) config/$(DEPDIR) control/$(DEPDIR) encoding/$(DEPDIR) encoding/payloads/$(DEPDIR) kernel/$(DEPDIR) network/$(DEPDIR) processing/jobs/$(DEPDIR) sa/$(DEPDIR) sa/eap/$(DEPDIR) sa/ikev1/$(DEPDIR) sa/ikev1/authenticators/$(DEPDIR) sa/ikev1/tasks/$(DEPDIR) sa/ikev2/$(DEPDIR) sa/ikev2/authenticators/$(DEPDIR) sa/ikev2/tasks/$(DEPDIR) sa/xauth/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) attributes/$(DEPDIR) bus/$(DEPDIR) bus/listeners/$(DEPDIR) config/$(DEPDIR) control/$(DEPDIR) encoding/$(DEPDIR) encoding/payloads/$(DEPDIR) kernel/$(DEPDIR) network/$(DEPDIR) processing/jobs/$(DEPDIR) sa/$(DEPDIR) sa/eap/$(DEPDIR) sa/ikev1/$(DEPDIR) sa/ikev1/authenticators/$(DEPDIR) sa/ikev1/tasks/$(DEPDIR) sa/ikev2/$(DEPDIR) sa/ikev2/authenticators/$(DEPDIR) sa/ikev2/tasks/$(DEPDIR) sa/xauth/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

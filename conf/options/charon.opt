@@ -117,6 +117,17 @@ charon.i_dont_care_about_security_and_use_aggressive_mode_psk = no
 charon.ignore_routing_tables
 	A space-separated list of routing tables to be excluded from route lookups.
 
+charon.ignore_acquire_ts = no
+	Whether to ignore the traffic selectors from the kernel's acquire events for
+	IKEv2 connections (they are not used for IKEv1).
+
+	If this is disabled the traffic selectors from the kernel's acquire events,
+	which are derived from the triggering packet, are prepended to the traffic
+	selectors from the configuration for IKEv2 connection. By enabling this,
+	such specific traffic selectors will be ignored and only the ones in the
+	config will	be sent. This always happens for IKEv1 connections as the
+	protocol only supports one set of traffic selectors per CHILD_SA.
+
 charon.ikesa_limit = 0
 	Maximum number of IKE_SAs that can be established at the same time before
 	new connection attempts are blocked.
@@ -195,6 +206,16 @@ charon.load_modular = no
 
 charon.max_packet = 10000
 	Maximum packet size accepted by charon.
+
+charon.make_before_break = no
+	Initiate IKEv2 reauthentication with a make-before-break scheme.
+
+	Initiate IKEv2 reauthentication with a make-before-break instead of a
+	break-before-make scheme. Make-before-break uses overlapping IKE and
+	CHILD_SA during reauthentication by first recreating all new SAs before
+	deleting the old ones. This behavior can be beneficial to avoid connectivity
+	gaps during reauthentication, but requires support for overlapping SAs by
+	the peer. strongSwan can handle such overlapping SAs since version 5.3.0.
 
 charon.multiple_authentication = yes
 	Enable multiple authentication exchanges (RFC 4739).
@@ -276,6 +297,17 @@ charon.send_delay_type = 0
 
 charon.send_vendor_id = no
 	Send strongSwan vendor ID payload
+
+charon.signature_authentication = yes
+	Whether to enable Signature Authentication as per RFC 7427.
+
+charon.signature_authentication_constraints = yes
+	Whether to enable constraints against IKEv2 signature schemes.
+
+	If enabled, signature schemes configured in _rightauth_, in addition to
+	getting used as constraints against signature schemes employed in the
+	certificate chain, are also used as constraints against the signature scheme
+	used by peers during IKEv2.
 
 charon.start-scripts {}
 	Section containing a list of scripts (name = path) that are executed when

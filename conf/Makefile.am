@@ -28,6 +28,7 @@ plugins = \
 	plugins/android_log.opt \
 	plugins/attr.opt \
 	plugins/attr-sql.opt \
+	plugins/bliss.opt \
 	plugins/certexpire.opt \
 	plugins/coupling.opt \
 	plugins/dhcp.opt \
@@ -46,6 +47,7 @@ plugins = \
 	plugins/eap-ttls.opt \
 	plugins/error-notify.opt \
 	plugins/ext-auth.opt \
+	plugins/forecast.opt \
 	plugins/gcrypt.opt \
 	plugins/ha.opt \
 	plugins/imc-attestation.opt \
@@ -62,6 +64,7 @@ plugins = \
 	plugins/led.opt \
 	plugins/kernel-libipsec.opt \
 	plugins/kernel-netlink.opt \
+	plugins/kernel-pfkey.opt \
 	plugins/kernel-pfroute.opt \
 	plugins/load-tester.opt \
 	plugins/lookip.opt \

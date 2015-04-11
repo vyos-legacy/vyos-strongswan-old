@@ -26,7 +26,7 @@
 #include <radius_client.h>
 #include <radius_config.h>
 
-#include <hydra.h>
+#include <daemon.h>
 #include <threading/rwlock.h>
 #include <processing/jobs/callback_job.h>
 #include <processing/jobs/delete_ike_sa_job.h>
@@ -149,19 +149,26 @@ static void load_configs(private_eap_radius_plugin_t *this)
 			continue;
 		}
 		nas_identifier = lib->settings->get_str(lib->settings,
-				"%s.plugins.eap-radius.servers.%s.nas_identifier", "strongSwan",
+				"%s.plugins.eap-radius.servers.%s.nas_identifier",
+					lib->settings->get_str(lib->settings,
+						"%s.plugins.eap-radius.nas_identifier", "strongSwan",
+						lib->ns),
 				lib->ns, section);
 		auth_port = lib->settings->get_int(lib->settings,
 			"%s.plugins.eap-radius.servers.%s.auth_port",
 				lib->settings->get_int(lib->settings,
 					"%s.plugins.eap-radius.servers.%s.port",
-					AUTH_PORT, lib->ns, section),
+						lib->settings->get_int(lib->settings,
+							"%s.plugins.eap-radius.port", AUTH_PORT, lib->ns),
+					lib->ns, section),
 			lib->ns, section);
 		acct_port = lib->settings->get_int(lib->settings,
 				"%s.plugins.eap-radius.servers.%s.acct_port", ACCT_PORT,
 				lib->ns, section);
 		sockets = lib->settings->get_int(lib->settings,
-				"%s.plugins.eap-radius.servers.%s.sockets", 1,
+				"%s.plugins.eap-radius.servers.%s.sockets",
+					lib->settings->get_int(lib->settings,
+						"%s.plugins.eap-radius.sockets", 1, lib->ns),
 				lib->ns, section);
 		preference = lib->settings->get_int(lib->settings,
 				"%s.plugins.eap-radius.servers.%s.preference", 0,
@@ -211,13 +218,13 @@ static bool plugin_cb(private_eap_radius_plugin_t *this,
 		{
 			charon->bus->add_listener(charon->bus, &this->forward->listener);
 		}
-		hydra->attributes->add_provider(hydra->attributes,
-										&this->provider->provider);
+		charon->attributes->add_provider(charon->attributes,
+										 &this->provider->provider);
 	}
 	else
 	{
-		hydra->attributes->remove_provider(hydra->attributes,
-										   &this->provider->provider);
+		charon->attributes->remove_provider(charon->attributes,
+											&this->provider->provider);
 		if (this->forward)
 		{
 			charon->bus->remove_listener(charon->bus, &this->forward->listener);

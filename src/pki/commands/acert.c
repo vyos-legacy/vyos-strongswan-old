@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2015 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -31,7 +32,7 @@
 static int acert()
 {
 	cred_encoding_type_t form = CERT_ASN1_DER;
-	hash_algorithm_t digest = HASH_SHA1;
+	hash_algorithm_t digest = HASH_UNKNOWN;
 	certificate_t *ac = NULL, *cert = NULL, *issuer =NULL;
 	private_key_t *private = NULL;
 	public_key_t *public = NULL;
@@ -161,6 +162,10 @@ static int acert()
 		error = "loading issuer private key failed";
 		goto end;
 	}
+	if (digest == HASH_UNKNOWN)
+	{
+		digest = get_default_digest(private);
+	}
 	if (!private->belongs_to(private, public))
 	{
 		error = "issuer private key does not match issuer certificate";
@@ -286,7 +291,7 @@ static void __attribute__ ((constructor))reg()
 			{"not-before",		'F', 1, "date/time the validity of the AC starts"},
 			{"not-after",		'T', 1, "date/time the validity of the AC ends"},
 			{"dateform",		'D', 1, "strptime(3) input format, default: %d.%m.%y %T"},
-			{"digest",			'g', 1, "digest for signature creation, default: sha1"},
+			{"digest",			'g', 1, "digest for signature creation, default: key-specific"},
 			{"outform",			'f', 1, "encoding of generated cert, default: der"},
 		}
 	});

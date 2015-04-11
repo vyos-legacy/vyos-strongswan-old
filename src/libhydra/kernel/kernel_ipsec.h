@@ -58,33 +58,28 @@ struct kernel_ipsec_t {
 	 * @param src		source address of SA
 	 * @param dst		destination address of SA
 	 * @param protocol	protocol for SA (ESP/AH)
-	 * @param reqid		unique ID for this SA
 	 * @param spi		allocated spi
-	 * @return				SUCCESS if operation completed
+	 * @return			SUCCESS if operation completed
 	 */
 	status_t (*get_spi)(kernel_ipsec_t *this, host_t *src, host_t *dst,
-						u_int8_t protocol, u_int32_t reqid, u_int32_t *spi);
+						u_int8_t protocol, u_int32_t *spi);
 
 	/**
 	 * Get a Compression Parameter Index (CPI) from the kernel.
 	 *
 	 * @param src		source address of SA
 	 * @param dst		destination address of SA
-	 * @param reqid		unique ID for the corresponding SA
 	 * @param cpi		allocated cpi
-	 * @return				SUCCESS if operation completed
+	 * @return			SUCCESS if operation completed
 	 */
 	status_t (*get_cpi)(kernel_ipsec_t *this, host_t *src, host_t *dst,
-						u_int32_t reqid, u_int16_t *cpi);
+						u_int16_t *cpi);
 
 	/**
 	 * Add an SA to the SAD.
 	 *
-	 * add_sa() may update an already allocated
-	 * SPI (via get_spi). In this case, the replace
-	 * flag must be set.
-	 * This function does install a single SA for a
-	 * single protocol in one direction.
+	 * This function does install a single SA for a single protocol in one
+	 * direction.
 	 *
 	 * @param src			source address for this SA
 	 * @param dst			destination address for this SA
@@ -106,8 +101,9 @@ struct kernel_ipsec_t {
 	 * @param encap			enable UDP encapsulation for NAT traversal
 	 * @param esn			TRUE to use Extended Sequence Numbers
 	 * @param inbound		TRUE if this is an inbound SA
-	 * @param src_ts		traffic selector with BEET source address
-	 * @param dst_ts		traffic selector with BEET destination address
+	 * @param update		TRUE if an SPI has already been allocated for SA
+	 * @param src_ts		list of source traffic selectors
+	 * @param dst_ts		list of destination traffic selectors
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*add_sa) (kernel_ipsec_t *this,
@@ -117,9 +113,9 @@ struct kernel_ipsec_t {
 						u_int16_t enc_alg, chunk_t enc_key,
 						u_int16_t int_alg, chunk_t int_key,
 						ipsec_mode_t mode, u_int16_t ipcomp, u_int16_t cpi,
-						u_int32_t replay_window,
-						bool initiator, bool encap, bool esn, bool inbound,
-						traffic_selector_t *src_ts, traffic_selector_t *dst_ts);
+						u_int32_t replay_window, bool initiator, bool encap,
+						bool esn, bool inbound, bool update,
+						linked_list_t *src_ts, linked_list_t *dst_ts);
 
 	/**
 	 * Update the hosts on an installed SA.

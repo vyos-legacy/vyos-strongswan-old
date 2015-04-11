@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2007-2014 Tobias Brunner
+# Copyright (C) 2007-2015 Tobias Brunner
 # Copyright (C) 2006-2014 Andreas Steffen
 # Copyright (C) 2006-2014 Martin Willi
 # Hochschule fuer Technik Rapperswil
@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.2.1])
+AC_INIT([strongSwan],[5.3.0])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -69,6 +69,7 @@ ARG_WITH_SET([mpz_powm_sec],         [yes], [use the more side-channel resistant
 ARG_WITH_SET([dev-headers],          [no], [install strongSwan development headers to directory.])
 ARG_WITH_SET([printf-hooks],         [auto], [force the use of a specific printf hook implementation (auto, builtin, glibc, vstr).])
 ARG_WITH_SET([rubygemdir],           ["gem environment gemdir"], [path to install ruby gems to])
+ARG_WITH_SET([pythoneggdir],         ["main site-packages directory"], [path to install python eggs to to])
 
 if test -n "$PKG_CONFIG"; then
 	systemdsystemunitdir_default=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)
@@ -123,6 +124,7 @@ m4_include(m4/macros/enable-disable.m4)
 # crypto plugins
 ARG_DISBL_SET([aes],            [disable AES software implementation plugin.])
 ARG_ENABL_SET([af-alg],         [enable AF_ALG crypto interface to Linux Crypto API.])
+ARG_ENABL_SET([bliss],          [enable BLISS software implementation plugin.])
 ARG_ENABL_SET([blowfish],       [enable Blowfish software implementation plugin.])
 ARG_ENABL_SET([ccm],            [enables the CCM AEAD wrapper crypto plugin.])
 ARG_DISBL_SET([cmac],           [disable CMAC crypto implementation plugin.])
@@ -158,6 +160,7 @@ ARG_DISBL_SET([sshkey],         [disable SSH key decoding plugin.])
 ARG_DISBL_SET([x509],           [disable X509 certificate implementation plugin.])
 # fetcher/resolver plugins
 ARG_ENABL_SET([curl],           [enable CURL fetcher plugin to fetch files via libcurl. Requires libcurl.])
+ARG_ENABL_SET([files],          [enable simple file:// URI fetcher.])
 ARG_ENABL_SET([ldap],           [enable LDAP fetching plugin to fetch files via libldap. Requires openLDAP.])
 ARG_ENABL_SET([soup],           [enable soup fetcher plugin to fetch from HTTP via libsoup. Requires libsoup.])
 ARG_ENABL_SET([unbound],        [enable UNBOUND resolver plugin to perform DNS queries via libunbound. Requires libldns and libunbound.])
@@ -245,6 +248,8 @@ ARG_ENABL_SET([tnccs-dynamic],  [enable dynamic TNCCS protocol discovery module.
 # misc plugins
 ARG_ENABL_SET([android-log],    [enable Android specific logger plugin.])
 ARG_ENABL_SET([certexpire],     [enable CSV export of expiration dates of used certificates.])
+ARG_ENABL_SET([connmark],       [enable connmark plugin using conntrack based marks to select return path SA.])
+ARG_ENABL_SET([forecast],       [enable forecast plugin forwarding broadcast/multicast messages.])
 ARG_ENABL_SET([duplicheck],     [advanced duplicate checking plugin using liveness checks.])
 ARG_ENABL_SET([error-notify],   [enable error notification plugin.])
 ARG_ENABL_SET([farp],           [enable ARP faking plugin that responds to ARP requests to peers virtual IP])
@@ -256,7 +261,6 @@ ARG_ENABL_SET([maemo],          [enable Maemo specific plugin.])
 ARG_ENABL_SET([radattr],        [enable plugin to inject and process custom RADIUS attributes as IKEv2 client.])
 ARG_ENABL_SET([systime-fix],    [enable plugin to handle cert lifetimes with invalid system time gracefully.])
 ARG_ENABL_SET([test-vectors],   [enable plugin providing crypto test vectors.])
-ARG_ENABL_SET([unit-tester],    [enable unit tests on IKEv2 daemon startup.])
 ARG_DISBL_SET([updown],         [disable updown firewall script plugin.])
 # programs/components
 ARG_ENABL_SET([aikgen],         [enable AIK generator.])
@@ -287,6 +291,7 @@ ARG_DISBL_SET([load-warning],   [disable the charon plugin load option warning i
 ARG_ENABL_SET([mediation],      [enable IKEv2 Mediation Extension.])
 ARG_ENABL_SET([unwind-backtraces],[use libunwind to create backtraces for memory leaks and segfaults.])
 ARG_ENABL_SET([ruby-gems],      [enable installation of provided ruby gems.])
+ARG_ENABL_SET([python-eggs],    [enable installation of provided python eggs.])
 # compile options
 ARG_ENABL_SET([coverage],       [enable lcov coverage report generation.])
 ARG_ENABL_SET([leak-detective], [enable malloc hooks to find memory leaks.])
@@ -1076,6 +1081,12 @@ if test x$xauth_pam = xtrue; then
 	AC_CHECK_HEADER([security/pam_appl.h],,[AC_MSG_ERROR([PAM header security/pam_appl.h not found!])])
 fi
 
+if test x$connmark = xtrue -o x$forecast = xtrue; then
+	PKG_CHECK_MODULES(libiptc, [libiptc])
+	AC_SUBST(libiptc_CFLAGS)
+	AC_SUBST(libiptc_LIBS)
+fi
+
 if test x$capabilities = xnative; then
 	AC_MSG_NOTICE([Usage of the native Linux capabilities interface is deprecated, use libcap instead])
 	# Linux requires the following for capset(), Android does not have it,
@@ -1177,6 +1188,19 @@ if test x$ruby_gems = xtrue; then
 	AC_SUBST(RUBYGEMDIR, "$rubygemdir")
 fi
 
+if test x$python_eggs = xtrue; then
+	AC_PATH_PROG([EASY_INSTALL], [easy_install], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
+	if test x$EASY_INSTALL = x; then
+		AC_MSG_ERROR(Python easy_install not found)
+	fi
+	if test "x$pythoneggdir" = "xmain site-packages directory"; then
+		AC_SUBST(PYTHONEGGINSTALLDIR, "")
+	else
+		AC_SUBST(PYTHONEGGINSTALLDIR, "--install-dir $pythoneggdir")
+	fi
+	AC_PATH_PROG([PY_TEST], [py.test], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
+fi
+
 # ===============================================
 #  collect plugin list for strongSwan components
 # ===============================================
@@ -1207,8 +1231,6 @@ t_plugins=
 ADD_PLUGIN([test-vectors],         [s charon scepclient pki])
 ADD_PLUGIN([unbound],              [s charon scripts])
 ADD_PLUGIN([ldap],                 [s charon scepclient scripts nm cmd])
-ADD_PLUGIN([mysql],                [s charon pool manager medsrv attest])
-ADD_PLUGIN([sqlite],               [s charon pool manager medsrv attest])
 ADD_PLUGIN([pkcs11],               [s charon pki nm cmd])
 ADD_PLUGIN([aes],                  [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([des],                  [s charon scepclient pki scripts nm cmd])
@@ -1246,16 +1268,20 @@ ADD_PLUGIN([agent],                [s charon nm cmd])
 ADD_PLUGIN([keychain],             [s charon cmd])
 ADD_PLUGIN([xcbc],                 [s charon nm cmd])
 ADD_PLUGIN([cmac],                 [s charon nm cmd])
-ADD_PLUGIN([hmac],                 [s charon scripts nm cmd])
+ADD_PLUGIN([hmac],                 [s charon pki scripts nm cmd])
 ADD_PLUGIN([ctr],                  [s charon scripts nm cmd])
 ADD_PLUGIN([ccm],                  [s charon scripts nm cmd])
 ADD_PLUGIN([gcm],                  [s charon scripts nm cmd])
 ADD_PLUGIN([ntru],                 [s charon scripts nm cmd])
+ADD_PLUGIN([bliss],                [s charon pki scripts nm cmd])
 ADD_PLUGIN([curl],                 [s charon scepclient pki scripts nm cmd])
+ADD_PLUGIN([files],                [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([winhttp],              [s charon pki scripts])
 ADD_PLUGIN([soup],                 [s charon pki scripts nm cmd])
-ADD_PLUGIN([attr],                 [h charon])
-ADD_PLUGIN([attr-sql],             [h charon])
+ADD_PLUGIN([mysql],                [s charon pool manager medsrv attest])
+ADD_PLUGIN([sqlite],               [s charon pool manager medsrv attest])
+ADD_PLUGIN([attr],                 [c charon])
+ADD_PLUGIN([attr-sql],             [c charon])
 ADD_PLUGIN([load-tester],          [c charon])
 ADD_PLUGIN([kernel-libipsec],      [c charon cmd])
 ADD_PLUGIN([kernel-wfp],           [c charon])
@@ -1263,10 +1289,12 @@ ADD_PLUGIN([kernel-iph],           [c charon])
 ADD_PLUGIN([kernel-pfkey],         [h charon starter nm cmd])
 ADD_PLUGIN([kernel-pfroute],       [h charon starter nm cmd])
 ADD_PLUGIN([kernel-netlink],       [h charon starter nm cmd])
-ADD_PLUGIN([resolve],              [h charon cmd])
+ADD_PLUGIN([resolve],              [c charon cmd])
 ADD_PLUGIN([socket-default],       [c charon nm cmd])
 ADD_PLUGIN([socket-dynamic],       [c charon cmd])
 ADD_PLUGIN([socket-win],           [c charon])
+ADD_PLUGIN([connmark],             [c charon])
+ADD_PLUGIN([forecast],             [c charon])
 ADD_PLUGIN([farp],                 [c charon])
 ADD_PLUGIN([stroke],               [c charon])
 ADD_PLUGIN([vici],                 [c charon])
@@ -1324,7 +1352,6 @@ ADD_PLUGIN([maemo],                [c charon])
 ADD_PLUGIN([uci],                  [c charon])
 ADD_PLUGIN([addrblock],            [c charon])
 ADD_PLUGIN([unity],                [c charon])
-ADD_PLUGIN([unit-tester],          [c charon])
 
 AC_SUBST(charon_plugins)
 AC_SUBST(starter_plugins)
@@ -1352,6 +1379,7 @@ AC_SUBST(t_plugins)
 # -----------------------
 AM_CONDITIONAL(USE_TEST_VECTORS, test x$test_vectors = xtrue)
 AM_CONDITIONAL(USE_CURL, test x$curl = xtrue)
+AM_CONDITIONAL(USE_FILES, test x$files = xtrue)
 AM_CONDITIONAL(USE_WINHTTP, test x$winhttp = xtrue)
 AM_CONDITIONAL(USE_UNBOUND, test x$unbound = xtrue)
 AM_CONDITIONAL(USE_SOUP, test x$soup = xtrue)
@@ -1398,6 +1426,7 @@ AM_CONDITIONAL(USE_CCM, test x$ccm = xtrue)
 AM_CONDITIONAL(USE_GCM, test x$gcm = xtrue)
 AM_CONDITIONAL(USE_AF_ALG, test x$af_alg = xtrue)
 AM_CONDITIONAL(USE_NTRU, test x$ntru = xtrue)
+AM_CONDITIONAL(USE_BLISS, test x$bliss = xtrue)
 
 #  charon plugins
 # ----------------
@@ -1416,7 +1445,6 @@ AM_CONDITIONAL(USE_DNSCERT, test x$dnscert = xtrue)
 AM_CONDITIONAL(USE_IPSECKEY, test x$ipseckey = xtrue)
 AM_CONDITIONAL(USE_UPDOWN, test x$updown = xtrue)
 AM_CONDITIONAL(USE_DHCP, test x$dhcp = xtrue)
-AM_CONDITIONAL(USE_UNIT_TESTS, test x$unit_tester = xtrue)
 AM_CONDITIONAL(USE_LOAD_TESTER, test x$load_tester = xtrue)
 AM_CONDITIONAL(USE_HA, test x$ha = xtrue)
 AM_CONDITIONAL(USE_KERNEL_LIBIPSEC, test x$kernel_libipsec = xtrue)
@@ -1475,18 +1503,20 @@ AM_CONDITIONAL(USE_IMV_SWID, test x$imv_swid = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DEFAULT, test x$socket_default = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DYNAMIC, test x$socket_dynamic = xtrue)
 AM_CONDITIONAL(USE_SOCKET_WIN, test x$socket_win = xtrue)
+AM_CONDITIONAL(USE_CONNMARK, test x$connmark = xtrue)
+AM_CONDITIONAL(USE_FORECAST, test x$forecast = xtrue)
 AM_CONDITIONAL(USE_FARP, test x$farp = xtrue)
 AM_CONDITIONAL(USE_ADDRBLOCK, test x$addrblock = xtrue)
 AM_CONDITIONAL(USE_UNITY, test x$unity = xtrue)
+AM_CONDITIONAL(USE_RESOLVE, test x$resolve = xtrue)
+AM_CONDITIONAL(USE_ATTR, test x$attr = xtrue)
+AM_CONDITIONAL(USE_ATTR_SQL, test x$attr_sql = xtrue)
 
 #  hydra plugins
 # ---------------
-AM_CONDITIONAL(USE_ATTR, test x$attr = xtrue)
-AM_CONDITIONAL(USE_ATTR_SQL, test x$attr_sql = xtrue)
 AM_CONDITIONAL(USE_KERNEL_NETLINK, test x$kernel_netlink = xtrue)
 AM_CONDITIONAL(USE_KERNEL_PFKEY, test x$kernel_pfkey = xtrue)
 AM_CONDITIONAL(USE_KERNEL_PFROUTE, test x$kernel_pfroute = xtrue)
-AM_CONDITIONAL(USE_RESOLVE, test x$resolve = xtrue)
 
 #  other options
 # ---------------
@@ -1537,6 +1567,8 @@ AM_CONDITIONAL(USE_SVC, test x$svc = xtrue)
 AM_CONDITIONAL(USE_SYSTEMD, test x$systemd = xtrue)
 AM_CONDITIONAL(USE_LEGACY_SYSTEMD, test -n "$systemdsystemunitdir" -a "x$systemdsystemunitdir" != xno)
 AM_CONDITIONAL(USE_RUBY_GEMS, test x$ruby_gems = xtrue)
+AM_CONDITIONAL(USE_PYTHON_EGGS, test x$python_eggs = xtrue)
+AM_CONDITIONAL(USE_PY_TEST, test "x$PY_TEST" != x)
 
 # ========================
 #  set global definitions
@@ -1624,6 +1656,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/sshkey/Makefile
 	src/libstrongswan/plugins/pem/Makefile
 	src/libstrongswan/plugins/curl/Makefile
+	src/libstrongswan/plugins/files/Makefile
 	src/libstrongswan/plugins/winhttp/Makefile
 	src/libstrongswan/plugins/unbound/Makefile
 	src/libstrongswan/plugins/soup/Makefile
@@ -1641,15 +1674,15 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/gcm/Makefile
 	src/libstrongswan/plugins/af_alg/Makefile
 	src/libstrongswan/plugins/ntru/Makefile
+	src/libstrongswan/plugins/bliss/Makefile
+	src/libstrongswan/plugins/bliss/tests/Makefile
 	src/libstrongswan/plugins/test_vectors/Makefile
 	src/libstrongswan/tests/Makefile
 	src/libhydra/Makefile
-	src/libhydra/plugins/attr/Makefile
-	src/libhydra/plugins/attr_sql/Makefile
 	src/libhydra/plugins/kernel_netlink/Makefile
 	src/libhydra/plugins/kernel_pfkey/Makefile
 	src/libhydra/plugins/kernel_pfroute/Makefile
-	src/libhydra/plugins/resolve/Makefile
+	src/libhydra/tests/Makefile
 	src/libipsec/Makefile
 	src/libsimaka/Makefile
 	src/libtls/Makefile
@@ -1709,6 +1742,8 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/socket_default/Makefile
 	src/libcharon/plugins/socket_dynamic/Makefile
 	src/libcharon/plugins/socket_win/Makefile
+	src/libcharon/plugins/connmark/Makefile
+	src/libcharon/plugins/forecast/Makefile
 	src/libcharon/plugins/farp/Makefile
 	src/libcharon/plugins/smp/Makefile
 	src/libcharon/plugins/sql/Makefile
@@ -1740,16 +1775,19 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/stroke/Makefile
 	src/libcharon/plugins/vici/Makefile
 	src/libcharon/plugins/vici/ruby/Makefile
+	src/libcharon/plugins/vici/python/Makefile
 	src/libcharon/plugins/updown/Makefile
 	src/libcharon/plugins/dhcp/Makefile
-	src/libcharon/plugins/unit_tester/Makefile
 	src/libcharon/plugins/load_tester/Makefile
+	src/libcharon/plugins/resolve/Makefile
+	src/libcharon/plugins/attr/Makefile
+	src/libcharon/plugins/attr_sql/Makefile
+	src/libcharon/tests/Makefile
 	src/stroke/Makefile
 	src/ipsec/Makefile
 	src/starter/Makefile
 	src/starter/tests/Makefile
 	src/_updown/Makefile
-	src/_updown_espmark/Makefile
 	src/_copyright/Makefile
 	src/scepclient/Makefile
 	src/aikgen/Makefile
@@ -1784,6 +1822,7 @@ AC_CONFIG_FILES([
 	src/pki/man/pki---issue.1
 	src/pki/man/pki---keyid.1
 	src/pki/man/pki---pkcs7.1
+	src/pki/man/pki---pkcs12.1
 	src/pki/man/pki---print.1
 	src/pki/man/pki---pub.1
 	src/pki/man/pki---req.1

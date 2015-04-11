@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Andreas Steffen
+ * Copyright (C) 2013-2014 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -14,9 +14,9 @@
  */
 
 #include "ntru_trits.h"
-#include "ntru_mgf1.h"
 #include "ntru_convert.h"
 
+#include <crypto/mgf1/mgf1_bitspender.h>
 #include <utils/debug.h>
 #include <utils/test.h>
 
@@ -70,17 +70,15 @@ METHOD(ntru_trits_t, destroy, void,
 ntru_trits_t *ntru_trits_create(size_t len, hash_algorithm_t alg, chunk_t seed)
 {
 	private_ntru_trits_t *this;
-	uint8_t octets[HASH_SIZE_SHA512], buf[5], *trits;
-	size_t hash_len, octet_count = 0, trits_needed, i;
-	ntru_mgf1_t *mgf1;
+	uint8_t octet, buf[5], *trits;
+	size_t trits_needed;
+	mgf1_bitspender_t *bitspender;
 
-	DBG2(DBG_LIB, "MGF1 is seeded with %u bytes", seed.len);
-	mgf1 = ntru_mgf1_create(alg, seed, TRUE);
-	if (!mgf1)
+	bitspender = mgf1_bitspender_create(alg, seed, TRUE);
+	if (!bitspender)
 	{
 	    return NULL;
 	}
-	i = hash_len = mgf1->get_hash_size(mgf1);
 
 	INIT(this,
 		.public = {
@@ -97,21 +95,15 @@ ntru_trits_t *ntru_trits_create(size_t len, hash_algorithm_t alg, chunk_t seed)
 
 	while (trits_needed > 0)
 	{
-		if (i == hash_len)
+		if (!bitspender->get_byte(bitspender, &octet))
 		{
-			/* get another block from MGF1 */
-			if (!mgf1->get_mask(mgf1, hash_len, octets))
-			{
-				mgf1->destroy(mgf1);
-				destroy(this);
-				return NULL;
-			}
-			octet_count += hash_len;
-			i = 0;
+			bitspender->destroy(bitspender);
+			destroy(this);
+			return NULL;
 		}
-		if (octets[i] < 243)  /* 243 = 3^5 */ 
+		if (octet < 243)  /* 243 = 3^5 */
 		{		
-			ntru_octet_2_trits(octets[i], (trits_needed < 5) ? buf : trits);
+			ntru_octet_2_trits(octet, (trits_needed < 5) ? buf : trits);
 			if (trits_needed < 5)
 			{
 				memcpy(trits, buf, trits_needed);
@@ -120,11 +112,8 @@ ntru_trits_t *ntru_trits_create(size_t len, hash_algorithm_t alg, chunk_t seed)
 			trits += 5;
 			trits_needed -= 5;
 		}
-		i++;
 	}
-	DBG2(DBG_LIB, "MGF1 generates %u octets to extract %u trits",
-				   octet_count, len);
-	mgf1->destroy(mgf1);
+	bitspender->destroy(bitspender);
 
 	return &this->public;
 }

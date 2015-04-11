@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Reto Buerki
+ * Copyright (C) 2012-2014 Reto Buerki
  * Copyright (C) 2012 Adrian-Ken Rueegsegger
  * Hochschule fuer Technik Rapperswil
  *
@@ -26,7 +26,6 @@
 #include "tkm_utils.h"
 #include "tkm_types.h"
 #include "tkm_keymat.h"
-#include "tkm_kernel_sad.h"
 #include "tkm_kernel_ipsec.h"
 
 /** From linux/in.h */
@@ -51,16 +50,11 @@ struct private_tkm_kernel_ipsec_t {
 	 */
 	rng_t *rng;
 
-	/**
-	 * CHILD/ESP SA database.
-	 */
-	tkm_kernel_sad_t *sad;
-
 };
 
 METHOD(kernel_ipsec_t, get_spi, status_t,
 	private_tkm_kernel_ipsec_t *this, host_t *src, host_t *dst,
-	u_int8_t protocol, u_int32_t reqid, u_int32_t *spi)
+	u_int8_t protocol, u_int32_t *spi)
 {
 	bool result;
 
@@ -74,7 +68,6 @@ METHOD(kernel_ipsec_t, get_spi, status_t,
 		}
 	}
 
-	DBG1(DBG_KNL, "getting SPI for reqid {%u}", reqid);
 	result = this->rng->get_bytes(this->rng, sizeof(u_int32_t),
 								  (u_int8_t *)spi);
 	return result ? SUCCESS : FAILED;
@@ -82,7 +75,7 @@ METHOD(kernel_ipsec_t, get_spi, status_t,
 
 METHOD(kernel_ipsec_t, get_cpi, status_t,
 	private_tkm_kernel_ipsec_t *this, host_t *src, host_t *dst,
-	u_int32_t reqid, u_int16_t *cpi)
+	u_int16_t *cpi)
 {
 	return NOT_SUPPORTED;
 }
@@ -93,11 +86,10 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	u_int32_t tfc, lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
 	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode,
 	u_int16_t ipcomp, u_int16_t cpi, u_int32_t replay_window,
-	bool _initiator, bool encap, bool esn, bool inbound,
-	traffic_selector_t* src_ts, traffic_selector_t* dst_ts)
+	bool initiator, bool encap, bool esn, bool inbound, bool update,
+	linked_list_t* src_ts, linked_list_t* dst_ts)
 {
 	esa_info_t esa;
-	bool initiator;
 	esp_spi_type spi_loc, spi_rem;
 	host_t *local, *peer;
 	chunk_t *nonce_loc, *nonce_rem;
@@ -120,9 +112,6 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		return SUCCESS;
 	}
 
-	/* Initiator if encr_r is passed as enc_key to the inbound add_sa call */
-	/* TODO: does the new _initiator parameter have the same meaning? */
-	initiator = esa.is_encr_r && inbound;
 	if (initiator)
 	{
 		spi_loc = spi;
@@ -143,7 +132,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	}
 
 	esa_id = tkm->idmgr->acquire_id(tkm->idmgr, TKM_CTX_ESA);
-	if (!this->sad->insert(this->sad, esa_id, peer, local, spi_loc, protocol))
+	if (!tkm->sad->insert(tkm->sad, reqid, esa_id, local, peer, spi_rem,
+						  protocol))
 	{
 		DBG1(DBG_KNL, "unable to add entry (%llu) to SAD", esa_id);
 		goto sad_failure;
@@ -207,7 +197,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	return SUCCESS;
 
 failure:
-	this->sad->remove(this->sad, esa_id);
+	tkm->sad->remove(tkm->sad, esa_id);
 sad_failure:
 	tkm->idmgr->release_id(tkm->idmgr, TKM_CTX_ESA, esa_id);
 	chunk_free(&esa.nonce_i);
@@ -229,7 +219,7 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 {
 	esa_id_type esa_id;
 
-	esa_id = this->sad->get_esa_id(this->sad, src, dst, spi, protocol);
+	esa_id = tkm->sad->get_esa_id(tkm->sad, src, dst, spi, protocol);
 	if (esa_id)
 	{
 		DBG1(DBG_KNL, "deleting child SA (esa: %llu, spi: %x)", esa_id,
@@ -239,7 +229,7 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 			DBG1(DBG_KNL, "child SA (%llu) deletion failed", esa_id);
 			return FAILED;
 		}
-		this->sad->remove(this->sad, esa_id);
+		tkm->sad->remove(tkm->sad, esa_id);
 		tkm->idmgr->release_id(tkm->idmgr, TKM_CTX_ESA, esa_id);
 	}
 	return SUCCESS;
@@ -350,7 +340,6 @@ METHOD(kernel_ipsec_t, destroy, void,
 	private_tkm_kernel_ipsec_t *this)
 {
 	DESTROY_IF(this->rng);
-	DESTROY_IF(this->sad);
 	free(this);
 }
 
@@ -380,15 +369,7 @@ tkm_kernel_ipsec_t *tkm_kernel_ipsec_create()
 				.destroy = _destroy,
 			},
 		},
-		.sad = tkm_kernel_sad_create(),
 	);
-
-	if (!this->sad)
-	{
-		DBG1(DBG_KNL, "unable to create SAD");
-		destroy(this);
-		return NULL;
-	}
 
 	return &this->public;
 }

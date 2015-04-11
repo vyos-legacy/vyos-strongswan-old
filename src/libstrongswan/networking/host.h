@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2009 Tobias Brunner
+ * Copyright (C) 2006-2014 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -24,15 +24,15 @@
 #ifndef HOST_H_
 #define HOST_H_
 
+#include <utils/utils.h>
+#include <utils/chunk.h>
+
 typedef enum host_diff_t host_diff_t;
 typedef struct host_t host_t;
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
-
-#include <utils/utils.h>
-#include <utils/chunk.h>
 
 /**
  * Representates a Host
@@ -179,6 +179,19 @@ host_t *host_create_from_chunk(int family, chunk_t address, u_int16_t port);
  * @return				host_t, NULL if family not supported
  */
 host_t *host_create_from_sockaddr(sockaddr_t *sockaddr);
+
+/**
+ * Parse a range definition (1.2.3.0-1.2.3.5), return the two hosts.
+ *
+ * The two hosts are not ordered, from is simply the first, to is the second,
+ * from is not necessarily smaller.
+ *
+ * @param string		string to parse
+ * @param from			returns the first address (out)
+ * @param to			returns the second address (out)
+ * @return				TRUE if parsed successfully, FALSE otherwise
+ */
+bool host_create_from_range(char *string, host_t **from, host_t **to);
 
 /**
  * Create a host from a CIDR subnet definition (1.2.3.0/24), return bits.

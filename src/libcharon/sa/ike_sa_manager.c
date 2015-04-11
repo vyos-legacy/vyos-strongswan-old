@@ -1184,7 +1184,8 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 
 	DBG2(DBG_MGR, "checkout IKE_SA by message");
 
-	if (id->get_responder_spi(id) == 0)
+	if (id->get_responder_spi(id) == 0 &&
+		message->get_message_id(message) == 0)
 	{
 		if (message->get_major_version(message) == IKEV2_MAJOR_VERSION)
 		{
@@ -1383,54 +1384,35 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 }
 
 METHOD(ike_sa_manager_t, checkout_by_id, ike_sa_t*,
-	private_ike_sa_manager_t *this, u_int32_t id, bool child)
+	private_ike_sa_manager_t *this, u_int32_t id)
 {
-	enumerator_t *enumerator, *children;
+	enumerator_t *enumerator;
 	entry_t *entry;
 	ike_sa_t *ike_sa = NULL;
-	child_sa_t *child_sa;
 	u_int segment;
 
-	DBG2(DBG_MGR, "checkout IKE_SA by ID");
+	DBG2(DBG_MGR, "checkout IKE_SA by ID %u", id);
 
 	enumerator = create_table_enumerator(this);
 	while (enumerator->enumerate(enumerator, &entry, &segment))
 	{
 		if (wait_for_entry(this, entry, segment))
 		{
-			/* look for a child with such a reqid ... */
-			if (child)
+			if (entry->ike_sa->get_unique_id(entry->ike_sa) == id)
 			{
-				children = entry->ike_sa->create_child_sa_enumerator(entry->ike_sa);
-				while (children->enumerate(children, (void**)&child_sa))
-				{
-					if (child_sa->get_reqid(child_sa) == id)
-					{
-						ike_sa = entry->ike_sa;
-						break;
-					}
-				}
-				children->destroy(children);
-			}
-			else /* ... or for a IKE_SA with such a unique id */
-			{
-				if (entry->ike_sa->get_unique_id(entry->ike_sa) == id)
-				{
-					ike_sa = entry->ike_sa;
-				}
-			}
-			/* got one, return */
-			if (ike_sa)
-			{
+				ike_sa = entry->ike_sa;
 				entry->checked_out = TRUE;
-				DBG2(DBG_MGR, "IKE_SA %s[%u] successfully checked out",
-						ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
 				break;
 			}
 		}
 	}
 	enumerator->destroy(enumerator);
 
+	if (ike_sa)
+	{
+		DBG2(DBG_MGR, "IKE_SA %s[%u] successfully checked out",
+			 ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
+	}
 	charon->bus->set_sa(charon->bus, ike_sa);
 	return ike_sa;
 }
@@ -1746,29 +1728,45 @@ METHOD(ike_sa_manager_t, create_id_enumerator, enumerator_t*,
 }
 
 /**
- * Move all CHILD_SAs from old to new
+ * Move all CHILD_SAs and virtual IPs from old to new
  */
-static void adopt_children(ike_sa_t *old, ike_sa_t *new)
+static void adopt_children_and_vips(ike_sa_t *old, ike_sa_t *new)
 {
 	enumerator_t *enumerator;
 	child_sa_t *child_sa;
+	host_t *vip;
+	int chcount = 0, vipcount = 0;
+
 
 	enumerator = old->create_child_sa_enumerator(old);
 	while (enumerator->enumerate(enumerator, &child_sa))
 	{
 		old->remove_child_sa(old, enumerator);
 		new->add_child_sa(new, child_sa);
+		chcount++;
 	}
 	enumerator->destroy(enumerator);
-}
 
-/**
- * Check if the replaced IKE_SA might get reauthenticated from host
- */
-static bool is_ikev1_reauth(ike_sa_t *duplicate, host_t *host)
-{
-	return duplicate->get_version(duplicate) == IKEV1 &&
-		   host->equals(host, duplicate->get_other_host(duplicate));
+	enumerator = old->create_virtual_ip_enumerator(old, FALSE);
+	while (enumerator->enumerate(enumerator, &vip))
+	{
+		new->add_virtual_ip(new, FALSE, vip);
+		vipcount++;
+	}
+	enumerator->destroy(enumerator);
+	/* this does not release the addresses, which is good, but it does trigger
+	 * an assign_vips(FALSE) event... */
+	old->clear_virtual_ips(old, FALSE);
+	/* ...trigger the analogous event on the new SA */
+	charon->bus->set_sa(charon->bus, new);
+	charon->bus->assign_vips(charon->bus, new, TRUE);
+	charon->bus->set_sa(charon->bus, old);
+
+	if (chcount || vipcount)
+	{
+		DBG1(DBG_IKE, "detected reauth of existing IKE_SA, adopting %d "
+			 "children and %d virtual IPs", chcount, vipcount);
+	}
 }
 
 /**
@@ -1780,13 +1778,20 @@ static status_t enforce_replace(private_ike_sa_manager_t *this,
 {
 	charon->bus->alert(charon->bus, ALERT_UNIQUE_REPLACE);
 
-	if (is_ikev1_reauth(duplicate, host))
+	if (host->equals(host, duplicate->get_other_host(duplicate)))
 	{
 		/* looks like a reauthentication attempt */
-		adopt_children(duplicate, new);
+		if (!new->has_condition(new, COND_INIT_CONTACT_SEEN) &&
+			new->get_version(new) == IKEV1)
+		{
+			/* IKEv1 implicitly takes over children, IKEv2 recreates them
+			 * explicitly. */
+			adopt_children_and_vips(duplicate, new);
+		}
 		/* For IKEv1 we have to delay the delete for the old IKE_SA. Some
 		 * peers need to complete the new SA first, otherwise the quick modes
-		 * might get lost. */
+		 * might get lost. For IKEv2 we do the same, as we want overlapping
+		 * CHILD_SAs to keep connectivity up. */
 		lib->scheduler->schedule_job(lib->scheduler, (job_t*)
 			delete_ike_sa_job_create(duplicate->get_id(duplicate), TRUE), 10);
 		return SUCCESS;
@@ -1851,7 +1856,9 @@ METHOD(ike_sa_manager_t, check_uniqueness, bool,
 													 other, other_host);
 							break;
 						case UNIQUE_KEEP:
-							if (!is_ikev1_reauth(duplicate, other_host))
+							/* potential reauthentication? */
+							if (!other_host->equals(other_host,
+										duplicate->get_other_host(duplicate)))
 							{
 								cancel = TRUE;
 								/* we keep the first IKE_SA and delete all

@@ -1538,6 +1538,7 @@ typedef struct {
 	u_int8_t dst_len;
 	u_int32_t table;
 	u_int32_t oif;
+	u_int32_t priority;
 } rt_entry_t;
 
 /**
@@ -1573,6 +1574,7 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
 		route->dst_len = msg->rtm_dst_len;
 		route->table = msg->rtm_table;
 		route->oif = 0;
+		route->priority = 0;
 	}
 	else
 	{
@@ -1599,6 +1601,12 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
 				if (RTA_PAYLOAD(rta) == sizeof(route->oif))
 				{
 					route->oif = *(u_int32_t*)RTA_DATA(rta);
+				}
+				break;
+			case RTA_PRIORITY:
+				if (RTA_PAYLOAD(rta) == sizeof(route->priority))
+				{
+					route->priority = *(u_int32_t*)RTA_DATA(rta);
 				}
 				break;
 #ifdef HAVE_RTA_TABLE
@@ -1724,11 +1732,16 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 					}
 					route->src_host = src;
 				}
-				/* insert route, sorted by decreasing network prefix */
+				/* insert route, sorted by priority and network prefix */
 				enumerator = routes->create_enumerator(routes);
 				while (enumerator->enumerate(enumerator, &other))
 				{
-					if (route->dst_len > other->dst_len)
+					if (route->priority < other->priority)
+					{
+						break;
+					}
+					if (route->priority == other->priority &&
+						route->dst_len > other->dst_len)
 					{
 						break;
 					}
@@ -1975,6 +1988,8 @@ METHOD(kernel_net_t, add_ip, status_t,
 	if (iface)
 	{
 		addr_entry_t *addr;
+		char *ifname;
+		int ifi;
 
 		INIT(addr,
 			.ip = virtual_ip->clone(virtual_ip),
@@ -1983,26 +1998,30 @@ METHOD(kernel_net_t, add_ip, status_t,
 		);
 		iface->addrs->insert_last(iface->addrs, addr);
 		addr_map_entry_add(this->vips, addr, iface);
+		ifi = iface->ifindex;
+		this->lock->unlock(this->lock);
 		if (manage_ipaddr(this, RTM_NEWADDR, NLM_F_CREATE | NLM_F_EXCL,
-						  iface->ifindex, virtual_ip, prefix) == SUCCESS)
+						  ifi, virtual_ip, prefix) == SUCCESS)
 		{
+			this->lock->write_lock(this->lock);
 			while (!is_vip_installed_or_gone(this, virtual_ip, &entry))
 			{	/* wait until address appears */
 				this->condvar->wait(this->condvar, this->lock);
 			}
 			if (entry)
 			{	/* we fail if the interface got deleted in the meantime */
-				DBG2(DBG_KNL, "virtual IP %H installed on %s", virtual_ip,
-					 entry->iface->ifname);
+				ifname = strdup(entry->iface->ifname);
 				this->lock->unlock(this->lock);
+				DBG2(DBG_KNL, "virtual IP %H installed on %s",
+					 virtual_ip, ifname);
 				/* during IKEv1 reauthentication, children get moved from
 				 * old the new SA before the virtual IP is available. This
 				 * kills the route for our virtual IP, reinstall. */
-				queue_route_reinstall(this, strdup(entry->iface->ifname));
+				queue_route_reinstall(this, ifname);
 				return SUCCESS;
 			}
+			this->lock->unlock(this->lock);
 		}
-		this->lock->unlock(this->lock);
 		DBG1(DBG_KNL, "adding virtual IP %H failed", virtual_ip);
 		return FAILED;
 	}
@@ -2048,20 +2067,23 @@ METHOD(kernel_net_t, del_ip, status_t,
 	if (entry->addr->refcount == 1)
 	{
 		status_t status;
+		int ifi;
 
 		/* we set this flag so that threads calling add_ip will block and wait
 		 * until the entry is gone, also so we can wait below */
 		entry->addr->installed = FALSE;
-		status = manage_ipaddr(this, RTM_DELADDR, 0, entry->iface->ifindex,
-							   virtual_ip, prefix);
+		ifi = entry->iface->ifindex;
+		this->lock->unlock(this->lock);
+		status = manage_ipaddr(this, RTM_DELADDR, 0, ifi, virtual_ip, prefix);
 		if (status == SUCCESS && wait)
 		{	/* wait until the address is really gone */
+			this->lock->write_lock(this->lock);
 			while (is_known_vip(this, virtual_ip))
 			{
 				this->condvar->wait(this->condvar, this->lock);
 			}
+			this->lock->unlock(this->lock);
 		}
-		this->lock->unlock(this->lock);
 		return status;
 	}
 	else
@@ -2490,7 +2512,9 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 				.destroy = _destroy,
 			},
 		},
-		.socket = netlink_socket_create(NETLINK_ROUTE, rt_msg_names),
+		.socket = netlink_socket_create(NETLINK_ROUTE, rt_msg_names,
+			lib->settings->get_bool(lib->settings,
+				"%s.plugins.kernel-netlink.parallel_route", FALSE, lib->ns)),
 		.rt_exclude = linked_list_create(),
 		.routes = hashtable_create((hashtable_hash_t)route_entry_hash,
 								   (hashtable_equals_t)route_entry_equals, 16),

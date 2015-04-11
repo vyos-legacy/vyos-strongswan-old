@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Sansar Choinyanbuu
- * Copyright (C) 2010-2012 Andreas Steffen
+ * Copyright (C) 2010-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -85,7 +85,7 @@ struct private_pb_tnc_batch_t {
 	pb_tnc_batch_t public;
 
 	/**
-	 * TNCC if TRUE, TNCS if FALSE
+	 * from TNC server if TRUE, from TNC client if FALSE
 	 */
 	bool is_server;
 
@@ -166,6 +166,9 @@ METHOD(pb_tnc_batch_t, add_msg, bool,
 		case PEN_TCG:
 			msg_type_names = pb_tnc_tcg_msg_type_names;
 			break;
+		case PEN_ITA:
+			msg_type_names = pb_tnc_ita_msg_type_names;
+			break;
 	}
 	DBG2(DBG_TNC, "adding %N/%N message", pen_names, msg_type.vendor_id,
 										  msg_type_names, msg_type.type);
@@ -176,6 +179,7 @@ METHOD(pb_tnc_batch_t, add_msg, bool,
 METHOD(pb_tnc_batch_t, build, void,
 	private_pb_tnc_batch_t *this)
 {
+	u_int8_t version;
 	u_int32_t msg_len;
 	chunk_t msg_value;
 	enumerator_t *enumerator;
@@ -184,9 +188,14 @@ METHOD(pb_tnc_batch_t, build, void,
 	pb_tnc_msg_info_t *msg_infos;
 	bio_writer_t *writer;
 
+	/* Set wrong PB-TNC version for testing purposes to force a PB-TNC error */
+	version = lib->settings->get_int(lib->settings,
+						"%s.plugins.tnccs-20.tests.pb_tnc_version",
+						 PB_TNC_VERSION, lib->ns);
+
 	/* build PB-TNC batch header */
 	writer = bio_writer_create(this->batch_len);
-	writer->write_uint8 (writer, PB_TNC_VERSION);
+	writer->write_uint8 (writer, version);
 	writer->write_uint8 (writer, this->is_server ?
 								 PB_TNC_BATCH_FLAG_D : PB_TNC_BATCH_FLAG_NONE);
 	writer->write_uint16(writer, this->type);
@@ -211,6 +220,9 @@ METHOD(pb_tnc_batch_t, build, void,
 			case PEN_TCG:
 				msg_infos = pb_tnc_tcg_msg_infos;
 				break;
+			case PEN_ITA:
+				msg_infos = pb_tnc_ita_msg_infos;
+				break;
 		}
 		if (msg_infos[msg_type.type].has_noskip_flag)
 		{
@@ -228,15 +240,15 @@ METHOD(pb_tnc_batch_t, build, void,
 	writer->destroy(writer);
 }
 
-static status_t process_batch_header(private_pb_tnc_batch_t *this,
-									 pb_tnc_state_machine_t *state_machine)
+METHOD(pb_tnc_batch_t, process_header, status_t,
+	private_pb_tnc_batch_t *this, bool directionality, bool is_server,
+	bool *from_server)
 {
 	bio_reader_t *reader;
 	pb_tnc_msg_t *msg;
 	pb_error_msg_t *err_msg;
 	u_int8_t version, flags, reserved, type;
 	u_int32_t batch_len;
-	bool directionality;
 
 	if (this->encoding.len < PB_TNC_BATCH_HEADER_SIZE)
 	{
@@ -267,13 +279,14 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 	}
 
 	/* Directionality */
-	directionality = (flags & PB_TNC_BATCH_FLAG_D) != PB_TNC_BATCH_FLAG_NONE;
-	if (directionality == this->is_server)
+	*from_server = (flags & PB_TNC_BATCH_FLAG_D) != PB_TNC_BATCH_FLAG_NONE;
+
+	if (directionality & (*from_server == is_server))
 	{
 		DBG1(DBG_TNC, "wrong Directionality: batch is from a PB %s",
-			 directionality ? "server" : "client");
+					   is_server ? "server" : "client");
 		msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
-							PB_ERROR_INVALID_PARAMETER, 1);
+					   PB_ERROR_INVALID_PARAMETER, 1);
 		goto fatal;
 	}
 
@@ -287,17 +300,6 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 		goto fatal;
 	}
 
-	if (!state_machine->receive_batch(state_machine, this->type))
-	{
-		DBG1(DBG_TNC, "unexpected PB-TNC batch type: %N",
-					   pb_tnc_batch_type_names, this->type);
-		msg = pb_error_msg_create(TRUE, PEN_IETF,
-								  PB_ERROR_UNEXPECTED_BATCH_TYPE);
-		goto fatal;
-	}
-	DBG1(DBG_TNC, "processing PB-TNC %N batch", pb_tnc_batch_type_names,
-												this->type);
-
 	/* Batch Length */
 	if (this->encoding.len != batch_len)
 	{
@@ -310,12 +312,6 @@ static status_t process_batch_header(private_pb_tnc_batch_t *this,
 
 	this->offset = PB_TNC_BATCH_HEADER_SIZE;
 
-	/* Register an empty CDATA batch with the state machine */
-	if (this->type == PB_BATCH_CDATA)
-	{
-		state_machine->set_empty_cdata(state_machine,
-									   this->offset == this->encoding.len);
-	}
 	return SUCCESS;
 
 fatal:
@@ -395,10 +391,17 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 		msg_type_names = pb_tnc_msg_type_names;
 		msg_infos = pb_tnc_msg_infos;
 	}
-	else if (vendor_id == PEN_TCG && msg_type <= PB_TCG_MSG_ROOF)
+	else if (vendor_id == PEN_TCG && msg_type <= PB_TCG_MSG_ROOF &&
+									 msg_type >  PB_TCG_MSG_RESERVED)
 	{
 		msg_type_names = pb_tnc_tcg_msg_type_names;
 		msg_infos = pb_tnc_tcg_msg_infos;
+	}
+	else if (vendor_id == PEN_ITA && msg_type <= PB_ITA_MSG_ROOF &&
+									 msg_type >  PB_ITA_MSG_NOSKIP_TEST)
+	{
+		msg_type_names = pb_tnc_ita_msg_type_names;
+		msg_infos = pb_tnc_ita_msg_infos;
 	}
 	else
 	{
@@ -413,7 +416,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 
 		if (noskip_flag)
 		{
-			DBG1(DBG_TNC, "reject PB-TNC message 0x%06x/0x%08x)",
+			DBG1(DBG_TNC, "reject PB-TNC message (0x%06x/0x%08x)",
 						   vendor_id, msg_type);
 			msg = pb_error_msg_create_with_offset(TRUE, PEN_IETF,
 							PB_ERROR_UNSUPPORTED_MANDATORY_MSG, this->offset);
@@ -421,7 +424,7 @@ static status_t process_tnc_msg(private_pb_tnc_batch_t *this)
 		}
 		else
 		{
-			DBG1(DBG_TNC, "ignore PB-TNC message 0x%06x/0x%08x)",
+			DBG1(DBG_TNC, "ignore PB-TNC message (0x%06x/0x%08x)",
 						   vendor_id, msg_type);
 			this->offset += msg_len;
 			return SUCCESS;
@@ -502,12 +505,24 @@ fatal:
 METHOD(pb_tnc_batch_t, process, status_t,
 	private_pb_tnc_batch_t *this, pb_tnc_state_machine_t *state_machine)
 {
-	status_t status;
+	pb_tnc_msg_t *msg;
+	status_t status = SUCCESS;
 
-	status = process_batch_header(this, state_machine);
-	if (status != SUCCESS)
+	if (!state_machine->receive_batch(state_machine, this->type))
 	{
+		DBG1(DBG_TNC, "unexpected PB-TNC batch type: %N",
+					   pb_tnc_batch_type_names, this->type);
+		msg = pb_error_msg_create(TRUE, PEN_IETF,
+								  PB_ERROR_UNEXPECTED_BATCH_TYPE);
+		this->errors->insert_last(this->errors, msg);
 		return FAILED;
+	}
+
+	/* Register an empty CDATA batch with the state machine */
+	if (this->type == PB_BATCH_CDATA)
+	{
+		state_machine->set_empty_cdata(state_machine,
+									   this->offset == this->encoding.len);
 	}
 
 	while (this->offset < this->encoding.len)
@@ -585,7 +600,7 @@ pb_tnc_batch_t* pb_tnc_batch_create(bool is_server, pb_tnc_batch_type_t type,
 /**
  * See header
  */
-pb_tnc_batch_t* pb_tnc_batch_create_from_data(bool is_server, chunk_t data)
+pb_tnc_batch_t* pb_tnc_batch_create_from_data(chunk_t data)
 {
 	private_pb_tnc_batch_t *this;
 
@@ -595,12 +610,12 @@ pb_tnc_batch_t* pb_tnc_batch_create_from_data(bool is_server, chunk_t data)
 			.get_encoding = _get_encoding,
 			.add_msg = _add_msg,
 			.build = _build,
+			.process_header = _process_header,
 			.process = _process,
 			.create_msg_enumerator = _create_msg_enumerator,
 			.create_error_enumerator = _create_error_enumerator,
 			.destroy = _destroy,
 		},
-		.is_server = is_server,
 		.messages = linked_list_create(),
 		.errors = linked_list_create(),
 		.encoding = chunk_clone(data),

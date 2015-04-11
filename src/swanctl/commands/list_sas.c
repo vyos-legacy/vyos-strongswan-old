@@ -86,8 +86,8 @@ CALLBACK(child_sas, int,
 	ret = vici_parse_cb(res, NULL, sa_values, sa_list, child);
 	if (ret == 0)
 	{
-		printf("  %s: #%s, %s, %s%s, %s:",
-			name, child->get(child, "reqid"),
+		printf("  %s: #%s, reqid %s, %s, %s%s, %s:",
+			name, child->get(child, "uniqueid"), child->get(child, "reqid"),
 			child->get(child, "state"), child->get(child, "mode"),
 			child->get(child, "encap") ? "-in-UDP" : "",
 			child->get(child, "protocol"));
@@ -122,7 +122,7 @@ CALLBACK(child_sas, int,
 		}
 		if (child->get(child, "esn"))
 		{
-			printf("/%s", child->get(child, "esn"));
+			printf("/ESN");
 		}
 		printf("\n");
 

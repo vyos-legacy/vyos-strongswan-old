@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2015 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,7 +60,7 @@ static void destroy_cdp(x509_cdp_t *this)
 static int issue()
 {
 	cred_encoding_type_t form = CERT_ASN1_DER;
-	hash_algorithm_t digest = HASH_SHA1;
+	hash_algorithm_t digest = HASH_UNKNOWN;
 	certificate_t *cert_req = NULL, *cert = NULL, *ca =NULL;
 	private_key_t *private = NULL;
 	public_key_t *public = NULL;
@@ -287,6 +288,7 @@ static int issue()
 		}
 		break;
 	}
+
 	if (!cacert)
 	{
 		error = "--cacert is required";
@@ -354,6 +356,10 @@ static int issue()
 	{
 		error = "loading CA private key failed";
 		goto end;
+	}
+	if (digest == HASH_UNKNOWN)
+	{
+		digest = get_default_digest(private);
 	}
 	if (!private->belongs_to(private, public))
 	{
@@ -589,7 +595,7 @@ static void __attribute__ ((constructor))reg()
 			{"crl",				'u', 1, "CRL distribution point URI to include"},
 			{"crlissuer",		'I', 1, "CRL Issuer for CRL at distribution point"},
 			{"ocsp",			'o', 1, "OCSP AuthorityInfoAccess URI to include"},
-			{"digest",			'g', 1, "digest for signature creation, default: sha1"},
+			{"digest",			'g', 1, "digest for signature creation, default: key-specific"},
 			{"outform",			'f', 1, "encoding of generated cert, default: der"},
 		}
 	});
