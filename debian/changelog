@@ -1,4 +1,4 @@
-strongswan (5.3.0-1) UNRELEASED; urgency=medium
+strongswan (5.3.0-1) experimental; urgency=medium
 
   * New upstream release.
   * debian/patches:
@@ -11,7 +11,7 @@ strongswan (5.3.0-1) UNRELEASED; urgency=medium
     - also remove the _updown_espmark script, gone too.
   * debian/copyright updated.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sat, 11 Apr 2015 22:10:44 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 15 Apr 2015 20:59:54 +0200
 
 strongswan (5.2.1-6) unstable; urgency=medium
 
