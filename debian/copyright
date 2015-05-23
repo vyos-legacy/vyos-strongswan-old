@@ -2756,9 +2756,6 @@ License: Expat
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 
-License: Expat and GPL-2+
- Please fill license Expat and GPL-2+ from header of src/conftest/hooks/reset_seq.c
-
 License: GPL
  On Debian systems, the complete text of the GNU General
  Public License can be found in
