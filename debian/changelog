@@ -3,6 +3,9 @@ strongswan (5.3.0-2) UNRELEASED; urgency=medium
   * debian/patches:
     - strongswan-5.2.2-5.3.0_unknown_payload added, fixes a DoS and potential
       remote code execution vulnerability (CVE-2015-3991).
+  * debian/strongswan-starter.lintian-overrides: add override for
+    command-with-path-in-maintainer-script since it's there to check for file
+    existence.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sat, 23 May 2015 14:18:53 +0200
 
