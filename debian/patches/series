@@ -1,3 +1,4 @@
 01_fix-manpages.patch
 03_systemd-service.patch
 04_disable-libtls-tests.patch
+strongswan-5.2.2-5.3.0_unknown_payload.patch

@@ -1,0 +1,166 @@
+From 7733b99198111ef1f30a964e15e93cb1e6d27a85 Mon Sep 17 00:00:00 2001
+From: Tobias Brunner <tobias@strongswan.org>
+Date: Fri, 15 May 2015 11:15:57 +0200
+Subject: [PATCH] unknown-payload: Use a new private payload type and make
+ original type available
+
+This fixes a DoS and potential remote code execution vulnerability that was
+caused because the original payload type that was returned previously was
+used to cast such payload objects to payloads of the indicated type (e.g.
+when logging notify payloads with a payload type for the wrong IKE version).
+
+Fixes CVE-2015-3991.
+---
+ src/libcharon/encoding/message.c                  |  2 +-
+ src/libcharon/encoding/payloads/payload.c         |  2 ++
+ src/libcharon/encoding/payloads/payload.h         |  7 ++++++-
+ src/libcharon/encoding/payloads/unknown_payload.c |  8 ++++++++
+ src/libcharon/encoding/payloads/unknown_payload.h |  8 ++++++++
+ src/libcharon/sa/ikev2/task_manager_v2.c          | 18 ++++++++++--------
+ 6 files changed, 35 insertions(+), 10 deletions(-)
+
+diff --git a/src/libcharon/encoding/message.c b/src/libcharon/encoding/message.c
+index 1ee2cf81b035..478f531eae28 100644
+--- a/src/libcharon/encoding/message.c
++++ b/src/libcharon/encoding/message.c
+@@ -2513,7 +2513,7 @@ static status_t decrypt_payloads(private_message_t *this, keymat_t *keymat)
+ 			was_encrypted = "encrypted fragment payload";
+ 		}
+ 
+-		if (payload_is_known(type, this->major_version) && !was_encrypted &&
++		if (type != PL_UNKNOWN && !was_encrypted &&
+ 			!is_connectivity_check(this, payload) &&
+ 			this->exchange_type != AGGRESSIVE)
+ 		{
+diff --git a/src/libcharon/encoding/payloads/payload.c b/src/libcharon/encoding/payloads/payload.c
+index a1cd2f945588..f7c2754e05c3 100644
+--- a/src/libcharon/encoding/payloads/payload.c
++++ b/src/libcharon/encoding/payloads/payload.c
+@@ -97,6 +97,7 @@ ENUM_NEXT(payload_type_names, PLV1_NAT_D_DRAFT_00_03, PLV1_FRAGMENT, PLV2_FRAGME
+ #endif /* ME */
+ ENUM_NEXT(payload_type_names, PL_HEADER, PLV1_ENCRYPTED, PLV1_FRAGMENT,
+ 	"HEADER",
++	"UNKNOWN",
+ 	"PROPOSAL_SUBSTRUCTURE",
+ 	"PROPOSAL_SUBSTRUCTURE_V1",
+ 	"TRANSFORM_SUBSTRUCTURE",
+@@ -167,6 +168,7 @@ ENUM_NEXT(payload_type_short_names, PLV1_NAT_D_DRAFT_00_03, PLV1_FRAGMENT, PLV2_
+ #endif /* ME */
+ ENUM_NEXT(payload_type_short_names, PL_HEADER, PLV1_ENCRYPTED, PLV1_FRAGMENT,
+ 	"HDR",
++	"UNKN",
+ 	"PROP",
+ 	"PROP",
+ 	"TRANS",
+diff --git a/src/libcharon/encoding/payloads/payload.h b/src/libcharon/encoding/payloads/payload.h
+index 920779bd1032..72003894f307 100644
+--- a/src/libcharon/encoding/payloads/payload.h
++++ b/src/libcharon/encoding/payloads/payload.h
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (C) 2007 Tobias Brunner
++ * Copyright (C) 2007-2015 Tobias Brunner
+  * Copyright (C) 2005-2006 Martin Willi
+  * Copyright (C) 2005 Jan Hutter
+  * Hochschule fuer Technik Rapperswil
+@@ -264,6 +264,11 @@ enum payload_type_t {
+ 	PL_HEADER = 256,
+ 
+ 	/**
++	 * Used to handle unknown or invalid payload types.
++	 */
++	PL_UNKNOWN,
++
++	/**
+ 	 * PLV2_PROPOSAL_SUBSTRUCTURE, IKEv2 proposals in a SA payload.
+ 	 */
+ 	PLV2_PROPOSAL_SUBSTRUCTURE,
+diff --git a/src/libcharon/encoding/payloads/unknown_payload.c b/src/libcharon/encoding/payloads/unknown_payload.c
+index 45b91fd0b32f..c69254fc008c 100644
+--- a/src/libcharon/encoding/payloads/unknown_payload.c
++++ b/src/libcharon/encoding/payloads/unknown_payload.c
+@@ -1,4 +1,5 @@
+ /*
++ * Copyright (C) 2015 Tobias Brunner
+  * Copyright (C) 2005-2006 Martin Willi
+  * Copyright (C) 2005 Jan Hutter
+  * Hochschule fuer Technik Rapperswil
+@@ -121,6 +122,12 @@ METHOD(payload_t, get_header_length, int,
+ METHOD(payload_t, get_payload_type, payload_type_t,
+ 	private_unknown_payload_t *this)
+ {
++	return PL_UNKNOWN;
++}
++
++METHOD(unknown_payload_t, get_type, payload_type_t,
++	private_unknown_payload_t *this)
++{
+ 	return this->type;
+ }
+ 
+@@ -181,6 +188,7 @@ unknown_payload_t *unknown_payload_create(payload_type_t type)
+ 				.destroy = _destroy,
+ 			},
+ 			.is_critical = _is_critical,
++			.get_type = _get_type,
+ 			.get_data = _get_data,
+ 			.destroy = _destroy,
+ 		},
+diff --git a/src/libcharon/encoding/payloads/unknown_payload.h b/src/libcharon/encoding/payloads/unknown_payload.h
+index 326b550cd872..09341bcc79b5 100644
+--- a/src/libcharon/encoding/payloads/unknown_payload.h
++++ b/src/libcharon/encoding/payloads/unknown_payload.h
+@@ -1,4 +1,5 @@
+ /*
++ * Copyright (C) 2015 Tobias Brunner
+  * Copyright (C) 2005-2006 Martin Willi
+  * Copyright (C) 2005 Jan Hutter
+  * Hochschule fuer Technik Rapperswil
+@@ -42,6 +43,13 @@ struct unknown_payload_t {
+ 	payload_t payload_interface;
+ 
+ 	/**
++	 * Get the original payload type as sent by the peer.
++	 *
++	 * @return				type of the original payload
++	 */
++	payload_type_t (*get_type) (unknown_payload_t *this);
++
++	/**
+ 	 * Get the raw data of this payload, without
+ 	 * the generic payload header.
+ 	 *
+diff --git a/src/libcharon/sa/ikev2/task_manager_v2.c b/src/libcharon/sa/ikev2/task_manager_v2.c
+index 298167703cbf..4676867dfec2 100644
+--- a/src/libcharon/sa/ikev2/task_manager_v2.c
++++ b/src/libcharon/sa/ikev2/task_manager_v2.c
+@@ -1184,15 +1184,17 @@ static status_t parse_message(private_task_manager_t *this, message_t *msg)
+ 		enumerator = msg->create_payload_enumerator(msg);
+ 		while (enumerator->enumerate(enumerator, &payload))
+ 		{
+-			unknown = (unknown_payload_t*)payload;
+-			type = payload->get_type(payload);
+-			if (!payload_is_known(type, msg->get_major_version(msg)) &&
+-				unknown->is_critical(unknown))
++			if (payload->get_type(payload) == PL_UNKNOWN)
+ 			{
+-				DBG1(DBG_ENC, "payload type %N is not supported, "
+-					 "but its critical!", payload_type_names, type);
+-				status = NOT_SUPPORTED;
+-				break;
++				unknown = (unknown_payload_t*)payload;
++				if (unknown->is_critical(unknown))
++				{
++					type = unknown->get_type(unknown);
++					DBG1(DBG_ENC, "payload type %N is not supported, "
++						 "but its critical!", payload_type_names, type);
++					status = NOT_SUPPORTED;
++					break;
++				}
+ 			}
+ 		}
+ 		enumerator->destroy(enumerator);
+-- 
+1.9.1
+
+
