@@ -1,3 +1,9 @@
+strongswan (5.3.1-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Jun 2015 15:00:41 +0200
+
 strongswan (5.3.0-2) unstable; urgency=medium
 
   * debian/patches:
