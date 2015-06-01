@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.3.0])
+AC_INIT([strongSwan],[5.3.1])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -144,6 +144,7 @@ ARG_ENABL_SET([padlock],        [enables VIA Padlock crypto plugin.])
 ARG_DISBL_SET([random],         [disable RNG implementation on top of /dev/(u)random.])
 ARG_DISBL_SET([rc2],            [disable RC2 software implementation plugin.])
 ARG_ENABL_SET([rdrand],         [enable Intel RDRAND random generator plugin.])
+ARG_ENABL_SET([aesni],          [enable Intel AES-NI crypto plugin.])
 ARG_DISBL_SET([sha1],           [disable SHA1 software implementation plugin.])
 ARG_DISBL_SET([sha2],           [disable SHA256/SHA384/SHA512 software implementation plugin.])
 ARG_DISBL_SET([xcbc],           [disable xcbc crypto implementation plugin.])
@@ -290,8 +291,10 @@ ARG_ENABL_SET([integrity-test], [enable integrity testing of libstrongswan and p
 ARG_DISBL_SET([load-warning],   [disable the charon plugin load option warning in starter.])
 ARG_ENABL_SET([mediation],      [enable IKEv2 Mediation Extension.])
 ARG_ENABL_SET([unwind-backtraces],[use libunwind to create backtraces for memory leaks and segfaults.])
-ARG_ENABL_SET([ruby-gems],      [enable installation of provided ruby gems.])
-ARG_ENABL_SET([python-eggs],    [enable installation of provided python eggs.])
+ARG_ENABL_SET([ruby-gems],      [enable build of provided ruby gems.])
+ARG_ENABL_SET([ruby-gems-install],[enable installation of provided ruby gems.])
+ARG_ENABL_SET([python-eggs],    [enable build of provided python eggs.])
+ARG_ENABL_SET([python-eggs-install],[enable installation of provided python eggs.])
 # compile options
 ARG_ENABL_SET([coverage],       [enable lcov coverage report generation.])
 ARG_ENABL_SET([leak-detective], [enable malloc hooks to find memory leaks.])
@@ -430,6 +433,14 @@ fi
 
 if test x$medcli = xtrue; then
 	mediation=true
+fi
+
+if test x$ruby_gems_install = xtrue; then
+	ruby_gems=true
+fi
+
+if test x$python_eggs_install = xtrue; then
+	python_eggs=true
 fi
 
 # ===========================================
@@ -694,6 +705,17 @@ AC_COMPILE_IFELSE(
 		  return rta_type;]])],
 	[AC_MSG_RESULT([yes]);
 	 AC_DEFINE([HAVE_RTA_TABLE], [], [have netlink RTA_TABLE defined])],
+	[AC_MSG_RESULT([no])]
+)
+
+AC_MSG_CHECKING([for __int128])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[#include <sys/types.h>]],
+		[[__int128 x = 0;
+		  return x;]])],
+	[AC_MSG_RESULT([yes]);
+	 AC_DEFINE([HAVE_INT128], [], [have __int128 type support])],
 	[AC_MSG_RESULT([no])]
 )
 
@@ -1187,11 +1209,14 @@ if test x$ruby_gems = xtrue; then
 	fi
 	AC_SUBST(RUBYGEMDIR, "$rubygemdir")
 fi
+AM_CONDITIONAL(RUBY_GEMS_INSTALL, [test "x$ruby_gems_install" = xtrue])
 
 if test x$python_eggs = xtrue; then
-	AC_PATH_PROG([EASY_INSTALL], [easy_install], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
-	if test x$EASY_INSTALL = x; then
-		AC_MSG_ERROR(Python easy_install not found)
+	if test x$python_eggs_install = xtrue; then
+		AC_PATH_PROG([EASY_INSTALL], [easy_install], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
+		if test x$EASY_INSTALL = x; then
+			AC_MSG_ERROR(Python easy_install not found)
+		fi
 	fi
 	if test "x$pythoneggdir" = "xmain site-packages directory"; then
 		AC_SUBST(PYTHONEGGINSTALLDIR, "")
@@ -1200,6 +1225,7 @@ if test x$python_eggs = xtrue; then
 	fi
 	AC_PATH_PROG([PY_TEST], [py.test], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 fi
+AM_CONDITIONAL(PYTHON_EGGS_INSTALL, [test "x$python_eggs_install" = xtrue])
 
 # ===============================================
 #  collect plugin list for strongSwan components
@@ -1232,6 +1258,7 @@ ADD_PLUGIN([test-vectors],         [s charon scepclient pki])
 ADD_PLUGIN([unbound],              [s charon scripts])
 ADD_PLUGIN([ldap],                 [s charon scepclient scripts nm cmd])
 ADD_PLUGIN([pkcs11],               [s charon pki nm cmd])
+ADD_PLUGIN([aesni],                [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
 ADD_PLUGIN([aes],                  [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([des],                  [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([blowfish],             [s charon scepclient pki scripts nm cmd])
@@ -1395,6 +1422,7 @@ AM_CONDITIONAL(USE_SHA2, test x$sha2 = xtrue)
 AM_CONDITIONAL(USE_FIPS_PRF, test x$fips_prf = xtrue)
 AM_CONDITIONAL(USE_GMP, test x$gmp = xtrue)
 AM_CONDITIONAL(USE_RDRAND, test x$rdrand = xtrue)
+AM_CONDITIONAL(USE_AESNI, test x$aesni = xtrue)
 AM_CONDITIONAL(USE_RANDOM, test x$random = xtrue)
 AM_CONDITIONAL(USE_NONCE, test x$nonce = xtrue)
 AM_CONDITIONAL(USE_X509, test x$x509 = xtrue)
@@ -1638,6 +1666,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/fips_prf/Makefile
 	src/libstrongswan/plugins/gmp/Makefile
 	src/libstrongswan/plugins/rdrand/Makefile
+	src/libstrongswan/plugins/aesni/Makefile
 	src/libstrongswan/plugins/random/Makefile
 	src/libstrongswan/plugins/nonce/Makefile
 	src/libstrongswan/plugins/hmac/Makefile

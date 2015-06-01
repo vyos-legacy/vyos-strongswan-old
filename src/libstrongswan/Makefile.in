@@ -135,85 +135,87 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_GMP_TRUE@am__append_37 = plugins/gmp/libstrongswan-gmp.la
 @USE_RDRAND_TRUE@am__append_38 = plugins/rdrand
 @MONOLITHIC_TRUE@@USE_RDRAND_TRUE@am__append_39 = plugins/rdrand/libstrongswan-rdrand.la
-@USE_RANDOM_TRUE@am__append_40 = plugins/random
-@MONOLITHIC_TRUE@@USE_RANDOM_TRUE@am__append_41 = plugins/random/libstrongswan-random.la
-@USE_NONCE_TRUE@am__append_42 = plugins/nonce
-@MONOLITHIC_TRUE@@USE_NONCE_TRUE@am__append_43 = plugins/nonce/libstrongswan-nonce.la
-@USE_HMAC_TRUE@am__append_44 = plugins/hmac
-@MONOLITHIC_TRUE@@USE_HMAC_TRUE@am__append_45 = plugins/hmac/libstrongswan-hmac.la
-@USE_CMAC_TRUE@am__append_46 = plugins/cmac
-@MONOLITHIC_TRUE@@USE_CMAC_TRUE@am__append_47 = plugins/cmac/libstrongswan-cmac.la
-@USE_XCBC_TRUE@am__append_48 = plugins/xcbc
-@MONOLITHIC_TRUE@@USE_XCBC_TRUE@am__append_49 = plugins/xcbc/libstrongswan-xcbc.la
-@USE_X509_TRUE@am__append_50 = plugins/x509
-@MONOLITHIC_TRUE@@USE_X509_TRUE@am__append_51 = plugins/x509/libstrongswan-x509.la
-@USE_REVOCATION_TRUE@am__append_52 = plugins/revocation
-@MONOLITHIC_TRUE@@USE_REVOCATION_TRUE@am__append_53 = plugins/revocation/libstrongswan-revocation.la
-@USE_CONSTRAINTS_TRUE@am__append_54 = plugins/constraints
-@MONOLITHIC_TRUE@@USE_CONSTRAINTS_TRUE@am__append_55 = plugins/constraints/libstrongswan-constraints.la
-@USE_ACERT_TRUE@am__append_56 = plugins/acert
-@MONOLITHIC_TRUE@@USE_ACERT_TRUE@am__append_57 = plugins/acert/libstrongswan-acert.la
-@USE_PUBKEY_TRUE@am__append_58 = plugins/pubkey
-@MONOLITHIC_TRUE@@USE_PUBKEY_TRUE@am__append_59 = plugins/pubkey/libstrongswan-pubkey.la
-@USE_PKCS1_TRUE@am__append_60 = plugins/pkcs1
-@MONOLITHIC_TRUE@@USE_PKCS1_TRUE@am__append_61 = plugins/pkcs1/libstrongswan-pkcs1.la
-@USE_PKCS7_TRUE@am__append_62 = plugins/pkcs7
-@MONOLITHIC_TRUE@@USE_PKCS7_TRUE@am__append_63 = plugins/pkcs7/libstrongswan-pkcs7.la
-@USE_PKCS8_TRUE@am__append_64 = plugins/pkcs8
-@MONOLITHIC_TRUE@@USE_PKCS8_TRUE@am__append_65 = plugins/pkcs8/libstrongswan-pkcs8.la
-@USE_PKCS12_TRUE@am__append_66 = plugins/pkcs12
-@MONOLITHIC_TRUE@@USE_PKCS12_TRUE@am__append_67 = plugins/pkcs12/libstrongswan-pkcs12.la
-@USE_PGP_TRUE@am__append_68 = plugins/pgp
-@MONOLITHIC_TRUE@@USE_PGP_TRUE@am__append_69 = plugins/pgp/libstrongswan-pgp.la
-@USE_DNSKEY_TRUE@am__append_70 = plugins/dnskey
-@MONOLITHIC_TRUE@@USE_DNSKEY_TRUE@am__append_71 = plugins/dnskey/libstrongswan-dnskey.la
-@USE_SSHKEY_TRUE@am__append_72 = plugins/sshkey
-@MONOLITHIC_TRUE@@USE_SSHKEY_TRUE@am__append_73 = plugins/sshkey/libstrongswan-sshkey.la
-@USE_PEM_TRUE@am__append_74 = plugins/pem
-@MONOLITHIC_TRUE@@USE_PEM_TRUE@am__append_75 = plugins/pem/libstrongswan-pem.la
-@USE_CURL_TRUE@am__append_76 = plugins/curl
-@MONOLITHIC_TRUE@@USE_CURL_TRUE@am__append_77 = plugins/curl/libstrongswan-curl.la
-@USE_FILES_TRUE@am__append_78 = plugins/files
-@MONOLITHIC_TRUE@@USE_FILES_TRUE@am__append_79 = plugins/files/libstrongswan-files.la
-@USE_WINHTTP_TRUE@am__append_80 = plugins/winhttp
-@MONOLITHIC_TRUE@@USE_WINHTTP_TRUE@am__append_81 = plugins/winhttp/libstrongswan-winhttp.la
-@USE_UNBOUND_TRUE@am__append_82 = plugins/unbound
-@MONOLITHIC_TRUE@@USE_UNBOUND_TRUE@am__append_83 = plugins/unbound/libstrongswan-unbound.la
-@USE_SOUP_TRUE@am__append_84 = plugins/soup
-@MONOLITHIC_TRUE@@USE_SOUP_TRUE@am__append_85 = plugins/soup/libstrongswan-soup.la
-@USE_LDAP_TRUE@am__append_86 = plugins/ldap
-@MONOLITHIC_TRUE@@USE_LDAP_TRUE@am__append_87 = plugins/ldap/libstrongswan-ldap.la
-@USE_MYSQL_TRUE@am__append_88 = plugins/mysql
-@MONOLITHIC_TRUE@@USE_MYSQL_TRUE@am__append_89 = plugins/mysql/libstrongswan-mysql.la
-@USE_SQLITE_TRUE@am__append_90 = plugins/sqlite
-@MONOLITHIC_TRUE@@USE_SQLITE_TRUE@am__append_91 = plugins/sqlite/libstrongswan-sqlite.la
-@USE_PADLOCK_TRUE@am__append_92 = plugins/padlock
-@MONOLITHIC_TRUE@@USE_PADLOCK_TRUE@am__append_93 = plugins/padlock/libstrongswan-padlock.la
-@USE_OPENSSL_TRUE@am__append_94 = plugins/openssl
-@MONOLITHIC_TRUE@@USE_OPENSSL_TRUE@am__append_95 = plugins/openssl/libstrongswan-openssl.la
-@USE_GCRYPT_TRUE@am__append_96 = plugins/gcrypt
-@MONOLITHIC_TRUE@@USE_GCRYPT_TRUE@am__append_97 = plugins/gcrypt/libstrongswan-gcrypt.la
-@USE_FIPS_PRF_TRUE@am__append_98 = plugins/fips_prf
-@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_99 = plugins/fips_prf/libstrongswan-fips-prf.la
-@USE_AGENT_TRUE@am__append_100 = plugins/agent
-@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_101 = plugins/agent/libstrongswan-agent.la
-@USE_KEYCHAIN_TRUE@am__append_102 = plugins/keychain
-@MONOLITHIC_TRUE@@USE_KEYCHAIN_TRUE@am__append_103 = plugins/keychain/libstrongswan-keychain.la
-@USE_PKCS11_TRUE@am__append_104 = plugins/pkcs11
-@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_105 = plugins/pkcs11/libstrongswan-pkcs11.la
-@USE_CTR_TRUE@am__append_106 = plugins/ctr
-@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_107 = plugins/ctr/libstrongswan-ctr.la
-@USE_CCM_TRUE@am__append_108 = plugins/ccm
-@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_109 = plugins/ccm/libstrongswan-ccm.la
-@USE_GCM_TRUE@am__append_110 = plugins/gcm
-@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_111 = plugins/gcm/libstrongswan-gcm.la
-@USE_NTRU_TRUE@am__append_112 = plugins/ntru
-@MONOLITHIC_TRUE@@USE_NTRU_TRUE@am__append_113 = plugins/ntru/libstrongswan-ntru.la
-@USE_BLISS_TRUE@am__append_114 = plugins/bliss
-@MONOLITHIC_TRUE@@USE_BLISS_TRUE@am__append_115 = plugins/bliss/libstrongswan-bliss.la
-@USE_TEST_VECTORS_TRUE@am__append_116 = plugins/test_vectors
-@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_117 = plugins/test_vectors/libstrongswan-test-vectors.la
-@USE_BLISS_TRUE@am__append_118 = plugins/bliss/tests
+@USE_AESNI_TRUE@am__append_40 = plugins/aesni
+@MONOLITHIC_TRUE@@USE_AESNI_TRUE@am__append_41 = plugins/aesni/libstrongswan-aesni.la
+@USE_RANDOM_TRUE@am__append_42 = plugins/random
+@MONOLITHIC_TRUE@@USE_RANDOM_TRUE@am__append_43 = plugins/random/libstrongswan-random.la
+@USE_NONCE_TRUE@am__append_44 = plugins/nonce
+@MONOLITHIC_TRUE@@USE_NONCE_TRUE@am__append_45 = plugins/nonce/libstrongswan-nonce.la
+@USE_HMAC_TRUE@am__append_46 = plugins/hmac
+@MONOLITHIC_TRUE@@USE_HMAC_TRUE@am__append_47 = plugins/hmac/libstrongswan-hmac.la
+@USE_CMAC_TRUE@am__append_48 = plugins/cmac
+@MONOLITHIC_TRUE@@USE_CMAC_TRUE@am__append_49 = plugins/cmac/libstrongswan-cmac.la
+@USE_XCBC_TRUE@am__append_50 = plugins/xcbc
+@MONOLITHIC_TRUE@@USE_XCBC_TRUE@am__append_51 = plugins/xcbc/libstrongswan-xcbc.la
+@USE_X509_TRUE@am__append_52 = plugins/x509
+@MONOLITHIC_TRUE@@USE_X509_TRUE@am__append_53 = plugins/x509/libstrongswan-x509.la
+@USE_REVOCATION_TRUE@am__append_54 = plugins/revocation
+@MONOLITHIC_TRUE@@USE_REVOCATION_TRUE@am__append_55 = plugins/revocation/libstrongswan-revocation.la
+@USE_CONSTRAINTS_TRUE@am__append_56 = plugins/constraints
+@MONOLITHIC_TRUE@@USE_CONSTRAINTS_TRUE@am__append_57 = plugins/constraints/libstrongswan-constraints.la
+@USE_ACERT_TRUE@am__append_58 = plugins/acert
+@MONOLITHIC_TRUE@@USE_ACERT_TRUE@am__append_59 = plugins/acert/libstrongswan-acert.la
+@USE_PUBKEY_TRUE@am__append_60 = plugins/pubkey
+@MONOLITHIC_TRUE@@USE_PUBKEY_TRUE@am__append_61 = plugins/pubkey/libstrongswan-pubkey.la
+@USE_PKCS1_TRUE@am__append_62 = plugins/pkcs1
+@MONOLITHIC_TRUE@@USE_PKCS1_TRUE@am__append_63 = plugins/pkcs1/libstrongswan-pkcs1.la
+@USE_PKCS7_TRUE@am__append_64 = plugins/pkcs7
+@MONOLITHIC_TRUE@@USE_PKCS7_TRUE@am__append_65 = plugins/pkcs7/libstrongswan-pkcs7.la
+@USE_PKCS8_TRUE@am__append_66 = plugins/pkcs8
+@MONOLITHIC_TRUE@@USE_PKCS8_TRUE@am__append_67 = plugins/pkcs8/libstrongswan-pkcs8.la
+@USE_PKCS12_TRUE@am__append_68 = plugins/pkcs12
+@MONOLITHIC_TRUE@@USE_PKCS12_TRUE@am__append_69 = plugins/pkcs12/libstrongswan-pkcs12.la
+@USE_PGP_TRUE@am__append_70 = plugins/pgp
+@MONOLITHIC_TRUE@@USE_PGP_TRUE@am__append_71 = plugins/pgp/libstrongswan-pgp.la
+@USE_DNSKEY_TRUE@am__append_72 = plugins/dnskey
+@MONOLITHIC_TRUE@@USE_DNSKEY_TRUE@am__append_73 = plugins/dnskey/libstrongswan-dnskey.la
+@USE_SSHKEY_TRUE@am__append_74 = plugins/sshkey
+@MONOLITHIC_TRUE@@USE_SSHKEY_TRUE@am__append_75 = plugins/sshkey/libstrongswan-sshkey.la
+@USE_PEM_TRUE@am__append_76 = plugins/pem
+@MONOLITHIC_TRUE@@USE_PEM_TRUE@am__append_77 = plugins/pem/libstrongswan-pem.la
+@USE_CURL_TRUE@am__append_78 = plugins/curl
+@MONOLITHIC_TRUE@@USE_CURL_TRUE@am__append_79 = plugins/curl/libstrongswan-curl.la
+@USE_FILES_TRUE@am__append_80 = plugins/files
+@MONOLITHIC_TRUE@@USE_FILES_TRUE@am__append_81 = plugins/files/libstrongswan-files.la
+@USE_WINHTTP_TRUE@am__append_82 = plugins/winhttp
+@MONOLITHIC_TRUE@@USE_WINHTTP_TRUE@am__append_83 = plugins/winhttp/libstrongswan-winhttp.la
+@USE_UNBOUND_TRUE@am__append_84 = plugins/unbound
+@MONOLITHIC_TRUE@@USE_UNBOUND_TRUE@am__append_85 = plugins/unbound/libstrongswan-unbound.la
+@USE_SOUP_TRUE@am__append_86 = plugins/soup
+@MONOLITHIC_TRUE@@USE_SOUP_TRUE@am__append_87 = plugins/soup/libstrongswan-soup.la
+@USE_LDAP_TRUE@am__append_88 = plugins/ldap
+@MONOLITHIC_TRUE@@USE_LDAP_TRUE@am__append_89 = plugins/ldap/libstrongswan-ldap.la
+@USE_MYSQL_TRUE@am__append_90 = plugins/mysql
+@MONOLITHIC_TRUE@@USE_MYSQL_TRUE@am__append_91 = plugins/mysql/libstrongswan-mysql.la
+@USE_SQLITE_TRUE@am__append_92 = plugins/sqlite
+@MONOLITHIC_TRUE@@USE_SQLITE_TRUE@am__append_93 = plugins/sqlite/libstrongswan-sqlite.la
+@USE_PADLOCK_TRUE@am__append_94 = plugins/padlock
+@MONOLITHIC_TRUE@@USE_PADLOCK_TRUE@am__append_95 = plugins/padlock/libstrongswan-padlock.la
+@USE_OPENSSL_TRUE@am__append_96 = plugins/openssl
+@MONOLITHIC_TRUE@@USE_OPENSSL_TRUE@am__append_97 = plugins/openssl/libstrongswan-openssl.la
+@USE_GCRYPT_TRUE@am__append_98 = plugins/gcrypt
+@MONOLITHIC_TRUE@@USE_GCRYPT_TRUE@am__append_99 = plugins/gcrypt/libstrongswan-gcrypt.la
+@USE_FIPS_PRF_TRUE@am__append_100 = plugins/fips_prf
+@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_101 = plugins/fips_prf/libstrongswan-fips-prf.la
+@USE_AGENT_TRUE@am__append_102 = plugins/agent
+@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_103 = plugins/agent/libstrongswan-agent.la
+@USE_KEYCHAIN_TRUE@am__append_104 = plugins/keychain
+@MONOLITHIC_TRUE@@USE_KEYCHAIN_TRUE@am__append_105 = plugins/keychain/libstrongswan-keychain.la
+@USE_PKCS11_TRUE@am__append_106 = plugins/pkcs11
+@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_107 = plugins/pkcs11/libstrongswan-pkcs11.la
+@USE_CTR_TRUE@am__append_108 = plugins/ctr
+@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_109 = plugins/ctr/libstrongswan-ctr.la
+@USE_CCM_TRUE@am__append_110 = plugins/ccm
+@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_111 = plugins/ccm/libstrongswan-ccm.la
+@USE_GCM_TRUE@am__append_112 = plugins/gcm
+@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_113 = plugins/gcm/libstrongswan-gcm.la
+@USE_NTRU_TRUE@am__append_114 = plugins/ntru
+@MONOLITHIC_TRUE@@USE_NTRU_TRUE@am__append_115 = plugins/ntru/libstrongswan-ntru.la
+@USE_BLISS_TRUE@am__append_116 = plugins/bliss
+@MONOLITHIC_TRUE@@USE_BLISS_TRUE@am__append_117 = plugins/bliss/libstrongswan-bliss.la
+@USE_TEST_VECTORS_TRUE@am__append_118 = plugins/test_vectors
+@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_119 = plugins/test_vectors/libstrongswan-test-vectors.la
+@USE_BLISS_TRUE@am__append_120 = plugins/bliss/tests
 subdir = src/libstrongswan
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	settings/settings_parser.h settings/settings_parser.c \
@@ -292,7 +294,8 @@ libstrongswan_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__append_95) $(am__append_97) $(am__append_99) \
 	$(am__append_101) $(am__append_103) $(am__append_105) \
 	$(am__append_107) $(am__append_109) $(am__append_111) \
-	$(am__append_113) $(am__append_115) $(am__append_117)
+	$(am__append_113) $(am__append_115) $(am__append_117) \
+	$(am__append_119)
 am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c \
 	bio/bio_writer.c collections/blocking_queue.c \
@@ -306,7 +309,7 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	crypto/prf_plus.c crypto/signers/signer.c \
 	crypto/signers/mac_signer.c crypto/crypto_factory.c \
 	crypto/crypto_tester.c crypto/diffie_hellman.c crypto/aead.c \
-	crypto/transform.c crypto/iv/iv_gen_rand.c \
+	crypto/transform.c crypto/iv/iv_gen.c crypto/iv/iv_gen_rand.c \
 	crypto/iv/iv_gen_seq.c crypto/mgf1/mgf1.c \
 	crypto/mgf1/mgf1_bitspender.c credentials/credential_factory.c \
 	credentials/builder.c credentials/cred_encoding.c \
@@ -338,12 +341,16 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	resolver/rr_set.c selectors/traffic_selector.c \
 	settings/settings.c settings/settings_types.c \
 	settings/settings_parser.y settings/settings_lexer.l \
-	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
-	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
-	utils/capabilities.c utils/backtrace.c utils/parser_helper.c \
-	utils/test.c utils/process.c utils/utils/strerror.c \
-	threading/thread.c threading/thread_value.c threading/mutex.c \
-	threading/rwlock.c threading/spinlock.c threading/semaphore.c \
+	utils/cpu_feature.c utils/utils.c utils/chunk.c utils/debug.c \
+	utils/enum.c utils/identification.c utils/lexparser.c \
+	utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
+	utils/parser_helper.c utils/test.c utils/process.c \
+	utils/utils/strerror.c utils/utils/atomics.c \
+	utils/utils/string.c utils/utils/memory.c utils/utils/tty.c \
+	utils/utils/path.c utils/utils/status.c utils/utils/time.c \
+	utils/utils/align.c threading/thread.c \
+	threading/thread_value.c threading/mutex.c threading/rwlock.c \
+	threading/spinlock.c threading/semaphore.c \
 	networking/streams/stream_unix.c \
 	networking/streams/stream_service_unix.c \
 	threading/windows/thread.c threading/windows/thread_value.c \
@@ -386,9 +393,9 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	crypto/prf_plus.lo crypto/signers/signer.lo \
 	crypto/signers/mac_signer.lo crypto/crypto_factory.lo \
 	crypto/crypto_tester.lo crypto/diffie_hellman.lo \
-	crypto/aead.lo crypto/transform.lo crypto/iv/iv_gen_rand.lo \
-	crypto/iv/iv_gen_seq.lo crypto/mgf1/mgf1.lo \
-	crypto/mgf1/mgf1_bitspender.lo \
+	crypto/aead.lo crypto/transform.lo crypto/iv/iv_gen.lo \
+	crypto/iv/iv_gen_rand.lo crypto/iv/iv_gen_seq.lo \
+	crypto/mgf1/mgf1.lo crypto/mgf1/mgf1_bitspender.lo \
 	credentials/credential_factory.lo credentials/builder.lo \
 	credentials/cred_encoding.lo credentials/keys/private_key.lo \
 	credentials/keys/public_key.lo credentials/keys/shared_key.lo \
@@ -418,13 +425,17 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	resolver/rr_set.lo selectors/traffic_selector.lo \
 	settings/settings.lo settings/settings_types.lo \
 	settings/settings_parser.lo settings/settings_lexer.lo \
-	utils/utils.lo utils/chunk.lo utils/debug.lo utils/enum.lo \
-	utils/identification.lo utils/lexparser.lo \
-	utils/optionsfrom.lo utils/capabilities.lo utils/backtrace.lo \
-	utils/parser_helper.lo utils/test.lo utils/process.lo \
-	utils/utils/strerror.lo $(am__objects_1) $(am__objects_2) \
-	$(am__objects_3) $(am__objects_4) $(am__objects_5) \
-	$(am__objects_6) $(am__objects_7)
+	utils/cpu_feature.lo utils/utils.lo utils/chunk.lo \
+	utils/debug.lo utils/enum.lo utils/identification.lo \
+	utils/lexparser.lo utils/optionsfrom.lo utils/capabilities.lo \
+	utils/backtrace.lo utils/parser_helper.lo utils/test.lo \
+	utils/process.lo utils/utils/strerror.lo \
+	utils/utils/atomics.lo utils/utils/string.lo \
+	utils/utils/memory.lo utils/utils/tty.lo utils/utils/path.lo \
+	utils/utils/status.lo utils/utils/time.lo utils/utils/align.lo \
+	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_4) $(am__objects_5) $(am__objects_6) \
+	$(am__objects_7)
 libstrongswan_la_OBJECTS = $(am_libstrongswan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -554,13 +565,17 @@ am__nobase_strongswan_include_HEADERS_DIST = library.h asn1/asn1.h \
 	threading/rwlock_condvar.h threading/lock_profiler.h \
 	utils/utils.h utils/chunk.h utils/debug.h utils/enum.h \
 	utils/identification.h utils/lexparser.h utils/optionsfrom.h \
-	utils/capabilities.h utils/backtrace.h utils/leak_detective.h \
-	utils/printf_hook/printf_hook.h \
+	utils/capabilities.h utils/backtrace.h utils/cpu_feature.h \
+	utils/leak_detective.h utils/printf_hook/printf_hook.h \
 	utils/printf_hook/printf_hook_vstr.h \
 	utils/printf_hook/printf_hook_builtin.h utils/parser_helper.h \
 	utils/test.h utils/integrity_checker.h utils/process.h \
 	utils/utils/strerror.h utils/compat/windows.h \
-	utils/compat/apple.h
+	utils/compat/apple.h utils/utils/atomics.h utils/utils/types.h \
+	utils/utils/byteorder.h utils/utils/string.h \
+	utils/utils/memory.h utils/utils/tty.h utils/utils/path.h \
+	utils/utils/status.h utils/utils/object.h utils/utils/time.h \
+	utils/utils/align.h
 HEADERS = $(nobase_strongswan_include_HEADERS) $(noinst_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -592,8 +607,8 @@ CTAGS = ctags
 DIST_SUBDIRS = . plugins/af_alg plugins/aes plugins/des \
 	plugins/blowfish plugins/rc2 plugins/md4 plugins/md5 \
 	plugins/sha1 plugins/sha2 plugins/gmp plugins/rdrand \
-	plugins/random plugins/nonce plugins/hmac plugins/cmac \
-	plugins/xcbc plugins/x509 plugins/revocation \
+	plugins/aesni plugins/random plugins/nonce plugins/hmac \
+	plugins/cmac plugins/xcbc plugins/x509 plugins/revocation \
 	plugins/constraints plugins/acert plugins/pubkey plugins/pkcs1 \
 	plugins/pkcs7 plugins/pkcs8 plugins/pkcs12 plugins/pgp \
 	plugins/dnskey plugins/sshkey plugins/pem plugins/curl \
@@ -867,7 +882,7 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	crypto/prf_plus.c crypto/signers/signer.c \
 	crypto/signers/mac_signer.c crypto/crypto_factory.c \
 	crypto/crypto_tester.c crypto/diffie_hellman.c crypto/aead.c \
-	crypto/transform.c crypto/iv/iv_gen_rand.c \
+	crypto/transform.c crypto/iv/iv_gen.c crypto/iv/iv_gen_rand.c \
 	crypto/iv/iv_gen_seq.c crypto/mgf1/mgf1.c \
 	crypto/mgf1/mgf1_bitspender.c credentials/credential_factory.c \
 	credentials/builder.c credentials/cred_encoding.c \
@@ -899,13 +914,16 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	resolver/rr_set.c selectors/traffic_selector.c \
 	settings/settings.c settings/settings_types.c \
 	settings/settings_parser.y settings/settings_lexer.l \
-	utils/utils.c utils/chunk.c utils/debug.c utils/enum.c \
-	utils/identification.c utils/lexparser.c utils/optionsfrom.c \
-	utils/capabilities.c utils/backtrace.c utils/parser_helper.c \
-	utils/test.c utils/process.c utils/utils/strerror.c \
-	$(am__append_1) $(am__append_3) $(am__append_8) \
-	$(am__append_11) $(am__append_12) $(am__append_14) \
-	$(am__append_16)
+	utils/cpu_feature.c utils/utils.c utils/chunk.c utils/debug.c \
+	utils/enum.c utils/identification.c utils/lexparser.c \
+	utils/optionsfrom.c utils/capabilities.c utils/backtrace.c \
+	utils/parser_helper.c utils/test.c utils/process.c \
+	utils/utils/strerror.c utils/utils/atomics.c \
+	utils/utils/string.c utils/utils/memory.c utils/utils/tty.c \
+	utils/utils/path.c utils/utils/status.c utils/utils/time.c \
+	utils/utils/align.c $(am__append_1) $(am__append_3) \
+	$(am__append_8) $(am__append_11) $(am__append_12) \
+	$(am__append_14) $(am__append_16)
 
 # private header files
 noinst_HEADERS = \
@@ -958,10 +976,13 @@ settings/settings_types.h
 @USE_DEV_HEADERS_TRUE@threading/rwlock.h threading/rwlock_condvar.h threading/lock_profiler.h \
 @USE_DEV_HEADERS_TRUE@utils/utils.h utils/chunk.h utils/debug.h utils/enum.h utils/identification.h \
 @USE_DEV_HEADERS_TRUE@utils/lexparser.h utils/optionsfrom.h utils/capabilities.h utils/backtrace.h \
-@USE_DEV_HEADERS_TRUE@utils/leak_detective.h utils/printf_hook/printf_hook.h \
+@USE_DEV_HEADERS_TRUE@utils/cpu_feature.h utils/leak_detective.h utils/printf_hook/printf_hook.h \
 @USE_DEV_HEADERS_TRUE@utils/printf_hook/printf_hook_vstr.h utils/printf_hook/printf_hook_builtin.h \
 @USE_DEV_HEADERS_TRUE@utils/parser_helper.h utils/test.h utils/integrity_checker.h utils/process.h \
-@USE_DEV_HEADERS_TRUE@utils/utils/strerror.h utils/compat/windows.h utils/compat/apple.h
+@USE_DEV_HEADERS_TRUE@utils/utils/strerror.h utils/compat/windows.h utils/compat/apple.h \
+@USE_DEV_HEADERS_TRUE@utils/utils/atomics.h utils/utils/types.h utils/utils/byteorder.h \
+@USE_DEV_HEADERS_TRUE@utils/utils/string.h utils/utils/memory.h utils/utils/tty.h utils/utils/path.h \
+@USE_DEV_HEADERS_TRUE@utils/utils/status.h utils/utils/object.h utils/utils/time.h utils/utils/align.h
 
 libstrongswan_la_LIBADD = $(DLLIB) $(BTLIB) $(SOCKLIB) $(RTLIB) \
 	$(BFDLIB) $(UNWINDLIB) $(am__append_2) $(am__append_4) \
@@ -982,7 +1003,8 @@ libstrongswan_la_LIBADD = $(DLLIB) $(BTLIB) $(SOCKLIB) $(RTLIB) \
 	$(am__append_95) $(am__append_97) $(am__append_99) \
 	$(am__append_101) $(am__append_103) $(am__append_105) \
 	$(am__append_107) $(am__append_109) $(am__append_111) \
-	$(am__append_113) $(am__append_115) $(am__append_117)
+	$(am__append_113) $(am__append_115) $(am__append_117) \
+	$(am__append_119)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
 	-DIPSEC_DIR=\"${ipsecdir}\" -DIPSEC_LIB_DIR=\"${ipseclibdir}\" \
 	-DPLUGINDIR=\"${plugindir}\" \
@@ -1033,8 +1055,8 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_FALSE@	$(am__append_102) $(am__append_104) \
 @MONOLITHIC_FALSE@	$(am__append_106) $(am__append_108) \
 @MONOLITHIC_FALSE@	$(am__append_110) $(am__append_112) \
-@MONOLITHIC_FALSE@	$(am__append_114) $(am__append_116) tests \
-@MONOLITHIC_FALSE@	$(am__append_118)
+@MONOLITHIC_FALSE@	$(am__append_114) $(am__append_116) \
+@MONOLITHIC_FALSE@	$(am__append_118) tests $(am__append_120)
 
 # build plugins with their own Makefile
 #######################################
@@ -1062,8 +1084,8 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_TRUE@	$(am__append_102) $(am__append_104) \
 @MONOLITHIC_TRUE@	$(am__append_106) $(am__append_108) \
 @MONOLITHIC_TRUE@	$(am__append_110) $(am__append_112) \
-@MONOLITHIC_TRUE@	$(am__append_114) $(am__append_116) . tests \
-@MONOLITHIC_TRUE@	$(am__append_118)
+@MONOLITHIC_TRUE@	$(am__append_114) $(am__append_116) \
+@MONOLITHIC_TRUE@	$(am__append_118) . tests $(am__append_120)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -1251,6 +1273,8 @@ crypto/iv/$(am__dirstamp):
 crypto/iv/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) crypto/iv/$(DEPDIR)
 	@: > crypto/iv/$(DEPDIR)/$(am__dirstamp)
+crypto/iv/iv_gen.lo: crypto/iv/$(am__dirstamp) \
+	crypto/iv/$(DEPDIR)/$(am__dirstamp)
 crypto/iv/iv_gen_rand.lo: crypto/iv/$(am__dirstamp) \
 	crypto/iv/$(DEPDIR)/$(am__dirstamp)
 crypto/iv/iv_gen_seq.lo: crypto/iv/$(am__dirstamp) \
@@ -1486,6 +1510,8 @@ utils/$(am__dirstamp):
 utils/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) utils/$(DEPDIR)
 	@: > utils/$(DEPDIR)/$(am__dirstamp)
+utils/cpu_feature.lo: utils/$(am__dirstamp) \
+	utils/$(DEPDIR)/$(am__dirstamp)
 utils/utils.lo: utils/$(am__dirstamp) utils/$(DEPDIR)/$(am__dirstamp)
 utils/chunk.lo: utils/$(am__dirstamp) utils/$(DEPDIR)/$(am__dirstamp)
 utils/debug.lo: utils/$(am__dirstamp) utils/$(DEPDIR)/$(am__dirstamp)
@@ -1512,6 +1538,22 @@ utils/utils/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) utils/utils/$(DEPDIR)
 	@: > utils/utils/$(DEPDIR)/$(am__dirstamp)
 utils/utils/strerror.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/atomics.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/string.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/memory.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/tty.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/path.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/status.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/time.lo: utils/utils/$(am__dirstamp) \
+	utils/utils/$(DEPDIR)/$(am__dirstamp)
+utils/utils/align.lo: utils/utils/$(am__dirstamp) \
 	utils/utils/$(DEPDIR)/$(am__dirstamp)
 threading/$(am__dirstamp):
 	@$(MKDIR_P) threading
@@ -1702,6 +1744,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/crypters/$(DEPDIR)/crypter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/hashers/$(DEPDIR)/hash_algorithm_set.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/hashers/$(DEPDIR)/hasher.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@crypto/iv/$(DEPDIR)/iv_gen.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/iv/$(DEPDIR)/iv_gen_rand.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/iv/$(DEPDIR)/iv_gen_seq.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/mgf1/$(DEPDIR)/mgf1.Plo@am__quote@
@@ -1760,6 +1803,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/backtrace.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/capabilities.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/chunk.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/cpu_feature.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/debug.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/enum.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/identification.Plo@am__quote@
@@ -1775,7 +1819,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_builtin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_glibc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/printf_hook/$(DEPDIR)/printf_hook_vstr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/align.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/atomics.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/memory.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/path.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/status.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/strerror.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/string.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/time.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@utils/utils/$(DEPDIR)/tty.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\

@@ -21,6 +21,7 @@
 #include <daemon.h>
 #include <hydra.h>
 #include <collections/array.h>
+#include <processing/jobs/delete_ike_sa_job.h>
 
 typedef struct private_adopt_children_job_t private_adopt_children_job_t;
 
@@ -64,11 +65,13 @@ METHOD(job_t, execute, job_requeue_t,
 	ike_sa_id_t *id;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
+	u_int32_t unique;
 
 	ike_sa = charon->ike_sa_manager->checkout(charon->ike_sa_manager, this->id);
 	if (ike_sa)
 	{
 		/* get what we need from new SA */
+		unique = ike_sa->get_unique_id(ike_sa);
 		me = ike_sa->get_my_host(ike_sa);
 		me = me->clone(me);
 		other = ike_sa->get_other_host(ike_sa);
@@ -106,6 +109,7 @@ METHOD(job_t, execute, job_requeue_t,
 					other_id->equals(other_id, ike_sa->get_other_id(ike_sa)) &&
 					cfg->equals(cfg, ike_sa->get_peer_cfg(ike_sa)))
 				{
+					charon->bus->children_migrate(charon->bus, this->id, unique);
 					subenum = ike_sa->create_child_sa_enumerator(ike_sa);
 					while (subenum->enumerate(subenum, &child_sa))
 					{
@@ -130,10 +134,19 @@ METHOD(job_t, execute, job_requeue_t,
 							 "adopting %d children and %d virtual IPs",
 							 children->get_count(children), vips->get_count(vips));
 					}
-					ike_sa->set_state(ike_sa, IKE_DELETING);
-					charon->bus->ike_updown(charon->bus, ike_sa, FALSE);
-					charon->ike_sa_manager->checkin_and_destroy(
+					if (ike_sa->get_state(ike_sa) == IKE_PASSIVE)
+					{
+						charon->ike_sa_manager->checkin_and_destroy(
 											charon->ike_sa_manager, ike_sa);
+					}
+					else
+					{
+						lib->scheduler->schedule_job(lib->scheduler, (job_t*)
+								delete_ike_sa_job_create(ike_sa->get_id(ike_sa),
+														 TRUE), 10);
+						charon->ike_sa_manager->checkin(
+											charon->ike_sa_manager, ike_sa);
+					}
 				}
 				else
 				{
@@ -176,6 +189,7 @@ METHOD(job_t, execute, job_requeue_t,
 					}
 					charon->bus->assign_vips(charon->bus, ike_sa, TRUE);
 				}
+				charon->bus->children_migrate(charon->bus, NULL, 0);
 				charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 			}
 		}

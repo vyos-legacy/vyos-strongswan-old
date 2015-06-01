@@ -162,12 +162,14 @@ struct crypto_factory_t {
 	 * Register a crypter constructor.
 	 *
 	 * @param algo			algorithm to constructor
+	 * @param key size		key size to peform benchmarking for
 	 * @param plugin_name	plugin that registered this algorithm
 	 * @param create		constructor function for that algorithm
 	 * @return				TRUE if registered, FALSE if test vector failed
 	 */
 	bool (*add_crypter)(crypto_factory_t *this, encryption_algorithm_t algo,
-						const char *plugin_name, crypter_constructor_t create);
+						size_t key_size, const char *plugin_name,
+						crypter_constructor_t create);
 
 	/**
 	 * Unregister a crypter constructor.
@@ -187,12 +189,14 @@ struct crypto_factory_t {
 	 * Register a aead constructor.
 	 *
 	 * @param algo			algorithm to constructor
+	 * @param key size		key size to peform benchmarking for
 	 * @param plugin_name	plugin that registered this algorithm
 	 * @param create		constructor function for that algorithm
 	 * @return				TRUE if registered, FALSE if test vector failed
 	 */
 	bool (*add_aead)(crypto_factory_t *this, encryption_algorithm_t algo,
-					 const char *plugin_name, aead_constructor_t create);
+					 size_t key_size, const char *plugin_name,
+					 aead_constructor_t create);
 
 	/**
 	 * Register a signer constructor.
@@ -368,14 +372,17 @@ struct crypto_factory_t {
 							void *vector);
 
 	/**
-	 * Get the number of test vector failures encountered during add.
+	 * Create an enumerator verifying transforms using known test vectors.
 	 *
-	 * This counter gets incremented only if transforms get tested during
-	 * registration.
+	 * The resulting enumerator enumerates over an u_int with the type
+	 * specific transform identifier, the plugin name providing the transform,
+	 * and a boolean value indicating success/failure for the given transform.
 	 *
-	 * @return				number of failed test vectors
+	 * @param type			transform type to test
+	 * @return				enumerator over (u_int, char*, bool)
 	 */
-	u_int (*get_test_vector_failures)(crypto_factory_t *this);
+	enumerator_t* (*create_verify_enumerator)(crypto_factory_t *this,
+											  transform_type_t type);
 
 	/**
 	 * Destroy a crypto_factory instance.

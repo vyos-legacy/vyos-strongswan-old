@@ -1411,6 +1411,55 @@ static char* get_string(private_message_t *this, char *buf, int len)
 				len -= written;
 			}
 		}
+		if (payload->get_type(payload) == PLV1_FRAGMENT)
+		{
+			fragment_payload_t *frag;
+
+			frag = (fragment_payload_t*)payload;
+			if (frag->is_last(frag))
+			{
+				written = snprintf(pos, len, "(%u/%u)",
+							frag->get_number(frag), frag->get_number(frag));
+			}
+			else
+			{
+				written = snprintf(pos, len, "(%u)", frag->get_number(frag));
+			}
+			if (written >= len || written < 0)
+			{
+				return buf;
+			}
+			pos += written;
+			len -= written;
+		}
+		if (payload->get_type(payload) == PLV2_FRAGMENT)
+		{
+			encrypted_fragment_payload_t *frag;
+
+			frag = (encrypted_fragment_payload_t*)payload;
+			written = snprintf(pos, len, "(%u/%u)",
+							   frag->get_fragment_number(frag),
+							   frag->get_total_fragments(frag));
+			if (written >= len || written < 0)
+			{
+				return buf;
+			}
+			pos += written;
+			len -= written;
+		}
+		if (payload->get_type(payload) == PL_UNKNOWN)
+		{
+			unknown_payload_t *unknown;
+
+			unknown = (unknown_payload_t*)payload;
+			written = snprintf(pos, len, "(%d)", unknown->get_type(unknown));
+			if (written >= len || written < 0)
+			{
+				return buf;
+			}
+			pos += written;
+			len -= written;
+		}
 	}
 	enumerator->destroy(enumerator);
 
@@ -2237,9 +2286,16 @@ static status_t parse_payloads(private_message_t *this)
 			payload->destroy(payload);
 			return VERIFY_ERROR;
 		}
-
-		DBG2(DBG_ENC, "%N payload verified, adding to payload list",
-			 payload_type_names, type);
+		if (payload->get_type(payload) == PL_UNKNOWN)
+		{
+			DBG2(DBG_ENC, "%N payload unknown or not allowed",
+				 payload_type_names, type);
+		}
+		else
+		{
+			DBG2(DBG_ENC, "%N payload verified, adding to payload list",
+				 payload_type_names, type);
+		}
 		this->payloads->insert_last(this->payloads, payload);
 
 		/* an encrypted (fragment) payload MUST be the last one, so STOP here.
@@ -2477,7 +2533,7 @@ static status_t decrypt_payloads(private_message_t *this, keymat_t *keymat)
 			was_encrypted = "encrypted fragment payload";
 		}
 
-		if (payload_is_known(type, this->major_version) && !was_encrypted &&
+		if (type != PL_UNKNOWN && !was_encrypted &&
 			!is_connectivity_check(this, payload) &&
 			this->exchange_type != AGGRESSIVE)
 		{
@@ -2625,7 +2681,7 @@ METHOD(message_t, parse_body, status_t,
 			other_hash = hash_payload->get_hash(hash_payload);
 			DBG3(DBG_ENC, "HASH received %B\nHASH expected %B",
 				 &other_hash, &hash);
-			if (!chunk_equals(hash, other_hash))
+			if (!chunk_equals_const(hash, other_hash))
 			{
 				DBG1(DBG_ENC, "received HASH payload does not match");
 				chunk_free(&hash);

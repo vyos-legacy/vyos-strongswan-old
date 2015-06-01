@@ -143,7 +143,8 @@ am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
 	test_vectors/md5_hmac.lo test_vectors/sha1.lo \
 	test_vectors/sha1_hmac.lo test_vectors/sha2.lo \
 	test_vectors/sha2_hmac.lo test_vectors/fips_prf.lo \
-	test_vectors/rng.lo
+	test_vectors/modp.lo test_vectors/modpsub.lo \
+	test_vectors/ecp.lo test_vectors/ecpbp.lo test_vectors/rng.lo
 libstrongswan_test_vectors_la_OBJECTS =  \
 	$(am_libstrongswan_test_vectors_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -481,6 +482,10 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/sha2.c \
 	test_vectors/sha2_hmac.c \
 	test_vectors/fips_prf.c \
+	test_vectors/modp.c \
+	test_vectors/modpsub.c \
+	test_vectors/ecp.c \
+	test_vectors/ecpbp.c \
 	test_vectors/rng.c
 
 libstrongswan_test_vectors_la_LDFLAGS = -module -avoid-version
@@ -626,6 +631,14 @@ test_vectors/sha2_hmac.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/fips_prf.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/modp.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/modpsub.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/ecp.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/ecpbp.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/rng.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 
@@ -654,12 +667,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/camellia_xcbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/cast.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/des.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecp.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecpbp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/fips_prf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/idea.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/md2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/md4.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/md5.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/md5_hmac.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/modp.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/modpsub.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/null.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/rc2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/rc5.Plo@am__quote@

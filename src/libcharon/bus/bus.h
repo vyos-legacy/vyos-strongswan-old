@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Tobias Brunner
+ * Copyright (C) 2012-2015 Tobias Brunner
  * Copyright (C) 2006-2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -130,7 +130,8 @@ enum alert_t {
 	ALERT_UNIQUE_REPLACE,
 	/** IKE_SA deleted because of "keep" unique policy, no argument */
 	ALERT_UNIQUE_KEEP,
-	/** IKE_SA kept on failed child SA establishment, no argument */
+	/** IKE_SA kept on failed child SA establishment, argument is an int (!=0 if
+	 * first child SA) */
 	ALERT_KEEP_ON_CHILD_SA_FAILURE,
 	/** allocating virtual IP failed, linked_list_t of host_t requested */
 	ALERT_VIP_FAILURE,
@@ -424,6 +425,14 @@ struct bus_t {
 	 * @param new		new CHILD_SA replacing old
 	 */
 	void (*child_rekey)(bus_t *this, child_sa_t *old, child_sa_t *new);
+
+	/**
+	 * CHILD_SA migration hook.
+	 *
+	 * @param new		ID of new SA when called for the old, NULL otherwise
+	 * @param uniue		unique ID of new SA when called for the old, 0 otherwise
+	 */
+	void (*children_migrate)(bus_t *this, ike_sa_id_t *new, u_int32_t unique);
 
 	/**
 	 * Virtual IP assignment hook.

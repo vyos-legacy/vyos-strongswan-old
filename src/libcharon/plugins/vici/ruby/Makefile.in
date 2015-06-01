@@ -453,6 +453,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+@RUBY_GEMS_INSTALL_FALSE@uninstall-local:
+@RUBY_GEMS_INSTALL_FALSE@install-data-local:
 clean: clean-am
 
 clean-am: clean-generic clean-libtool clean-local mostlyclean-am
@@ -550,13 +552,13 @@ all-local: vici-$(PACKAGE_VERSION).gem
 clean-local:
 	rm -f vici.gemspec vici-$(PACKAGE_VERSION).gem
 
-install-data-local: vici-$(PACKAGE_VERSION).gem
-	$(GEM) install --install-dir $(DESTDIR)$(RUBYGEMDIR) \
-		vici-$(PACKAGE_VERSION).gem
+@RUBY_GEMS_INSTALL_TRUE@install-data-local: vici-$(PACKAGE_VERSION).gem
+@RUBY_GEMS_INSTALL_TRUE@	$(GEM) install --no-user-install --install-dir $(DESTDIR)$(RUBYGEMDIR) \
+@RUBY_GEMS_INSTALL_TRUE@		vici-$(PACKAGE_VERSION).gem
 
-uninstall-local:
-	$(GEM) uninstall --install-dir $(DESTDIR)$(RUBYGEMDIR) \
-		--version $(PACKAGE_VERSION) vici
+@RUBY_GEMS_INSTALL_TRUE@uninstall-local:
+@RUBY_GEMS_INSTALL_TRUE@	$(GEM) uninstall --install-dir $(DESTDIR)$(RUBYGEMDIR) \
+@RUBY_GEMS_INSTALL_TRUE@		--version $(PACKAGE_VERSION) vici
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

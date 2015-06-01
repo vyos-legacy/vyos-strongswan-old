@@ -552,6 +552,7 @@ char *whitelist[] = {
 	/* ClearSilver */
 	"nerr_init",
 	/* libgcrypt */
+	"gcrypt_plugin_create",
 	"gcry_control",
 	"gcry_check_version",
 	"gcry_randomize",
@@ -690,8 +691,8 @@ static int print_traces(private_leak_detective_t *this,
 			{
 				if (!thresh_count || entry->count >= thresh_count)
 				{
-					this->report_cb(this->report_data, entry->count,
-									entry->bytes, entry->backtrace, detailed);
+					cb(user, entry->count, entry->bytes, entry->backtrace,
+					   detailed);
 				}
 			}
 		}

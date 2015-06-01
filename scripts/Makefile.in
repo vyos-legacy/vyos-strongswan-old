@@ -83,7 +83,8 @@ noinst_PROGRAMS = bin2array$(EXEEXT) bin2sql$(EXEEXT) id2sql$(EXEEXT) \
 	thread_analysis$(EXEEXT) dh_speed$(EXEEXT) \
 	pubkey_speed$(EXEEXT) crypt_burn$(EXEEXT) hash_burn$(EXEEXT) \
 	fetch$(EXEEXT) dnssec$(EXEEXT) malloc_speed$(EXEEXT) \
-	aes-test$(EXEEXT) settings-test$(EXEEXT) $(am__EXEEXT_1)
+	aes-test$(EXEEXT) settings-test$(EXEEXT) timeattack$(EXEEXT) \
+	$(am__EXEEXT_1)
 @USE_TLS_TRUE@am__append_1 = tls_test
 subdir = scripts
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
@@ -176,6 +177,10 @@ settings_test_DEPENDENCIES =  \
 am_thread_analysis_OBJECTS = thread_analysis.$(OBJEXT)
 thread_analysis_OBJECTS = $(am_thread_analysis_OBJECTS)
 thread_analysis_LDADD = $(LDADD)
+am_timeattack_OBJECTS = timeattack.$(OBJEXT)
+timeattack_OBJECTS = $(am_timeattack_OBJECTS)
+timeattack_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am__tls_test_SOURCES_DIST = tls_test.c
 @USE_TLS_TRUE@am_tls_test_OBJECTS = tls_test.$(OBJEXT)
 tls_test_OBJECTS = $(am_tls_test_OBJECTS)
@@ -221,14 +226,16 @@ SOURCES = aes-test.c $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
 	$(malloc_speed_SOURCES) $(oid2der_SOURCES) \
 	$(pubkey_speed_SOURCES) settings-test.c \
-	$(thread_analysis_SOURCES) $(tls_test_SOURCES)
+	$(thread_analysis_SOURCES) $(timeattack_SOURCES) \
+	$(tls_test_SOURCES)
 DIST_SOURCES = aes-test.c $(bin2array_SOURCES) $(bin2sql_SOURCES) \
 	$(crypt_burn_SOURCES) $(dh_speed_SOURCES) $(dnssec_SOURCES) \
 	$(fetch_SOURCES) $(hash_burn_SOURCES) $(id2sql_SOURCES) \
 	$(key2keyid_SOURCES) $(keyid2sql_SOURCES) \
 	$(malloc_speed_SOURCES) $(oid2der_SOURCES) \
 	$(pubkey_speed_SOURCES) settings-test.c \
-	$(thread_analysis_SOURCES) $(am__tls_test_SOURCES_DIST)
+	$(thread_analysis_SOURCES) $(timeattack_SOURCES) \
+	$(am__tls_test_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -502,6 +509,7 @@ hash_burn_SOURCES = hash_burn.c
 malloc_speed_SOURCES = malloc_speed.c
 fetch_SOURCES = fetch.c
 dnssec_SOURCES = dnssec.c
+timeattack_SOURCES = timeattack.c
 id2sql_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 key2keyid_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 keyid2sql_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -515,6 +523,7 @@ fetch_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 dnssec_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 aes_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 settings_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
+timeattack_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 all: all-am
 
 .SUFFIXES:
@@ -623,6 +632,10 @@ thread_analysis$(EXEEXT): $(thread_analysis_OBJECTS) $(thread_analysis_DEPENDENC
 	@rm -f thread_analysis$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(thread_analysis_OBJECTS) $(thread_analysis_LDADD) $(LIBS)
 
+timeattack$(EXEEXT): $(timeattack_OBJECTS) $(timeattack_DEPENDENCIES) $(EXTRA_timeattack_DEPENDENCIES) 
+	@rm -f timeattack$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(timeattack_OBJECTS) $(timeattack_LDADD) $(LIBS)
+
 tls_test$(EXEEXT): $(tls_test_OBJECTS) $(tls_test_DEPENDENCIES) $(EXTRA_tls_test_DEPENDENCIES) 
 	@rm -f tls_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(tls_test_OBJECTS) $(tls_test_LDADD) $(LIBS)
@@ -649,6 +662,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pubkey_speed.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/settings-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thread_analysis.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timeattack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls_test.Po@am__quote@
 
 .c.o:

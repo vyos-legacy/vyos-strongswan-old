@@ -78,6 +78,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@USE_WINDOWS_TRUE@am__append_1 = -lws2_32
 subdir = src/libsimaka
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -127,8 +128,10 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(ipseclibdir)"
 LTLIBRARIES = $(ipseclib_LTLIBRARIES)
+am__DEPENDENCIES_1 =
 libsimaka_la_DEPENDENCIES =  \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__DEPENDENCIES_1)
 am_libsimaka_la_OBJECTS = simaka_message.lo simaka_crypto.lo \
 	simaka_manager.lo
 libsimaka_la_OBJECTS = $(am_libsimaka_la_OBJECTS)
@@ -431,9 +434,9 @@ AM_LDFLAGS = \
 	-no-undefined
 
 ipseclib_LTLIBRARIES = libsimaka.la
-libsimaka_la_LIBADD = \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
-
+libsimaka_la_LIBADD =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__append_1)
 libsimaka_la_SOURCES = simaka_message.h simaka_message.c \
   simaka_crypto.h simaka_crypto.c simaka_manager.h simaka_manager.c \
   simaka_card.h simaka_provider.h simaka_hooks.h
