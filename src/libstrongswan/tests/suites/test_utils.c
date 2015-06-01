@@ -229,6 +229,41 @@ START_TEST(test_strpfx)
 END_TEST
 
 /*******************************************************************************
+ * mallac_align/free_align
+ */
+
+START_TEST(test_malloc_align)
+{
+	void *ptr[128][256];
+	int size, align;
+
+	for (size = 0; size < countof(ptr); size++)
+	{
+		for (align = 0; align < countof(ptr[0]); align++)
+		{
+			ptr[size][align] = malloc_align(size, align);
+			if (align)
+			{
+				ck_assert((uintptr_t)ptr[size][align] % align == 0);
+			}
+			if (size)
+			{
+				ck_assert(ptr[size][align]);
+				memset(ptr[size][align], 0xEF, size);
+			}
+		}
+	}
+	for (size = 0; size < countof(ptr); size++)
+	{
+		for (align = 0; align < countof(ptr[0]); align++)
+		{
+			free_align(ptr[size][align]);
+		}
+	}
+}
+END_TEST
+
+/*******************************************************************************
  * memxor
  */
 
@@ -303,6 +338,48 @@ START_TEST(test_memxor_aligned)
 	memxor(ca.ptr, cb.ptr + 1, 7);
 	ck_assert(chunk_equals(ca, chunk_from_chars(0x02, 0x03, 0x04, 0x05,
 												0x06, 0x07, 0x08, 0x00)));
+}
+END_TEST
+
+/*******************************************************************************
+ * memeq/const
+ */
+
+static struct {
+	char *a;
+	char *b;
+	size_t n;
+	bool res;
+} memeq_data[] = {
+	{NULL, NULL, 0, TRUE},
+	{"a", "b", 0, TRUE},
+	{"", "", 1, TRUE},
+	{"abcdefgh", "abcdefgh", 8, TRUE},
+	{"a", "b", 1, FALSE},
+	{"A", "a", 1, FALSE},
+	{"\0a", "\0b", 2, FALSE},
+	{"abc", "abd", 3, FALSE},
+	{"abc", "dbd", 3, FALSE},
+	{"abcdefgh", "abcdffgh", 8, FALSE},
+	{"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+	 "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", 52, TRUE},
+	{"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+	 "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyy", 52, FALSE},
+	{"bbcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+	 "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", 52, FALSE},
+};
+
+START_TEST(test_memeq)
+{
+	ck_assert(memeq(memeq_data[_i].a, memeq_data[_i].b,
+					memeq_data[_i].n) == memeq_data[_i].res);
+}
+END_TEST
+
+START_TEST(test_memeq_const)
+{
+	ck_assert(memeq_const(memeq_data[_i].a, memeq_data[_i].b,
+						  memeq_data[_i].n) == memeq_data[_i].res);
 }
 END_TEST
 
@@ -774,9 +851,18 @@ Suite *utils_suite_create()
 	tcase_add_loop_test(tc, test_strpfx, 0, countof(strpfx_data));
 	suite_add_tcase(s, tc);
 
+	tc = tcase_create("malloc_align");
+	tcase_add_test(tc, test_malloc_align);
+	suite_add_tcase(s, tc);
+
 	tc = tcase_create("memxor");
 	tcase_add_test(tc, test_memxor);
 	tcase_add_test(tc, test_memxor_aligned);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("memeq");
+	tcase_add_loop_test(tc, test_memeq, 0, countof(memeq_data));
+	tcase_add_loop_test(tc, test_memeq_const, 0, countof(memeq_data));
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("memstr");

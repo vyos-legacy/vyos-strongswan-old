@@ -97,6 +97,9 @@
 /* have struct in6_pktinfo.ipi6_ifindex */
 #undef HAVE_IN6_PKTINFO
 
+/* have __int128 type support */
+#undef HAVE_INT128
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 

@@ -90,6 +90,11 @@ struct private_ike_init_t {
 	chunk_t other_nonce;
 
 	/**
+	 * nonce generator
+	 */
+	nonce_gen_t *nonceg;
+
+	/**
 	 * Negotiated proposal used for IKE_SA
 	 */
 	proposal_t *proposal;
@@ -114,6 +119,25 @@ struct private_ike_init_t {
 	 */
 	bool signature_authentication;
 };
+
+/**
+ * Allocate our own nonce value
+ */
+static bool generate_nonce(private_ike_init_t *this)
+{
+	if (!this->nonceg)
+	{
+		DBG1(DBG_IKE, "no nonce generator found to create nonce");
+		return FALSE;
+	}
+	if (!this->nonceg->allocate_nonce(this->nonceg, NONCE_SIZE,
+									  &this->my_nonce))
+	{
+		DBG1(DBG_IKE, "nonce allocation failed");
+		return FALSE;
+	}
+	return TRUE;
+}
 
 /**
  * Notify the peer about the hash algorithms we support or expect,
@@ -428,21 +452,10 @@ METHOD(task_t, build_i, status_t,
 	/* generate nonce only when we are trying the first time */
 	if (this->my_nonce.ptr == NULL)
 	{
-		nonce_gen_t *nonceg;
-
-		nonceg = this->keymat->keymat.create_nonce_gen(&this->keymat->keymat);
-		if (!nonceg)
+		if (!generate_nonce(this))
 		{
-			DBG1(DBG_IKE, "no nonce generator found to create nonce");
 			return FAILED;
 		}
-		if (!nonceg->allocate_nonce(nonceg, NONCE_SIZE, &this->my_nonce))
-		{
-			DBG1(DBG_IKE, "nonce allocation failed");
-			nonceg->destroy(nonceg);
-			return FAILED;
-		}
-		nonceg->destroy(nonceg);
 	}
 
 	if (this->cookie.ptr)
@@ -471,25 +484,14 @@ METHOD(task_t, build_i, status_t,
 METHOD(task_t, process_r,  status_t,
 	private_ike_init_t *this, message_t *message)
 {
-	nonce_gen_t *nonceg;
-
 	this->config = this->ike_sa->get_ike_cfg(this->ike_sa);
 	DBG0(DBG_IKE, "%H is initiating an IKE_SA", message->get_source(message));
 	this->ike_sa->set_state(this->ike_sa, IKE_CONNECTING);
 
-	nonceg = this->keymat->keymat.create_nonce_gen(&this->keymat->keymat);
-	if (!nonceg)
+	if (!generate_nonce(this))
 	{
-		DBG1(DBG_IKE, "no nonce generator found to create nonce");
 		return FAILED;
 	}
-	if (!nonceg->allocate_nonce(nonceg, NONCE_SIZE, &this->my_nonce))
-	{
-		DBG1(DBG_IKE, "nonce allocation failed");
-		nonceg->destroy(nonceg);
-		return FAILED;
-	}
-	nonceg->destroy(nonceg);
 
 #ifdef ME
 	{
@@ -756,6 +758,7 @@ METHOD(task_t, destroy, void,
 {
 	DESTROY_IF(this->dh);
 	DESTROY_IF(this->proposal);
+	DESTROY_IF(this->nonceg);
 	chunk_free(&this->my_nonce);
 	chunk_free(&this->other_nonce);
 	chunk_free(&this->cookie);
@@ -800,6 +803,7 @@ ike_init_t *ike_init_create(ike_sa_t *ike_sa, bool initiator, ike_sa_t *old_sa)
 		.signature_authentication = lib->settings->get_bool(lib->settings,
 								"%s.signature_authentication", TRUE, lib->ns),
 	);
+	this->nonceg = this->keymat->keymat.create_nonce_gen(&this->keymat->keymat);
 
 	if (initiator)
 	{
@@ -811,6 +815,5 @@ ike_init_t *ike_init_create(ike_sa_t *ike_sa, bool initiator, ike_sa_t *old_sa)
 		this->public.task.build = _build_r;
 		this->public.task.process = _process_r;
 	}
-
 	return &this->public;
 }
