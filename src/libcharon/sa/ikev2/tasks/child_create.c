@@ -1209,13 +1209,6 @@ METHOD(task_t, build_r, status_t,
 									chunk_empty);
 				return SUCCESS;
 			}
-			if (this->dh_failed)
-			{
-				DBG1(DBG_IKE, "applying DH public value failed");
-				message->add_notify(message, FALSE, NO_PROPOSAL_CHOSEN,
-									chunk_empty);
-				return SUCCESS;
-			}
 			no_dh = FALSE;
 			break;
 		case IKE_AUTH:

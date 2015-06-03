@@ -152,19 +152,6 @@ static bool sad_entry_match_other_esa(sad_entry_t * const entry,
 }
 
 /**
- * Find a list entry with given reqid, spi and proto values.
- */
-static bool sad_entry_match_dst(sad_entry_t * const entry,
-								const u_int32_t * const reqid,
-								const u_int32_t * const spi,
-								const u_int8_t * const proto)
-{
-	return entry->reqid == *reqid &&
-		   entry->spi   == *spi &&
-		   entry->proto == *proto;
-}
-
-/**
  * Compare two SAD entries for equality.
  */
 static bool sad_entry_equal(sad_entry_t * const left, sad_entry_t * const right)
