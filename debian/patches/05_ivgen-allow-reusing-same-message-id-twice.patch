@@ -1,0 +1,92 @@
+From 63e5db4154c8f69be592c4b9fdc8947777f8ab02 Mon Sep 17 00:00:00 2001
+From: Martin Willi <martin@revosec.ch>
+Date: Tue, 2 Jun 2015 14:08:42 +0200
+Subject: [PATCH] ivgen: Allow reusing the same message ID twice in sequential
+ IV gen
+
+We use the message ID and fragment number as IV generator. As IKEv2 uses
+distinct message ID counters for actively and passively initiated exchanges,
+each IV would be used twice. As we explicitly reject such message IDs since
+d0ed1079, original-responder initiated exchanges fail with counter mode ciphers.
+
+This commit separates IV space in two halves for sequential IVs, and
+automatically assigns once reused sequence numbers to the second half.
+
+ #980.
+---
+ src/libstrongswan/crypto/iv/iv_gen_seq.c |   32 +++++++++++++++++++++++-------
+ 1 file changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/src/libstrongswan/crypto/iv/iv_gen_seq.c b/src/libstrongswan/crypto/iv/iv_gen_seq.c
+index 4de1374..9f99c51 100644
+--- a/src/libstrongswan/crypto/iv/iv_gen_seq.c
++++ b/src/libstrongswan/crypto/iv/iv_gen_seq.c
+@@ -19,6 +19,7 @@
+  * Magic value for the initial IV state
+  */
+ #define SEQ_IV_INIT_STATE (~(u_int64_t)0)
++#define SEQ_IV_HIGH_MASK (1ULL << 63)
+ 
+ typedef struct private_iv_gen_t private_iv_gen_t;
+ 
+@@ -33,9 +34,14 @@ struct private_iv_gen_t {
+ 	iv_gen_t public;
+ 
+ 	/**
+-	 * Previously passed sequence number to enforce uniqueness
++	 * Previously passed sequence number in lower space to enforce uniqueness
+ 	 */
+-	u_int64_t prev;
++	u_int64_t prevl;
++
++	/**
++	 * Previously passed sequence number in upper space to enforce uniqueness
++	 */
++	u_int64_t prevh;
+ 
+ 	/**
+ 	 * Salt to mask counter
+@@ -57,15 +63,26 @@ METHOD(iv_gen_t, get_iv, bool,
+ 	{
+ 		return FALSE;
+ 	}
+-	if (this->prev != SEQ_IV_INIT_STATE && seq <= this->prev)
++	if (this->prevl != SEQ_IV_INIT_STATE && seq <= this->prevl)
+ 	{
+-		return FALSE;
++		seq |= SEQ_IV_HIGH_MASK;
++		if (this->prevh != SEQ_IV_INIT_STATE && seq <= this->prevh)
++		{
++			return FALSE;
++		}
+ 	}
+-	if (seq == SEQ_IV_INIT_STATE)
++	if ((seq | SEQ_IV_HIGH_MASK) == SEQ_IV_INIT_STATE)
+ 	{
+ 		return FALSE;
+ 	}
+-	this->prev = seq;
++	if (seq & SEQ_IV_HIGH_MASK)
++	{
++		this->prevh = seq;
++	}
++	else
++	{
++		this->prevl = seq;
++	}
+ 	if (len > sizeof(u_int64_t))
+ 	{
+ 		len = sizeof(u_int64_t);
+@@ -107,7 +124,8 @@ iv_gen_t *iv_gen_seq_create()
+ 			.allocate_iv = _allocate_iv,
+ 			.destroy = _destroy,
+ 		},
+-		.prev = SEQ_IV_INIT_STATE,
++		.prevl = SEQ_IV_INIT_STATE,
++		.prevh = SEQ_IV_INIT_STATE,
+ 	);
+ 
+ 	rng = lib->crypto->create_rng(lib->crypto, RNG_STRONG);
+-- 
+1.7.9.5
+

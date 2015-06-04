@@ -3,6 +3,8 @@ strongswan (5.3.1-1) UNRELEASED; urgency=medium
   * New upstream release.
   * debian/patches:
     - strongswan-5.2.2-5.3.0_unknown_payload dropped, included upstream.
+    - 05_ivgen-allow-reusing-same-message-id-twice added, allow reusing the
+    same message ID twice in sequential IV gen. strongSwan issue #980.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Jun 2015 15:00:41 +0200
 
