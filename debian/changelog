@@ -1,4 +1,4 @@
-strongswan (5.3.1-1) UNRELEASED; urgency=medium
+strongswan (5.3.1-1) unstable; urgency=high
 
   * New upstream release.
   * debian/patches:
@@ -9,7 +9,7 @@ strongswan (5.3.1-1) UNRELEASED; urgency=medium
     authentication credential to rogue server when using PSK or EAP. This is
     CVE-2015-4171.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Jun 2015 15:00:41 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 04 Jun 2015 19:18:07 +0200
 
 strongswan (5.3.0-2) unstable; urgency=medium
 
