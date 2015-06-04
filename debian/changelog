@@ -5,6 +5,9 @@ strongswan (5.3.1-1) UNRELEASED; urgency=medium
     - strongswan-5.2.2-5.3.0_unknown_payload dropped, included upstream.
     - 05_ivgen-allow-reusing-same-message-id-twice added, allow reusing the
     same message ID twice in sequential IV gen. strongSwan issue #980.
+    - CVE-2015-4171_enforce_remote_auth added, fix potential leak of
+    authentication credential to rogue server when using PSK or EAP. This is
+    CVE-2015-4171.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Jun 2015 15:00:41 +0200
 
