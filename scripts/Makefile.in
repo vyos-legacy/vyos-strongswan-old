@@ -180,7 +180,8 @@ thread_analysis_LDADD = $(LDADD)
 am_timeattack_OBJECTS = timeattack.$(OBJEXT)
 timeattack_OBJECTS = $(am_timeattack_OBJECTS)
 timeattack_DEPENDENCIES =  \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__DEPENDENCIES_1)
 am__tls_test_SOURCES_DIST = tls_test.c
 @USE_TLS_TRUE@am_tls_test_OBJECTS = tls_test.$(OBJEXT)
 tls_test_OBJECTS = $(am_tls_test_OBJECTS)
@@ -523,7 +524,7 @@ fetch_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 dnssec_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 aes_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
 settings_test_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
-timeattack_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
+timeattack_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la $(RTLIB)
 all: all-am
 
 .SUFFIXES:
