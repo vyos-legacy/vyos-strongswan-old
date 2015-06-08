@@ -143,6 +143,7 @@ am_tests_OBJECTS = tests-tests.$(OBJEXT) \
 	suites/tests-test_hasher.$(OBJEXT) \
 	suites/tests-test_crypter.$(OBJEXT) \
 	suites/tests-test_crypto_factory.$(OBJEXT) \
+	suites/tests-test_iv_gen.$(OBJEXT) \
 	suites/tests-test_pen.$(OBJEXT) \
 	suites/tests-test_asn1.$(OBJEXT) \
 	suites/tests-test_asn1_parser.$(OBJEXT) \
@@ -507,6 +508,7 @@ tests_SOURCES = tests.h tests.c \
   suites/test_hasher.c \
   suites/test_crypter.c \
   suites/test_crypto_factory.c \
+  suites/test_iv_gen.c \
   suites/test_pen.c \
   suites/test_asn1.c \
   suites/test_asn1_parser.c \
@@ -652,6 +654,8 @@ suites/tests-test_crypter.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_crypto_factory.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_iv_gen.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_pen.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_asn1.$(OBJEXT): suites/$(am__dirstamp) \
@@ -701,6 +705,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_hashtable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_host.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_identification.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_iv_gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_mgf1.Po@am__quote@
@@ -1155,6 +1160,20 @@ suites/tests-test_crypto_factory.obj: suites/test_crypto_factory.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypto_factory.c' object='suites/tests-test_crypto_factory.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypto_factory.obj `if test -f 'suites/test_crypto_factory.c'; then $(CYGPATH_W) 'suites/test_crypto_factory.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypto_factory.c'; fi`
+
+suites/tests-test_iv_gen.o: suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_iv_gen.o -MD -MP -MF suites/$(DEPDIR)/tests-test_iv_gen.Tpo -c -o suites/tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_iv_gen.Tpo suites/$(DEPDIR)/tests-test_iv_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/tests-test_iv_gen.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
+
+suites/tests-test_iv_gen.obj: suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_iv_gen.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_iv_gen.Tpo -c -o suites/tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_iv_gen.Tpo suites/$(DEPDIR)/tests-test_iv_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/tests-test_iv_gen.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
 
 suites/tests-test_pen.o: suites/test_pen.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_pen.o -MD -MP -MF suites/$(DEPDIR)/tests-test_pen.Tpo -c -o suites/tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
