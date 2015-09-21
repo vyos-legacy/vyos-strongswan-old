@@ -362,7 +362,7 @@ static gboolean initiate_connection(private_maemo_service_t *this,
 
 	/* get us an IKE_SA */
 	ike_sa = charon->ike_sa_manager->checkout_by_config(charon->ike_sa_manager,
-														peer_cfg);
+														peer_cfg, NULL, NULL);
 	if (!ike_sa)
 	{
 		peer_cfg->destroy(peer_cfg);

@@ -16,6 +16,28 @@
  * for more details.
  */
 
+/*
+ * Copyright (C) 2014 Timo Teräs <timo.teras@iki.fi>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include <string.h>
 
 #include "ike_sa_manager.h"
@@ -1374,7 +1396,8 @@ METHOD(ike_sa_manager_t, checkout_by_message, ike_sa_t*,
 }
 
 METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
-	private_ike_sa_manager_t *this, peer_cfg_t *peer_cfg)
+	private_ike_sa_manager_t *this, peer_cfg_t *peer_cfg,
+	host_t *my_host, host_t *other_host)
 {
 	enumerator_t *enumerator;
 	entry_t *entry;
@@ -1383,7 +1406,17 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 	ike_cfg_t *current_ike;
 	u_int segment;
 
-	DBG2(DBG_MGR, "checkout IKE_SA by config");
+	if (my_host && my_host->get_port(my_host) == 0)
+	{
+		my_host->set_port(my_host, IKEV2_UDP_PORT);
+	}
+	if (other_host && other_host->get_port(other_host) == 0)
+	{
+		other_host->set_port(other_host, IKEV2_UDP_PORT);
+	}
+
+	DBG2(DBG_MGR, "checkout IKE_SA by config '%s', me %H, other %H",
+		 peer_cfg->get_name(peer_cfg), my_host, other_host);
 
 	if (!this->reuse_ikesa)
 	{	/* IKE_SA reuse disable by config */
@@ -1402,6 +1435,15 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 		if (entry->ike_sa->get_state(entry->ike_sa) == IKE_DELETING)
 		{	/* skip IKE_SAs which are not usable, wake other waiting threads */
 			entry->condvar->signal(entry->condvar);
+			continue;
+		}
+
+		if (my_host && !my_host->ip_equals(my_host, entry->ike_sa->get_my_host(entry->ike_sa)))
+		{
+			continue;
+		}
+		if (other_host && !other_host->ip_equals(other_host, entry->ike_sa->get_other_host(entry->ike_sa)))
+		{
 			continue;
 		}
 
@@ -1427,6 +1469,10 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 	if (!ike_sa)
 	{	/* no IKE_SA using such a config, hand out a new */
 		ike_sa = checkout_new(this, peer_cfg->get_ike_version(peer_cfg), TRUE);
+		if (my_host || other_host)
+		{
+			ike_sa->update_hosts(ike_sa, my_host, other_host, TRUE);
+		}
 	}
 	charon->bus->set_sa(charon->bus, ike_sa);
 	return ike_sa;

@@ -579,7 +579,7 @@ static gboolean connect_(NMVPNPlugin *plugin, NMConnection *connection,
 	 * Prepare IKE_SA
 	 */
 	ike_sa = charon->ike_sa_manager->checkout_by_config(charon->ike_sa_manager,
-														peer_cfg);
+														peer_cfg, NULL, NULL);
 	if (!ike_sa)
 	{
 		peer_cfg->destroy(peer_cfg);

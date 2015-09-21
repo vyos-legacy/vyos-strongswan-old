@@ -403,7 +403,7 @@ METHOD(trap_manager_t, acquire, void,
 	peer_cfg_t *peer;
 	child_cfg_t *child;
 	ike_sa_t *ike_sa;
-	host_t *host;
+	host_t *host, *my_host = NULL, *other_host = NULL;
 	bool wildcard, ignore = FALSE;
 
 	this->lock->read_lock(this->lock);
@@ -479,36 +479,28 @@ METHOD(trap_manager_t, acquire, void,
 	this->lock->unlock(this->lock);
 
 	if (wildcard)
-	{	/* the peer config would match IKE_SAs with other peers */
-		ike_sa = charon->ike_sa_manager->checkout_new(charon->ike_sa_manager,
-											peer->get_ike_version(peer), TRUE);
-		if (ike_sa)
-		{
-			ike_cfg_t *ike_cfg;
-			u_int16_t port;
-			u_int8_t mask;
-
-			ike_sa->set_peer_cfg(ike_sa, peer);
-			ike_cfg = ike_sa->get_ike_cfg(ike_sa);
-
-			port = ike_cfg->get_other_port(ike_cfg);
-			dst->to_subnet(dst, &host, &mask);
-			host->set_port(host, port);
-			ike_sa->set_other_host(ike_sa, host);
-
-			port = ike_cfg->get_my_port(ike_cfg);
-			src->to_subnet(src, &host, &mask);
-			host->set_port(host, port);
-			ike_sa->set_my_host(ike_sa, host);
-
-			charon->bus->set_sa(charon->bus, ike_sa);
-		}
-	}
-	else
 	{
-		ike_sa = charon->ike_sa_manager->checkout_by_config(
-											charon->ike_sa_manager, peer);
+		ike_cfg_t *ike_cfg;
+		u_int16_t port;
+		u_int8_t mask;
+
+		ike_sa->set_peer_cfg(ike_sa, peer);
+		ike_cfg = ike_sa->get_ike_cfg(ike_sa);
+
+		port = ike_cfg->get_other_port(ike_cfg);
+		dst->to_subnet(dst, &other_host, &mask);
+		other_host->set_port(other_host, port);
+
+		port = ike_cfg->get_my_port(ike_cfg);
+		src->to_subnet(src, &my_host, &mask);
+		my_host->set_port(my_host, port);
 	}
+	ike_sa = charon->ike_sa_manager->checkout_by_config(
+											charon->ike_sa_manager, peer,
+											my_host, other_host);
+	DESTROY_IF(my_host);
+	DESTROY_IF(other_host);
+
 	if (ike_sa)
 	{
 		if (ike_sa->get_peer_cfg(ike_sa) == NULL)
