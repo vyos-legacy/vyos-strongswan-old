@@ -64,6 +64,8 @@ static int issue()
 	certificate_t *cert_req = NULL, *cert = NULL, *ca =NULL;
 	private_key_t *private = NULL;
 	public_key_t *public = NULL;
+	credential_type_t type = CRED_PUBLIC_KEY;
+	key_type_t subtype = KEY_ANY;
 	bool pkcs10 = FALSE;
 	char *file = NULL, *dn = NULL, *hex = NULL, *cacert = NULL, *cakey = NULL;
 	char *error = NULL, *keyid = NULL;
@@ -99,6 +101,21 @@ static int issue()
 				if (streq(arg, "pkcs10"))
 				{
 					pkcs10 = TRUE;
+				}
+				else if (streq(arg, "rsa"))
+				{
+					type = CRED_PRIVATE_KEY;
+					subtype = KEY_RSA;
+				}
+				else if (streq(arg, "ecdsa"))
+				{
+					type = CRED_PRIVATE_KEY;
+					subtype = KEY_ECDSA;
+				}
+				else if (streq(arg, "bliss"))
+				{
+					type = CRED_PRIVATE_KEY;
+					subtype = KEY_BLISS;
 				}
 				else if (!streq(arg, "pub"))
 				{
@@ -447,10 +464,10 @@ static int issue()
 	}
 	else
 	{
-		DBG2(DBG_LIB, "Reading public key:");
+		DBG2(DBG_LIB, "Reading key:");
 		if (file)
 		{
-			public = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, KEY_ANY,
+			public = lib->creds->create(lib->creds, type, subtype,
 										BUILD_FROM_FILE, file, BUILD_END);
 		}
 		else
@@ -460,12 +477,18 @@ static int issue()
 			if (!chunk_from_fd(0, &chunk))
 			{
 				fprintf(stderr, "%s: ", strerror(errno));
-				error = "reading public key failed";
+				error = "reading key failed";
 				goto end;
 			}
-			public = lib->creds->create(lib->creds, CRED_PUBLIC_KEY, KEY_ANY,
+			public = lib->creds->create(lib->creds, type, subtype,
 										 BUILD_BLOB, chunk, BUILD_END);
 			free(chunk.ptr);
+		}
+		if (public && type == CRED_PRIVATE_KEY)
+		{
+			private_key_t *priv = (private_key_t*)public;
+			public = priv->get_public_key(priv);
+			priv->destroy(priv);
 		}
 	}
 	if (!public)
@@ -557,7 +580,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		issue, 'i', "issue",
 		"issue a certificate using a CA certificate and key",
-		{"[--in file] [--type pub|pkcs10] --cakey file|--cakeyid hex",
+		{"[--in file] [--type pub|pkcs10|rsa|ecdsa|bliss] --cakey file|--cakeyid hex",
 		 " --cacert file [--dn subject-dn] [--san subjectAltName]+",
 		 "[--lifetime days] [--serial hex] [--ca] [--pathlen len]",
 		 "[--flag serverAuth|clientAuth|crlSign|ocspSigning|msSmartcardLogon]+",
@@ -568,7 +591,7 @@ static void __attribute__ ((constructor))reg()
 		 "[--digest md5|sha1|sha224|sha256|sha384|sha512] [--outform der|pem]"},
 		{
 			{"help",			'h', 0, "show usage information"},
-			{"in",				'i', 1, "public key/request file to issue, default: stdin"},
+			{"in",				'i', 1, "key/request file to issue, default: stdin"},
 			{"type",			't', 1, "type of input, default: pub"},
 			{"cacert",			'c', 1, "CA certificate file"},
 			{"cakey",			'k', 1, "CA private key file"},

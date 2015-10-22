@@ -259,6 +259,7 @@ Initiates an SA while streaming _control-log_ events.
 	{
 		child = <CHILD_SA configuration name to initiate>
 		timeout = <timeout in seconds before returning>
+		init-limits = <whether limits may prevent initiating the CHILD_SA>
 		loglevel = <loglevel to issue "control-log" events for>
 	} => {
 		success = <yes or no>
@@ -366,6 +367,27 @@ over vici.
 		# completes after streaming list-cert events
 	}
 
+### list-authorities() ###
+
+List currently loaded certification authority information by streaming
+_list-authority_ events.
+
+	{
+		name = <list certification authority of a given name>
+	} => {
+		# completes after streaming list-authority events
+	}
+
+### get-authorities() ###
+
+Return a list of currently loaded certification authority names.
+
+	{} => {
+		authorities = [
+			<list of certification authority names>
+		]
+	}
+
 ### load-conn() ###
 
 Load a single connection definition into the daemon. An existing connection
@@ -438,6 +460,32 @@ affects only credentials loaded over vici, but additionally flushes the
 credential cache.
 
 	{} => {
+		success = <yes or no>
+		errmsg = <error string on failure>
+	}
+
+### load-authority() ###
+
+Load a single certification authority definition into the daemon. An existing
+authority with the same name gets replaced.
+
+	{
+		<certification authority name> = {
+			# certification authority parameters
+			# refer to swanctl.conf(5) for details.
+		} => {
+			success = <yes or no>
+			errmsg = <error string on failure>
+		}
+	}
+
+### unload-authority() ###
+
+Unload a previously loaded certification authority definition by name.
+
+	{
+		name = <certification authority name>
+	} => {
 		success = <yes or no>
 		errmsg = <error string on failure>
 	}
@@ -673,6 +721,82 @@ _list-certs_ command.
 		data = <ASN1 encoded certificate data>
 	}
 
+### list-authority ###
+
+The _list-authority_ event is issued to stream loaded certification authority
+information during an active_list-authorities_ command.
+
+	{
+		<certification authority name> = {
+			cacert = <subject distinguished name of CA certificate>
+			crl_uris = [
+				<CRL URI (http, ldap or file)>
+			]
+			ocsp_uris = [
+				<OCSP URI (http)>
+			]
+			cert_uri_base = <base URI for download of hash-and-URL certificates>
+		}
+	}
+
+### ike-updown ###
+
+The _ike-updown_ event is issued when an IKE_SA is established or terminated.
+
+	{
+		up = <yes or no>
+		<IKE_SA config name> = {
+			<same data as in the list-sas event, but without child-sas section>
+		}
+	}
+
+### ike-rekey ###
+
+The _ike-rekey_ event is issued when an IKE_SA is rekeyed.
+
+	{
+		<IKE_SA config name> = {
+			old = {
+				<same data as in the list-sas event, but without child-sas section>
+			}
+			new = {
+				<same data as in the list-sas event, but without child-sas section>
+			}
+		}
+	}
+
+### child-updown ###
+
+The _child-updown_ event is issued when a CHILD_SA is established or terminated.
+
+	{
+		up = <yes or no>
+		<IKE_SA config name> = {
+			<same data as in the list-sas event, but with only the affected
+			 CHILD_SA in the child-sas section>
+		}
+	}
+
+### child-rekey ###
+
+The _child-rekey_ event is issued when a CHILD_SA is rekeyed.
+
+	{
+		<IKE_SA config name> = {
+			<same data as in the list-sas event, but with the child-sas section
+			 as follows>
+			child-sas = {
+				<child-sa-name> = {
+					old = {
+						<same data as in the list-sas event>
+					}
+					new = {
+						<same data as in the list-sas event>
+					}
+				}
+			}
+		}
+	}
 
 # libvici C client library #
 

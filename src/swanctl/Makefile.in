@@ -107,8 +107,10 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
 	commands/terminate.$(OBJEXT) commands/install.$(OBJEXT) \
 	commands/list_sas.$(OBJEXT) commands/list_pols.$(OBJEXT) \
+	commands/list_authorities.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
 	commands/list_pools.$(OBJEXT) commands/load_all.$(OBJEXT) \
+	commands/load_authorities.$(OBJEXT) \
 	commands/load_conns.$(OBJEXT) commands/load_creds.$(OBJEXT) \
 	commands/load_pools.$(OBJEXT) commands/log.$(OBJEXT) \
 	commands/version.$(OBJEXT) commands/stats.$(OBJEXT) \
@@ -445,10 +447,12 @@ swanctl_SOURCES = \
 	commands/install.c \
 	commands/list_sas.c \
 	commands/list_pols.c \
+	commands/list_authorities.c \
 	commands/list_conns.c \
 	commands/list_certs.c \
 	commands/list_pools.c \
 	commands/load_all.c \
+	commands/load_authorities.h  commands/load_authorities.c \
 	commands/load_conns.c commands/load_conns.h \
 	commands/load_creds.c commands/load_creds.h \
 	commands/load_pools.c commands/load_pools.h \
@@ -581,6 +585,8 @@ commands/list_sas.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_pols.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/list_authorities.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_conns.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_certs.$(OBJEXT): commands/$(am__dirstamp) \
@@ -588,6 +594,8 @@ commands/list_certs.$(OBJEXT): commands/$(am__dirstamp) \
 commands/list_pools.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_all.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
+commands/load_authorities.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_conns.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
@@ -619,12 +627,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/swanctl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/initiate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/install.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_authorities.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_certs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_conns.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_pols.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_pools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_sas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_all.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_authorities.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_conns.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_creds.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_pools.Po@am__quote@
@@ -977,7 +987,7 @@ swanctl.o :		$(top_builddir)/config.status
 
 swanctl.conf.5.main: swanctl.opt
 	$(AM_V_GEN) \
-	$(PYTHON) $(top_srcdir)/conf/format-options.py -n -f man swanctl.opt > $(srcdir)/$@
+	cd $(srcdir) && $(PYTHON) $(abs_top_srcdir)/conf/format-options.py -n -f man swanctl.opt > $@
 
 swanctl.conf.5: swanctl.conf.5.head swanctl.conf.5.main swanctl.conf.5.tail
 	$(AM_V_GEN) \

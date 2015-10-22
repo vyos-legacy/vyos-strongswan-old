@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 Tobias Brunner
+ * Copyright (C) 2011-2015 Tobias Brunner
  * Copyright (C) 2009 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -18,9 +18,12 @@
 
 #include <hydra.h>
 #include <daemon.h>
+#include <threading/mutex.h>
 #include <threading/rwlock.h>
+#include <threading/rwlock_condvar.h>
 #include <collections/linked_list.h>
 
+#define INSTALL_DISABLED ((u_int)~0)
 
 typedef struct private_trap_manager_t private_trap_manager_t;
 typedef struct trap_listener_t trap_listener_t;
@@ -67,6 +70,26 @@ struct private_trap_manager_t {
 	trap_listener_t listener;
 
 	/**
+	 * list of acquires we currently handle
+	 */
+	linked_list_t *acquires;
+
+	/**
+	 * mutex for list of acquires
+	 */
+	mutex_t *mutex;
+
+	/**
+	 * number of threads currently installing trap policies, or INSTALL_DISABLED
+	 */
+	u_int installing;
+
+	/**
+	 * condvar to signal trap policy installation
+	 */
+	rwlock_condvar_t *condvar;
+
+	/**
 	 * Whether to ignore traffic selectors from acquires
 	 */
 	bool ignore_acquire_ts;
@@ -80,23 +103,58 @@ typedef struct {
 	char *name;
 	/** ref to peer_cfg to initiate */
 	peer_cfg_t *peer_cfg;
-	/** ref to instanciated CHILD_SA */
+	/** ref to instantiated CHILD_SA (i.e the trap policy) */
 	child_sa_t *child_sa;
-	/** TRUE if an acquire is pending */
-	bool pending;
+	/** TRUE in case of wildcard Transport Mode SA */
+	bool wildcard;
+} entry_t;
+
+/**
+ * A handled acquire
+ */
+typedef struct {
 	/** pending IKE_SA connecting upon acquire */
 	ike_sa_t *ike_sa;
-} entry_t;
+	/** reqid of pending trap policy */
+	u_int32_t reqid;
+	/** destination address (wildcard case) */
+	host_t *dst;
+} acquire_t;
 
 /**
  * actually uninstall and destroy an installed entry
  */
-static void destroy_entry(entry_t *entry)
+static void destroy_entry(entry_t *this)
 {
-	entry->child_sa->destroy(entry->child_sa);
-	entry->peer_cfg->destroy(entry->peer_cfg);
-	free(entry->name);
-	free(entry);
+	this->child_sa->destroy(this->child_sa);
+	this->peer_cfg->destroy(this->peer_cfg);
+	free(this->name);
+	free(this);
+}
+
+/**
+ * destroy a cached acquire entry
+ */
+static void destroy_acquire(acquire_t *this)
+{
+	DESTROY_IF(this->dst);
+	free(this);
+}
+
+/**
+ * match an acquire entry by reqid
+ */
+static bool acquire_by_reqid(acquire_t *this, u_int32_t *reqid)
+{
+	return this->reqid == *reqid;
+}
+
+/**
+ * match an acquire entry by destination address
+ */
+static bool acquire_by_dst(acquire_t *this, host_t *dst)
+{
+	return this->dst && this->dst->ip_equals(this->dst, dst);
 }
 
 METHOD(trap_manager_t, install, u_int32_t,
@@ -113,32 +171,49 @@ METHOD(trap_manager_t, install, u_int32_t,
 	linked_list_t *proposals;
 	proposal_t *proposal;
 	protocol_id_t proto = PROTO_ESP;
+	bool wildcard = FALSE;
 
 	/* try to resolve addresses */
 	ike_cfg = peer->get_ike_cfg(peer);
 	other = ike_cfg->resolve_other(ike_cfg, AF_UNSPEC);
-	if (!other || other->is_anyaddr(other))
+	if (other && other->is_anyaddr(other) &&
+		child->get_mode(child) == MODE_TRANSPORT)
+	{
+		/* allow wildcard for Transport Mode SAs */
+		me = host_create_any(other->get_family(other));
+		wildcard = TRUE;
+	}
+	else if (!other || other->is_anyaddr(other))
 	{
 		DESTROY_IF(other);
 		DBG1(DBG_CFG, "installing trap failed, remote address unknown");
 		return 0;
 	}
-	me = ike_cfg->resolve_me(ike_cfg, other->get_family(other));
-	if (!me || me->is_anyaddr(me))
+	else
 	{
-		DESTROY_IF(me);
-		me = hydra->kernel_interface->get_source_addr(
-									hydra->kernel_interface, other, NULL);
-		if (!me)
+		me = ike_cfg->resolve_me(ike_cfg, other->get_family(other));
+		if (!me || me->is_anyaddr(me))
 		{
-			DBG1(DBG_CFG, "installing trap failed, local address unknown");
-			other->destroy(other);
-			return 0;
+			DESTROY_IF(me);
+			me = hydra->kernel_interface->get_source_addr(
+										hydra->kernel_interface, other, NULL);
+			if (!me)
+			{
+				DBG1(DBG_CFG, "installing trap failed, local address unknown");
+				other->destroy(other);
+				return 0;
+			}
+			me->set_port(me, ike_cfg->get_my_port(ike_cfg));
 		}
-		me->set_port(me, ike_cfg->get_my_port(ike_cfg));
 	}
 
 	this->lock->write_lock(this->lock);
+	if (this->installing == INSTALL_DISABLED)
+	{	/* flush() has been called */
+		this->lock->unlock(this->lock);
+		me->destroy(me);
+		return 0;
+	}
 	enumerator = this->traps->create_enumerator(this->traps);
 	while (enumerator->enumerate(enumerator, &entry))
 	{
@@ -160,6 +235,7 @@ METHOD(trap_manager_t, install, u_int32_t,
 		{
 			DBG1(DBG_CFG, "CHILD_SA '%s' is already being routed", found->name);
 			this->lock->unlock(this->lock);
+			me->destroy(me);
 			return 0;
 		}
 		/* config might have changed so update everything */
@@ -170,8 +246,10 @@ METHOD(trap_manager_t, install, u_int32_t,
 	INIT(entry,
 		.name = strdup(child->get_name(child)),
 		.peer_cfg = peer->get_ref(peer),
+		.wildcard = wildcard,
 	);
 	this->traps->insert_first(this->traps, entry);
+	this->installing++;
 	/* don't hold lock while creating CHILD_SA and installing policies */
 	this->lock->unlock(this->lock);
 
@@ -220,6 +298,11 @@ METHOD(trap_manager_t, install, u_int32_t,
 	{
 		destroy_entry(found);
 	}
+	this->lock->write_lock(this->lock);
+	/* do this at the end, so entries created temporarily are also destroyed */
+	this->installing--;
+	this->condvar->signal(this->condvar);
+	this->lock->unlock(this->lock);
 	return reqid;
 }
 
@@ -314,9 +397,12 @@ METHOD(trap_manager_t, acquire, void,
 {
 	enumerator_t *enumerator;
 	entry_t *entry, *found = NULL;
+	acquire_t *acquire;
 	peer_cfg_t *peer;
 	child_cfg_t *child;
 	ike_sa_t *ike_sa;
+	host_t *host;
+	bool wildcard, ignore = FALSE;
 
 	this->lock->read_lock(this->lock);
 	enumerator = this->traps->create_enumerator(this->traps);
@@ -333,11 +419,52 @@ METHOD(trap_manager_t, acquire, void,
 
 	if (!found)
 	{
-		DBG1(DBG_CFG, "trap not found, unable to acquire reqid %d",reqid);
+		DBG1(DBG_CFG, "trap not found, unable to acquire reqid %d", reqid);
 		this->lock->unlock(this->lock);
 		return;
 	}
-	if (!cas_bool(&found->pending, FALSE, TRUE))
+	reqid = found->child_sa->get_reqid(found->child_sa);
+	wildcard = found->wildcard;
+
+	this->mutex->lock(this->mutex);
+	if (wildcard)
+	{	/* for wildcard acquires we check that we don't have a pending acquire
+		 * with the same peer */
+		u_int8_t mask;
+
+		dst->to_subnet(dst, &host, &mask);
+		if (this->acquires->find_first(this->acquires, (void*)acquire_by_dst,
+									  (void**)&acquire, host) == SUCCESS)
+		{
+			host->destroy(host);
+			ignore = TRUE;
+		}
+		else
+		{
+			INIT(acquire,
+				.dst = host,
+				.reqid = reqid,
+			);
+			this->acquires->insert_last(this->acquires, acquire);
+		}
+	}
+	else
+	{
+		if (this->acquires->find_first(this->acquires, (void*)acquire_by_reqid,
+									  (void**)&acquire, &reqid) == SUCCESS)
+		{
+			ignore = TRUE;
+		}
+		else
+		{
+			INIT(acquire,
+				.reqid = reqid,
+			);
+			this->acquires->insert_last(this->acquires, acquire);
+		}
+	}
+	this->mutex->unlock(this->mutex);
+	if (ignore)
 	{
 		DBG1(DBG_CFG, "ignoring acquire, connection attempt pending");
 		this->lock->unlock(this->lock);
@@ -346,12 +473,40 @@ METHOD(trap_manager_t, acquire, void,
 	peer = found->peer_cfg->get_ref(found->peer_cfg);
 	child = found->child_sa->get_config(found->child_sa);
 	child = child->get_ref(child);
-	reqid = found->child_sa->get_reqid(found->child_sa);
 	/* don't hold the lock while checking out the IKE_SA */
 	this->lock->unlock(this->lock);
 
-	ike_sa = charon->ike_sa_manager->checkout_by_config(
+	if (wildcard)
+	{	/* the peer config would match IKE_SAs with other peers */
+		ike_sa = charon->ike_sa_manager->checkout_new(charon->ike_sa_manager,
+											peer->get_ike_version(peer), TRUE);
+		if (ike_sa)
+		{
+			ike_cfg_t *ike_cfg;
+			u_int16_t port;
+			u_int8_t mask;
+
+			ike_sa->set_peer_cfg(ike_sa, peer);
+			ike_cfg = ike_sa->get_ike_cfg(ike_sa);
+
+			port = ike_cfg->get_other_port(ike_cfg);
+			dst->to_subnet(dst, &host, &mask);
+			host->set_port(host, port);
+			ike_sa->set_other_host(ike_sa, host);
+
+			port = ike_cfg->get_my_port(ike_cfg);
+			src->to_subnet(src, &host, &mask);
+			host->set_port(host, port);
+			ike_sa->set_my_host(ike_sa, host);
+
+			charon->bus->set_sa(charon->bus, ike_sa);
+		}
+	}
+	else
+	{
+		ike_sa = charon->ike_sa_manager->checkout_by_config(
 											charon->ike_sa_manager, peer);
+	}
 	if (ike_sa)
 	{
 		if (ike_sa->get_peer_cfg(ike_sa) == NULL)
@@ -363,23 +518,28 @@ METHOD(trap_manager_t, acquire, void,
 			 * have a single TS that we can establish in a Quick Mode. */
 			src = dst = NULL;
 		}
+
+		this->mutex->lock(this->mutex);
+		acquire->ike_sa = ike_sa;
+		this->mutex->unlock(this->mutex);
+
 		if (ike_sa->initiate(ike_sa, child, reqid, src, dst) != DESTROY_ME)
 		{
-			/* make sure the entry is still there */
-			this->lock->read_lock(this->lock);
-			if (this->traps->find_first(this->traps, NULL,
-										(void**)&found) == SUCCESS)
-			{
-				found->ike_sa = ike_sa;
-			}
-			this->lock->unlock(this->lock);
 			charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 		}
 		else
 		{
-			ike_sa->destroy(ike_sa);
-			charon->bus->set_sa(charon->bus, NULL);
+			charon->ike_sa_manager->checkin_and_destroy(charon->ike_sa_manager,
+														ike_sa);
 		}
+	}
+	else
+	{
+		this->mutex->lock(this->mutex);
+		this->acquires->remove(this->acquires, acquire, NULL);
+		this->mutex->unlock(this->mutex);
+		destroy_acquire(acquire);
+		child->destroy(child);
 	}
 	peer->destroy(peer);
 }
@@ -391,26 +551,33 @@ static void complete(private_trap_manager_t *this, ike_sa_t *ike_sa,
 					 child_sa_t *child_sa)
 {
 	enumerator_t *enumerator;
-	entry_t *entry;
+	acquire_t *acquire;
 
-	this->lock->read_lock(this->lock);
-	enumerator = this->traps->create_enumerator(this->traps);
-	while (enumerator->enumerate(enumerator, &entry))
+	this->mutex->lock(this->mutex);
+	enumerator = this->acquires->create_enumerator(this->acquires);
+	while (enumerator->enumerate(enumerator, &acquire))
 	{
-		if (entry->ike_sa != ike_sa)
+		if (!acquire->ike_sa || acquire->ike_sa != ike_sa)
 		{
 			continue;
 		}
-		if (child_sa && child_sa->get_reqid(child_sa) !=
-									entry->child_sa->get_reqid(entry->child_sa))
+		if (child_sa)
 		{
-			continue;
+			if (acquire->dst)
+			{
+				/* since every wildcard acquire results in a separate IKE_SA
+				 * there is no need to compare the destination address */
+			}
+			else if (child_sa->get_reqid(child_sa) != acquire->reqid)
+			{
+				continue;
+			}
 		}
-		entry->ike_sa = NULL;
-		entry->pending = FALSE;
+		this->acquires->remove_at(this->acquires, enumerator);
+		destroy_acquire(acquire);
 	}
 	enumerator->destroy(enumerator);
-	this->lock->unlock(this->lock);
+	this->mutex->unlock(this->mutex);
 }
 
 METHOD(listener_t, ike_state_change, bool,
@@ -444,14 +611,15 @@ METHOD(listener_t, child_state_change, bool,
 METHOD(trap_manager_t, flush, void,
 	private_trap_manager_t *this)
 {
-	linked_list_t *traps;
-	/* since destroying the CHILD_SA results in events which require a read
-	 * lock we cannot destroy the list while holding the write lock */
 	this->lock->write_lock(this->lock);
-	traps = this->traps;
+	while (this->installing)
+	{
+		this->condvar->wait(this->condvar, this->lock);
+	}
+	this->traps->destroy_function(this->traps, (void*)destroy_entry);
 	this->traps = linked_list_create();
+	this->installing = INSTALL_DISABLED;
 	this->lock->unlock(this->lock);
-	traps->destroy_function(traps, (void*)destroy_entry);
 }
 
 METHOD(trap_manager_t, destroy, void,
@@ -459,6 +627,9 @@ METHOD(trap_manager_t, destroy, void,
 {
 	charon->bus->remove_listener(charon->bus, &this->listener.listener);
 	this->traps->destroy_function(this->traps, (void*)destroy_entry);
+	this->acquires->destroy_function(this->acquires, (void*)destroy_acquire);
+	this->condvar->destroy(this->condvar);
+	this->mutex->destroy(this->mutex);
 	this->lock->destroy(this->lock);
 	free(this);
 }
@@ -488,7 +659,10 @@ trap_manager_t *trap_manager_create(void)
 			},
 		},
 		.traps = linked_list_create(),
+		.acquires = linked_list_create(),
+		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
+		.condvar = rwlock_condvar_create(),
 		.ignore_acquire_ts = lib->settings->get_bool(lib->settings,
 										"%s.ignore_acquire_ts", FALSE, lib->ns),
 	);

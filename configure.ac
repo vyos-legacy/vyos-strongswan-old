@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.3.2])
+AC_INIT([strongSwan],[5.3.3])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -127,6 +127,7 @@ ARG_ENABL_SET([af-alg],         [enable AF_ALG crypto interface to Linux Crypto 
 ARG_ENABL_SET([bliss],          [enable BLISS software implementation plugin.])
 ARG_ENABL_SET([blowfish],       [enable Blowfish software implementation plugin.])
 ARG_ENABL_SET([ccm],            [enables the CCM AEAD wrapper crypto plugin.])
+ARG_ENABL_SET([chapoly],        [enables the ChaCha20/Poly1305 AEAD plugin.])
 ARG_DISBL_SET([cmac],           [disable CMAC crypto implementation plugin.])
 ARG_ENABL_SET([ctr],            [enables the Counter Mode wrapper crypto plugin.])
 ARG_DISBL_SET([des],            [disable DES/3DES software implementation plugin.])
@@ -239,6 +240,8 @@ ARG_ENABL_SET([imc-attestation],[enable IMC attestation module.])
 ARG_ENABL_SET([imv-attestation],[enable IMV attestation module.])
 ARG_ENABL_SET([imc-swid],       [enable IMC swid module.])
 ARG_ENABL_SET([imv-swid],       [enable IMV swid module.])
+ARG_ENABL_SET([imc-hcd],        [enable IMC hcd module.])
+ARG_ENABL_SET([imv-hcd],        [enable IMV hcd module.])
 ARG_ENABL_SET([tnc-ifmap],      [enable TNC IF-MAP module. Requires libxml])
 ARG_ENABL_SET([tnc-imc],        [enable TNC IMC module.])
 ARG_ENABL_SET([tnc-imv],        [enable TNC IMV module.])
@@ -404,7 +407,7 @@ if test x$eap_tls = xtrue -o x$eap_ttls = xtrue -o x$eap_peap = xtrue -o x$tnc_t
 	tls=true;
 fi
 
-if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_os = xtrue -o x$imv_os = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue -o x$imc_swid = xtrue -o x$imv_swid = xtrue; then
+if test x$imc_test = xtrue -o x$imv_test = xtrue -o x$imc_scanner = xtrue -o x$imv_scanner = xtrue -o x$imc_os = xtrue -o x$imv_os = xtrue -o x$imc_attestation = xtrue -o x$imv_attestation = xtrue -o x$imc_swid = xtrue -o x$imv_swid = xtrue -o x$imc_hcd = xtrue -o x$imv_hcd = xtrue; then
 	imcv=true;
 fi
 
@@ -552,7 +555,7 @@ AC_CHECK_FUNC(
 		# set -Werror so that we get an error for "argument ... has
 		# incompatible pointer type" warnings
 		save_CFLAGS="$CFLAGS"
-		CFLAGS="$CFLAGS -Werror"
+		CFLAGS="$CFLAGS -Werror -Wno-unused-parameter"
 		AC_MSG_CHECKING([for GNU-style qsort_r])
 		AC_COMPILE_IFELSE(
 			[AC_LANG_PROGRAM(
@@ -582,7 +585,7 @@ AC_CHECK_FUNC(
 )
 
 AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r getpwuid_r)
-AC_CHECK_FUNCS(fmemopen funopen mmap memrchr setlinebuf strptime)
+AC_CHECK_FUNCS(fmemopen funopen mmap memrchr setlinebuf strptime dirfd)
 
 AC_CHECK_FUNC([syslog], [
 	AC_DEFINE([HAVE_SYSLOG], [], [have syslog(3) and friends])
@@ -590,7 +593,7 @@ AC_CHECK_FUNC([syslog], [
 ])
 AM_CONDITIONAL(USE_SYSLOG, [test "x$syslog" = xtrue])
 
-AC_CHECK_HEADERS(sys/sockio.h glob.h net/if_tun.h)
+AC_CHECK_HEADERS(sys/sockio.h sys/syscall.h glob.h net/if_tun.h)
 AC_CHECK_HEADERS(net/pfkeyv2.h netipsec/ipsec.h netinet6/ipsec.h linux/udp.h)
 AC_CHECK_HEADERS([netinet/ip6.h linux/fib_rules.h], [], [],
 [
@@ -837,6 +840,22 @@ AC_COMPILE_IFELSE(
 		fi
 	]
 )
+
+AC_MSG_CHECKING([x86/x64 target])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+		[], [[
+		 #if !defined(__i386__) && !defined(__x86_64__)
+		 # error not on x86/x64
+		 #endif
+		]])],
+	[
+		x86x64=true
+		AC_MSG_RESULT([yes])
+	],
+	[AC_MSG_RESULT([no])]
+)
+AM_CONDITIONAL(USE_X86X64, [test "x$x86x64" = xtrue])
 
 if test x$printf_hooks = xvstr; then
 	AC_CHECK_LIB([vstr],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([Vstr string library not found])],[])
@@ -1293,6 +1312,7 @@ ADD_PLUGIN([fips-prf],             [s charon nm cmd])
 ADD_PLUGIN([gmp],                  [s charon scepclient pki scripts manager medsrv attest nm cmd aikgen])
 ADD_PLUGIN([agent],                [s charon nm cmd])
 ADD_PLUGIN([keychain],             [s charon cmd])
+ADD_PLUGIN([chapoly],              [s charon scripts nm cmd])
 ADD_PLUGIN([xcbc],                 [s charon nm cmd])
 ADD_PLUGIN([cmac],                 [s charon nm cmd])
 ADD_PLUGIN([hmac],                 [s charon pki scripts nm cmd])
@@ -1449,6 +1469,7 @@ AM_CONDITIONAL(USE_GCRYPT, test x$gcrypt = xtrue)
 AM_CONDITIONAL(USE_AGENT, test x$agent = xtrue)
 AM_CONDITIONAL(USE_KEYCHAIN, test x$keychain = xtrue)
 AM_CONDITIONAL(USE_PKCS11, test x$pkcs11 = xtrue)
+AM_CONDITIONAL(USE_CHAPOLY, test x$chapoly = xtrue)
 AM_CONDITIONAL(USE_CTR, test x$ctr = xtrue)
 AM_CONDITIONAL(USE_CCM, test x$ccm = xtrue)
 AM_CONDITIONAL(USE_GCM, test x$gcm = xtrue)
@@ -1528,6 +1549,8 @@ AM_CONDITIONAL(USE_IMC_ATTESTATION, test x$imc_attestation = xtrue)
 AM_CONDITIONAL(USE_IMV_ATTESTATION, test x$imv_attestation = xtrue)
 AM_CONDITIONAL(USE_IMC_SWID, test x$imc_swid = xtrue)
 AM_CONDITIONAL(USE_IMV_SWID, test x$imv_swid = xtrue)
+AM_CONDITIONAL(USE_IMC_HCD, test x$imc_hcd = xtrue)
+AM_CONDITIONAL(USE_IMV_HCD, test x$imv_hcd = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DEFAULT, test x$socket_default = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DYNAMIC, test x$socket_dynamic = xtrue)
 AM_CONDITIONAL(USE_SOCKET_WIN, test x$socket_win = xtrue)
@@ -1698,6 +1721,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/agent/Makefile
 	src/libstrongswan/plugins/keychain/Makefile
 	src/libstrongswan/plugins/pkcs11/Makefile
+	src/libstrongswan/plugins/chapoly/Makefile
 	src/libstrongswan/plugins/ctr/Makefile
 	src/libstrongswan/plugins/ccm/Makefile
 	src/libstrongswan/plugins/gcm/Makefile
@@ -1713,6 +1737,7 @@ AC_CONFIG_FILES([
 	src/libhydra/plugins/kernel_pfroute/Makefile
 	src/libhydra/tests/Makefile
 	src/libipsec/Makefile
+	src/libipsec/tests/Makefile
 	src/libsimaka/Makefile
 	src/libtls/Makefile
 	src/libtls/tests/Makefile
@@ -1737,6 +1762,8 @@ AC_CONFIG_FILES([
 	src/libimcv/plugins/imv_attestation/Makefile
 	src/libimcv/plugins/imc_swid/Makefile
 	src/libimcv/plugins/imv_swid/Makefile
+	src/libimcv/plugins/imc_hcd/Makefile
+	src/libimcv/plugins/imv_hcd/Makefile
 	src/charon/Makefile
 	src/charon-nm/Makefile
 	src/charon-tkm/Makefile
@@ -1847,17 +1874,18 @@ AC_CONFIG_FILES([
 	man/ipsec.secrets.5
 	src/charon-cmd/charon-cmd.8
 	src/pki/man/pki.1
+	src/pki/man/pki---acert.1
+	src/pki/man/pki---dn.1
 	src/pki/man/pki---gen.1
 	src/pki/man/pki---issue.1
 	src/pki/man/pki---keyid.1
-	src/pki/man/pki---pkcs7.1
 	src/pki/man/pki---pkcs12.1
+	src/pki/man/pki---pkcs7.1
 	src/pki/man/pki---print.1
 	src/pki/man/pki---pub.1
 	src/pki/man/pki---req.1
 	src/pki/man/pki---self.1
 	src/pki/man/pki---signcrl.1
-	src/pki/man/pki---acert.1
 	src/pki/man/pki---verify.1
 	src/swanctl/swanctl.8
 	src/swanctl/swanctl.conf.5.head

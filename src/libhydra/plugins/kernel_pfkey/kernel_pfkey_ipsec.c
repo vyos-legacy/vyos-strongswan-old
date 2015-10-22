@@ -106,6 +106,12 @@
 #define SADB_X_EALG_CASTCBC SADB_X_EALG_CAST128CBC
 #endif
 
+#if !defined(SADB_X_EALG_AES_GCM_ICV8) && defined(SADB_X_EALG_AESGCM8)
+#define SADB_X_EALG_AES_GCM_ICV8 SADB_X_EALG_AESGCM8
+#define SADB_X_EALG_AES_GCM_ICV12 SADB_X_EALG_AESGCM12
+#define SADB_X_EALG_AES_GCM_ICV16 SADB_X_EALG_AESGCM16
+#endif
+
 #ifndef SOL_IP
 #define SOL_IP IPPROTO_IP
 #define SOL_IPV6 IPPROTO_IPV6
@@ -508,15 +514,30 @@ static policy_entry_t *create_policy_entry(traffic_selector_t *src_ts,
 	INIT(policy,
 		.direction = dir,
 	);
+	u_int16_t port;
+	u_int8_t proto;
 
 	src_ts->to_subnet(src_ts, &policy->src.net, &policy->src.mask);
 	dst_ts->to_subnet(dst_ts, &policy->dst.net, &policy->dst.mask);
 
 	/* src or dest proto may be "any" (0), use more restrictive one */
-	policy->src.proto = max(src_ts->get_protocol(src_ts),
-							dst_ts->get_protocol(dst_ts));
-	policy->src.proto = policy->src.proto ? policy->src.proto : IPSEC_PROTO_ANY;
-	policy->dst.proto = policy->src.proto;
+	proto = max(src_ts->get_protocol(src_ts), dst_ts->get_protocol(dst_ts));
+	/* map the ports to ICMP type/code how the Linux kernel expects them, that
+	 * is, type in src, code in dst */
+	if (proto == IPPROTO_ICMP || proto == IPPROTO_ICMPV6)
+	{
+		port = max(policy->src.net->get_port(policy->src.net),
+				   policy->dst.net->get_port(policy->dst.net));
+		policy->src.net->set_port(policy->src.net,
+								  traffic_selector_icmp_type(port));
+		policy->dst.net->set_port(policy->dst.net,
+								  traffic_selector_icmp_code(port));
+	}
+	else if (!proto)
+	{
+		proto = IPSEC_PROTO_ANY;
+	}
+	policy->src.proto = policy->dst.proto = proto;
 
 	return policy;
 }
@@ -826,9 +847,11 @@ static kernel_algorithm_t encryption_algs[] = {
 /*  {ENCR_AES_CCM_ICV8,			SADB_X_EALG_AES_CCM_ICV8	}, */
 /*	{ENCR_AES_CCM_ICV12,		SADB_X_EALG_AES_CCM_ICV12	}, */
 /*	{ENCR_AES_CCM_ICV16,		SADB_X_EALG_AES_CCM_ICV16	}, */
-/*	{ENCR_AES_GCM_ICV8,			SADB_X_EALG_AES_GCM_ICV8	}, */
-/*	{ENCR_AES_GCM_ICV12,		SADB_X_EALG_AES_GCM_ICV12	}, */
-/*	{ENCR_AES_GCM_ICV16,		SADB_X_EALG_AES_GCM_ICV16	}, */
+#ifdef SADB_X_EALG_AES_GCM_ICV8 /* assume the others are defined too */
+	{ENCR_AES_GCM_ICV8,			SADB_X_EALG_AES_GCM_ICV8	},
+	{ENCR_AES_GCM_ICV12,		SADB_X_EALG_AES_GCM_ICV12	},
+	{ENCR_AES_GCM_ICV16,		SADB_X_EALG_AES_GCM_ICV16	},
+#endif
 	{END_OF_LIST,				0							},
 };
 
@@ -942,28 +965,6 @@ static size_t hostcpy(void *dest, host_t *host, bool include_port)
 }
 
 /**
- * Copy a host_t as sockaddr_t to the given memory location and map the port to
- * ICMP/ICMPv6 message type/code as the Linux kernel expects it, that is, the
- * type in the source and the code in the destination address.
- * @return		the number of bytes copied
- */
-static size_t hostcpy_icmp(void *dest, host_t *host, u_int16_t type)
-{
-	size_t len;
-
-	len = hostcpy(dest, host, TRUE);
-	if (type == SADB_EXT_ADDRESS_SRC)
-	{
-		set_port(dest, traffic_selector_icmp_type(host->get_port(host)));
-	}
-	else
-	{
-		set_port(dest, traffic_selector_icmp_code(host->get_port(host)));
-	}
-	return len;
-}
-
-/**
  * add a host to the given sadb_msg
  */
 static void add_addr_ext(struct sadb_msg *msg, host_t *host, u_int16_t type,
@@ -975,14 +976,7 @@ static void add_addr_ext(struct sadb_msg *msg, host_t *host, u_int16_t type,
 	addr->sadb_address_exttype = type;
 	addr->sadb_address_proto = proto;
 	addr->sadb_address_prefixlen = prefixlen;
-	if (proto == IPPROTO_ICMP || proto == IPPROTO_ICMPV6)
-	{
-		len = hostcpy_icmp(addr + 1, host, type);
-	}
-	else
-	{
-		len = hostcpy(addr + 1, host, include_port);
-	}
+	len = hostcpy(addr + 1, host, include_port);
 	addr->sadb_address_len = PFKEY_LEN(sizeof(*addr) + len);
 	PFKEY_EXT_ADD(msg, addr);
 }
@@ -2078,31 +2072,44 @@ METHOD(kernel_ipsec_t, flush_sas, status_t,
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
+	struct {
+		u_int8_t proto;
+		char *name;
+	} protos[] = {
+		{ SADB_SATYPE_AH, "AH" },
+		{ SADB_SATYPE_ESP, "ESP" },
+		{ SADB_X_SATYPE_IPCOMP, "IPComp" },
+	};
 	size_t len;
+	int i;
 
 	memset(&request, 0, sizeof(request));
-
-	DBG2(DBG_KNL, "flushing all SAD entries");
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_FLUSH;
-	msg->sadb_msg_satype = SADB_SATYPE_UNSPEC;
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
-	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
+	for (i = 0; i < countof(protos); i++)
 	{
-		DBG1(DBG_KNL, "unable to flush SAD entries");
-		return FAILED;
-	}
-	else if (out->sadb_msg_errno)
-	{
-		DBG1(DBG_KNL, "unable to flush SAD entries: %s (%d)",
-					   strerror(out->sadb_msg_errno), out->sadb_msg_errno);
+		DBG2(DBG_KNL, "flushing all %s SAD entries", protos[i].name);
+
+		msg->sadb_msg_satype = protos[i].proto;
+		if (pfkey_send(this, msg, &out, &len) != SUCCESS)
+		{
+			DBG1(DBG_KNL, "unable to flush %s SAD entries", protos[i].name);
+			return FAILED;
+		}
+		else if (out->sadb_msg_errno)
+		{
+			DBG1(DBG_KNL, "unable to flush %s SAD entries: %s (%d)",
+				 protos[i].name, strerror(out->sadb_msg_errno),
+				 out->sadb_msg_errno);
+			free(out);
+			return FAILED;
+		}
 		free(out);
-		return FAILED;
 	}
-	free(out);
 	return SUCCESS;
 }
 
@@ -2357,6 +2364,7 @@ static status_t add_policy_internal(private_kernel_pfkey_ipsec_t *this,
 	pfkey_msg_t response;
 	size_t len;
 	ipsec_mode_t proto_mode;
+	status_t status;
 
 	memset(&request, 0, sizeof(request));
 
@@ -2444,7 +2452,15 @@ static status_t add_policy_internal(private_kernel_pfkey_ipsec_t *this,
 
 	this->mutex->unlock(this->mutex);
 
-	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
+	status = pfkey_send(this, msg, &out, &len);
+	if (status == SUCCESS && !update && out->sadb_msg_errno == EEXIST)
+	{
+		DBG1(DBG_KNL, "policy already exists, try to update it");
+		free(out);
+		msg->sadb_msg_type = SADB_X_SPDUPDATE;
+		status = pfkey_send(this, msg, &out, &len);
+	}
+	if (status != SUCCESS)
 	{
 		return FAILED;
 	}

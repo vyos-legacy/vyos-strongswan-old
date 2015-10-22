@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2012 Sansar Choinyambuu
- * Copyright (C) 2011-2014 Andreas Steffen
+ * Copyright (C) 2011-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -27,13 +27,13 @@
 #include <imv/imv_msg.h>
 #include <imv/imv_session.h>
 #include <imv/imv_os_info.h>
+#include <generic/generic_attr_string.h>
 #include <ietf/ietf_attr.h>
 #include <ietf/ietf_attr_attr_request.h>
 #include <ietf/ietf_attr_pa_tnc_error.h>
 #include <ietf/ietf_attr_product_info.h>
 #include <ietf/ietf_attr_string_version.h>
 #include <ita/ita_attr.h>
-#include <ita/ita_attr_device_id.h>
 #include <tcg/tcg_attr.h>
 #include <tcg/pts/tcg_pts_attr_meas_algo.h>
 #include <tcg/pts/tcg_pts_attr_proto_caps.h>
@@ -484,9 +484,7 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 		max_seg_size = state->get_max_msg_len(state)
 								- PA_TNC_HEADER_SIZE
 								- PA_TNC_ATTR_HEADER_SIZE
-								- TCG_SEG_ATTR_SEG_ENV_HEADER
-								- PA_TNC_ATTR_HEADER_SIZE
-								- TCG_SEG_ATTR_MAX_SIZE_SIZE;
+								- TCG_SEG_ATTR_SEG_ENV_HEADER;
 
 		/* Announce support of PA-TNC segmentation to IMC */
 		contract = seg_contract_create(msg_types[0], max_attr_size,

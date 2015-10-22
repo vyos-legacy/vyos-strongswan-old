@@ -51,7 +51,8 @@ extern int conf_parser_debug;
     NEWLINE = 261,
     CONFIG_SETUP = 262,
     CONN = 263,
-    CA = 264
+    CA = 264,
+    STRING_ERROR = 265
   };
 #endif
 /* Tokens.  */
@@ -62,6 +63,7 @@ extern int conf_parser_debug;
 #define CONFIG_SETUP 262
 #define CONN 263
 #define CA 264
+#define STRING_ERROR 265
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -73,7 +75,7 @@ union YYSTYPE
 	char *s;
 	conf_parser_section_t t;
 
-#line 77 "parser/parser.h" /* yacc.c:1909  */
+#line 79 "parser/parser.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Tobias Brunner
+ * Copyright (C) 2009-2015 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -129,11 +129,6 @@ enum id_type_t {
 	 * Private ID type which represents a GeneralName of type URI
 	 */
 	ID_DER_ASN1_GN_URI = 201,
-
-	/**
-	 * Private ID type which represents a user ID
-	 */
-	ID_USER_ID = 202
 };
 
 /**
@@ -217,6 +212,14 @@ struct identification_t {
 	 * @return 			id_type_t
 	 */
 	id_type_t (*get_type) (identification_t *this);
+
+	/**
+	 * Create a hash value for this identification_t object.
+	 *
+	 * @param inc		optional value for incremental hashing
+	 * @return			hash value
+	 */
+	u_int (*hash) (identification_t *this, u_int inc);
 
 	/**
 	 * Check if two identification_t objects are equal.

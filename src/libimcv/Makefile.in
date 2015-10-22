@@ -94,6 +94,8 @@ ipsec_PROGRAMS = imv_policy_manager$(EXEEXT)
 @USE_IMV_ATTESTATION_TRUE@am__append_10 = plugins/imv_attestation
 @USE_IMC_SWID_TRUE@am__append_11 = plugins/imc_swid
 @USE_IMV_SWID_TRUE@am__append_12 = plugins/imv_swid
+@USE_IMC_HCD_TRUE@am__append_13 = plugins/imc_hcd
+@USE_IMV_HCD_TRUE@am__append_14 = plugins/imv_hcd
 TESTS = imcv_tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libimcv
@@ -157,10 +159,10 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	imv/imv_msg.lo imv/imv_lang_string.lo imv/imv_os_info.lo \
 	imv/imv_reason_string.lo imv/imv_remediation_string.lo \
 	imv/imv_session.lo imv/imv_session_manager.lo \
-	imv/imv_workitem.lo ietf/ietf_attr.lo \
-	ietf/ietf_attr_assess_result.lo ietf/ietf_attr_attr_request.lo \
-	ietf/ietf_attr_fwd_enabled.lo \
-	ietf/ietf_attr_default_pwd_enabled.lo \
+	imv/imv_workitem.lo generic/generic_attr_bool.lo \
+	generic/generic_attr_chunk.lo generic/generic_attr_string.lo \
+	ietf/ietf_attr.lo ietf/ietf_attr_assess_result.lo \
+	ietf/ietf_attr_attr_request.lo ietf/ietf_attr_fwd_enabled.lo \
 	ietf/ietf_attr_installed_packages.lo \
 	ietf/ietf_attr_numeric_version.lo ietf/ietf_attr_op_status.lo \
 	ietf/ietf_attr_pa_tnc_error.lo ietf/ietf_attr_port_filter.lo \
@@ -169,8 +171,7 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	ietf/ietf_attr_string_version.lo ita/ita_attr.lo \
 	ita/ita_attr_command.lo ita/ita_attr_dummy.lo \
 	ita/ita_attr_get_settings.lo ita/ita_attr_settings.lo \
-	ita/ita_attr_angel.lo ita/ita_attr_device_id.lo \
-	os_info/os_info.lo pa_tnc/pa_tnc_msg.lo \
+	ita/ita_attr_angel.lo os_info/os_info.lo pa_tnc/pa_tnc_msg.lo \
 	pa_tnc/pa_tnc_attr_manager.lo pts/pts.lo pts/pts_error.lo \
 	pts/pts_pcr.lo pts/pts_creds.lo pts/pts_database.lo \
 	pts/pts_dh_group.lo pts/pts_file_meas.lo pts/pts_file_meta.lo \
@@ -183,7 +184,8 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	pts/components/ita/ita_comp_ima.lo \
 	pts/components/ita/ita_comp_tboot.lo \
 	pts/components/ita/ita_comp_tgrub.lo \
-	pts/components/tcg/tcg_comp_func_name.lo seg/seg_contract.lo \
+	pts/components/tcg/tcg_comp_func_name.lo pwg/pwg_attr.lo \
+	pwg/pwg_attr_vendor_smi_code.lo seg/seg_contract.lo \
 	seg/seg_contract_manager.lo seg/seg_env.lo swid/swid_error.lo \
 	swid/swid_inventory.lo swid/swid_tag.lo swid/swid_tag_id.lo \
 	tcg/tcg_attr.lo tcg/pts/tcg_pts_attr_proto_caps.lo \
@@ -344,7 +346,8 @@ am__tty_colors = { \
 DIST_SUBDIRS = . plugins/imc_test plugins/imv_test plugins/imc_scanner \
 	plugins/imv_scanner plugins/imc_os plugins/imv_os \
 	plugins/imc_attestation plugins/imv_attestation \
-	plugins/imc_swid plugins/imv_swid
+	plugins/imc_swid plugins/imv_swid plugins/imc_hcd \
+	plugins/imv_hcd
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -625,11 +628,13 @@ libimcv_la_SOURCES = \
 	imv/imv_session.h imv/imv_session.c \
 	imv/imv_session_manager.h imv/imv_session_manager.c \
 	imv/imv_workitem.h imv/imv_workitem.c \
+	generic/generic_attr_bool.h generic/generic_attr_bool.c \
+	generic/generic_attr_chunk.h generic/generic_attr_chunk.c \
+	generic/generic_attr_string.h generic/generic_attr_string.c \
 	ietf/ietf_attr.h ietf/ietf_attr.c \
 	ietf/ietf_attr_assess_result.h ietf/ietf_attr_assess_result.c \
 	ietf/ietf_attr_attr_request.h ietf/ietf_attr_attr_request.c \
 	ietf/ietf_attr_fwd_enabled.h ietf/ietf_attr_fwd_enabled.c \
-	ietf/ietf_attr_default_pwd_enabled.h ietf/ietf_attr_default_pwd_enabled.c \
 	ietf/ietf_attr_installed_packages.h ietf/ietf_attr_installed_packages.c \
 	ietf/ietf_attr_numeric_version.h ietf/ietf_attr_numeric_version.c \
 	ietf/ietf_attr_op_status.h ietf/ietf_attr_op_status.c \
@@ -644,7 +649,6 @@ libimcv_la_SOURCES = \
 	ita/ita_attr_get_settings.h ita/ita_attr_get_settings.c \
 	ita/ita_attr_settings.h ita/ita_attr_settings.c \
 	ita/ita_attr_angel.h ita/ita_attr_angel.c \
-	ita/ita_attr_device_id.h ita/ita_attr_device_id.c \
 	os_info/os_info.h os_info/os_info.c \
 	pa_tnc/pa_tnc_attr.h \
 	pa_tnc/pa_tnc_msg.h pa_tnc/pa_tnc_msg.c \
@@ -673,6 +677,8 @@ libimcv_la_SOURCES = \
 	pts/components/ita/ita_comp_tboot.h pts/components/ita/ita_comp_tboot.c \
 	pts/components/ita/ita_comp_tgrub.h pts/components/ita/ita_comp_tgrub.c \
 	pts/components/tcg/tcg_comp_func_name.h pts/components/tcg/tcg_comp_func_name.c \
+	pwg/pwg_attr.h pwg/pwg_attr.c \
+	pwg/pwg_attr_vendor_smi_code.h pwg/pwg_attr_vendor_smi_code.c \
 	seg/seg_contract.h seg/seg_contract.c \
 	seg/seg_contract_manager.h seg/seg_contract_manager.c \
 	seg/seg_env.h seg/seg_env.c \
@@ -721,7 +727,7 @@ imv_policy_manager_LDADD = \
 SUBDIRS = . $(am__append_3) $(am__append_4) $(am__append_5) \
 	$(am__append_6) $(am__append_7) $(am__append_8) \
 	$(am__append_9) $(am__append_10) $(am__append_11) \
-	$(am__append_12)
+	$(am__append_12) $(am__append_13) $(am__append_14)
 imcv_tests_SOURCES = \
 	ita/ita_attr_command.c \
 	pa_tnc/pa_tnc_attr_manager.c \
@@ -842,6 +848,18 @@ imv/imv_session.lo: imv/$(am__dirstamp) imv/$(DEPDIR)/$(am__dirstamp)
 imv/imv_session_manager.lo: imv/$(am__dirstamp) \
 	imv/$(DEPDIR)/$(am__dirstamp)
 imv/imv_workitem.lo: imv/$(am__dirstamp) imv/$(DEPDIR)/$(am__dirstamp)
+generic/$(am__dirstamp):
+	@$(MKDIR_P) generic
+	@: > generic/$(am__dirstamp)
+generic/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) generic/$(DEPDIR)
+	@: > generic/$(DEPDIR)/$(am__dirstamp)
+generic/generic_attr_bool.lo: generic/$(am__dirstamp) \
+	generic/$(DEPDIR)/$(am__dirstamp)
+generic/generic_attr_chunk.lo: generic/$(am__dirstamp) \
+	generic/$(DEPDIR)/$(am__dirstamp)
+generic/generic_attr_string.lo: generic/$(am__dirstamp) \
+	generic/$(DEPDIR)/$(am__dirstamp)
 ietf/$(am__dirstamp):
 	@$(MKDIR_P) ietf
 	@: > ietf/$(am__dirstamp)
@@ -854,8 +872,6 @@ ietf/ietf_attr_assess_result.lo: ietf/$(am__dirstamp) \
 ietf/ietf_attr_attr_request.lo: ietf/$(am__dirstamp) \
 	ietf/$(DEPDIR)/$(am__dirstamp)
 ietf/ietf_attr_fwd_enabled.lo: ietf/$(am__dirstamp) \
-	ietf/$(DEPDIR)/$(am__dirstamp)
-ietf/ietf_attr_default_pwd_enabled.lo: ietf/$(am__dirstamp) \
 	ietf/$(DEPDIR)/$(am__dirstamp)
 ietf/ietf_attr_installed_packages.lo: ietf/$(am__dirstamp) \
 	ietf/$(DEPDIR)/$(am__dirstamp)
@@ -889,8 +905,6 @@ ita/ita_attr_get_settings.lo: ita/$(am__dirstamp) \
 ita/ita_attr_settings.lo: ita/$(am__dirstamp) \
 	ita/$(DEPDIR)/$(am__dirstamp)
 ita/ita_attr_angel.lo: ita/$(am__dirstamp) \
-	ita/$(DEPDIR)/$(am__dirstamp)
-ita/ita_attr_device_id.lo: ita/$(am__dirstamp) \
 	ita/$(DEPDIR)/$(am__dirstamp)
 os_info/$(am__dirstamp):
 	@$(MKDIR_P) os_info
@@ -974,6 +988,15 @@ pts/components/tcg/$(DEPDIR)/$(am__dirstamp):
 pts/components/tcg/tcg_comp_func_name.lo:  \
 	pts/components/tcg/$(am__dirstamp) \
 	pts/components/tcg/$(DEPDIR)/$(am__dirstamp)
+pwg/$(am__dirstamp):
+	@$(MKDIR_P) pwg
+	@: > pwg/$(am__dirstamp)
+pwg/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) pwg/$(DEPDIR)
+	@: > pwg/$(DEPDIR)/$(am__dirstamp)
+pwg/pwg_attr.lo: pwg/$(am__dirstamp) pwg/$(DEPDIR)/$(am__dirstamp)
+pwg/pwg_attr_vendor_smi_code.lo: pwg/$(am__dirstamp) \
+	pwg/$(DEPDIR)/$(am__dirstamp)
 seg/$(am__dirstamp):
 	@$(MKDIR_P) seg
 	@: > seg/$(am__dirstamp)
@@ -1201,6 +1224,8 @@ uninstall-ipsecSCRIPTS:
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f generic/*.$(OBJEXT)
+	-rm -f generic/*.lo
 	-rm -f ietf/*.$(OBJEXT)
 	-rm -f ietf/*.lo
 	-rm -f imc/*.$(OBJEXT)
@@ -1221,6 +1246,8 @@ mostlyclean-compile:
 	-rm -f pts/components/ita/*.lo
 	-rm -f pts/components/tcg/*.$(OBJEXT)
 	-rm -f pts/components/tcg/*.lo
+	-rm -f pwg/*.$(OBJEXT)
+	-rm -f pwg/*.lo
 	-rm -f seg/*.$(OBJEXT)
 	-rm -f seg/*.lo
 	-rm -f suites/*.$(OBJEXT)
@@ -1241,10 +1268,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv_tests-imcv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/imcv_tests-imcv_tests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@generic/$(DEPDIR)/generic_attr_bool.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@generic/$(DEPDIR)/generic_attr_chunk.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@generic/$(DEPDIR)/generic_attr_string.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_assess_result.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_attr_request.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_default_pwd_enabled.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_fwd_enabled.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_installed_packages.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_numeric_version.Plo@am__quote@
@@ -1274,7 +1303,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_angel.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_command.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_device_id.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_dummy.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_get_settings.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ita/$(DEPDIR)/ita_attr_settings.Plo@am__quote@
@@ -1302,6 +1330,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_tboot.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pts/components/ita/$(DEPDIR)/ita_comp_tgrub.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pts/components/tcg/$(DEPDIR)/tcg_comp_func_name.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pwg/$(DEPDIR)/pwg_attr.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@pwg/$(DEPDIR)/pwg_attr_vendor_smi_code.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_env.Po@am__quote@
@@ -1508,6 +1538,7 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+	-rm -rf generic/.libs generic/_libs
 	-rm -rf ietf/.libs ietf/_libs
 	-rm -rf imc/.libs imc/_libs
 	-rm -rf imv/.libs imv/_libs
@@ -1518,6 +1549,7 @@ clean-libtool:
 	-rm -rf pts/components/.libs pts/components/_libs
 	-rm -rf pts/components/ita/.libs pts/components/ita/_libs
 	-rm -rf pts/components/tcg/.libs pts/components/tcg/_libs
+	-rm -rf pwg/.libs pwg/_libs
 	-rm -rf seg/.libs seg/_libs
 	-rm -rf swid/.libs swid/_libs
 	-rm -rf tcg/.libs tcg/_libs
@@ -1829,6 +1861,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f generic/$(DEPDIR)/$(am__dirstamp)
+	-rm -f generic/$(am__dirstamp)
 	-rm -f ietf/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ietf/$(am__dirstamp)
 	-rm -f imc/$(DEPDIR)/$(am__dirstamp)
@@ -1849,6 +1883,8 @@ distclean-generic:
 	-rm -f pts/components/ita/$(am__dirstamp)
 	-rm -f pts/components/tcg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f pts/components/tcg/$(am__dirstamp)
+	-rm -f pwg/$(DEPDIR)/$(am__dirstamp)
+	-rm -f pwg/$(am__dirstamp)
 	-rm -f seg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f seg/$(am__dirstamp)
 	-rm -f suites/$(DEPDIR)/$(am__dirstamp)
@@ -1873,7 +1909,7 @@ clean-am: clean-checkPROGRAMS clean-generic clean-ipsecPROGRAMS \
 	clean-ipseclibLTLIBRARIES clean-libtool mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1920,7 +1956,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2014 Tobias Brunner
+ * Copyright (C) 2006-2015 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -487,8 +487,9 @@ METHOD(ike_sa_t, send_keepalive, void,
 	send_keepalive_job_t *job;
 	time_t last_out, now, diff;
 
-	if (!(this->conditions & COND_NAT_HERE) || this->keepalive_interval == 0)
-	{	/* disable keep alives if we are not NATed anymore */
+	if (!(this->conditions & COND_NAT_HERE) || this->keepalive_interval == 0 ||
+		this->state == IKE_PASSIVE)
+	{	/* disable keep alives if we are not NATed anymore, or we are passive */
 		return;
 	}
 
@@ -651,7 +652,7 @@ METHOD(ike_sa_t, get_state, ike_sa_state_t,
 METHOD(ike_sa_t, set_state, void,
 	private_ike_sa_t *this, ike_sa_state_t state)
 {
-	bool trigger_dpd = FALSE;
+	bool trigger_dpd = FALSE, keepalives = FALSE;
 
 	DBG2(DBG_IKE, "IKE_SA %s[%d] state change: %N => %N",
 		 get_name(this), this->unique_id,
@@ -722,6 +723,10 @@ METHOD(ike_sa_t, set_state, void,
 					 * so yet, so prevent that. */
 					this->stats[STAT_INBOUND] = this->stats[STAT_ESTABLISHED];
 				}
+				if (this->state == IKE_PASSIVE)
+				{
+					keepalives = TRUE;
+				}
 			}
 			break;
 		}
@@ -741,6 +746,10 @@ METHOD(ike_sa_t, set_state, void,
 		{
 			DBG1(DBG_IKE, "DPD not supported by peer, disabled");
 		}
+	}
+	if (keepalives)
+	{
+		send_keepalive(this);
 	}
 }
 
@@ -1200,6 +1209,19 @@ static void resolve_hosts(private_ike_sa_t *this)
 			break;
 	}
 
+	/* if an IP address is set locally, use the same family to resolve remote */
+	if (family == AF_UNSPEC && !this->remote_host)
+	{
+		if (this->local_host)
+		{
+			family = this->local_host->get_family(this->local_host);
+		}
+		else
+		{
+			family = ike_cfg_get_family(this->ike_cfg, TRUE);
+		}
+	}
+
 	if (this->remote_host)
 	{
 		host = this->remote_host->clone(this->remote_host);
@@ -1211,7 +1233,18 @@ static void resolve_hosts(private_ike_sa_t *this)
 	}
 	if (host)
 	{
-		set_other_host(this, host);
+		if (!host->is_anyaddr(host) ||
+			this->other_host->is_anyaddr(this->other_host))
+		{	/* don't set to %any if we currently have an address, but the
+			 * address family might have changed */
+			set_other_host(this, host);
+		}
+		else
+		{	/* reuse the original port as some implementations might not like
+			 * initial IKE messages on other ports */
+			this->other_host->set_port(this->other_host, host->get_port(host));
+			host->destroy(host);
+		}
 	}
 
 	if (this->local_host)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Andreas Steffen
+ * Copyright (C) 2011-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@
 static const char imc_name[] = "Scanner";
 
 static pen_type_t msg_types[] = {
-	{ PEN_IETF, PA_SUBTYPE_IETF_VPN }
+	{ PEN_IETF, PA_SUBTYPE_IETF_FIREWALL }
 };
 
 static imc_agent_t *imc_scanner;
@@ -241,7 +241,8 @@ static TNC_Result add_port_filter(imc_msg_t *msg)
 	pa_tnc_attr_t *attr;
 	ietf_attr_port_filter_t *attr_port_filter;
 
-	attr = ietf_attr_port_filter_create();
+	attr = ietf_attr_port_filter_create(pen_type_create(PEN_IETF,
+										IETF_ATTR_PORT_FILTER));
 	attr->set_noskip_flag(attr, TRUE);
 	attr_port_filter = (ietf_attr_port_filter_t*)attr;
 	if (!do_netstat(attr_port_filter))
