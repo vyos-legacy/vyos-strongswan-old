@@ -1,4 +1,4 @@
-strongswan (5.3.2-2) UNRELEASED; urgency=medium
+strongswan (5.3.3-1) UNRELEASED; urgency=medium
 
   * debian/rules:
     - enable the connmark plugin.
@@ -6,8 +6,9 @@ strongswan (5.3.2-2) UNRELEASED; urgency=medium
     - add build-dep on iptables-dev.
   * debian/libstrongswan-standard-plugins:
     - add connmark plugin to the standard-plugins package.
+  * New upstream release.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 10 Jul 2015 12:58:30 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 22 Oct 2015 11:44:21 +0200
 
 strongswan (5.3.2-1) unstable; urgency=medium
 
