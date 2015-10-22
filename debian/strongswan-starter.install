@@ -20,6 +20,7 @@ usr/bin/pki
 usr/lib/ipsec/scepclient
 usr/share/man/man8/scepclient.8
 usr/share/man/man1/pki---acert.1
+usr/share/man/man1/pki---dn.1
 usr/share/man/man1/pki---gen.1
 usr/share/man/man1/pki---issue.1
 usr/share/man/man1/pki---keyid.1

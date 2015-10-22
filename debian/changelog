@@ -7,6 +7,8 @@ strongswan (5.3.3-1) UNRELEASED; urgency=medium
   * debian/libstrongswan-standard-plugins:
     - add connmark plugin to the standard-plugins package.
   * New upstream release.
+  * debian/strongswan-starter.install:
+    - install new pki --dn manpage to ipsec-starter package. 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 22 Oct 2015 11:44:21 +0200
 
