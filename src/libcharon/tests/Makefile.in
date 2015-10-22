@@ -102,7 +102,9 @@ CONFIG_CLEAN_VPATH_FILES =
 am__EXEEXT_1 = libcharon_tests$(EXEEXT)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libcharon_tests_OBJECTS =  \
+	suites/libcharon_tests-test_ike_cfg.$(OBJEXT) \
 	suites/libcharon_tests-test_mem_pool.$(OBJEXT) \
+	suites/libcharon_tests-test_message_chapoly.$(OBJEXT) \
 	libcharon_tests-libcharon_tests.$(OBJEXT)
 libcharon_tests_OBJECTS = $(am_libcharon_tests_OBJECTS)
 libcharon_tests_DEPENDENCIES =  \
@@ -427,7 +429,9 @@ urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 libcharon_tests_SOURCES = \
+  suites/test_ike_cfg.c \
   suites/test_mem_pool.c \
+  suites/test_message_chapoly.c \
   libcharon_tests.h libcharon_tests.c
 
 libcharon_tests_CFLAGS = \
@@ -435,6 +439,8 @@ libcharon_tests_CFLAGS = \
   -I$(top_srcdir)/src/libhydra \
   -I$(top_srcdir)/src/libstrongswan \
   -I$(top_srcdir)/src/libstrongswan/tests \
+  -DPLUGINDIR=\""$(abs_top_builddir)/src/libstrongswan/plugins\"" \
+  -DPLUGINS=\""${s_plugins}\"" \
   @COVERAGE_CFLAGS@
 
 libcharon_tests_LDFLAGS = @COVERAGE_LDFLAGS@
@@ -493,7 +499,11 @@ suites/$(am__dirstamp):
 suites/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) suites/$(DEPDIR)
 	@: > suites/$(DEPDIR)/$(am__dirstamp)
+suites/libcharon_tests-test_ike_cfg.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 suites/libcharon_tests-test_mem_pool.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libcharon_tests-test_message_chapoly.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 
 libcharon_tests$(EXEEXT): $(libcharon_tests_OBJECTS) $(libcharon_tests_DEPENDENCIES) $(EXTRA_libcharon_tests_DEPENDENCIES) 
@@ -508,7 +518,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcharon_tests-libcharon_tests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libcharon_tests-test_mem_pool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -534,6 +546,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
+suites/libcharon_tests-test_ike_cfg.o: suites/test_ike_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT suites/libcharon_tests-test_ike_cfg.o -MD -MP -MF suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Tpo -c -o suites/libcharon_tests-test_ike_cfg.o `test -f 'suites/test_ike_cfg.c' || echo '$(srcdir)/'`suites/test_ike_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Tpo suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ike_cfg.c' object='suites/libcharon_tests-test_ike_cfg.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -c -o suites/libcharon_tests-test_ike_cfg.o `test -f 'suites/test_ike_cfg.c' || echo '$(srcdir)/'`suites/test_ike_cfg.c
+
+suites/libcharon_tests-test_ike_cfg.obj: suites/test_ike_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT suites/libcharon_tests-test_ike_cfg.obj -MD -MP -MF suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Tpo -c -o suites/libcharon_tests-test_ike_cfg.obj `if test -f 'suites/test_ike_cfg.c'; then $(CYGPATH_W) 'suites/test_ike_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ike_cfg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Tpo suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ike_cfg.c' object='suites/libcharon_tests-test_ike_cfg.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -c -o suites/libcharon_tests-test_ike_cfg.obj `if test -f 'suites/test_ike_cfg.c'; then $(CYGPATH_W) 'suites/test_ike_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ike_cfg.c'; fi`
+
 suites/libcharon_tests-test_mem_pool.o: suites/test_mem_pool.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT suites/libcharon_tests-test_mem_pool.o -MD -MP -MF suites/$(DEPDIR)/libcharon_tests-test_mem_pool.Tpo -c -o suites/libcharon_tests-test_mem_pool.o `test -f 'suites/test_mem_pool.c' || echo '$(srcdir)/'`suites/test_mem_pool.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libcharon_tests-test_mem_pool.Tpo suites/$(DEPDIR)/libcharon_tests-test_mem_pool.Po
@@ -547,6 +573,20 @@ suites/libcharon_tests-test_mem_pool.obj: suites/test_mem_pool.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_mem_pool.c' object='suites/libcharon_tests-test_mem_pool.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -c -o suites/libcharon_tests-test_mem_pool.obj `if test -f 'suites/test_mem_pool.c'; then $(CYGPATH_W) 'suites/test_mem_pool.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_mem_pool.c'; fi`
+
+suites/libcharon_tests-test_message_chapoly.o: suites/test_message_chapoly.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT suites/libcharon_tests-test_message_chapoly.o -MD -MP -MF suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Tpo -c -o suites/libcharon_tests-test_message_chapoly.o `test -f 'suites/test_message_chapoly.c' || echo '$(srcdir)/'`suites/test_message_chapoly.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Tpo suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_message_chapoly.c' object='suites/libcharon_tests-test_message_chapoly.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -c -o suites/libcharon_tests-test_message_chapoly.o `test -f 'suites/test_message_chapoly.c' || echo '$(srcdir)/'`suites/test_message_chapoly.c
+
+suites/libcharon_tests-test_message_chapoly.obj: suites/test_message_chapoly.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT suites/libcharon_tests-test_message_chapoly.obj -MD -MP -MF suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Tpo -c -o suites/libcharon_tests-test_message_chapoly.obj `if test -f 'suites/test_message_chapoly.c'; then $(CYGPATH_W) 'suites/test_message_chapoly.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_message_chapoly.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Tpo suites/$(DEPDIR)/libcharon_tests-test_message_chapoly.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_message_chapoly.c' object='suites/libcharon_tests-test_message_chapoly.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -c -o suites/libcharon_tests-test_message_chapoly.obj `if test -f 'suites/test_message_chapoly.c'; then $(CYGPATH_W) 'suites/test_message_chapoly.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_message_chapoly.c'; fi`
 
 libcharon_tests-libcharon_tests.o: libcharon_tests.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libcharon_tests_CFLAGS) $(CFLAGS) -MT libcharon_tests-libcharon_tests.o -MD -MP -MF $(DEPDIR)/libcharon_tests-libcharon_tests.Tpo -c -o libcharon_tests-libcharon_tests.o `test -f 'libcharon_tests.c' || echo '$(srcdir)/'`libcharon_tests.c

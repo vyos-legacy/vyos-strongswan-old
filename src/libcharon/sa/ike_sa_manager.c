@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2005-2011 Martin Willi
  * Copyright (C) 2011 revosec AG
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2015 Tobias Brunner
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
  *
@@ -157,6 +157,8 @@ static bool entry_match_by_id(entry_t *entry, ike_sa_id_t *id)
 	}
 	if ((id->get_responder_spi(id) == 0 ||
 		 entry->ike_sa_id->get_responder_spi(entry->ike_sa_id) == 0) &&
+		(id->get_ike_version(id) == IKEV1_MAJOR_VERSION ||
+		 id->is_initiator(id) == entry->ike_sa_id->is_initiator(entry->ike_sa_id)) &&
 		id->get_initiator_spi(id) == entry->ike_sa_id->get_initiator_spi(entry->ike_sa_id))
 	{
 		/* this is TRUE for IKE_SAs that we initiated but have not yet received a response */
@@ -204,6 +206,9 @@ struct half_open_t {
 
 	/** the number of half-open IKE_SAs with that host */
 	u_int count;
+
+	/** the number of half-open IKE_SAs we responded to with that host */
+	u_int count_responder;
 };
 
 /**
@@ -359,6 +364,11 @@ struct private_ike_sa_manager_t {
 	refcount_t half_open_count;
 
 	/**
+	 * Total number of half-open IKE_SAs as responder.
+	 */
+	refcount_t half_open_count_responder;
+
+	/**
 	 * Hash table with connected_peers_t objects.
 	 */
 	table_item_t **connected_peers_table;
@@ -382,6 +392,11 @@ struct private_ike_sa_manager_t {
 	 * RNG to get random SPIs for our side
 	 */
 	rng_t *rng;
+
+	/**
+	 * Lock to access the RNG instance
+	 */
+	rwlock_t *rng_lock;
 
 	/**
 	 * reuse existing IKE_SAs in checkout_by_config
@@ -730,9 +745,11 @@ static void put_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 	table_item_t *item;
 	u_int row, segment;
 	rwlock_t *lock;
+	ike_sa_id_t *ike_id;
 	half_open_t *half_open;
 	chunk_t addr;
 
+	ike_id = entry->ike_sa_id;
 	addr = entry->other->get_address(entry->other);
 	row = chunk_hash(addr) & this->table_mask;
 	segment = row & this->segment_mask;
@@ -745,7 +762,6 @@ static void put_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 
 		if (chunk_equals(addr, half_open->other))
 		{
-			half_open->count++;
 			break;
 		}
 		item = item->next;
@@ -755,7 +771,6 @@ static void put_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 	{
 		INIT(half_open,
 			.other = chunk_clone(addr),
-			.count = 1,
 		);
 		INIT(item,
 			.value = half_open,
@@ -763,8 +778,14 @@ static void put_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 		);
 		this->half_open_table[row] = item;
 	}
-	this->half_open_segments[segment].count++;
+	half_open->count++;
 	ref_get(&this->half_open_count);
+	if (!ike_id->is_initiator(ike_id))
+	{
+		half_open->count_responder++;
+		ref_get(&this->half_open_count_responder);
+	}
+	this->half_open_segments[segment].count++;
 	lock->unlock(lock);
 }
 
@@ -776,8 +797,10 @@ static void remove_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 	table_item_t *item, *prev = NULL;
 	u_int row, segment;
 	rwlock_t *lock;
+	ike_sa_id_t *ike_id;
 	chunk_t addr;
 
+	ike_id = entry->ike_sa_id;
 	addr = entry->other->get_address(entry->other);
 	row = chunk_hash(addr) & this->table_mask;
 	segment = row & this->segment_mask;
@@ -790,6 +813,12 @@ static void remove_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 
 		if (chunk_equals(addr, half_open->other))
 		{
+			if (!ike_id->is_initiator(ike_id))
+			{
+				half_open->count_responder--;
+				ignore_result(ref_put(&this->half_open_count_responder));
+			}
+			ignore_result(ref_put(&this->half_open_count));
 			if (--half_open->count == 0)
 			{
 				if (prev)
@@ -804,7 +833,6 @@ static void remove_half_open(private_ike_sa_manager_t *this, entry_t *entry)
 				free(item);
 			}
 			this->half_open_segments[segment].count--;
-			ignore_result(ref_put(&this->half_open_count));
 			break;
 		}
 		prev = item;
@@ -943,12 +971,14 @@ static u_int64_t get_spi(private_ike_sa_manager_t *this)
 {
 	u_int64_t spi;
 
-	if (this->rng &&
-		this->rng->get_bytes(this->rng, sizeof(spi), (u_int8_t*)&spi))
+	this->rng_lock->read_lock(this->rng_lock);
+	if (!this->rng ||
+		!this->rng->get_bytes(this->rng, sizeof(spi), (u_int8_t*)&spi))
 	{
-		return spi;
+		spi = 0;
 	}
-	return 0;
+	this->rng_lock->unlock(this->rng_lock);
+	return spi;
 }
 
 /**
@@ -1563,7 +1593,6 @@ METHOD(ike_sa_manager_t, checkin, void,
 			put_half_open(this, entry);
 		}
 		else if (!entry->half_open &&
-				 !entry->ike_sa_id->is_initiator(entry->ike_sa_id) &&
 				 ike_sa->get_state(ike_sa) == IKE_CONNECTING)
 		{
 			/* this is a new half-open SA */
@@ -1579,6 +1608,12 @@ METHOD(ike_sa_manager_t, checkin, void,
 		entry = entry_create();
 		entry->ike_sa_id = ike_sa_id->clone(ike_sa_id);
 		entry->ike_sa = ike_sa;
+		if (ike_sa->get_state(ike_sa) == IKE_CONNECTING)
+		{
+			entry->half_open = TRUE;
+			entry->other = other->clone(other);
+			put_half_open(this, entry);
+		}
 		segment = put_entry(this, entry);
 	}
 
@@ -1937,7 +1972,7 @@ METHOD(ike_sa_manager_t, get_count, u_int,
 }
 
 METHOD(ike_sa_manager_t, get_half_open_count, u_int,
-	private_ike_sa_manager_t *this, host_t *ip)
+	private_ike_sa_manager_t *this, host_t *ip, bool responder_only)
 {
 	table_item_t *item;
 	u_int row, segment;
@@ -1959,7 +1994,8 @@ METHOD(ike_sa_manager_t, get_half_open_count, u_int,
 
 			if (chunk_equals(addr, half_open->other))
 			{
-				count = half_open->count;
+				count = responder_only ? half_open->count_responder
+									   : half_open->count;
 				break;
 			}
 			item = item->next;
@@ -1968,7 +2004,8 @@ METHOD(ike_sa_manager_t, get_half_open_count, u_int,
 	}
 	else
 	{
-		count = (u_int)ref_cur(&this->half_open_count);
+		count = responder_only ? (u_int)ref_cur(&this->half_open_count_responder)
+							   : (u_int)ref_cur(&this->half_open_count);
 	}
 	return count;
 }
@@ -2055,8 +2092,10 @@ METHOD(ike_sa_manager_t, flush, void,
 	charon->bus->set_sa(charon->bus, NULL);
 	unlock_all_segments(this);
 
+	this->rng_lock->write_lock(this->rng_lock);
 	this->rng->destroy(this->rng);
 	this->rng = NULL;
+	this->rng_lock->unlock(this->rng_lock);
 }
 
 METHOD(ike_sa_manager_t, destroy, void,
@@ -2081,6 +2120,7 @@ METHOD(ike_sa_manager_t, destroy, void,
 	free(this->connected_peers_segments);
 	free(this->init_hashes_segments);
 
+	this->rng_lock->destroy(this->rng_lock);
 	free(this);
 }
 
@@ -2138,6 +2178,7 @@ ike_sa_manager_t *ike_sa_manager_create()
 		free(this);
 		return NULL;
 	}
+	this->rng_lock = rwlock_create(RWLOCK_TYPE_DEFAULT);
 
 	this->ikesa_limit = lib->settings->get_int(lib->settings,
 											   "%s.ikesa_limit", 0, lib->ns);

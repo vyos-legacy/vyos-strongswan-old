@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Andreas Steffen
+ * Copyright (C) 2013-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,10 +23,10 @@
 #include <imcv.h>
 #include <imv/imv_agent.h>
 #include <imv/imv_msg.h>
+#include <generic/generic_attr_bool.h>
+#include <generic/generic_attr_string.h>
 #include <ietf/ietf_attr.h>
 #include <ietf/ietf_attr_attr_request.h>
-#include <ietf/ietf_attr_default_pwd_enabled.h>
-#include <ietf/ietf_attr_fwd_enabled.h>
 #include <ietf/ietf_attr_installed_packages.h>
 #include <ietf/ietf_attr_numeric_version.h>
 #include <ietf/ietf_attr_op_status.h>
@@ -37,7 +37,6 @@
 #include <ita/ita_attr.h>
 #include <ita/ita_attr_get_settings.h>
 #include <ita/ita_attr_settings.h>
-#include <ita/ita_attr_device_id.h>
 #include "tcg/seg/tcg_seg_attr_max_size.h"
 #include "tcg/seg/tcg_seg_attr_seg_env.h"
 
@@ -270,12 +269,12 @@ static TNC_Result receive_msg(private_imv_os_agent_t *this, imv_state_t *state,
 				}
 				case IETF_ATTR_FORWARDING_ENABLED:
 				{
-					ietf_attr_fwd_enabled_t *attr_cast;
+					generic_attr_bool_t *attr_cast;
 					os_fwd_status_t fwd_status;
 
 					state->set_action_flags(state,
 											IMV_OS_ATTR_FORWARDING_ENABLED);
-					attr_cast = (ietf_attr_fwd_enabled_t*)attr;
+					attr_cast = (generic_attr_bool_t*)attr;
 					fwd_status = attr_cast->get_status(attr_cast);
 					DBG1(DBG_IMV, "IPv4 forwarding is %N",
 								   os_fwd_status_names, fwd_status);
@@ -288,12 +287,12 @@ static TNC_Result receive_msg(private_imv_os_agent_t *this, imv_state_t *state,
 				}
 				case IETF_ATTR_FACTORY_DEFAULT_PWD_ENABLED:
 				{
-					ietf_attr_default_pwd_enabled_t *attr_cast;
+					generic_attr_bool_t *attr_cast;
 					bool default_pwd_status;
 
 					state->set_action_flags(state,
 									IMV_OS_ATTR_FACTORY_DEFAULT_PWD_ENABLED);
-					attr_cast = (ietf_attr_default_pwd_enabled_t*)attr;
+					attr_cast = (generic_attr_bool_t*)attr;
 					default_pwd_status = attr_cast->get_status(attr_cast);
 					DBG1(DBG_IMV, "factory default password is %sabled",
 								   default_pwd_status ? "en":"dis");
@@ -542,9 +541,7 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 		max_seg_size = state->get_max_msg_len(state)
 								- PA_TNC_HEADER_SIZE 
 								- PA_TNC_ATTR_HEADER_SIZE
-								- TCG_SEG_ATTR_SEG_ENV_HEADER
-								- PA_TNC_ATTR_HEADER_SIZE
-								- TCG_SEG_ATTR_MAX_SIZE_SIZE;
+								- TCG_SEG_ATTR_SEG_ENV_HEADER;
 
 		/* Announce support of PA-TNC segmentation to IMC */
 		contract = seg_contract_create(msg_types[0], max_attr_size,

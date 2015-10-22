@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Andreas Steffen
+ * Copyright (C) 2012-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -180,7 +180,8 @@ METHOD(ietf_attr_fwd_enabled_t, get_status, os_fwd_status_t,
 /**
  * Described in header.
  */
-pa_tnc_attr_t *ietf_attr_fwd_enabled_create(os_fwd_status_t fwd_status)
+pa_tnc_attr_t *ietf_attr_fwd_enabled_create(os_fwd_status_t fwd_status,
+											pen_type_t type)
 {
 	private_ietf_attr_fwd_enabled_t *this;
 
@@ -199,7 +200,7 @@ pa_tnc_attr_t *ietf_attr_fwd_enabled_create(os_fwd_status_t fwd_status)
 			},
 			.get_status = _get_status,
 		},
-		.type = { PEN_IETF, IETF_ATTR_FORWARDING_ENABLED },
+		.type = type,
 		.fwd_status = fwd_status,
 		.ref = 1,
 	);
@@ -211,7 +212,7 @@ pa_tnc_attr_t *ietf_attr_fwd_enabled_create(os_fwd_status_t fwd_status)
  * Described in header.
  */
 pa_tnc_attr_t *ietf_attr_fwd_enabled_create_from_data(size_t length,
-													  chunk_t data)
+										chunk_t data, pen_type_t type)
 {
 	private_ietf_attr_fwd_enabled_t *this;
 
@@ -230,7 +231,7 @@ pa_tnc_attr_t *ietf_attr_fwd_enabled_create_from_data(size_t length,
 			},
 			.get_status = _get_status,
 		},
-		.type = { PEN_IETF, IETF_ATTR_FORWARDING_ENABLED },
+		.type = type,
 		.length = length,
 		.value = chunk_clone(data),
 		.ref = 1,

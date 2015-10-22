@@ -79,13 +79,13 @@ build_triplet = @build@
 host_triplet = @host@
 subdir = src/pki/man
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(srcdir)/pki.1.in $(srcdir)/pki---gen.1.in \
+	$(srcdir)/pki.1.in $(srcdir)/pki---acert.1.in \
+	$(srcdir)/pki---dn.1.in $(srcdir)/pki---gen.1.in \
 	$(srcdir)/pki---issue.1.in $(srcdir)/pki---keyid.1.in \
-	$(srcdir)/pki---pkcs7.1.in $(srcdir)/pki---pkcs12.1.in \
+	$(srcdir)/pki---pkcs12.1.in $(srcdir)/pki---pkcs7.1.in \
 	$(srcdir)/pki---print.1.in $(srcdir)/pki---pub.1.in \
 	$(srcdir)/pki---req.1.in $(srcdir)/pki---self.1.in \
-	$(srcdir)/pki---signcrl.1.in $(srcdir)/pki---acert.1.in \
-	$(srcdir)/pki---verify.1.in
+	$(srcdir)/pki---signcrl.1.in $(srcdir)/pki---verify.1.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/m4/config/ltoptions.m4 \
@@ -101,10 +101,10 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = pki.1 pki---gen.1 pki---issue.1 pki---keyid.1 \
-	pki---pkcs7.1 pki---pkcs12.1 pki---print.1 pki---pub.1 \
-	pki---req.1 pki---self.1 pki---signcrl.1 pki---acert.1 \
-	pki---verify.1
+CONFIG_CLEAN_FILES = pki.1 pki---acert.1 pki---dn.1 pki---gen.1 \
+	pki---issue.1 pki---keyid.1 pki---pkcs12.1 pki---pkcs7.1 \
+	pki---print.1 pki---pub.1 pki---req.1 pki---self.1 \
+	pki---signcrl.1 pki---verify.1
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -385,16 +385,17 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 man1_MANS = \
 	pki.1 \
-	pki---gen.1 \
-	pki---self.1 \
-	pki---issue.1 \
-	pki---signcrl.1 \
 	pki---acert.1 \
-	pki---req.1 \
-	pki---pkcs7.1 \
+	pki---dn.1 \
+	pki---gen.1 \
+	pki---issue.1 \
 	pki---keyid.1 \
+	pki---pkcs7.1 \
 	pki---print.1 \
 	pki---pub.1 \
+	pki---req.1 \
+	pki---self.1 \
+	pki---signcrl.1 \
 	pki---verify.1
 
 CLEANFILES = $(man1_MANS)
@@ -433,15 +434,19 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 $(am__aclocal_m4_deps):
 pki.1: $(top_builddir)/config.status $(srcdir)/pki.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+pki---acert.1: $(top_builddir)/config.status $(srcdir)/pki---acert.1.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+pki---dn.1: $(top_builddir)/config.status $(srcdir)/pki---dn.1.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---gen.1: $(top_builddir)/config.status $(srcdir)/pki---gen.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---issue.1: $(top_builddir)/config.status $(srcdir)/pki---issue.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---keyid.1: $(top_builddir)/config.status $(srcdir)/pki---keyid.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-pki---pkcs7.1: $(top_builddir)/config.status $(srcdir)/pki---pkcs7.1.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---pkcs12.1: $(top_builddir)/config.status $(srcdir)/pki---pkcs12.1.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+pki---pkcs7.1: $(top_builddir)/config.status $(srcdir)/pki---pkcs7.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---print.1: $(top_builddir)/config.status $(srcdir)/pki---print.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
@@ -452,8 +457,6 @@ pki---req.1: $(top_builddir)/config.status $(srcdir)/pki---req.1.in
 pki---self.1: $(top_builddir)/config.status $(srcdir)/pki---self.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---signcrl.1: $(top_builddir)/config.status $(srcdir)/pki---signcrl.1.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-pki---acert.1: $(top_builddir)/config.status $(srcdir)/pki---acert.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 pki---verify.1: $(top_builddir)/config.status $(srcdir)/pki---verify.1.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@

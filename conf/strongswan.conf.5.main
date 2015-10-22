@@ -240,6 +240,10 @@ Global IMV policy database URI. If it contains a password, make sure to adjust
 the permissions of the config file accordingly.
 
 .TP
+.BR charon.imcv.os_info.default_password_enabled " [no]"
+Manually set whether a default password is enabled
+
+.TP
 .BR charon.imcv.os_info.name " []"
 Manually set the name of the client OS (e.g. Ubuntu).
 
@@ -536,12 +540,13 @@ Close the IKE_SA if there is a timeout during interim RADIUS accounting updates.
 
 .TP
 .BR charon.plugins.eap-radius.accounting_interval " [0]"
-Interval for interim RADIUS accounting updates, if not specified by the RADIUS
-server in the Access\-Accept message.
+Interval in seconds for interim RADIUS accounting updates, if not specified by
+the RADIUS server in the Access\-Accept message.
 
 .TP
 .BR charon.plugins.eap-radius.accounting_requires_vip " [no]"
 If enabled, accounting is disabled unless an IKE_SA has at least one virtual IP.
+Only for IKEv2, for IKEv1 a virtual IP is strictly necessary.
 
 .TP
 .BR charon.plugins.eap-radius.class_group " [no]"
@@ -853,7 +858,7 @@ plugins can be used
 to circumvent that problem.
 
 .TP
-.BR charon.plugins.kernel-netlink.buflen " [4096]"
+.BR charon.plugins.kernel-netlink.buflen " [<min(PAGE_SIZE, 8192)>]"
 Buffer size for received Netlink messages.
 
 .TP
@@ -1147,6 +1152,10 @@ ENGINE ID to use in the OpenSSL plugin.
 Set OpenSSL FIPS mode: disabled(0), enabled(1), Suite B enabled(2).
 
 .TP
+.BR charon.plugins.osx-attr.append " [yes]"
+Whether DNS servers are appended to existing entries, instead of replacing them.
+
+.TP
 .BR charon.plugins.pkcs11.load_certs " [yes]"
 Whether to load certificates from tokens.
 
@@ -1244,6 +1253,17 @@ adjust the permissions of the config file accordingly.
 .TP
 .BR charon.plugins.sql.loglevel " [-1]"
 Loglevel for logging to SQL database.
+
+.TP
+.BR charon.plugins.stroke.allow_swap " [yes]"
+Analyze addresses/hostnames in
+.RI "" "left|right" ""
+to detect which side is local and
+swap configuration options if necessary. If disabled
+.RI "" "left" ""
+is always
+.RI "" "local" "."
+
 
 .TP
 .BR charon.plugins.stroke.ignore_missing_ca_basic_constraint " [no]"
@@ -1512,8 +1532,8 @@ Number of times to retransmit a packet before giving up.
 
 .TP
 .BR charon.retry_initiate_interval " [0]"
-Interval to use when retrying to initiate an IKE_SA (e.g. if DNS resolution
-failed), 0 to disable retries.
+Interval in seconds to use when retrying to initiate an IKE_SA (e.g. if DNS
+resolution failed), 0 to disable retries.
 
 .TP
 .BR charon.reuse_ikesa " [yes]"
@@ -1747,6 +1767,105 @@ Whether to send pcr_before and pcr_after info.
 Use Quote2 AIK signature instead of Quote signature.
 
 .TP
+.BR libimcv.plugins.imc-hcd.push_info " [yes]"
+Send quadruple info without being prompted.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes " []"
+Section to define PWG HCD PA subtypes.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section> " []"
+Defines a PWG HCD PA subtype section. Recognized subtype section names are
+.RI "" "system" ","
+.RI "" "control" ","
+.RI "" "marker" ","
+.RI "" "finisher" ","
+.RI "" "interface" ""
+and
+.RI "" "scanner" "."
+
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type> " []"
+Defines a software type section. Recognized software type section names are
+.RI "" "firmware" ","
+.RI "" "resident_application" ""
+and
+.RI "" "user_application" "."
+
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type>.<software> " []"
+Defines a software section having an arbitrary name.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type>.<software>.name " []"
+Name of the software installed on the hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type>.<software>.patches " []"
+String describing all patches applied to the given software on this hardcopy
+device. The individual patches are separated by a newline character '\\n'.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type>.<software>.string_version " []"
+String describing the version of the given software on this hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.<sw_type>.<software>.version " []"
+Hex\-encoded version string with a length of 16 octets consisting of the fields
+major version number (4 octets), minor version number (4 octets), build number
+(4 octets), service pack major number (2 octets) and service pack minor number
+(2 octets).
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.<section>.attributes_natural_language " [en]"
+Variable length natural language tag conforming to RFC 5646 specifies the
+language to be used in the health assessment message of a given subtype.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.certification_state " []"
+Hex\-encoded certification state.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.configuration_state " []"
+Hex\-encoded configuration state.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.machine_type_model " []"
+String specifying the machine type and model of the hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.pstn_fax_enabled " [no]"
+Specifies if a PSTN facsimile interface is installed and enabled on the hardcopy
+device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.time_source " []"
+String specifying the hostname of the network time server used by the hardcopy
+device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.user_application_enabled " [no]"
+Specifies if users can dynamically download and execute applications on the
+hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.user_application_persistence_enabled " [no]"
+Specifies if user dynamically downloaded applications can persist outside the
+boundaries of a single job on the hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.vendor_name " []"
+String specifying the manufacturer of the hardcopy device.
+
+.TP
+.BR libimcv.plugins.imc-hcd.subtypes.system.vendor_smi_code " []"
+Integer specifying the globally unique 24\-bit SMI code assigned to the
+manufacturer of the hardcopy device.
+
+.TP
 .BR libimcv.plugins.imc-os.device_cert " []"
 Manually set the path to the client device certificate (e.g.
 /etc/pts/aikCert.der)
@@ -1943,10 +2062,6 @@ Plugins to load in ipsec scepclient tool.
 .TP
 .BR starter.config_file " [${sysconfdir}/ipsec.conf]"
 Location of the ipsec.conf file
-
-.TP
-.BR starter.load " []"
-Plugins to load in starter.
 
 .TP
 .BR starter.load_warning " [yes]"

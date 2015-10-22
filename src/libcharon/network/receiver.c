@@ -322,16 +322,18 @@ static bool cookie_required(private_receiver_t *this,
  */
 static bool drop_ike_sa_init(private_receiver_t *this, message_t *message)
 {
-	u_int half_open;
+	u_int half_open, half_open_r;
 	u_int32_t now;
 
 	now = time_monotonic(NULL);
 	half_open = charon->ike_sa_manager->get_half_open_count(
-										charon->ike_sa_manager, NULL);
+										charon->ike_sa_manager, NULL, FALSE);
+	half_open_r = charon->ike_sa_manager->get_half_open_count(
+										charon->ike_sa_manager, NULL, TRUE);
 
 	/* check for cookies in IKEv2 */
 	if (message->get_major_version(message) == IKEV2_MAJOR_VERSION &&
-		cookie_required(this, half_open, now) && !check_cookie(this, message))
+		cookie_required(this, half_open_r, now) && !check_cookie(this, message))
 	{
 		chunk_t cookie;
 
@@ -372,7 +374,7 @@ static bool drop_ike_sa_init(private_receiver_t *this, message_t *message)
 	/* check if peer has too many IKE_SAs half open */
 	if (this->block_threshold &&
 		charon->ike_sa_manager->get_half_open_count(charon->ike_sa_manager,
-				message->get_source(message)) >= this->block_threshold)
+				message->get_source(message), TRUE) >= this->block_threshold)
 	{
 		DBG1(DBG_NET, "ignoring IKE_SA setup from %H, "
 			 "peer too aggressive", message->get_source(message));
@@ -381,7 +383,7 @@ static bool drop_ike_sa_init(private_receiver_t *this, message_t *message)
 
 	/* check if global half open IKE_SA limit reached */
 	if (this->init_limit_half_open &&
-		half_open >= this->init_limit_half_open)
+	    half_open >= this->init_limit_half_open)
 	{
 		DBG1(DBG_NET, "ignoring IKE_SA setup from %H, half open IKE_SA "
 			 "count of %d exceeds limit of %d", message->get_source(message),
@@ -542,7 +544,9 @@ static job_requeue_t receive_packets(private_receiver_t *this)
 	if (message->get_request(message) &&
 		message->get_exchange_type(message) == IKE_SA_INIT)
 	{
-		if (this->initiator_only || drop_ike_sa_init(this, message))
+		id = message->get_ike_sa_id(message);
+		if (this->initiator_only || !id->is_initiator(id) ||
+			drop_ike_sa_init(this, message))
 		{
 			message->destroy(message);
 			return JOB_REQUEUE_DIRECT;

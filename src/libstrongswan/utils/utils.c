@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 Tobias Brunner
+ * Copyright (C) 2008-2015 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Hochschule fuer Technik Rapperswil
  *
@@ -16,14 +16,37 @@
 
 #include "utils.h"
 
+#include <sys/types.h>
 #include <unistd.h>
 #include <limits.h>
+#include <ctype.h>
 #ifndef WIN32
 # include <signal.h>
 #endif
 
+#ifndef HAVE_CLOSEFROM
+#if defined(__linux__) && defined(HAVE_SYS_SYSCALL_H)
+# include <sys/stat.h>
+# include <fcntl.h>
+# include <sys/syscall.h>
+/* This is from the kernel sources.  We limit the length of directory names to
+ * 256 as we only use it to enumerate FDs. */
+struct linux_dirent64 {
+	u_int64_t d_ino;
+	int64_t d_off;
+	unsigned short	d_reclen;
+	unsigned char d_type;
+	char d_name[256];
+};
+#else /* !defined(__linux__) || !defined(HAVE_SYS_SYSCALL_H) */
+# include <dirent.h>
+#endif /* defined(__linux__) && defined(HAVE_SYS_SYSCALL_H) */
+#endif
+
 #include <library.h>
 #include <collections/enumerator.h>
+
+#define FD_DIR "/proc/self/fd"
 
 #ifdef WIN32
 
@@ -110,43 +133,89 @@ void wait_sigint()
 /**
  * Described in header.
  */
-void closefrom(int lowfd)
+void closefrom(int low_fd)
 {
-	char fd_dir[PATH_MAX];
-	int maxfd, fd, len;
+	int max_fd, dir_fd, fd;
 
 	/* try to close only open file descriptors on Linux... */
-	len = snprintf(fd_dir, sizeof(fd_dir), "/proc/%u/fd", getpid());
-	if (len > 0 && len < sizeof(fd_dir) && access(fd_dir, F_OK) == 0)
+#if defined(__linux__) && defined(HAVE_SYS_SYSCALL_H)
+	/* By directly using a syscall we avoid any calls that might be unsafe after
+	 * fork() (e.g. malloc()). */
+	char buffer[sizeof(struct linux_dirent64)];
+	struct linux_dirent64 *entry;
+	int offset, len;
+
+	dir_fd = open("/proc/self/fd", O_RDONLY);
+	if (dir_fd != -1)
 	{
-		enumerator_t *enumerator = enumerator_create_directory(fd_dir);
-		if (enumerator)
+		while ((len = syscall(SYS_getdents64, dir_fd, buffer,
+							  sizeof(buffer))) > 0)
 		{
-			char *rel;
-			while (enumerator->enumerate(enumerator, &rel, NULL, NULL))
+			for (offset = 0; offset < len; offset += entry->d_reclen)
 			{
-				fd = atoi(rel);
-				if (fd >= lowfd)
+				entry = (struct linux_dirent64*)(buffer + offset);
+				if (!isdigit(entry->d_name[0]))
+				{
+					continue;
+				}
+				fd = atoi(entry->d_name);
+				if (fd != dir_fd && fd >= low_fd)
 				{
 					close(fd);
 				}
 			}
-			enumerator->destroy(enumerator);
-			return;
 		}
+		close(dir_fd);
+		return;
 	}
+#else /* !defined(__linux__) || !defined(HAVE_SYS_SYSCALL_H) */
+	/* This is potentially unsafe when called after fork() in multi-threaded
+	 * applications.  In particular opendir() will require an allocation.
+	 * Depends on how the malloc() implementation handles such situations. */
+	DIR *dir;
+	struct dirent *entry;
+
+#ifndef HAVE_DIRFD
+	/* if we don't have dirfd() lets close the lowest FD and hope it gets reused
+	 * by opendir() */
+	close(low_fd);
+	dir_fd = low_fd++;
+#endif
+
+	dir = opendir(FD_DIR);
+	if (dir)
+	{
+#ifdef HAVE_DIRFD
+		dir_fd = dirfd(dir);
+#endif
+		while ((entry = readdir(dir)))
+		{
+			if (!isdigit(entry->d_name[0]))
+			{
+				continue;
+			}
+			fd = atoi(entry->d_name);
+			if (fd != dir_fd && fd >= low_fd)
+			{
+				close(fd);
+			}
+		}
+		closedir(dir);
+		return;
+	}
+#endif /* defined(__linux__) && defined(HAVE_SYS_SYSCALL_H) */
 
 	/* ...fall back to closing all fds otherwise */
 #ifdef WIN32
-	maxfd = _getmaxstdio();
+	max_fd = _getmaxstdio();
 #else
-	maxfd = (int)sysconf(_SC_OPEN_MAX);
+	max_fd = (int)sysconf(_SC_OPEN_MAX);
 #endif
-	if (maxfd < 0)
+	if (max_fd < 0)
 	{
-		maxfd = 256;
+		max_fd = 256;
 	}
-	for (fd = lowfd; fd < maxfd; fd++)
+	for (fd = low_fd; fd < max_fd; fd++)
 	{
 		close(fd);
 	}

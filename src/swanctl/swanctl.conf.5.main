@@ -726,6 +726,11 @@ are used to install shunt policies, which explicitly bypass
 the defined traffic from IPsec processing, or drop it, respectively.
 
 .TP
+.BR connections.<conn>.children.<child>.policies " [yes]"
+Whether to install IPsec policies or not. Disabling this can be useful in some
+scenarios e.g. MIPv6, where policies are not managed by the IKE daemon.
+
+.TP
 .BR connections.<conn>.children.<child>.dpd_action " [clear]"
 Action to perform for this CHILD_SA on DPD timeout. The default
 .RI "" "clear" ""
@@ -1021,4 +1026,36 @@ corresponding attribute types. Alternatively,
 .RB "" "<attr>" ""
 can be a numerical
 identifier, for which string attribute values are accepted as well.
+
+.TP
+.B authorities
+.br
+Section defining attributes of certification authorities.
+
+.TP
+.B authorities.<name>
+.br
+Section defining a certification authority with a unique name.
+
+.TP
+.BR authorities.<name>.cacert " []"
+The certificates may use a relative path from the
+.RB "" "swanctl" ""
+.RI "" "x509ca" ""
+directory, or an absolute path.
+
+.TP
+.BR authorities.<name>.crl_uris " []"
+Comma\-separated list of CRL distribution points (ldap, http, or file URI)
+
+.TP
+.BR authorities.<name>.ocsp_uris " []"
+Comma\-separated list of OCSP URIs
+
+.TP
+.BR authorities.<name>.cert_uri_base " []"
+Defines the base URI for the Hash and URL feature supported by IKEv2. Instead of
+exchanging complete certificates, IKEv2 allows one to send an URI that resolves
+to the DER encoded certificate. The certificate URIs are built by appending the
+SHA1 hash of the DER encoded certificates to this base URI.
 

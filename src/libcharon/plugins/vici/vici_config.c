@@ -2,6 +2,9 @@
  * Copyright (C) 2014 Martin Willi
  * Copyright (C) 2014 revosec AG
  *
+ * Copyright (C) 2015 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -93,6 +96,12 @@ struct private_vici_config_t {
 	 * Lock for conns list
 	 */
 	rwlock_t *lock;
+
+	/**
+	 * Auxiliary certification authority information
+	 */
+	vici_authority_t *authority;
+
 };
 
 METHOD(backend_t, create_peer_cfg_enumerator, enumerator_t*,
@@ -382,7 +391,7 @@ typedef struct {
 	char* updown;
 	bool hostaccess;
 	bool ipcomp;
-	bool route;
+	bool policies;
 	ipsec_mode_t mode;
 	u_int32_t replay_window;
 	action_t dpd_action;
@@ -417,6 +426,7 @@ static void log_child_data(child_data_t *data, char *name)
 	DBG2(DBG_CFG, "   hostaccess = %u", data->hostaccess);
 	DBG2(DBG_CFG, "   ipcomp = %u", data->ipcomp);
 	DBG2(DBG_CFG, "   mode = %N", ipsec_mode_names, data->mode);
+	DBG2(DBG_CFG, "   policies = %u", data->policies);
 	if (data->replay_window != REPLAY_UNDEFINED)
 	{
 		DBG2(DBG_CFG, "   replay_window = %u", data->replay_window);
@@ -1040,15 +1050,21 @@ CALLBACK(parse_group, bool,
 /**
  * Parse a certificate; add as auth rule to config
  */
-static bool parse_cert(auth_cfg_t *cfg, auth_rule_t rule, chunk_t v)
+static bool parse_cert(auth_data_t *auth, auth_rule_t rule, chunk_t v)
 {
+	vici_authority_t *authority;
 	certificate_t *cert;
 
 	cert = lib->creds->create(lib->creds, CRED_CERTIFICATE, CERT_X509,
 							  BUILD_BLOB_PEM, v, BUILD_END);
 	if (cert)
 	{
-		cfg->add(cfg, rule, cert);
+		if (rule == AUTH_RULE_SUBJECT_CERT)
+		{
+			authority = auth->request->this->authority;
+			authority->check_for_hash_and_url(authority, cert);
+		}
+		auth->cfg->add(auth->cfg, rule, cert);
 		return TRUE;
 	}
 	return FALSE;
@@ -1058,18 +1074,18 @@ static bool parse_cert(auth_cfg_t *cfg, auth_rule_t rule, chunk_t v)
  * Parse subject certificates
  */
 CALLBACK(parse_certs, bool,
-	auth_cfg_t *cfg, chunk_t v)
+	auth_data_t *auth, chunk_t v)
 {
-	return parse_cert(cfg, AUTH_RULE_SUBJECT_CERT, v);
+	return parse_cert(auth, AUTH_RULE_SUBJECT_CERT, v);
 }
 
 /**
  * Parse CA certificates
  */
 CALLBACK(parse_cacerts, bool,
-	auth_cfg_t *cfg, chunk_t v)
+	auth_data_t *auth, chunk_t v)
 {
-	return parse_cert(cfg, AUTH_RULE_CA_CERT, v);
+	return parse_cert(auth, AUTH_RULE_CA_CERT, v);
 }
 
 /**
@@ -1234,6 +1250,7 @@ CALLBACK(child_kv, bool,
 		{ "updown",			parse_string,		&child->updown				},
 		{ "hostaccess",		parse_bool,			&child->hostaccess			},
 		{ "mode",			parse_mode,			&child->mode				},
+		{ "policies",		parse_bool,			&child->policies			},
 		{ "replay_window",	parse_uint32,		&child->replay_window		},
 		{ "rekey_time",		parse_time,			&child->lft.time.rekey		},
 		{ "life_time",		parse_time,			&child->lft.time.life		},
@@ -1264,8 +1281,8 @@ CALLBACK(auth_li, bool,
 {
 	parse_rule_t rules[] = {
 		{ "groups",			parse_group,		auth->cfg					},
-		{ "certs",			parse_certs,		auth->cfg					},
-		{ "cacerts",		parse_cacerts,		auth->cfg					},
+		{ "certs",			parse_certs,		auth						},
+		{ "cacerts",		parse_cacerts,		auth						},
 	};
 
 	return parse_rules(rules, countof(rules), name, value,
@@ -1341,6 +1358,7 @@ CALLBACK(children_sn, bool,
 		.local_ts = linked_list_create(),
 		.remote_ts = linked_list_create(),
 		.mode = MODE_TUNNEL,
+		.policies = TRUE,
 		.replay_window = REPLAY_UNDEFINED,
 		.dpd_action = ACTION_NONE,
 		.start_action = ACTION_NONE,
@@ -1352,10 +1370,12 @@ CALLBACK(children_sn, bool,
 				.jitter = LFT_UNDEFINED,
 			},
 			.bytes = {
+				.rekey = LFT_UNDEFINED,
 				.life = LFT_UNDEFINED,
 				.jitter = LFT_UNDEFINED,
 			},
 			.packets = {
+				.rekey = LFT_UNDEFINED,
 				.life = LFT_UNDEFINED,
 				.jitter = LFT_UNDEFINED,
 			},
@@ -1408,6 +1428,15 @@ CALLBACK(children_sn, bool,
 	{
 		child.lft.packets.life = child.lft.packets.rekey * 110 / 100;
 	}
+	/* if no soft lifetime specified, add one at hard lifetime - 10% */
+	if (child.lft.bytes.rekey == LFT_UNDEFINED)
+	{
+		child.lft.bytes.rekey = child.lft.bytes.life * 90 / 100;
+	}
+	if (child.lft.packets.rekey == LFT_UNDEFINED)
+	{
+		child.lft.packets.rekey = child.lft.packets.life * 90 / 100;
+	}
 	/* if no rand time defined, use difference of hard and soft */
 	if (child.lft.time.jitter == LFT_UNDEFINED)
 	{
@@ -1432,6 +1461,8 @@ CALLBACK(children_sn, bool,
 						child.dpd_action, child.close_action, child.ipcomp,
 						child.inactivity, child.reqid, &child.mark_in,
 						&child.mark_out, child.tfc);
+
+	cfg->set_mipv6_options(cfg, FALSE, child.policies);
 
 	if (child.replay_window != REPLAY_UNDEFINED)
 	{
@@ -1558,7 +1589,7 @@ static void run_start_action(private_vici_config_t *this, peer_cfg_t *peer_cfg,
 			DBG1(DBG_CFG, "initiating '%s'", child_cfg->get_name(child_cfg));
 			charon->controller->initiate(charon->controller,
 					peer_cfg->get_ref(peer_cfg), child_cfg->get_ref(child_cfg),
-					NULL, NULL, 0);
+					NULL, NULL, 0, FALSE);
 			break;
 		case ACTION_ROUTE:
 			DBG1(DBG_CFG, "installing '%s'", child_cfg->get_name(child_cfg));
@@ -1958,20 +1989,20 @@ CALLBACK(unload_conn, vici_message_t*,
 {
 	enumerator_t *enumerator;
 	peer_cfg_t *cfg;
+	char *conn_name;
 	bool found = FALSE;
-	char *conn;
 
-	conn = message->get_str(message, NULL, "name");
-	if (!conn)
+	conn_name = message->get_str(message, NULL, "name");
+	if (!conn_name)
 	{
-		return create_reply("missing connection name to unload");
+		return create_reply("unload: missing connection name");
 	}
 
 	this->lock->write_lock(this->lock);
 	enumerator = this->conns->create_enumerator(this->conns);
 	while (enumerator->enumerate(enumerator, &cfg))
 	{
-		if (streq(cfg->get_name(cfg), conn))
+		if (streq(cfg->get_name(cfg), conn_name))
 		{
 			this->conns->remove_at(this->conns, enumerator);
 			cfg->destroy(cfg);
@@ -1984,7 +2015,7 @@ CALLBACK(unload_conn, vici_message_t*,
 
 	if (!found)
 	{
-		return create_reply("connection '%s' not found for unloading", conn);
+		return create_reply("unload: connection '%s' not found", conn_name);
 	}
 	return create_reply(NULL);
 }
@@ -2042,7 +2073,8 @@ METHOD(vici_config_t, destroy, void,
 /**
  * See header
  */
-vici_config_t *vici_config_create(vici_dispatcher_t *dispatcher)
+vici_config_t *vici_config_create(vici_dispatcher_t *dispatcher,
+								  vici_authority_t *authority)
 {
 	private_vici_config_t *this;
 
@@ -2058,6 +2090,7 @@ vici_config_t *vici_config_create(vici_dispatcher_t *dispatcher)
 		.dispatcher = dispatcher,
 		.conns = linked_list_create(),
 		.lock = rwlock_create(RWLOCK_TYPE_DEFAULT),
+		.authority = authority,
 	);
 
 	manage_commands(this, TRUE);

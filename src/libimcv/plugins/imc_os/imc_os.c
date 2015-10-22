@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Andreas Steffen
+ * Copyright (C) 2011-2015 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,10 +18,11 @@
 #include <imc/imc_agent.h>
 #include <imc/imc_msg.h>
 #include <imc/imc_os_info.h>
+#include <generic/generic_attr_bool.h>
+#include <generic/generic_attr_string.h>
 #include <ietf/ietf_attr.h>
 #include <ietf/ietf_attr_attr_request.h>
-#include <ietf/ietf_attr_default_pwd_enabled.h>
-#include <ietf/ietf_attr_fwd_enabled.h>
+#include "ietf/ietf_attr_fwd_enabled.h"
 #include <ietf/ietf_attr_installed_packages.h>
 #include <ietf/ietf_attr_numeric_version.h>
 #include <ietf/ietf_attr_op_status.h>
@@ -30,7 +31,6 @@
 #include <ita/ita_attr.h>
 #include <ita/ita_attr_get_settings.h>
 #include <ita/ita_attr_settings.h>
-#include <ita/ita_attr_device_id.h>
 
 #include <tncif_pa_subtypes.h>
 
@@ -212,9 +212,9 @@ static void add_fwd_enabled(imc_msg_t *msg)
 	os_fwd_status_t fwd_status;
 
 	fwd_status = os->get_fwd_status(os);
-	DBG1(DBG_IMC, "IPv4 forwarding is %N",
-				   os_fwd_status_names, fwd_status);
-	attr = ietf_attr_fwd_enabled_create(fwd_status);
+	DBG1(DBG_IMC, "IPv4 forwarding is %N", os_fwd_status_names, fwd_status);
+	attr = ietf_attr_fwd_enabled_create(fwd_status,
+				pen_type_create(PEN_IETF, IETF_ATTR_FORWARDING_ENABLED));
 	msg->add_attribute(msg, attr);
 }
 
@@ -224,9 +224,12 @@ static void add_fwd_enabled(imc_msg_t *msg)
 static void add_default_pwd_enabled(imc_msg_t *msg)
 {
 	pa_tnc_attr_t *attr;
+	bool status;
 
-	DBG1(DBG_IMC, "factory default password is disabled");
-	attr = ietf_attr_default_pwd_enabled_create(FALSE);
+	status = os->get_default_pwd_status(os);
+	DBG1(DBG_IMC, "factory default password is %sabled", status ? "en" : "dis");
+	attr = generic_attr_bool_create(status,
+			pen_type_create(PEN_IETF, IETF_ATTR_FACTORY_DEFAULT_PWD_ENABLED));
 	msg->add_attribute(msg, attr);
 }
 
@@ -330,7 +333,8 @@ static void add_device_id(imc_msg_t *msg)
 	}
 
 	DBG1(DBG_IMC, "device ID is %.*s", value.len, value.ptr);
-	attr = ita_attr_device_id_create(value);
+	attr = generic_attr_string_create(value, pen_type_create(PEN_ITA,
+									  ITA_ATTR_DEVICE_ID));
 	msg->add_attribute(msg, attr);
 	free(value.ptr);
 }

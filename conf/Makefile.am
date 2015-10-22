@@ -52,6 +52,7 @@ plugins = \
 	plugins/gcrypt.opt \
 	plugins/ha.opt \
 	plugins/imc-attestation.opt \
+	plugins/imc-hcd.opt \
 	plugins/imc-os.opt \
 	plugins/imc-scanner.opt \
 	plugins/imc-swid.opt \
@@ -71,6 +72,7 @@ plugins = \
 	plugins/lookip.opt \
 	plugins/ntru.opt \
 	plugins/openssl.opt \
+	plugins/osx-attr.opt \
 	plugins/pkcs11.opt \
 	plugins/radattr.opt \
 	plugins/random.opt \

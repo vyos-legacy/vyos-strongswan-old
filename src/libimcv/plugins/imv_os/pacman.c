@@ -104,8 +104,14 @@ static void cleanup(void)
 
 static void usage(void)
 {
- 	printf("Usage:\n"
-		   "ipsec pacman --product <name> --file <filename> [--update]\n");
+	printf("Parses package information files from Debian/Ubuntu repositories and\n");
+	printf("stores the extracted information in the database used by the OS IMV.\n\n");
+	printf("ipsec pacman --product <name> --file <filename> [--security]\n\n");
+	printf("  --help               print usage information\n");
+	printf("  --product <name>     name of the Debian/Ubuntu release, as stored in the DB\n");
+	printf("  --file <filename>    package information file to parse\n");
+	printf("  --security           set this when parsing a file with security updates\n");
+	printf("\n");
 }
 
 /**
@@ -395,6 +401,17 @@ static void process_packages(char *filename, char *product, bool security)
 				}
 				pacman_state = PACMAN_STATE_BEGIN_PACKAGE;
 		}
+	}
+	switch (pacman_state)
+	{
+		case PACMAN_STATE_END_PACKAGE:
+			free(version);
+			/* fall-through */
+		case PACMAN_STATE_VERSION:
+			free(package);
+			break;
+		default:
+			break;
 	}
 	fclose(file);
 	db->destroy(db);

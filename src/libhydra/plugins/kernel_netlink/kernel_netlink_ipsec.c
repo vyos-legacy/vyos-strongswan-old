@@ -199,6 +199,7 @@ static kernel_algorithm_t encryption_algs[] = {
 /*	{ENCR_CAMELLIA_CCM_ICV16,	"***"				}, */
 	{ENCR_SERPENT_CBC,			"serpent"			},
 	{ENCR_TWOFISH_CBC,			"twofish"			},
+	{ENCR_CHACHA20_POLY1305,	"rfc7539esp(chacha20,poly1305)"},
 };
 
 /**
@@ -734,6 +735,7 @@ static struct xfrm_selector ts2selector(traffic_selector_t *src,
 										traffic_selector_t *dst)
 {
 	struct xfrm_selector sel;
+	u_int16_t port;
 
 	memset(&sel, 0, sizeof(sel));
 	sel.family = (src->get_type(src) == TS_IPV4_ADDR_RANGE) ? AF_INET : AF_INET6;
@@ -746,13 +748,13 @@ static struct xfrm_selector ts2selector(traffic_selector_t *src,
 	if ((sel.proto == IPPROTO_ICMP || sel.proto == IPPROTO_ICMPV6) &&
 		(sel.dport || sel.sport))
 	{
-		/* the ICMP type is encoded in the most significant 8 bits and the ICMP
-		 * code in the least significant 8 bits of the port.  via XFRM we have
-		 * to pass the ICMP type and code in the source and destination port
-		 * fields, respectively.  the port is in network byte order. */
-		u_int16_t port = max(sel.dport, sel.sport);
-		sel.sport = htons(port & 0xff);
-		sel.dport = htons(port >> 8);
+		/* the kernel expects the ICMP type and code in the source and
+		 * destination port fields, respectively. */
+		port = ntohs(max(sel.dport, sel.sport));
+		sel.sport = htons(traffic_selector_icmp_type(port));
+		sel.sport_mask = sel.sport ? ~0 : 0;
+		sel.dport = htons(traffic_selector_icmp_code(port));
+		sel.dport_mask = sel.dport ? ~0 : 0;
 	}
 	sel.ifindex = 0;
 	sel.user = 0;
@@ -1291,6 +1293,7 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		case ENCR_AES_GCM_ICV16:
 		case ENCR_NULL_AUTH_AES_GMAC:
 		case ENCR_CAMELLIA_CCM_ICV16:
+		case ENCR_CHACHA20_POLY1305:
 			icv_size += 32;
 			/* FALL */
 		case ENCR_AES_CCM_ICV12:
@@ -2022,10 +2025,17 @@ METHOD(kernel_ipsec_t, flush_sas, status_t,
 	netlink_buf_t request;
 	struct nlmsghdr *hdr;
 	struct xfrm_usersa_flush *flush;
+	struct {
+		u_int8_t proto;
+		char *name;
+	} protos[] = {
+		{ IPPROTO_AH, "AH" },
+		{ IPPROTO_ESP, "ESP" },
+		{ IPPROTO_COMP, "IPComp" },
+	};
+	int i;
 
 	memset(&request, 0, sizeof(request));
-
-	DBG2(DBG_KNL, "flushing all SAD entries");
 
 	hdr = &request.hdr;
 	hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
@@ -2033,12 +2043,18 @@ METHOD(kernel_ipsec_t, flush_sas, status_t,
 	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct xfrm_usersa_flush));
 
 	flush = NLMSG_DATA(hdr);
-	flush->proto = IPSEC_PROTO_ANY;
 
-	if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+	for (i = 0; i < countof(protos); i++)
 	{
-		DBG1(DBG_KNL, "unable to flush SAD entries");
-		return FAILED;
+		DBG2(DBG_KNL, "flushing all %s SAD entries", protos[i].name);
+
+		flush->proto = protos[i].proto;
+
+		if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+		{
+			DBG1(DBG_KNL, "unable to flush %s SAD entries", protos[i].name);
+			return FAILED;
+		}
 	}
 	return SUCCESS;
 }
@@ -2057,6 +2073,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 	ipsec_sa_t *ipsec = mapping->sa;
 	struct xfrm_userpolicy_info *policy_info;
 	struct nlmsghdr *hdr;
+	status_t status;
 	int i;
 
 	/* clone the policy so we are able to check it out again later */
@@ -2151,7 +2168,14 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 	}
 	this->mutex->unlock(this->mutex);
 
-	if (this->socket_xfrm->send_ack(this->socket_xfrm, hdr) != SUCCESS)
+	status = this->socket_xfrm->send_ack(this->socket_xfrm, hdr);
+	if (status == ALREADY_DONE && !update)
+	{
+		DBG1(DBG_KNL, "policy already exists, try to update it");
+		hdr->nlmsg_type = XFRM_MSG_UPDPOLICY;
+		status = this->socket_xfrm->send_ack(this->socket_xfrm, hdr);
+	}
+	if (status != SUCCESS)
 	{
 		return FAILED;
 	}
@@ -2560,6 +2584,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 
 	if (!add_mark(hdr, sizeof(request), mark))
 	{
+		this->mutex->unlock(this->mutex);
 		return FAILED;
 	}
 

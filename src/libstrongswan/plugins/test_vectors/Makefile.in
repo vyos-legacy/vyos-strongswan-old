@@ -133,11 +133,11 @@ am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
 	test_vectors/3des_cbc.lo test_vectors/aes_cbc.lo \
 	test_vectors/aes_ctr.lo test_vectors/aes_xcbc.lo \
 	test_vectors/aes_cmac.lo test_vectors/aes_ccm.lo \
-	test_vectors/aes_gcm.lo test_vectors/blowfish.lo \
-	test_vectors/camellia_cbc.lo test_vectors/camellia_ctr.lo \
-	test_vectors/camellia_xcbc.lo test_vectors/cast.lo \
-	test_vectors/des.lo test_vectors/idea.lo test_vectors/null.lo \
-	test_vectors/rc2.lo test_vectors/rc5.lo \
+	test_vectors/aes_gcm.lo test_vectors/chacha20poly1305.lo \
+	test_vectors/blowfish.lo test_vectors/camellia_cbc.lo \
+	test_vectors/camellia_ctr.lo test_vectors/camellia_xcbc.lo \
+	test_vectors/cast.lo test_vectors/des.lo test_vectors/idea.lo \
+	test_vectors/null.lo test_vectors/rc2.lo test_vectors/rc5.lo \
 	test_vectors/serpent_cbc.lo test_vectors/twofish_cbc.lo \
 	test_vectors/md2.lo test_vectors/md4.lo test_vectors/md5.lo \
 	test_vectors/md5_hmac.lo test_vectors/sha1.lo \
@@ -461,6 +461,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/aes_cmac.c \
 	test_vectors/aes_ccm.c \
 	test_vectors/aes_gcm.c \
+	test_vectors/chacha20poly1305.c \
 	test_vectors/blowfish.c \
 	test_vectors/camellia_cbc.c \
 	test_vectors/camellia_ctr.c \
@@ -589,6 +590,8 @@ test_vectors/aes_ccm.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/aes_gcm.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/chacha20poly1305.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/blowfish.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/camellia_cbc.lo: test_vectors/$(am__dirstamp) \
@@ -666,6 +669,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/camellia_ctr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/camellia_xcbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/cast.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/chacha20poly1305.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/des.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecpbp.Plo@am__quote@
