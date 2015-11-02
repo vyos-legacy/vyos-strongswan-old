@@ -9,6 +9,10 @@ strongswan (5.3.3-1) UNRELEASED; urgency=medium
   * New upstream release.                                       closes: #803772
   * debian/strongswan-starter.install:
     - install new pki --dn manpage to ipsec-starter package. 
+  * debian/patches:
+    - 0001-socket-default-Refactor-setting-source-address-when- added (taken
+    from ab8337b in the socket-default-refactor branch), fix source address
+    selection with IPv6
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 22 Oct 2015 11:44:21 +0200
 
