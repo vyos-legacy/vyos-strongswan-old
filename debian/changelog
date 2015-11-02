@@ -6,7 +6,7 @@ strongswan (5.3.3-1) UNRELEASED; urgency=medium
     - add build-dep on iptables-dev.
   * debian/libstrongswan-standard-plugins:
     - add connmark plugin to the standard-plugins package.
-  * New upstream release.
+  * New upstream release.                                       closes: #803772
   * debian/strongswan-starter.install:
     - install new pki --dn manpage to ipsec-starter package. 
 
