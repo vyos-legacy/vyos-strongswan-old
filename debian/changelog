@@ -1,4 +1,4 @@
-strongswan (5.3.3-1) UNRELEASED; urgency=medium
+strongswan (5.3.3-1) unstable; urgency=medium
 
   * debian/rules:
     - enable the connmark plugin.
@@ -15,7 +15,7 @@ strongswan (5.3.3-1) UNRELEASED; urgency=medium
     from c761db and 9e8b4a in the 1171-socket-default-scope branch), fix
     source address selection with IPv6 (upstream #1171)
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 22 Oct 2015 11:44:21 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 03 Nov 2015 21:56:23 +0100
 
 strongswan (5.3.2-1) unstable; urgency=medium
 
