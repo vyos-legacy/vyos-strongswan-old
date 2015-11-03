@@ -1,18 +1,23 @@
-From ab8337b3e8e5d4b8650b7d03b7193c7e734554f0 Mon Sep 17 00:00:00 2001
+From c761db5fa990ed2ccae96a180caef757f7e49833 Mon Sep 17 00:00:00 2001
 From: Tobias Brunner <tobias@strongswan.org>
 Date: Mon, 2 Nov 2015 16:22:38 +0100
 Subject: [PATCH] socket-default: Refactor setting source address when sending
  messages
 
 This ensures we don't pass data (via msg_control) defined in a different
-scope to sendmsg() and also makes the code clearer than with the interleaving
-ifdefs.
+scope to sendmsg().  Actually, some compilers (e.g. GCC 5.2.1) might
+optimize the memcpy() call away causing the packets not to get sent from
+the intended source address.
+
+It also makes the code clearer than with all these ifdefs.
+
+ #1171
 ---
  .../plugins/socket_default/socket_default_socket.c | 153 ++++++++++++++-------
  1 file changed, 107 insertions(+), 46 deletions(-)
 
 diff --git a/src/libcharon/plugins/socket_default/socket_default_socket.c b/src/libcharon/plugins/socket_default/socket_default_socket.c
-index 5585377..c9a2d51 100644
+index 421593c..13bf3e7 100644
 --- a/src/libcharon/plugins/socket_default/socket_default_socket.c
 +++ b/src/libcharon/plugins/socket_default/socket_default_socket.c
 @@ -355,6 +355,107 @@ METHOD(socket_t, receiver, status_t,
