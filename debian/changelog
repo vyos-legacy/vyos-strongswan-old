@@ -1,11 +1,11 @@
-strongswan (5.3.3-3) UNRELEASED; urgency=high
+strongswan (5.3.3-3) unstable; urgency=high
 
   * Set urgency=high for security fix.
   * debian/patches:
     - CVE-2015-8023_eap_mschapv2_state added, fix authentication bypass when
     using EAP MSCHAPv2.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 16 Nov 2015 12:32:58 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 16 Nov 2015 12:35:28 +0100
 
 strongswan (5.3.3-2) unstable; urgency=medium
 
