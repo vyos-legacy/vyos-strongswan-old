@@ -65,6 +65,10 @@ charon.dh_exponent_ansi_x9_42 = yes
 	Use ANSI X9.42 DH exponent size or optimum size matched to cryptographic
 	strength.
 
+charon.dlopen_use_rtld_now = no
+	Use RTLD_NOW with dlopen when loading plugins and IMV/IMCs to reveal missing
+	symbols immediately.
+
 charon.dns1
 	DNS server assigned to peer via configuration payload (CP).
 
@@ -203,6 +207,10 @@ charon.load_modular = no
 	is 1). If two plugins have the same priority their order in the default
 	plugin list is preserved. Enabled plugins not found in that list are ordered
 	alphabetically before other plugins with the same priority.
+
+charon.max_ikev1_exchanges = 3
+	Maximum number of IKEv1 phase 2 exchanges per IKE_SA to keep state about and
+	track concurrently.
 
 charon.max_packet = 10000
 	Maximum packet size accepted by charon.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 Tobias Brunner
+ * Copyright (C) 2008-2015 Tobias Brunner
  * Copyright (C) 2008 Andreas Steffen
  * Hochschule fuer Technik Rapperswil
  *
@@ -843,7 +843,9 @@ static kernel_algorithm_t encryption_algs[] = {
 /*	{ENCR_DES_IV32,				0							}, */
 	{ENCR_NULL,					SADB_EALG_NULL				},
 	{ENCR_AES_CBC,				SADB_X_EALG_AESCBC			},
-/*	{ENCR_AES_CTR,				SADB_X_EALG_AESCTR			}, */
+#ifdef SADB_X_EALG_AESCTR
+	{ENCR_AES_CTR,				SADB_X_EALG_AESCTR			},
+#endif
 /*  {ENCR_AES_CCM_ICV8,			SADB_X_EALG_AES_CCM_ICV8	}, */
 /*	{ENCR_AES_CCM_ICV12,		SADB_X_EALG_AES_CCM_ICV12	}, */
 /*	{ENCR_AES_CCM_ICV16,		SADB_X_EALG_AES_CCM_ICV16	}, */
@@ -2689,8 +2691,9 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 }
 
 METHOD(kernel_ipsec_t, del_policy, status_t,
-	private_kernel_pfkey_ipsec_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, u_int32_t reqid,
+	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
+	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
+	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
 	mark_t mark, policy_priority_t prio)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
@@ -2702,6 +2705,11 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	bool first = TRUE, is_installed = TRUE;
 	u_int32_t priority;
 	size_t len;
+	ipsec_sa_t assigned_sa = {
+		.src = src,
+		.dst = dst,
+		.cfg = *sa,
+	};
 
 	if (dir2kernel(direction) == IPSEC_DIR_INVALID)
 	{	/* FWD policies are not supported on all platforms */
@@ -2735,7 +2743,8 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	enumerator = policy->used_by->create_enumerator(policy->used_by);
 	while (enumerator->enumerate(enumerator, (void**)&mapping))
 	{
-		if (reqid == mapping->sa->cfg.reqid && priority == mapping->priority)
+		if (priority == mapping->priority &&
+			ipsec_sa_equals(mapping->sa, &assigned_sa))
 		{
 			to_remove = mapping;
 			is_installed = first;

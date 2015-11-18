@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2013 Tobias Brunner
+ * Copyright (C) 2006-2015 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2008 Andreas Steffen
  * Copyright (C) 2006-2007 Fabian Hartmann, Noah Heusser
@@ -316,11 +316,6 @@ struct private_kernel_netlink_ipsec_t {
 	 * mode IPsec SAs
 	 */
 	bool proto_port_transport;
-
-	/**
-	 * Whether to track the history of a policy
-	 */
-	bool policy_history;
 
 	/**
 	 * Whether to always use UPDATE to install policies
@@ -2140,7 +2135,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 			{
 				continue;
 			}
-			tmpl->reqid = policy->reqid;
+			tmpl->reqid = ipsec->cfg.reqid;
 			tmpl->id.proto = protos[i].proto;
 			tmpl->aalgos = tmpl->ealgos = tmpl->calgos = ~0;
 			tmpl->mode = mode2kernel(proto_mode);
@@ -2322,7 +2317,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	current = this->policies->get(this->policies, policy);
 	if (current)
 	{
-		if (current->reqid != sa->reqid)
+		if (current->reqid && sa->reqid && current->reqid != sa->reqid)
 		{
 			DBG1(DBG_CFG, "unable to install policy %R === %R %N (mark "
 				 "%u/0x%08x) for reqid %u, the same policy for reqid %u exists",
@@ -2352,26 +2347,19 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 								   dst_ts, mark, sa);
 	assigned_sa->priority = get_priority(policy, priority);
 
-	if (this->policy_history)
-	{	/* insert the SA according to its priority */
-		enumerator = policy->used_by->create_enumerator(policy->used_by);
-		while (enumerator->enumerate(enumerator, (void**)&current_sa))
+	/* insert the SA according to its priority */
+	enumerator = policy->used_by->create_enumerator(policy->used_by);
+	while (enumerator->enumerate(enumerator, (void**)&current_sa))
+	{
+		if (current_sa->priority >= assigned_sa->priority)
 		{
-			if (current_sa->priority >= assigned_sa->priority)
-			{
-				break;
-			}
-			update = FALSE;
+			break;
 		}
-		policy->used_by->insert_before(policy->used_by, enumerator,
-									   assigned_sa);
-		enumerator->destroy(enumerator);
+		update = FALSE;
 	}
-	else
-	{	/* simply insert it last and only update if it is not installed yet */
-		policy->used_by->insert_last(policy->used_by, assigned_sa);
-		update = !found;
-	}
+	policy->used_by->insert_before(policy->used_by, enumerator,
+								   assigned_sa);
+	enumerator->destroy(enumerator);
 
 	if (!update)
 	{	/* we don't update the policy if the priority is lower than that of
@@ -2482,8 +2470,9 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 }
 
 METHOD(kernel_ipsec_t, del_policy, status_t,
-	private_kernel_netlink_ipsec_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, u_int32_t reqid,
+	private_kernel_netlink_ipsec_t *this, host_t *src, host_t *dst,
+	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
+	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
 	mark_t mark, policy_priority_t prio)
 {
 	policy_entry_t *current, policy;
@@ -2494,6 +2483,12 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	struct xfrm_userpolicy_id *policy_id;
 	bool is_installed = TRUE;
 	u_int32_t priority;
+	ipsec_sa_t assigned_sa = {
+		.src = src,
+		.dst = dst,
+		.mark = mark,
+		.cfg = *sa,
+	};
 
 	DBG2(DBG_KNL, "deleting policy %R === %R %N  (mark %u/0x%08x)",
 				   src_ts, dst_ts, policy_dir_names, direction,
@@ -2508,7 +2503,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	/* find the policy */
 	this->mutex->lock(this->mutex);
 	current = this->policies->get(this->policies, &policy);
-	if (!current || current->reqid != reqid)
+	if (!current)
 	{
 		if (mark.value)
 		{
@@ -2525,28 +2520,21 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 		return NOT_FOUND;
 	}
 
-	if (this->policy_history)
-	{	/* remove mapping to SA by reqid and priority */
-		priority = get_priority(current, prio);
-		enumerator = current->used_by->create_enumerator(current->used_by);
-		while (enumerator->enumerate(enumerator, (void**)&mapping))
+	/* remove mapping to SA by reqid and priority */
+	priority = get_priority(current, prio);
+	enumerator = current->used_by->create_enumerator(current->used_by);
+	while (enumerator->enumerate(enumerator, (void**)&mapping))
+	{
+		if (priority == mapping->priority && type == mapping->type &&
+			ipsec_sa_equals(mapping->sa, &assigned_sa))
 		{
-			if (priority == mapping->priority)
-			{
-				current->used_by->remove_at(current->used_by, enumerator);
-				policy_sa_destroy(mapping, &direction, this);
-				break;
-			}
-			is_installed = FALSE;
+			current->used_by->remove_at(current->used_by, enumerator);
+			policy_sa_destroy(mapping, &direction, this);
+			break;
 		}
-		enumerator->destroy(enumerator);
-	}
-	else
-	{	/* remove one of the SAs but don't update the policy */
-		current->used_by->remove_last(current->used_by, (void**)&mapping);
-		policy_sa_destroy(mapping, &direction, this);
 		is_installed = FALSE;
 	}
+	enumerator->destroy(enumerator);
 
 	if (current->used_by->get_count(current->used_by) > 0)
 	{	/* policy is used by more SAs, keep in kernel */
@@ -2915,7 +2903,6 @@ kernel_netlink_ipsec_t *kernel_netlink_ipsec_create()
 								(hashtable_equals_t)ipsec_sa_equals, 32),
 		.bypass = array_create(sizeof(bypass_t), 0),
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
-		.policy_history = TRUE,
 		.policy_update = lib->settings->get_bool(lib->settings,
 					"%s.plugins.kernel-netlink.policy_update", FALSE, lib->ns),
 		.install_routes = lib->settings->get_bool(lib->settings,

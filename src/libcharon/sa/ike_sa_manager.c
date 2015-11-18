@@ -394,9 +394,17 @@ struct private_ike_sa_manager_t {
 	rng_t *rng;
 
 	/**
-	 * Lock to access the RNG instance
+	 * Registered callback for IKE SPIs
 	 */
-	rwlock_t *rng_lock;
+	struct {
+		spi_cb_t cb;
+		void *data;
+	} spi_cb;
+
+	/**
+	 * Lock to access the RNG instance and the callback
+	 */
+	rwlock_t *spi_lock;
 
 	/**
 	 * reuse existing IKE_SAs in checkout_by_config
@@ -971,13 +979,17 @@ static u_int64_t get_spi(private_ike_sa_manager_t *this)
 {
 	u_int64_t spi;
 
-	this->rng_lock->read_lock(this->rng_lock);
-	if (!this->rng ||
-		!this->rng->get_bytes(this->rng, sizeof(spi), (u_int8_t*)&spi))
+	this->spi_lock->read_lock(this->spi_lock);
+	if (this->spi_cb.cb)
+	{
+		spi = this->spi_cb.cb(this->spi_cb.data);
+	}
+	else if (!this->rng ||
+			 !this->rng->get_bytes(this->rng, sizeof(spi), (u_int8_t*)&spi))
 	{
 		spi = 0;
 	}
-	this->rng_lock->unlock(this->rng_lock);
+	this->spi_lock->unlock(this->spi_lock);
 	return spi;
 }
 
@@ -1188,11 +1200,15 @@ METHOD(ike_sa_manager_t, checkout_new, ike_sa_t*,
  */
 static u_int32_t get_message_id_or_hash(message_t *message)
 {
-	/* Use the message ID, or the message hash in IKEv1 Main/Aggressive mode */
-	if (message->get_major_version(message) == IKEV1_MAJOR_VERSION &&
-		message->get_message_id(message) == 0)
+	if (message->get_major_version(message) == IKEV1_MAJOR_VERSION)
 	{
-		return chunk_hash(message->get_packet_data(message));
+		/* Use a hash for IKEv1 Phase 1, where we don't have a MID, and Quick
+		 * Mode, where all three messages use the same message ID */
+		if (message->get_message_id(message) == 0 ||
+			message->get_exchange_type(message) == QUICK_MODE)
+		{
+			return chunk_hash(message->get_packet_data(message));
+		}
 	}
 	return message->get_message_id(message);
 }
@@ -1384,7 +1400,8 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 			continue;
 		}
 		if (entry->ike_sa->get_state(entry->ike_sa) == IKE_DELETING)
-		{	/* skip IKE_SAs which are not usable */
+		{	/* skip IKE_SAs which are not usable, wake other waiting threads */
+			entry->condvar->signal(entry->condvar);
 			continue;
 		}
 
@@ -1402,6 +1419,8 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 				break;
 			}
 		}
+		/* other threads might be waiting for this entry */
+		entry->condvar->signal(entry->condvar);
 	}
 	enumerator->destroy(enumerator);
 
@@ -1434,6 +1453,8 @@ METHOD(ike_sa_manager_t, checkout_by_id, ike_sa_t*,
 				entry->checked_out = TRUE;
 				break;
 			}
+			/* other threads might be waiting for this entry */
+			entry->condvar->signal(entry->condvar);
 		}
 	}
 	enumerator->destroy(enumerator);
@@ -1490,6 +1511,8 @@ METHOD(ike_sa_manager_t, checkout_by_name, ike_sa_t*,
 						ike_sa->get_name(ike_sa), ike_sa->get_unique_id(ike_sa));
 				break;
 			}
+			/* other threads might be waiting for this entry */
+			entry->condvar->signal(entry->condvar);
 		}
 	}
 	enumerator->destroy(enumerator);
@@ -1628,8 +1651,27 @@ METHOD(ike_sa_manager_t, checkin, void,
 			 * delete any existing IKE_SAs with that peer. */
 			if (ike_sa->has_condition(ike_sa, COND_INIT_CONTACT_SEEN))
 			{
+				/* We can't hold the segment locked while checking the
+				 * uniqueness as this could lead to deadlocks.  We mark the
+				 * entry as checked out while we release the lock so no other
+				 * thread can acquire it.  Since it is not yet in the list of
+				 * connected peers that will not cause a deadlock as no other
+				 * caller of check_unqiueness() will try to check out this SA */
+				entry->checked_out = TRUE;
+				unlock_single_segment(this, segment);
+
 				this->public.check_uniqueness(&this->public, ike_sa, TRUE);
 				ike_sa->set_condition(ike_sa, COND_INIT_CONTACT_SEEN, FALSE);
+
+				/* The entry could have been modified in the mean time, e.g.
+				 * because another SA was added/removed next to it or another
+				 * thread is waiting, but it should still exist, so there is no
+				 * need for a lookup via get_entry_by... */
+				lock_single_segment(this, segment);
+				entry->checked_out = FALSE;
+				/* We already signaled waiting threads above, we have to do that
+				 * again after checking the SA out and back in again. */
+				entry->condvar->signal(entry->condvar);
 			}
 		}
 
@@ -2010,6 +2052,15 @@ METHOD(ike_sa_manager_t, get_half_open_count, u_int,
 	return count;
 }
 
+METHOD(ike_sa_manager_t, set_spi_cb, void,
+	private_ike_sa_manager_t *this, spi_cb_t callback, void *data)
+{
+	this->spi_lock->write_lock(this->spi_lock);
+	this->spi_cb.cb = callback;
+	this->spi_cb.data = data;
+	this->spi_lock->unlock(this->spi_lock);
+}
+
 METHOD(ike_sa_manager_t, flush, void,
 	private_ike_sa_manager_t *this)
 {
@@ -2092,10 +2143,12 @@ METHOD(ike_sa_manager_t, flush, void,
 	charon->bus->set_sa(charon->bus, NULL);
 	unlock_all_segments(this);
 
-	this->rng_lock->write_lock(this->rng_lock);
+	this->spi_lock->write_lock(this->spi_lock);
 	this->rng->destroy(this->rng);
 	this->rng = NULL;
-	this->rng_lock->unlock(this->rng_lock);
+	this->spi_cb.cb = NULL;
+	this->spi_cb.data = NULL;
+	this->spi_lock->unlock(this->spi_lock);
 }
 
 METHOD(ike_sa_manager_t, destroy, void,
@@ -2120,7 +2173,7 @@ METHOD(ike_sa_manager_t, destroy, void,
 	free(this->connected_peers_segments);
 	free(this->init_hashes_segments);
 
-	this->rng_lock->destroy(this->rng_lock);
+	this->spi_lock->destroy(this->spi_lock);
 	free(this);
 }
 
@@ -2167,6 +2220,7 @@ ike_sa_manager_t *ike_sa_manager_create()
 			.get_count = _get_count,
 			.get_half_open_count = _get_half_open_count,
 			.flush = _flush,
+			.set_spi_cb = _set_spi_cb,
 			.destroy = _destroy,
 		},
 	);
@@ -2178,7 +2232,7 @@ ike_sa_manager_t *ike_sa_manager_create()
 		free(this);
 		return NULL;
 	}
-	this->rng_lock = rwlock_create(RWLOCK_TYPE_DEFAULT);
+	this->spi_lock = rwlock_create(RWLOCK_TYPE_DEFAULT);
 
 	this->ikesa_limit = lib->settings->get_int(lib->settings,
 											   "%s.ikesa_limit", 0, lib->ns);

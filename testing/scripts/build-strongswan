@@ -49,7 +49,21 @@ log_action "Mounting $SWANDIR as /root/strongswan"
 execute "bindfs -u $SRCUID -g $SRCGID $SWANDIR $LOOPDIR/root/strongswan"
 do_on_exit umount $LOOPDIR/root/strongswan
 
+log_action "Remove SWID tags of previous versions"
+execute_chroot 'find /usr/local/share/regid.2004-03.org.strongswan -name *.swidtag -delete'
+
 echo "Building and installing strongSwan"
+
+log_action "Determine strongSwan version"
+desc=`git -C $SWANDIR describe --dirty`
+if [ $? -eq 0 ]; then
+	SWANVERSION="$desc (`git -C $SWANDIR rev-parse --abbrev-ref HEAD`)"
+else
+	SWANVERSION="`cat $SWANDIR/configure.ac | sed -n '/^AC_INIT/{ s/.*,\[\(.*\)\])$/\1/p }'`"
+fi
+echo "$SWANVERSION" > $SHAREDDIR/.strongswan-version
+log_status 0
+
 log_action "Preparing source tree"
 execute_chroot 'autoreconf -i /root/strongswan'
 

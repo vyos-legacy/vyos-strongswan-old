@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2013 Tobias Brunner
+ * Copyright (C) 2006-2015 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -265,9 +265,6 @@ struct kernel_interface_t {
 	/**
 	 * Add a policy to the SPD.
 	 *
-	 * A policy is always associated to an SA. Traffic which matches a
-	 * policy is handled by the SA with the same reqid.
-	 *
 	 * @param src			source address of SA
 	 * @param dst			dest address of SA
 	 * @param src_ts		traffic selector to match traffic source
@@ -309,24 +306,24 @@ struct kernel_interface_t {
 	/**
 	 * Remove a policy from the SPD.
 	 *
-	 * The kernel interface implements reference counting for policies.
-	 * If the same policy is installed multiple times (in the case of rekeying),
-	 * the reference counter is increased. del_policy() decreases the ref counter
-	 * and removes the policy only when no more references are available.
-	 *
+	 * @param src			source address of SA
+	 * @param dst			dest address of SA
 	 * @param src_ts		traffic selector to match traffic source
 	 * @param dst_ts		traffic selector to match traffic dest
 	 * @param direction		direction of traffic, POLICY_(IN|OUT|FWD)
-	 * @param reqid			unique ID of the associated SA
-	 * @param mark			optional mark
+	 * @param type			type of policy, POLICY_(IPSEC|PASS|DROP)
+	 * @param sa			details about the SA(s) tied to this policy
+	 * @param mark			mark for this policy
 	 * @param priority		priority of the policy
 	 * @return				SUCCESS if operation completed
 	 */
 	status_t (*del_policy) (kernel_interface_t *this,
+							host_t *src, host_t *dst,
 							traffic_selector_t *src_ts,
 							traffic_selector_t *dst_ts,
-							policy_dir_t direction, u_int32_t reqid,
-							mark_t mark, policy_priority_t priority);
+							policy_dir_t direction, policy_type_t type,
+							ipsec_sa_cfg_t *sa, mark_t mark,
+							policy_priority_t priority);
 
 	/**
 	 * Flush all policies from the SPD.
@@ -502,39 +499,49 @@ struct kernel_interface_t {
 	/**
 	 * Register an ipsec kernel interface constructor on the manager.
 	 *
-	 * @param create			constructor to register
+	 * @param create		constructor to register
+	 * @return				TRUE if the ipsec kernel interface was registered
+	 *						successfully, FALSE if an interface was already
+	 *						registered or the registration failed
 	 */
-	void (*add_ipsec_interface)(kernel_interface_t *this,
+	bool (*add_ipsec_interface)(kernel_interface_t *this,
 								kernel_ipsec_constructor_t create);
 
 	/**
 	 * Unregister an ipsec kernel interface constructor.
 	 *
-	 * @param create			constructor to unregister
+	 * @param create		constructor to unregister
+	 * @return				TRUE if the ipsec kernel interface was unregistered
+	 *						successfully, FALSE otherwise
 	 */
-	void (*remove_ipsec_interface)(kernel_interface_t *this,
+	bool (*remove_ipsec_interface)(kernel_interface_t *this,
 								   kernel_ipsec_constructor_t create);
 
 	/**
 	 * Register a network kernel interface constructor on the manager.
 	 *
-	 * @param create			constructor to register
+	 * @param create		constructor to register
+	 * @return				TRUE if the kernel net interface was registered
+	 *						successfully, FALSE if an interface was already
+	 *						registered or the registration failed
 	 */
-	void (*add_net_interface)(kernel_interface_t *this,
+	bool (*add_net_interface)(kernel_interface_t *this,
 							  kernel_net_constructor_t create);
 
 	/**
 	 * Unregister a network kernel interface constructor.
 	 *
-	 * @param create			constructor to unregister
+	 * @param create		constructor to unregister
+	 * @return				TRUE if the kernel net interface was unregistered
+	 *						successfully, FALSE otherwise
 	 */
-	void (*remove_net_interface)(kernel_interface_t *this,
+	bool (*remove_net_interface)(kernel_interface_t *this,
 								 kernel_net_constructor_t create);
 
 	/**
 	 * Add a listener to the kernel interface.
 	 *
-	 * @param listener			listener to add
+	 * @param listener		listener to add
 	 */
 	void (*add_listener)(kernel_interface_t *this,
 						 kernel_listener_t *listener);
@@ -542,7 +549,7 @@ struct kernel_interface_t {
 	/**
 	 * Remove a listener from the kernel interface.
 	 *
-	 * @param listener			listener to remove
+	 * @param listener		listener to remove
 	 */
 	void (*remove_listener)(kernel_interface_t *this,
 							kernel_listener_t *listener);

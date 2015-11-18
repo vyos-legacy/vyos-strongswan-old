@@ -752,6 +752,12 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 			case ALREADY_DONE:
 				cancelled = TRUE;
 				break;
+			case INVALID_ARG:
+				if (task->get_type(task) == TASK_QUICK_MODE)
+				{	/* not responsible for this exchange */
+					continue;
+				}
+				/* FALL */
 			case FAILED:
 			default:
 				charon->bus->ike_updown(charon->bus, this->ike_sa, FALSE);
@@ -929,6 +935,28 @@ static bool have_quick_mode_task(private_task_manager_t *this, u_int32_t mid)
 }
 
 /**
+ * Check if we still have an aggressive mode task queued
+ */
+static bool have_aggressive_mode_task(private_task_manager_t *this)
+{
+	enumerator_t *enumerator;
+	task_t *task;
+	bool found = FALSE;
+
+	enumerator = this->passive_tasks->create_enumerator(this->passive_tasks);
+	while (enumerator->enumerate(enumerator, &task))
+	{
+		if (task->get_type(task) == TASK_AGGRESSIVE_MODE)
+		{
+			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+	return found;
+}
+
+/**
  * handle an incoming request message
  */
 static status_t process_request(private_task_manager_t *this,
@@ -1034,6 +1062,12 @@ static status_t process_request(private_task_manager_t *this,
 			case ALREADY_DONE:
 				send_response = FALSE;
 				break;
+			case INVALID_ARG:
+				if (task->get_type(task) == TASK_QUICK_MODE)
+				{	/* not responsible for this exchange */
+					continue;
+				}
+				/* FALL */
 			case FAILED:
 			default:
 				charon->bus->ike_updown(charon->bus, this->ike_sa, FALSE);
@@ -1060,6 +1094,22 @@ static status_t process_request(private_task_manager_t *this,
 	{	/* We don't send a response, so don't retransmit one if we get
 		 * the same message again. */
 		clear_packets(this->responding.packets);
+	}
+	if (this->queued &&
+		this->queued->get_exchange_type(this->queued) == INFORMATIONAL_V1)
+	{
+		message_t *queued;
+		status_t status;
+
+		queued = this->queued;
+		this->queued = NULL;
+		status = this->public.task_manager.process_message(
+											&this->public.task_manager, queued);
+		queued->destroy(queued);
+		if (status == DESTROY_ME)
+		{
+			return status;
+		}
 	}
 	if (this->passive_tasks->get_count(this->passive_tasks) == 0 &&
 		this->queued_tasks->get_count(this->queued_tasks) > 0)
@@ -1133,7 +1183,8 @@ static status_t process_response(private_task_manager_t *this,
 	this->initiating.type = EXCHANGE_TYPE_UNDEFINED;
 	clear_packets(this->initiating.packets);
 
-	if (this->queued && this->active_tasks->get_count(this->active_tasks) == 0)
+	if (this->queued && !this->active_tasks->get_count(this->active_tasks) &&
+		this->queued->get_exchange_type(this->queued) == TRANSACTION)
 	{
 		queued = this->queued;
 		this->queued = NULL;
@@ -1226,6 +1277,29 @@ static status_t parse_message(private_task_manager_t *this, message_t *msg)
 		return handle_fragment(this, msg);
 	}
 	return status;
+}
+
+/**
+ * Queue the given message if possible
+ */
+static status_t queue_message(private_task_manager_t *this, message_t *msg)
+{
+	if (this->queued)
+	{
+		DBG1(DBG_IKE, "ignoring %N request, queue full",
+			 exchange_type_names, msg->get_exchange_type(msg));
+		return FAILED;
+	}
+	this->queued = message_create_from_packet(msg->get_packet(msg));
+	if (this->queued->parse_header(this->queued) != SUCCESS)
+	{
+		this->queued->destroy(this->queued);
+		this->queued = NULL;
+		return FAILED;
+	}
+	DBG1(DBG_IKE, "queueing %N request as tasks still active",
+		 exchange_type_names, msg->get_exchange_type(msg));
+	return SUCCESS;
 }
 
 METHOD(task_manager_t, process_message, status_t,
@@ -1328,25 +1402,29 @@ METHOD(task_manager_t, process_message, status_t,
 			}
 		}
 
-		if (msg->get_exchange_type(msg) == TRANSACTION &&
-			this->active_tasks->get_count(this->active_tasks))
-		{	/* main mode not yet complete, queue XAuth/Mode config tasks */
-			if (this->queued)
+		/* drop XAuth/Mode Config/Quick Mode messages until we received the last
+		 * Aggressive Mode message.  since Informational messages are not
+		 * retransmitted we queue them. */
+		if (have_aggressive_mode_task(this))
+		{
+			if (msg->get_exchange_type(msg) == INFORMATIONAL_V1)
 			{
-				DBG1(DBG_IKE, "ignoring additional %N request, queue full",
-					 exchange_type_names, TRANSACTION);
-				return SUCCESS;
+				return queue_message(this, msg);
 			}
-			this->queued = message_create_from_packet(msg->get_packet(msg));
-			if (this->queued->parse_header(this->queued) != SUCCESS)
+			else if (msg->get_exchange_type(msg) != AGGRESSIVE)
 			{
-				this->queued->destroy(this->queued);
-				this->queued = NULL;
+				DBG1(DBG_IKE, "ignoring %N request while phase 1 is incomplete",
+					 exchange_type_names, msg->get_exchange_type(msg));
 				return FAILED;
 			}
-			DBG1(DBG_IKE, "queueing %N request as tasks still active",
-				 exchange_type_names, TRANSACTION);
-			return SUCCESS;
+		}
+
+		/* queue XAuth/Mode Config messages unless the Main Mode exchange we
+		 * initiated is complete */
+		if (msg->get_exchange_type(msg) == TRANSACTION &&
+			this->active_tasks->get_count(this->active_tasks))
+		{
+			return queue_message(this, msg);
 		}
 
 		msg->set_request(msg, TRUE);
@@ -1724,6 +1802,8 @@ METHOD(task_manager_t, queue_dpd, void,
 							pow(this->retransmit_base, retransmit));
 		}
 	}
+	/* compensate for the already elapsed dpd delay */
+	t -= 1000 * peer_cfg->get_dpd(peer_cfg);
 
 	/* schedule DPD timeout job */
 	lib->scheduler->schedule_job_ms(lib->scheduler,

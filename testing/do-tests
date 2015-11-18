@@ -47,7 +47,6 @@ testnumber="0"
 failed_cnt="0"
 passed_cnt="0"
 
-
 ##############################################################################
 # copy default tests to $BUILDDIR
 #
@@ -105,6 +104,12 @@ do
     do_on_exit kill `eval echo \\\$ssh_pid_$host`
 done
 
+##############################################################################
+# determine actual software versions
+#
+
+[ -f $SHAREDDIR/.strongswan-version ] && SWANVERSION=`cat $SHAREDDIR/.strongswan-version`
+KERNELVERSION=`ssh $SSHCONF root@\$ipv4_winnetou uname -r 2>/dev/null`
 
 ##############################################################################
 # create header for the results html file
@@ -131,7 +136,7 @@ ENVIRONMENT_HEADER=$(cat <<@EOF
     <tr>
       <td width="100">&nbsp;</td>
       <td width="300">&nbsp;</td>
-      <td width=" 50">&nbsp;</td>
+      <td width=" 80">&nbsp;</td>
       <td >&nbsp;</td>
     </tr>
 @EOF
@@ -159,7 +164,8 @@ cat > $TESTRESULTSHTML <<@EOF
     <tr align="left">
       <th>Number</th>
       <th>Test</th>
-      <th colspan="2">Result</th>
+      <th align="right">Time [s]</th>
+      <th>Result</th>
     </tr>
 @EOF
 
@@ -249,6 +255,8 @@ do
 	testname=$SUBDIR/$name
 	log_action " $testnumber $testname:"
 
+	teststart=$(date +%s)
+
 	if [ ! -d $DEFAULTTESTSDIR/${testname} ]
 	then
 	    echo "is missing..skipped"
@@ -329,8 +337,11 @@ do
 	# copy test specific configurations to uml hosts and clear auth.log files
 	#
 
+	DBDIR=/etc/db.d
+
 	$DIR/scripts/load-testconfig $testname
 	unset RADIUSHOSTS
+	unset DBHOSTS
 	unset IPV6
 	unset SWANCTL
 	source $TESTDIR/test.conf
@@ -354,6 +365,17 @@ do
 		eval TDUP_${host}="true"
 	    done
 	fi
+
+	##########################################################################
+	# create database directory in RAM
+	#
+
+	for host in $DBHOSTS
+	do
+		eval HOSTLOGIN=root@\$ipv4_${host}
+	    ssh $SSHCONF $HOSTLOGIN "mkdir -p $DBDIR; mount -t ramfs -o size=5m ramfs $DBDIR" >/dev/null 2>&1
+	    ssh $SSHCONF $HOSTLOGIN "chgrp www-data $DBDIR; chmod g+w $DBDIR" >/dev/null 2>&1
+	done
 
 	##########################################################################
 	# flush conntrack table on all hosts
@@ -504,32 +526,20 @@ do
 
 		scp $SSHCONF $HOSTLOGIN:/etc/strongswan.conf \
 		    $TESTRESULTDIR/${host}.strongswan.conf  > /dev/null 2>&1
-
 		if [  -n "$SWANCTL" ]
 		then
 			scp $SSHCONF $HOSTLOGIN:/etc/swanctl/swanctl.conf \
 			$TESTRESULTDIR/${host}.swanctl.conf  > /dev/null 2>&1
 
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-conns \
-			    > $TESTRESULTDIR/${host}.swanctl.conns 2>/dev/null
+			for subsys in conns certs pools authorities sas pols
+			do
+				ssh $SSHCONF $HOSTLOGIN swanctl --list-$subsys \
+					> $TESTRESULTDIR/${host}.swanctl.$subsys 2>/dev/null
+			done
 
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-certs \
-			    > $TESTRESULTDIR/${host}.swanctl.certs 2>/dev/null
-
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-pools \
-			    > $TESTRESULTDIR/${host}.swanctl.pools 2>/dev/null
-
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-authorities \
-			    > $TESTRESULTDIR/${host}.swanctl.authorities 2>/dev/null
-
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-sas \
-			    > $TESTRESULTDIR/${host}.swanctl.sas 2>/dev/null
-
-		    ssh $SSHCONF $HOSTLOGIN swanctl --list-pols \
-			    > $TESTRESULTDIR/${host}.swanctl.pols 2>/dev/null
-
-		    ssh $SSHCONF $HOSTLOGIN swanctl --stats \
-			    > $TESTRESULTDIR/${host}.swanctl.stats 2>/dev/null
+			# this is quite slow due to allocation stats via leak-detective
+			ssh $SSHCONF $HOSTLOGIN swanctl --stats \
+				> $TESTRESULTDIR/${host}.swanctl.stats 2>/dev/null
 		else
 		    for file in ipsec.conf ipsec.secrets
 		    do
@@ -752,7 +762,7 @@ do
 	for host in $IPSECHOSTS
 	do
 	    eval HOSTLOGIN=root@\$ipv4_${host}
-	    ssh $SSHCONF $HOSTLOGIN "grep -E 'charon|last message repeated|imcv|pt-tls-client' \
+	    ssh $SSHCONF $HOSTLOGIN "grep -s -E 'charon|last message repeated|imcv|pt-tls-client' \
 		/var/log/auth.log" >> $TESTRESULTDIR/${host}.auth.log
 	done
 
@@ -764,7 +774,7 @@ do
 	for host in $IPSECHOSTS
 	do
 	    eval HOSTLOGIN=root@\$ipv4_${host}
-	    ssh $SSHCONF $HOSTLOGIN "grep -E 'charon|last message repeated|imcv' \
+	    ssh $SSHCONF $HOSTLOGIN "grep -s -E 'charon|last message repeated|imcv' \
 		/var/log/daemon.log" >> $TESTRESULTDIR/${host}.daemon.log
 	done
 
@@ -783,6 +793,15 @@ do
 	    fi
 	done
 
+	##########################################################################
+	# remove database directory if needed
+	#
+
+	for host in $DBHOSTS
+	do
+		eval HOSTLOGIN=root@\$ipv4_${host}
+	    ssh $SSHCONF $HOSTLOGIN "umount $DBDIR; rm -r $DBDIR" > /dev/null 2>&1
+	done
 
 	##########################################################################
 	# copy default host config back if necessary
@@ -794,6 +813,9 @@ do
 	##########################################################################
 	# write test status to html file
 	#
+	testend=$(date +%s)
+	let "testend -= teststart"
+	let "timetotal += testend"
 
 	if [ $STATUS = "passed" ]
 	then
@@ -808,8 +830,8 @@ do
   <tr>
     <td>$testnumber</td>
     <td><a href="$testname/index.html">$testname</a></td>
+    <td align="right">$testend</td>
     <td><a href="$testname/console.log"><font color="$COLOR">$STATUS</font></a></td>
-    <td>&nbsp;</td>
   </tr>
 @EOF
 	cat >> $SUBTESTSINDEX << @EOF
@@ -850,6 +872,9 @@ cat >> $TESTRESULTSHTML << @EOF
     </tr>
     <tr>
       <td><b>Failed</b></td><td><b><font color="red">$failed_cnt</font></b></td><td>&nbsp;</td><td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td><b>Time [s]</b></td><td><b><font color="blue">$timetotal</font></b></td><td>&nbsp;</td><td>&nbsp;</td>
     </tr>
   </table>
 </body>
@@ -895,6 +920,6 @@ echo
 echo "The results are available in $TODAYDIR"
 echo "or via the link http://$ipv4_winnetou/testresults/$TESTDATE"
 
-ENDDATE=`date +%Y%m%d-%H%M`
+ENDDATE=`date +%Y%m%d-%H%M-%S`
 echo
 echo "Finished : $ENDDATE"
