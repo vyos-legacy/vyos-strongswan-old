@@ -1,6 +1,5 @@
 01_fix-manpages.patch
 03_systemd-service.patch
 04_disable-libtls-tests.patch
-0001-socket-default-Refactor-setting-source-address-when-.patch
 0001-socket-dynamic-Refactor-setting-source-address-when-.patch
 CVE-2015-8023_eap_mschapv2_state.patch
