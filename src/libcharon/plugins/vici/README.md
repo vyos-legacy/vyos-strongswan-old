@@ -526,12 +526,21 @@ Unloading fails for pools with leases currently online.
 
 List the currently loaded pools.
 
-	{} => {
+	{
+		leases = <set to yes to include leases>
+	} => {
 		<pool name>* = {
 			base = <virtual IP pool base address>
 			size = <total number of addresses in the pool>
 			online = <number of leases online>
 			offline = <number of leases offline>
+			leases = {
+				<zero-based index>* = {
+					address = <IP address>
+					identity = <assigned identity>
+					status = <online|offline>
+				}
+			}
 		}
 	}
 
@@ -587,6 +596,10 @@ command.
 			initiator = <yes, if initiator of IKE_SA>
 			initiator-spi = <hex encoded initiator SPI / cookie>
 			responder-spi = <hex encoded responder SPI / cookie>
+			nat-local = <yes, if local endpoint is behind a NAT>
+			nat-remote = <yes, if remote endpoint is behind a NAT>
+			nat-fake = <yes, if NAT situation has been faked as responder>
+			nat-any = <yes, if any endpoint is behind a NAT (also if faked)>
 			encr-alg = <IKE encryption algorithm string>
 			encr-keysize = <key size for encr-alg, if applicable>
 			integ-alg = <IKE integrity algorithm string>
@@ -596,6 +609,12 @@ command.
 			established = <seconds the IKE_SA has been established>
 			rekey-time = <seconds before IKE_SA gets rekeyed>
 			reauth-time = <seconds before IKE_SA gets re-authenticated>
+			local-vips = [
+				<list of virtual IPs assigned by the remote peer, installed locally>
+			]
+			remote-vips = [
+				<list of virtual IPs assigned to the remote peer>
+			]
 			tasks-queued = [
 				<list of currently queued tasks for execution>
 			]

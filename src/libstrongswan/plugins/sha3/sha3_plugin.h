@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010 Tobias Brunner
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2015 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -13,10 +13,30 @@
  * for more details.
  */
 
-/* stuff defined in AndroidConfig.h, which is included using the -include
- * command-line option, thus cannot be undefined using -U CFLAGS options.
- * the reason we have to undefine these flags in the first place, is that
- * AndroidConfig.h defines them as 0, which in turn means that they are
- * actually defined. */
+/**
+ * @defgroup sha3_p sha3
+ * @ingroup plugins
+ *
+ * @defgroup sha3_plugin sha3_plugin
+ * @{ @ingroup sha3_p
+ */
 
-#undef HAVE_BACKTRACE
+#ifndef SHA3_PLUGIN_H_
+#define SHA3_PLUGIN_H_
+
+#include <plugins/plugin.h>
+
+typedef struct sha3_plugin_t sha3_plugin_t;
+
+/**
+ * Plugin implementing the SHA356, SHA384 and SHA512 algorithms in software.
+ */
+struct sha3_plugin_t {
+
+	/**
+	 * implements plugin interface
+	 */
+	plugin_t plugin;
+};
+
+#endif /** SHA3_PLUGIN_H_ @}*/

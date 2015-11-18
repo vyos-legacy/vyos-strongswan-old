@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2012 Tobias Brunner
+ * Copyright (C) 2006-2015 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005 Jan Hutter
@@ -324,11 +324,13 @@ static void load_file_logger(private_daemon_t *this, char *filename,
 	file_logger_t *file_logger;
 	debug_t group;
 	level_t def;
-	bool ike_name, flush_line, append;
+	bool add_ms, ike_name, flush_line, append;
 	char *time_format;
 
 	time_format = lib->settings->get_str(lib->settings,
 						"%s.filelog.%s.time_format", NULL, lib->ns, filename);
+	add_ms = lib->settings->get_bool(lib->settings,
+						"%s.filelog.%s.time_add_ms", FALSE, lib->ns, filename);
 	ike_name = lib->settings->get_bool(lib->settings,
 						"%s.filelog.%s.ike_name", FALSE, lib->ns, filename);
 	flush_line = lib->settings->get_bool(lib->settings,
@@ -337,7 +339,7 @@ static void load_file_logger(private_daemon_t *this, char *filename,
 						"%s.filelog.%s.append", TRUE, lib->ns, filename);
 
 	file_logger = add_file_logger(this, filename, current_loggers);
-	file_logger->set_options(file_logger, time_format, ike_name);
+	file_logger->set_options(file_logger, time_format, add_ms, ike_name);
 	file_logger->open(file_logger, flush_line, append);
 
 	def = lib->settings->get_int(lib->settings, "%s.filelog.%s.default", 1,
@@ -486,8 +488,6 @@ static void destroy(private_daemon_t *this)
 	DESTROY_IF(this->kernel_handler);
 	DESTROY_IF(this->public.traps);
 	DESTROY_IF(this->public.shunts);
-	DESTROY_IF(this->public.child_sa_manager);
-	DESTROY_IF(this->public.ike_sa_manager);
 	DESTROY_IF(this->public.controller);
 	DESTROY_IF(this->public.eap);
 	DESTROY_IF(this->public.xauth);
@@ -560,7 +560,6 @@ METHOD(daemon_t, start, void,
 	run_scripts(this, "start");
 }
 
-
 /**
  * Initialize/deinitialize sender and receiver
  */
@@ -584,12 +583,36 @@ static bool sender_receiver_cb(void *plugin, plugin_feature_t *feature,
 	return TRUE;
 }
 
+/**
+ * Initialize/deinitialize IKE_SA/CHILD_SA managers
+ */
+static bool sa_managers_cb(void *plugin, plugin_feature_t *feature,
+						   bool reg, private_daemon_t *this)
+{
+	if (reg)
+	{
+		this->public.ike_sa_manager = ike_sa_manager_create();
+		if (!this->public.ike_sa_manager)
+		{
+			return FALSE;
+		}
+		this->public.child_sa_manager = child_sa_manager_create();
+	}
+	else
+	{
+		DESTROY_IF(this->public.ike_sa_manager);
+		DESTROY_IF(this->public.child_sa_manager);
+	}
+	return TRUE;
+}
+
 METHOD(daemon_t, initialize, bool,
 	private_daemon_t *this, char *plugins)
 {
 	plugin_feature_t features[] = {
 		PLUGIN_PROVIDE(CUSTOM, "libcharon"),
 			PLUGIN_DEPENDS(NONCE_GEN),
+			PLUGIN_DEPENDS(CUSTOM, "libcharon-sa-managers"),
 			PLUGIN_DEPENDS(CUSTOM, "libcharon-receiver"),
 			PLUGIN_DEPENDS(CUSTOM, "kernel-ipsec"),
 			PLUGIN_DEPENDS(CUSTOM, "kernel-net"),
@@ -598,6 +621,10 @@ METHOD(daemon_t, initialize, bool,
 				PLUGIN_DEPENDS(HASHER, HASH_SHA1),
 				PLUGIN_DEPENDS(RNG, RNG_STRONG),
 				PLUGIN_DEPENDS(CUSTOM, "socket"),
+		PLUGIN_CALLBACK((plugin_feature_callback_t)sa_managers_cb, this),
+			PLUGIN_PROVIDE(CUSTOM, "libcharon-sa-managers"),
+				PLUGIN_DEPENDS(HASHER, HASH_SHA1),
+				PLUGIN_DEPENDS(RNG, RNG_WEAK),
 	};
 	lib->plugins->add_static_features(lib->plugins, lib->ns, features,
 									  countof(features), TRUE, NULL, NULL);
@@ -607,13 +634,6 @@ METHOD(daemon_t, initialize, bool,
 	{
 		return FALSE;
 	}
-
-	this->public.ike_sa_manager = ike_sa_manager_create();
-	if (this->public.ike_sa_manager == NULL)
-	{
-		return FALSE;
-	}
-	this->public.child_sa_manager = child_sa_manager_create();
 
 	/* Queue start_action job */
 	lib->processor->queue_job(lib->processor, (job_t*)start_action_job_create());

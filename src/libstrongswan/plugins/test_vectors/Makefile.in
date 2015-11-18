@@ -142,9 +142,10 @@ am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
 	test_vectors/md2.lo test_vectors/md4.lo test_vectors/md5.lo \
 	test_vectors/md5_hmac.lo test_vectors/sha1.lo \
 	test_vectors/sha1_hmac.lo test_vectors/sha2.lo \
-	test_vectors/sha2_hmac.lo test_vectors/fips_prf.lo \
-	test_vectors/modp.lo test_vectors/modpsub.lo \
-	test_vectors/ecp.lo test_vectors/ecpbp.lo test_vectors/rng.lo
+	test_vectors/sha2_hmac.lo test_vectors/sha3.lo \
+	test_vectors/fips_prf.lo test_vectors/modp.lo \
+	test_vectors/modpsub.lo test_vectors/ecp.lo \
+	test_vectors/ecpbp.lo test_vectors/rng.lo
 libstrongswan_test_vectors_la_OBJECTS =  \
 	$(am_libstrongswan_test_vectors_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -482,6 +483,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/sha1_hmac.c \
 	test_vectors/sha2.c \
 	test_vectors/sha2_hmac.c \
+	test_vectors/sha3.c \
 	test_vectors/fips_prf.c \
 	test_vectors/modp.c \
 	test_vectors/modpsub.c \
@@ -632,6 +634,8 @@ test_vectors/sha2.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/sha2_hmac.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/sha3.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/fips_prf.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/modp.lo: test_vectors/$(am__dirstamp) \
@@ -690,6 +694,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha1_hmac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha2_hmac.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha3.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/twofish_cbc.Plo@am__quote@
 
 .c.o:

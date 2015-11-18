@@ -1,6 +1,6 @@
 #
 # Copyright (C) 2007-2015 Tobias Brunner
-# Copyright (C) 2006-2014 Andreas Steffen
+# Copyright (C) 2006-2015 Andreas Steffen
 # Copyright (C) 2006-2014 Martin Willi
 # Hochschule fuer Technik Rapperswil
 #
@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.3.3])
+AC_INIT([strongSwan],[5.3.4])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -148,6 +148,7 @@ ARG_ENABL_SET([rdrand],         [enable Intel RDRAND random generator plugin.])
 ARG_ENABL_SET([aesni],          [enable Intel AES-NI crypto plugin.])
 ARG_DISBL_SET([sha1],           [disable SHA1 software implementation plugin.])
 ARG_DISBL_SET([sha2],           [disable SHA256/SHA384/SHA512 software implementation plugin.])
+ARG_ENABL_SET([sha3],           [enable SHA3_224/SHA3_256/SHA3_384/SHA3_512 software implementation plugin.])
 ARG_DISBL_SET([xcbc],           [disable xcbc crypto implementation plugin.])
 # encoding/decoding plugins
 ARG_DISBL_SET([dnskey],         [disable DNS RR key decoding plugin.])
@@ -585,7 +586,7 @@ AC_CHECK_FUNC(
 )
 
 AC_CHECK_FUNCS(prctl mallinfo getpass closefrom getpwnam_r getgrnam_r getpwuid_r)
-AC_CHECK_FUNCS(fmemopen funopen mmap memrchr setlinebuf strptime dirfd)
+AC_CHECK_FUNCS(fmemopen funopen mmap memrchr setlinebuf strptime dirfd sigwaitinfo)
 
 AC_CHECK_FUNC([syslog], [
 	AC_DEFINE([HAVE_SYSLOG], [], [have syslog(3) and friends])
@@ -1282,12 +1283,13 @@ ADD_PLUGIN([aes],                  [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([des],                  [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([blowfish],             [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([rc2],                  [s charon scepclient pki scripts nm cmd])
-ADD_PLUGIN([sha1],                 [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
+ADD_PLUGIN([sha1],                 [s charon scepclient pki scripts manager medsrv attest nm cmd aikgen])
 ADD_PLUGIN([sha2],                 [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
-ADD_PLUGIN([md4],                  [s charon manager scepclient pki nm cmd])
+ADD_PLUGIN([sha3],                 [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
+ADD_PLUGIN([md4],                  [s charon scepclient pki nm cmd])
 ADD_PLUGIN([md5],                  [s charon scepclient pki scripts attest nm cmd aikgen])
 ADD_PLUGIN([rdrand],               [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
-ADD_PLUGIN([random],               [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
+ADD_PLUGIN([random],               [s charon scepclient pki scripts manager medsrv attest nm cmd aikgen])
 ADD_PLUGIN([nonce],                [s charon nm cmd aikgen])
 ADD_PLUGIN([x509],                 [s charon scepclient pki scripts attest nm cmd aikgen])
 ADD_PLUGIN([revocation],           [s charon pki nm cmd])
@@ -1439,6 +1441,7 @@ AM_CONDITIONAL(USE_MD4, test x$md4 = xtrue)
 AM_CONDITIONAL(USE_MD5, test x$md5 = xtrue)
 AM_CONDITIONAL(USE_SHA1, test x$sha1 = xtrue)
 AM_CONDITIONAL(USE_SHA2, test x$sha2 = xtrue)
+AM_CONDITIONAL(USE_SHA3, test x$sha3 = xtrue)
 AM_CONDITIONAL(USE_FIPS_PRF, test x$fips_prf = xtrue)
 AM_CONDITIONAL(USE_GMP, test x$gmp = xtrue)
 AM_CONDITIONAL(USE_RDRAND, test x$rdrand = xtrue)
@@ -1686,6 +1689,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/md5/Makefile
 	src/libstrongswan/plugins/sha1/Makefile
 	src/libstrongswan/plugins/sha2/Makefile
+	src/libstrongswan/plugins/sha3/Makefile
 	src/libstrongswan/plugins/fips_prf/Makefile
 	src/libstrongswan/plugins/gmp/Makefile
 	src/libstrongswan/plugins/rdrand/Makefile

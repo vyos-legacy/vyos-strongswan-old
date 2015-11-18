@@ -148,6 +148,91 @@ struct private_socket_default_socket_t {
 	u_int rr_counter;
 };
 
+/**
+ * Get the destination IPv4 address of a received packet, depending on the
+ * available mechanism.
+ */
+#ifdef IP_PKTINFO
+
+static host_t *get_dst_v4(struct cmsghdr *cmsgptr, u_int16_t port)
+{
+	struct sockaddr_in dst = {
+		.sin_family = AF_INET,
+		.sin_port = htons(port),
+	};
+	struct in_pktinfo *pktinfo;
+	struct in_addr *addr;
+
+	if (cmsgptr->cmsg_type == IP_PKTINFO)
+	{
+		pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsgptr);
+		addr = &pktinfo->ipi_addr;
+		memcpy(&dst.sin_addr, addr, sizeof(dst.sin_addr));
+		return host_create_from_sockaddr((sockaddr_t*)&dst);
+	}
+	return NULL;
+}
+
+#elif defined(IP_RECVDSTADDR)
+
+static host_t *get_dst_v4(struct cmsghdr *cmsgptr, u_int16_t port)
+{
+	struct sockaddr_in dst = {
+		.sin_family = AF_INET,
+		.sin_port = htons(port),
+	};
+	struct in_addr *addr;
+
+	if (cmsgptr->cmsg_type == IP_RECVDSTADDR)
+	{
+		addr = (struct in_addr*)CMSG_DATA(cmsgptr);
+		memcpy(&dst.sin_addr, addr, sizeof(dst.sin_addr));
+		return host_create_from_sockaddr((sockaddr_t*)&dst);
+	}
+	return NULL;
+}
+
+#else /* IP_PKTINFO || IP_RECVDSTADDR */
+
+static host_t *get_dst_v4(struct cmsghdr *cmsgptr, u_int16_t port)
+{
+	return NULL;
+}
+
+#endif /* IP_PKTINFO || IP_RECVDSTADDR */
+
+/**
+ * Get the destination IPv6 address of a received packet, depending on the
+ * available mechanism.
+ */
+#ifdef HAVE_IN6_PKTINFO
+
+static host_t *get_dst_v6(struct cmsghdr *cmsgptr, u_int16_t port)
+{
+	struct in6_pktinfo *pktinfo;
+	struct sockaddr_in6 dst = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(port),
+	};
+
+	if (cmsgptr->cmsg_type == IPV6_PKTINFO)
+	{
+		pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsgptr);
+		memcpy(&dst.sin6_addr, &pktinfo->ipi6_addr, sizeof(dst.sin6_addr));
+		return host_create_from_sockaddr((sockaddr_t*)&dst);
+	}
+	return NULL;
+}
+
+#else /* HAVE_IN6_PKTINFO */
+
+static host_t *get_dst_v6(struct cmsghdr *cmsgptr, u_int16_t port)
+{
+	return NULL;
+}
+
+#endif /* HAVE_IN6_PKTINFO */
+
 METHOD(socket_t, receiver, status_t,
 	private_socket_default_socket_t *this, packet_t **packet)
 {
@@ -233,48 +318,13 @@ METHOD(socket_t, receiver, status_t,
 				DBG1(DBG_NET, "error reading ancillary data");
 				return FAILED;
 			}
-
-#ifdef HAVE_IN6_PKTINFO
-			if (cmsgptr->cmsg_level == SOL_IPV6 &&
-				cmsgptr->cmsg_type == IPV6_PKTINFO)
+			if (cmsgptr->cmsg_level == SOL_IP)
 			{
-				struct in6_pktinfo *pktinfo;
-				pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsgptr);
-				struct sockaddr_in6 dst;
-
-				memset(&dst, 0, sizeof(dst));
-				memcpy(&dst.sin6_addr, &pktinfo->ipi6_addr, sizeof(dst.sin6_addr));
-				dst.sin6_family = AF_INET6;
-				dst.sin6_port = htons(port);
-				dest = host_create_from_sockaddr((sockaddr_t*)&dst);
+				dest = get_dst_v4(cmsgptr, port);
 			}
-#endif /* HAVE_IN6_PKTINFO */
-			if (cmsgptr->cmsg_level == SOL_IP &&
-#ifdef IP_PKTINFO
-				cmsgptr->cmsg_type == IP_PKTINFO
-#elif defined(IP_RECVDSTADDR)
-				cmsgptr->cmsg_type == IP_RECVDSTADDR
-#else
-				FALSE
-#endif
-				)
+			else if (cmsgptr->cmsg_level == SOL_IPV6)
 			{
-				struct in_addr *addr;
-				struct sockaddr_in dst;
-
-#ifdef IP_PKTINFO
-				struct in_pktinfo *pktinfo;
-				pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsgptr);
-				addr = &pktinfo->ipi_addr;
-#elif defined(IP_RECVDSTADDR)
-				addr = (struct in_addr*)CMSG_DATA(cmsgptr);
-#endif
-				memset(&dst, 0, sizeof(dst));
-				memcpy(&dst.sin_addr, addr, sizeof(dst.sin_addr));
-
-				dst.sin_family = AF_INET;
-				dst.sin_port = htons(port);
-				dest = host_create_from_sockaddr((sockaddr_t*)&dst);
+				dest = get_dst_v6(cmsgptr, port);
 			}
 			if (dest)
 			{
@@ -305,6 +355,107 @@ METHOD(socket_t, receiver, status_t,
 	return SUCCESS;
 }
 
+/**
+ * Generic function to send a message.
+ */
+static ssize_t send_msg_generic(int skt, struct msghdr *msg)
+{
+	return sendmsg(skt, msg, 0);
+}
+
+/**
+ * Send a message with the IPv4 source address set, if possible.
+ */
+#ifdef IP_PKTINFO
+
+static ssize_t send_msg_v4(int skt, struct msghdr *msg, host_t *src)
+{
+	char buf[CMSG_SPACE(sizeof(struct in_pktinfo))] = {};
+	struct cmsghdr *cmsg;
+	struct in_addr *addr;
+	struct in_pktinfo *pktinfo;
+	struct sockaddr_in *sin;
+
+	msg->msg_control = buf;
+	msg->msg_controllen = sizeof(buf);
+	cmsg = CMSG_FIRSTHDR(msg);
+	cmsg->cmsg_level = SOL_IP;
+	cmsg->cmsg_type = IP_PKTINFO;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+
+	pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
+	addr = &pktinfo->ipi_spec_dst;
+
+	sin = (struct sockaddr_in*)src->get_sockaddr(src);
+	memcpy(addr, &sin->sin_addr, sizeof(struct in_addr));
+	return send_msg_generic(skt, msg);
+}
+
+#elif defined(IP_SENDSRCADDR)
+
+static ssize_t send_msg_v4(int skt, struct msghdr *msg, host_t *src)
+{
+	char buf[CMSG_SPACE(sizeof(struct in_addr))] = {};
+	struct cmsghdr *cmsg;
+	struct in_addr *addr;
+	struct sockaddr_in *sin;
+
+	msg->msg_control = buf;
+	msg->msg_controllen = sizeof(buf);
+	cmsg = CMSG_FIRSTHDR(msg);
+	cmsg->cmsg_level = SOL_IP;
+	cmsg->cmsg_type = IP_SENDSRCADDR;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
+
+	addr = (struct in_addr*)CMSG_DATA(cmsg);
+
+	sin = (struct sockaddr_in*)src->get_sockaddr(src);
+	memcpy(addr, &sin->sin_addr, sizeof(struct in_addr));
+	return send_msg_generic(skt, msg);
+}
+
+#else /* IP_PKTINFO || IP_RECVDSTADDR */
+
+static ssize_t send_msg_v4(int skt, struct msghdr *msg, host_t *src)
+{
+	return send_msg_generic(skt, msg);
+}
+
+#endif /* IP_PKTINFO || IP_RECVDSTADDR */
+
+/**
+ * Send a message with the IPv6 source address set, if possible.
+ */
+#ifdef HAVE_IN6_PKTINFO
+
+static ssize_t send_msg_v6(int skt, struct msghdr *msg, host_t *src)
+{
+	char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))] = {};
+	struct cmsghdr *cmsg;
+	struct in6_pktinfo *pktinfo;
+	struct sockaddr_in6 *sin;
+
+	msg->msg_control = buf;
+	msg->msg_controllen = sizeof(buf);
+	cmsg = CMSG_FIRSTHDR(msg);
+	cmsg->cmsg_level = SOL_IPV6;
+	cmsg->cmsg_type = IPV6_PKTINFO;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+	pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
+	sin = (struct sockaddr_in6*)src->get_sockaddr(src);
+	memcpy(&pktinfo->ipi6_addr, &sin->sin6_addr, sizeof(struct in6_addr));
+	return send_msg_generic(skt, msg);
+}
+
+#else /* HAVE_IN6_PKTINFO */
+
+static ssize_t send_msg_v6(int skt, struct msghdr *msg, host_t *src)
+{
+	return send_msg_generic(skt, msg);
+}
+
+#endif /* HAVE_IN6_PKTINFO */
+
 METHOD(socket_t, sender, status_t,
 	private_socket_default_socket_t *this, packet_t *packet)
 {
@@ -313,7 +464,6 @@ METHOD(socket_t, sender, status_t,
 	chunk_t data;
 	host_t *src, *dst;
 	struct msghdr msg;
-	struct cmsghdr *cmsg;
 	struct iovec iov;
 	u_int8_t *dscp;
 
@@ -415,56 +565,17 @@ METHOD(socket_t, sender, status_t,
 	{
 		if (family == AF_INET)
 		{
-#if defined(IP_PKTINFO) || defined(IP_SENDSRCADDR)
-			struct in_addr *addr;
-			struct sockaddr_in *sin;
-#ifdef IP_PKTINFO
-			char buf[CMSG_SPACE(sizeof(struct in_pktinfo))];
-			struct in_pktinfo *pktinfo;
-#elif defined(IP_SENDSRCADDR)
-			char buf[CMSG_SPACE(sizeof(struct in_addr))];
-#endif
-			memset(buf, 0, sizeof(buf));
-			msg.msg_control = buf;
-			msg.msg_controllen = sizeof(buf);
-			cmsg = CMSG_FIRSTHDR(&msg);
-			cmsg->cmsg_level = SOL_IP;
-#ifdef IP_PKTINFO
-			cmsg->cmsg_type = IP_PKTINFO;
-			cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-			pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-			addr = &pktinfo->ipi_spec_dst;
-#elif defined(IP_SENDSRCADDR)
-			cmsg->cmsg_type = IP_SENDSRCADDR;
-			cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
-			addr = (struct in_addr*)CMSG_DATA(cmsg);
-#endif
-			sin = (struct sockaddr_in*)src->get_sockaddr(src);
-			memcpy(addr, &sin->sin_addr, sizeof(struct in_addr));
-#endif /* IP_PKTINFO || IP_SENDSRCADDR */
+			bytes_sent = send_msg_v4(skt, &msg, src);
 		}
-#ifdef HAVE_IN6_PKTINFO
 		else
 		{
-			char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-			struct in6_pktinfo *pktinfo;
-			struct sockaddr_in6 *sin;
-
-			memset(buf, 0, sizeof(buf));
-			msg.msg_control = buf;
-			msg.msg_controllen = sizeof(buf);
-			cmsg = CMSG_FIRSTHDR(&msg);
-			cmsg->cmsg_level = SOL_IPV6;
-			cmsg->cmsg_type = IPV6_PKTINFO;
-			cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
-			pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
-			sin = (struct sockaddr_in6*)src->get_sockaddr(src);
-			memcpy(&pktinfo->ipi6_addr, &sin->sin6_addr, sizeof(struct in6_addr));
+			bytes_sent = send_msg_v6(skt, &msg, src);
 		}
-#endif /* HAVE_IN6_PKTINFO */
 	}
-
-	bytes_sent = sendmsg(skt, &msg, 0);
+	else
+	{
+		bytes_sent = send_msg_generic(skt, &msg);
+	}
 
 	if (bytes_sent != data.len)
 	{

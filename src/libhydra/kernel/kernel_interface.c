@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 Tobias Brunner
+ * Copyright (C) 2008-2015 Tobias Brunner
  * Hochschule fuer Technik Rapperswil
  * Copyright (C) 2010 Martin Willi
  * Copyright (C) 2010 revosec AG
@@ -509,16 +509,17 @@ METHOD(kernel_interface_t, query_policy, status_t,
 }
 
 METHOD(kernel_interface_t, del_policy, status_t,
-	private_kernel_interface_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, u_int32_t reqid,
+	private_kernel_interface_t *this, host_t *src, host_t *dst,
+	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
+	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
 	mark_t mark, policy_priority_t priority)
 {
 	if (!this->ipsec)
 	{
 		return NOT_SUPPORTED;
 	}
-	return this->ipsec->del_policy(this->ipsec, src_ts, dst_ts,
-								   direction, reqid, mark, priority);
+	return this->ipsec->del_policy(this->ipsec, src, dst, src_ts, dst_ts,
+								   direction, type, sa, mark, priority);
 }
 
 METHOD(kernel_interface_t, flush_policies, status_t,
@@ -738,44 +739,52 @@ METHOD(kernel_interface_t, get_address_by_ts, status_t,
 }
 
 
-METHOD(kernel_interface_t, add_ipsec_interface, void,
+METHOD(kernel_interface_t, add_ipsec_interface, bool,
 	private_kernel_interface_t *this, kernel_ipsec_constructor_t constructor)
 {
 	if (!this->ipsec)
 	{
 		this->ipsec_constructor = constructor;
 		this->ipsec = constructor();
+		return this->ipsec != NULL;
 	}
+	return FALSE;
 }
 
-METHOD(kernel_interface_t, remove_ipsec_interface, void,
+METHOD(kernel_interface_t, remove_ipsec_interface, bool,
 	private_kernel_interface_t *this, kernel_ipsec_constructor_t constructor)
 {
 	if (constructor == this->ipsec_constructor && this->ipsec)
 	{
 		this->ipsec->destroy(this->ipsec);
 		this->ipsec = NULL;
+		return TRUE;
 	}
+	return FALSE;
 }
 
-METHOD(kernel_interface_t, add_net_interface, void,
+METHOD(kernel_interface_t, add_net_interface, bool,
 	private_kernel_interface_t *this, kernel_net_constructor_t constructor)
 {
 	if (!this->net)
 	{
 		this->net_constructor = constructor;
 		this->net = constructor();
+		return this->net != NULL;
 	}
+	return FALSE;
 }
 
-METHOD(kernel_interface_t, remove_net_interface, void,
+METHOD(kernel_interface_t, remove_net_interface, bool,
 	private_kernel_interface_t *this, kernel_net_constructor_t constructor)
 {
 	if (constructor == this->net_constructor && this->net)
 	{
 		this->net->destroy(this->net);
 		this->net = NULL;
+		return TRUE;
 	}
+	return FALSE;
 }
 
 METHOD(kernel_interface_t, add_listener, void,

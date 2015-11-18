@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <errno.h>
 
 #include <hydra.h>
 #include <daemon.h>
@@ -42,6 +43,7 @@
 #include "tkm_public_key.h"
 #include "tkm_cred.h"
 #include "tkm_encoder.h"
+#include "tkm_spi_generator.h"
 
 /**
  * TKM bus listener for IKE authorize events.
@@ -98,12 +100,11 @@ static void run()
 	while (TRUE)
 	{
 		int sig;
-		int error;
 
-		error = sigwait(&set, &sig);
-		if (error)
+		sig = sigwaitinfo(&set, NULL);
+		if (sig == -1)
 		{
-			DBG1(DBG_DMN, "error %d while waiting for a signal", error);
+			DBG1(DBG_DMN, "waiting for signal failed: %s", strerror(errno));
 			return;
 		}
 		switch (sig)
@@ -298,6 +299,9 @@ int main(int argc, char *argv[])
 			PLUGIN_PROVIDE(PUBKEY_VERIFY, SIGN_RSA_EMSA_PKCS1_SHA256),
 		PLUGIN_CALLBACK(kernel_ipsec_register, tkm_kernel_ipsec_create),
 			PLUGIN_PROVIDE(CUSTOM, "kernel-ipsec"),
+		PLUGIN_CALLBACK(tkm_spi_generator_register, NULL),
+			PLUGIN_PROVIDE(CUSTOM, "tkm-spi-generator"),
+				PLUGIN_DEPENDS(CUSTOM, "libcharon-sa-managers"),
 	};
 	lib->plugins->add_static_features(lib->plugins, "tkm-backend", features,
 			countof(features), TRUE, NULL, NULL);
@@ -358,7 +362,7 @@ int main(int argc, char *argv[])
 	lib->encoding->add_encoder(lib->encoding, tkm_encoder_encode);
 
 	/* add handler for SEGV and ILL,
-	 * INT and TERM are handled by sigwait() in run() */
+	 * INT and TERM are handled by sigwaitinfo() in run() */
 	action.sa_handler = segv_handler;
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);

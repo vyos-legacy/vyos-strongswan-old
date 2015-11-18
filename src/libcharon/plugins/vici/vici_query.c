@@ -222,6 +222,45 @@ static void list_task_queue(private_vici_query_t *this, vici_builder_t *b,
 }
 
 /**
+ * Add an IKE_SA condition to the given builder
+ */
+static void add_condition(vici_builder_t *b, ike_sa_t *ike_sa,
+						  char *key, ike_condition_t cond)
+{
+	if (ike_sa->has_condition(ike_sa, cond))
+	{
+		b->add_kv(b, key, "yes");
+	}
+}
+
+/**
+ * List virtual IPs
+ */
+static void list_vips(private_vici_query_t *this, vici_builder_t *b,
+					  ike_sa_t *ike_sa, bool local, char *name)
+{
+	enumerator_t *enumerator;
+	bool has = FALSE;
+	host_t *vip;
+
+	enumerator = ike_sa->create_virtual_ip_enumerator(ike_sa, local);
+	while (enumerator->enumerate(enumerator, &vip))
+	{
+		if (!has)
+		{
+			b->begin_list(b, name);
+			has = TRUE;
+		}
+		b->add_li(b, "%H", vip);
+	}
+	enumerator->destroy(enumerator);
+	if (has)
+	{
+		b->end_list(b);
+	}
+}
+
+/**
  * List details of an IKE_SA
  */
 static void list_ike(private_vici_query_t *this, vici_builder_t *b,
@@ -264,6 +303,11 @@ static void list_ike(private_vici_query_t *this, vici_builder_t *b,
 	}
 	b->add_kv(b, "initiator-spi", "%.16"PRIx64, id->get_initiator_spi(id));
 	b->add_kv(b, "responder-spi", "%.16"PRIx64, id->get_responder_spi(id));
+
+	add_condition(b, ike_sa, "nat-local", COND_NAT_HERE);
+	add_condition(b, ike_sa, "nat-remote", COND_NAT_THERE);
+	add_condition(b, ike_sa, "nat-fake", COND_NAT_FAKE);
+	add_condition(b, ike_sa, "nat-any", COND_NAT_ANY);
 
 	proposal = ike_sa->get_proposal(ike_sa);
 	if (proposal)
@@ -309,6 +353,9 @@ static void list_ike(private_vici_query_t *this, vici_builder_t *b,
 			b->add_kv(b, "reauth-time", "%"PRId64, (int64_t)(t - now));
 		}
 	}
+
+	list_vips(this, b, ike_sa, TRUE, "local-vips");
+	list_vips(this, b, ike_sa, FALSE, "remote-vips");
 
 	list_task_queue(this, b, ike_sa, TASK_QUEUE_QUEUED, "tasks-queued");
 	list_task_queue(this, b, ike_sa, TASK_QUEUE_ACTIVE, "tasks-active");
