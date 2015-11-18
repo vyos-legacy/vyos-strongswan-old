@@ -3,7 +3,7 @@
 @@ -1,9 +1,10 @@
  [Unit]
  Description=strongSwan IPsec IKEv1/IKEv2 daemon using ipsec.conf
--After=syslog.target
+-After=syslog.target network.target
 +After=network.target
  
  [Service]
