@@ -1,4 +1,4 @@
-strongswan (5.3.4-1) UNRELEASED; urgency=medium
+strongswan (5.3.4-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/patches:
@@ -7,7 +7,7 @@ strongswan (5.3.4-1) UNRELEASED; urgency=medium
     0001-socket-dynamic-Refactor-setting-source-address-when- and
     CVE-2015-8023_eap_mschapv2_state dropped, included upstream. 
 
- -- Yves-Alexis Perez <corsac@debian.org>  Wed, 18 Nov 2015 15:19:49 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 19 Nov 2015 22:17:43 +0100
 
 strongswan (5.3.3-3) unstable; urgency=high
 
