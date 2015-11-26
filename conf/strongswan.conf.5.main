@@ -645,6 +645,18 @@ NAS\-Identifier to include in RADIUS messages.
 Port of RADIUS server (authentication).
 
 .TP
+.BR charon.plugins.eap-radius.retransmit_base " [1.4]"
+Base to use for calculating exponential back off.
+
+.TP
+.BR charon.plugins.eap-radius.retransmit_timeout " [2.0]"
+Timeout in seconds before sending first retransmit.
+
+.TP
+.BR charon.plugins.eap-radius.retransmit_tries " [4]"
+Number of times to retransmit a packet before giving up.
+
+.TP
 .BR charon.plugins.eap-radius.secret " []"
 Shared secret between RADIUS and NAS. If set, make sure to adjust the
 permissions of the config file accordingly.
@@ -673,7 +685,13 @@ The
 [1813] option can be used to specify the port used for RADIUS
 accounting. For each RADIUS server a priority can be specified using the
 .RB "" "preference" ""
-[0] option.
+[0] option. The retransmission time for each server can set set
+using
+.RB "" "retransmit_base" ","
+.RB "" "retransmit_timeout" ""
+and
+.RB "" "retransmit_tries" "."
+
 
 .TP
 .BR charon.plugins.eap-radius.sockets " [1]"

@@ -124,7 +124,10 @@ void wait_sigint()
 	sigaddset(&set, SIGTERM);
 
 	sigprocmask(SIG_BLOCK, &set, NULL);
-	sigwaitinfo(&set, NULL);
+	while (sigwaitinfo(&set, NULL) == -1 && errno == EINTR)
+	{
+		/* wait for signal */
+	}
 }
 
 #ifndef HAVE_SIGWAITINFO
@@ -167,7 +170,7 @@ void closefrom(int low_fd)
 	dir_fd = open("/proc/self/fd", O_RDONLY);
 	if (dir_fd != -1)
 	{
-		while ((len = syscall(SYS_getdents64, dir_fd, buffer,
+		while ((len = syscall(__NR_getdents64, dir_fd, buffer,
 							  sizeof(buffer))) > 0)
 		{
 			for (offset = 0; offset < len; offset += entry->d_reclen)
