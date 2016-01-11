@@ -162,17 +162,6 @@ Description: strongSwan charon library (extra plugins)
     ipsec.secrets and other credential sets)
   - xauth-pam (XAuth backend that uses PAM modules to verify passwords)
 
-Package: strongswan-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: ${misc:Depends}, strongswan, libstrongswan (= ${binary:Version})
-Description: strongSwan library and binaries - debugging symbols
- The strongSwan VPN suite uses the native IPsec stack in the standard
- Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
- .
- This package provides the symbols needed for debugging of strongSwan.
-
 Package: strongswan-starter
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (=
