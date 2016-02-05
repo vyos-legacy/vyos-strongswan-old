@@ -9,7 +9,6 @@ etc/ipsec.conf
 usr/share/man/man8/ipsec.8
 usr/share/man/man5/ipsec.conf.5
 usr/share/man/man5/ipsec.secrets.5
-usr/share/man/man5/strongswan.conf.5
 #updown
 usr/lib/ipsec/plugins/libstrongswan-updown.so
 usr/share/strongswan/templates/config/plugins/updown.conf

@@ -81,3 +81,4 @@ usr/share/strongswan/templates/config/plugins/resolve.conf
 etc/strongswan.d/charon/attr.conf
 etc/strongswan.d/charon/resolve.conf
 etc/strongswan.conf
+usr/share/man/man5/strongswan.conf.5

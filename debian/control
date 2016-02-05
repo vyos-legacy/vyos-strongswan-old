@@ -31,6 +31,8 @@ Description: IPsec VPN solution metapackage
 Package: libstrongswan
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: strongswan-starter (<< 5.3.5-2)
+Replaces: strongswan-starter (<< 5.3.5-2)
 Recommends: libstrongswan-standard-plugins
 Suggests: libstrongswan-extra-plugins
 Description: strongSwan utility and crypto library
