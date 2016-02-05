@@ -2,6 +2,7 @@ strongswan (5.3.5-2) UNRELEASED; urgency=medium
 
   * debian/rules:
     - migrate debug package to ddeb.
+    - enable systemd and swanctl.                               closes: #813788
   * debian/control:
     - drop strongswan-dbg package.
 

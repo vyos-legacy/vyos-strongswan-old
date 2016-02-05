@@ -51,7 +51,8 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--with-capabilities=libcap \
 		--enable-farp \
 		--enable-dhcp \
-		--enable-af-alg
+		--enable-af-alg \
+		--enable-systemd --enable-swanctl
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
