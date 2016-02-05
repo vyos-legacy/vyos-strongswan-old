@@ -5,7 +5,12 @@ strongswan (5.3.5-2) UNRELEASED; urgency=medium
     - enable systemd and swanctl.                               closes: #813788
   * debian/control:
     - drop strongswan-dbg package.
-    - add charon-swanctl and charon-systemd packages
+    - add strongswan-swanctl and charon-systemd packages.
+    - replace sytemd build-dep by libsystemd-dev.
+  * debian/strongswan-swanctl.install:
+    - install vici plugin and swanctl files
+  * debian/charon-systemd.install:
+    - install charon-systemd binary and strongswan-swanctl service file.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 11 Jan 2016 14:50:14 +0100
 
