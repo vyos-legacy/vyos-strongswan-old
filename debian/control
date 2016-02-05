@@ -270,6 +270,30 @@ Description: standalone IPsec client
  This package contains the charon-cmd command, which can be used as a client to
  connect to a remote IKE daemon.
 
+Package: strongswan-pki
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})
+Breaks: strongswan-starter (<< 5.3.5-2)
+Replaces: strongswan-starter (<< 5.3.5-2)
+Description: strongSwan IPsec client, pki command
+ The strongSwan VPN suite uses the native IPsec stack in the standard
+ Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
+ .
+ This package contains the pki tool which allows on to run a simple public key
+ infrastructure.
+
+Package: strongswan-scepclient
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})
+Breaks: strongswan-starter (<< 5.3.5-2)
+Replaces: strongswan-starter (<< 5.3.5-2)
+Description: strongSwan IPsec client, SCEP client
+ The strongSwan VPN suite uses the native IPsec stack in the standard
+ Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
+ .
+ This package contains the SCEP client, an implementation of the Cisco System's
+ Simple Certificate Enrollment Protocol (SCEP).
+
 Package: strongswan-swanctl
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})

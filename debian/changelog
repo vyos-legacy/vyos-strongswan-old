@@ -7,10 +7,15 @@ strongswan (5.3.5-2) UNRELEASED; urgency=medium
     - drop strongswan-dbg package.
     - add strongswan-swanctl and charon-systemd packages.
     - replace sytemd build-dep by libsystemd-dev.
+    - create new strongswan-pki and strongswan-scepclient packages
   * debian/strongswan-swanctl.install:
     - install vici plugin and swanctl files
   * debian/charon-systemd.install:
     - install charon-systemd binary and strongswan-swanctl service file.
+  * debian/strongswan-pki.install:
+    - install pki files
+  * debian/strongswan-scepclient.install:
+    - install scepclient files
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 11 Jan 2016 14:50:14 +0100
 
