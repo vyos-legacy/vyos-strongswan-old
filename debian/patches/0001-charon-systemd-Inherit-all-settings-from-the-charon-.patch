@@ -1,0 +1,32 @@
+From 6727f41be66904c8a38dcabf93a0933e35aaf253 Mon Sep 17 00:00:00 2001
+From: Tobias Brunner <tobias@strongswan.org>
+Date: Mon, 8 Feb 2016 17:19:20 +0100
+Subject: [PATCH] charon-systemd: Inherit all settings from the charon section
+
+Our default config files are very charon specific.  So to avoid
+confusion when only charon-systemd is installed we just default to all
+settings defined for charon.  Since charon-systemd probably won't be used
+together with charon this should not cause conflicts (settings may still
+be overridden via the charon-systemd section).
+
+ #1300
+---
+ src/charon-systemd/charon-systemd.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/charon-systemd/charon-systemd.c b/src/charon-systemd/charon-systemd.c
+index 4286cde..c6559ce 100644
+--- a/src/charon-systemd/charon-systemd.c
++++ b/src/charon-systemd/charon-systemd.c
+@@ -349,6 +349,8 @@ int main(int argc, char *argv[])
+ 		sd_notifyf(0, "STATUS=libstrongswan initialization failed");
+ 		return SS_RC_INITIALIZATION_FAILED;
+ 	}
++	/* inherit settings from charon */
++	lib->settings->add_fallback(lib->settings, lib->ns, "charon");
+ 	if (lib->integrity &&
+ 		!lib->integrity->check_file(lib->integrity, "charon-systemd", argv[0]))
+ 	{
+-- 
+2.7.0
+

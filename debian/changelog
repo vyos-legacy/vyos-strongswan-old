@@ -18,6 +18,9 @@ strongswan (5.3.5-2) UNRELEASED; urgency=medium
   * debian/strongswan-scepclient.install:
     - install scepclient files
   * move strongswan.conf manpage to libstrongswan package
+  * debian/patches
+    - 0001-charon-systemd-Inherit-all-settings-from-the-charon added, inherit
+      charon configuration settings for charon-systemd.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 11 Jan 2016 14:50:14 +0100
 
