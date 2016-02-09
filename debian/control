@@ -298,7 +298,7 @@ Description: strongSwan IPsec client, swanctl command
  charon daemon
 
 Package: charon-systemd
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}, 
   libstrongswan (= ${binary:Version}), strongswan-swanctl
 Description: strongSwan IPsec client, systemd support
