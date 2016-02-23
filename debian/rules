@@ -15,7 +15,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ha \
 		--enable-led --enable-gcrypt \
 		--enable-test-vectors \
-		--enable-xauth-eap --enable-xauth-pam \
+		--enable-xauth-eap --enable-xauth-pam --enable-xauth-noauth \
 		--enable-cmd \
 		--enable-certexpire \
 		--enable-lookip \
@@ -51,7 +51,8 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--with-capabilities=libcap \
 		--enable-farp \
 		--enable-dhcp \
-		--enable-af-alg
+		--enable-af-alg \
+		--enable-vici --enable-swanctl
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
@@ -102,6 +103,21 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-af-alg.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/af-alg.conf
 	dh_install -p libstrongswan-extra-plugins etc/strongswan.d/charon/af-alg.conf
+
+	dh_install -p libstrongswan usr/lib/ipsec/libvici.so.0.0.0
+	dh_install -p libstrongswan usr/lib/ipsec/libvici.so.0
+	dh_install -p libstrongswan usr/lib/ipsec/libvici.so
+	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-vici.so
+
+	dh_install -p strongswan-starter usr/share/strongswan/templates/config/strongswan.d/swanctl.conf
+	dh_install -p strongswan-starter usr/share/strongswan/templates/config/plugins/vici.conf
+	dh_install -p strongswan-starter usr/share/man/man8/swanctl.8
+	dh_install -p strongswan-starter usr/share/man/man5/swanctl.conf.5
+	dh_install -p strongswan-starter usr/sbin/swanctl
+	dh_install -p strongswan-starter etc/swanctl/swanctl.conf
+	dh_install -p strongswan-starter etc/strongswan.d/swanctl.conf
+	dh_install -p strongswan-starter etc/strongswan.d/charon/vici.conf
+
 	# the systemd service file only gets generated on Linux
 	dh_install -p strongswan-starter lib/systemd/system/strongswan.service
 endif
@@ -144,7 +160,9 @@ endif
 		-Xlibstrongswan-padlock.so -X padlock.conf \
 		-Xlibstrongswan-rdrand.so -X rdrand.conf \
 		-Xlibstrongswan-af-alg.so -X af-alg.conf \
-		-Xstrongswan.service
+		-Xstrongswan.service -X libvici.so \
+		-Xlibstrongswan-vici.so -X swanctl \
+		-Xvici.conf
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
@@ -185,6 +203,7 @@ override_dh_fixperms:
 
 override_dh_makeshlibs:
 	dh_makeshlibs -n -X usr/lib/ipsec/plugins
+	dh_makeshlibs -n -X usr/lib/ipsec
 
 override_dh_installlogcheck:
 	dh_installlogcheck --name strongswan
