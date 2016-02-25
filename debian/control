@@ -217,6 +217,27 @@ Description: strongSwan Internet Key Exchange daemon
  It is written from scratch using a fully multi-threaded design and a modular
  architecture. Various plugins can provide additional functionality.
 
+Package: strongswan-libvici
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libstrongswan (= ${binary:Version})
+Description: strongSwan vici library
+ The vici plugin provides VICI, the Versatile IKE Configuration Interface.
+ As its name indicates, it provides an interface for external applications 
+ to not only configure, but also to control and monitor the IKE daemon charon.
+ .
+ This package contains the vice library, used by swanctl.
+
+Package: strongswan-swanctl
+Architecture: any
+Pre-Depends: debconf | debconf-2.0
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ libstrongswan (= ${binary:Version}), strongswan-starter,
+Description: strongSwan Internet Key Exchange daemon
+ swanctl is a new, portable command line utility to 
+ configure, control and monitor the IKE daemon charon using the vici interface.
+ .
+ This package contains the swanctl binary.
+
 Package: strongswan-ike
 Architecture: all
 Section: oldlibs
