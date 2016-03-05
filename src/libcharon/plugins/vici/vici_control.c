@@ -254,10 +254,11 @@ CALLBACK(terminate, vici_message_t*,
 	private_vici_control_t *this, char *name, u_int id, vici_message_t *request)
 {
 	enumerator_t *enumerator, *isas, *csas;
-	char *child, *ike, *errmsg = NULL;
+	char *child, *ike, *errmsg = NULL, *my_host_str, *other_host_str;
 	u_int timeout, child_id, ike_id, current, *del, done = 0;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
+	host_t *my_host = NULL, *other_host = NULL;
 	array_t *ids;
 	vici_builder_t *builder;
 	log_info_t log = {
@@ -271,12 +272,24 @@ CALLBACK(terminate, vici_message_t*,
 	ike_id = request->get_int(request, 0, "ike-id");
 	timeout = request->get_int(request, 0, "timeout");
 	log.level = request->get_int(request, 1, "loglevel");
+	my_host_str = request->get_str(request, NULL, "my-host");
+	other_host_str = request->get_str(request, NULL, "other-host");
 
-	if (!child && !ike && !ike_id && !child_id)
+
+	if (!child && !ike && !ike_id && !child_id && !my_host_str &&!other_host_str)
 	{
 		return send_reply(this, "missing terminate selector");
 	}
-
+	if (my_host_str && !other_host_str || other_host_str && !my_host_str)
+	{
+		return send_reply(this, "missing source or remote");
+	}
+	else
+	{
+		my_host = host_create_from_string(my_host_str, 0);
+		other_host = host_create_from_string(other_host_str, 0);
+		DBG1(DBG_CFG, "vici terminate with source me %H and other %H", my_host, other_host);
+	}
 	if (ike_id)
 	{
 		DBG1(DBG_CFG, "vici terminate IKE_SA #%d", ike_id);
@@ -333,6 +346,15 @@ CALLBACK(terminate, vici_message_t*,
 		else if (ike_id && ike_id == ike_sa->get_unique_id(ike_sa))
 		{
 			array_insert(ids, ARRAY_TAIL, &ike_id);
+		}
+		else if (my_host && other_host)
+		{
+			if (my_host && !streq(my_host, ike_sa->get_my_host(ike_sa)) && other_host && !streq(other_host, ike_sa->get_other_host(ike_sa)))
+			{
+				continue;
+			}
+			current = ike_sa->get_unique_id(ike_sa);
+			array_insert(ids, ARRAY_TAIL, &current);
 		}
 	}
 	isas->destroy(isas);
