@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2008 Tobias Brunner
+ * Copyright (C) 2007-2015 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -198,6 +198,117 @@ METHOD(peer_cfg_t, add_child_cfg, void,
 	this->mutex->lock(this->mutex);
 	this->child_cfgs->insert_last(this->child_cfgs, child_cfg);
 	this->mutex->unlock(this->mutex);
+}
+
+typedef struct {
+	enumerator_t public;
+	linked_list_t *removed;
+	linked_list_t *added;
+	enumerator_t *wrapped;
+	bool add;
+} child_cfgs_replace_enumerator_t;
+
+METHOD(enumerator_t, child_cfgs_replace_enumerate, bool,
+	child_cfgs_replace_enumerator_t *this, child_cfg_t **chd, bool *added)
+{
+	child_cfg_t *child_cfg;
+
+	if (!this->wrapped)
+	{
+		this->wrapped = this->removed->create_enumerator(this->removed);
+	}
+	while (TRUE)
+	{
+		if (this->wrapped->enumerate(this->wrapped, &child_cfg))
+		{
+			if (chd)
+			{
+				*chd = child_cfg;
+			}
+			if (added)
+			{
+				*added = this->add;
+			}
+			return TRUE;
+		}
+		if (this->add)
+		{
+			break;
+		}
+		this->wrapped = this->added->create_enumerator(this->added);
+		this->add = TRUE;
+	}
+	return FALSE;
+}
+
+METHOD(enumerator_t, child_cfgs_replace_enumerator_destroy, void,
+	child_cfgs_replace_enumerator_t *this)
+{
+	DESTROY_IF(this->wrapped);
+	this->removed->destroy_offset(this->removed, offsetof(child_cfg_t, destroy));
+	this->added->destroy_offset(this->added, offsetof(child_cfg_t, destroy));
+	free(this);
+}
+
+METHOD(peer_cfg_t, replace_child_cfgs, enumerator_t*,
+	private_peer_cfg_t *this, peer_cfg_t *other_pub)
+{
+	private_peer_cfg_t *other = (private_peer_cfg_t*)other_pub;
+	linked_list_t *removed, *added;
+	enumerator_t *mine, *others;
+	child_cfg_t *my_cfg, *other_cfg;
+	child_cfgs_replace_enumerator_t *enumerator;
+	bool found;
+
+	removed = linked_list_create();
+
+	other->mutex->lock(other->mutex);
+	added = linked_list_create_from_enumerator(
+					other->child_cfgs->create_enumerator(other->child_cfgs));
+	added->invoke_offset(added, offsetof(child_cfg_t, get_ref));
+	other->mutex->unlock(other->mutex);
+
+	this->mutex->lock(this->mutex);
+	others = added->create_enumerator(added);
+	mine = this->child_cfgs->create_enumerator(this->child_cfgs);
+	while (mine->enumerate(mine, &my_cfg))
+	{
+		found = FALSE;
+		while (others->enumerate(others, &other_cfg))
+		{
+			if (my_cfg->equals(my_cfg, other_cfg))
+			{
+				added->remove_at(added, others);
+				other_cfg->destroy(other_cfg);
+				found = TRUE;
+				break;
+			}
+		}
+		added->reset_enumerator(added, others);
+		if (!found)
+		{
+			this->child_cfgs->remove_at(this->child_cfgs, mine);
+			removed->insert_last(removed, my_cfg);
+		}
+	}
+	while (others->enumerate(others, &other_cfg))
+	{
+		this->child_cfgs->insert_last(this->child_cfgs,
+									  other_cfg->get_ref(other_cfg));
+	}
+	others->destroy(others);
+	mine->destroy(mine);
+	this->mutex->unlock(this->mutex);
+
+	INIT(enumerator,
+		.public = {
+			.enumerate = (void*)_child_cfgs_replace_enumerate,
+			.destroy = (void*)_child_cfgs_replace_enumerator_destroy,
+		},
+		.removed = removed,
+		.added = added,
+	);
+	return &enumerator->public;
 }
 
 /**
@@ -538,10 +649,6 @@ static bool auth_cfg_equal(private_peer_cfg_t *this, private_peer_cfg_t *other)
 METHOD(peer_cfg_t, equals, bool,
 	private_peer_cfg_t *this, private_peer_cfg_t *other)
 {
-	enumerator_t *e1, *e2;
-	host_t *vip1, *vip2;
-	char *pool1, *pool2;
-
 	if (this == other)
 	{
 		return TRUE;
@@ -550,44 +657,15 @@ METHOD(peer_cfg_t, equals, bool,
 	{
 		return FALSE;
 	}
-
-	if (this->vips->get_count(this->vips) != other->vips->get_count(other->vips))
+	if (!this->vips->equals_offset(this->vips, other->vips,
+								   offsetof(host_t, ip_equals)))
 	{
 		return FALSE;
 	}
-	e1 = create_virtual_ip_enumerator(this);
-	e2 = create_virtual_ip_enumerator(other);
-	if (e1->enumerate(e1, &vip1) && e2->enumerate(e2, &vip2))
-	{
-		if (!vip1->ip_equals(vip1, vip2))
-		{
-			e1->destroy(e1);
-			e2->destroy(e2);
-			return FALSE;
-		}
-	}
-	e1->destroy(e1);
-	e2->destroy(e2);
-
-	if (this->pools->get_count(this->pools) !=
-		other->pools->get_count(other->pools))
+	if (!this->pools->equals_function(this->pools, other->pools, (void*)streq))
 	{
 		return FALSE;
 	}
-	e1 = create_pool_enumerator(this);
-	e2 = create_pool_enumerator(other);
-	if (e1->enumerate(e1, &pool1) && e2->enumerate(e2, &pool2))
-	{
-		if (!streq(pool1, pool2))
-		{
-			e1->destroy(e1);
-			e2->destroy(e2);
-			return FALSE;
-		}
-	}
-	e1->destroy(e1);
-	e2->destroy(e2);
-
 	return (
 		get_ike_version(this) == get_ike_version(other) &&
 		this->cert_policy == other->cert_policy &&
@@ -666,6 +744,10 @@ peer_cfg_t *peer_cfg_create(char *name,
 	{
 		jitter_time = reauth_time;
 	}
+	if (dpd && dpd_timeout && dpd > dpd_timeout)
+	{
+		dpd_timeout = dpd;
+	}
 
 	INIT(this,
 		.public = {
@@ -674,6 +756,7 @@ peer_cfg_t *peer_cfg_create(char *name,
 			.get_ike_cfg = _get_ike_cfg,
 			.add_child_cfg = _add_child_cfg,
 			.remove_child_cfg = (void*)_remove_child_cfg,
+			.replace_child_cfgs = _replace_child_cfgs,
 			.create_child_cfg_enumerator = _create_child_cfg_enumerator,
 			.select_child_cfg = _select_child_cfg,
 			.get_cert_policy = _get_cert_policy,

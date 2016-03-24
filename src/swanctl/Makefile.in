@@ -105,20 +105,24 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man5dir)" \
 PROGRAMS = $(sbin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
-	commands/terminate.$(OBJEXT) commands/install.$(OBJEXT) \
-	commands/list_sas.$(OBJEXT) commands/list_pols.$(OBJEXT) \
+	commands/terminate.$(OBJEXT) commands/redirect.$(OBJEXT) \
+	commands/install.$(OBJEXT) commands/list_sas.$(OBJEXT) \
+	commands/list_pols.$(OBJEXT) \
 	commands/list_authorities.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
-	commands/list_pools.$(OBJEXT) commands/load_all.$(OBJEXT) \
+	commands/list_pools.$(OBJEXT) commands/list_algs.$(OBJEXT) \
+	commands/load_all.$(OBJEXT) \
 	commands/load_authorities.$(OBJEXT) \
 	commands/load_conns.$(OBJEXT) commands/load_creds.$(OBJEXT) \
 	commands/load_pools.$(OBJEXT) commands/log.$(OBJEXT) \
 	commands/version.$(OBJEXT) commands/stats.$(OBJEXT) \
 	commands/reload_settings.$(OBJEXT) swanctl.$(OBJEXT)
 swanctl_OBJECTS = $(am_swanctl_OBJECTS)
+am__DEPENDENCIES_1 =
 swanctl_DEPENDENCIES =  \
 	$(top_builddir)/src/libcharon/plugins/vici/libvici.la \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -427,6 +431,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -444,6 +450,7 @@ swanctl_SOURCES = \
 	command.c command.h \
 	commands/initiate.c \
 	commands/terminate.c \
+	commands/redirect.c \
 	commands/install.c \
 	commands/list_sas.c \
 	commands/list_pols.c \
@@ -451,6 +458,7 @@ swanctl_SOURCES = \
 	commands/list_conns.c \
 	commands/list_certs.c \
 	commands/list_pools.c \
+	commands/list_algs.c \
 	commands/load_all.c \
 	commands/load_authorities.h  commands/load_authorities.c \
 	commands/load_conns.c commands/load_conns.h \
@@ -464,7 +472,8 @@ swanctl_SOURCES = \
 
 swanctl_LDADD = \
 	$(top_builddir)/src/libcharon/plugins/vici/libvici.la \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(PTHREADLIB) $(DLLIB)
 
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
@@ -579,6 +588,8 @@ commands/initiate.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/terminate.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/redirect.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/install.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_sas.$(OBJEXT): commands/$(am__dirstamp) \
@@ -592,6 +603,8 @@ commands/list_conns.$(OBJEXT): commands/$(am__dirstamp) \
 commands/list_certs.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_pools.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
+commands/list_algs.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_all.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
@@ -627,6 +640,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/swanctl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/initiate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/install.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_algs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_authorities.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_certs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_conns.Po@am__quote@
@@ -639,6 +653,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_creds.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_pools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/log.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/redirect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/reload_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/stats.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/terminate.Po@am__quote@
@@ -1001,10 +1016,13 @@ install-data-local: swanctl.conf
 	test -e "$(DESTDIR)$(swanctldir)/x509" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ca" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ca" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509aa" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509aa" || true
+	test -e "$(DESTDIR)$(swanctldir)/x509ocsp" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ocsp" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509crl" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509crl" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ac" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ac" || true
+	test -e "$(DESTDIR)$(swanctldir)/pubkey" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/pubkey" || true
 	test -e "$(DESTDIR)$(swanctldir)/rsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/rsa" || true
 	test -e "$(DESTDIR)$(swanctldir)/ecdsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/ecdsa" || true
+	test -e "$(DESTDIR)$(swanctldir)/bliss" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/bliss" || true
 	test -e "$(DESTDIR)$(swanctldir)/pkcs8" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/pkcs8" || true
 	test -e "$(DESTDIR)$(swanctldir)/pkcs12" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/pkcs12" || true
 	test -e "$(DESTDIR)$(swanctldir)/swanctl.conf" || $(INSTALL) -m 640 $(srcdir)/swanctl.conf $(DESTDIR)$(swanctldir)/swanctl.conf || true

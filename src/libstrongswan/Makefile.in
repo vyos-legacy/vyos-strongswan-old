@@ -322,6 +322,8 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	credentials/certificates/certificate.c \
 	credentials/certificates/crl.c \
 	credentials/certificates/ocsp_response.c \
+	credentials/certificates/x509.c \
+	credentials/certificates/certificate_printer.c \
 	credentials/containers/container.c \
 	credentials/containers/pkcs12.c \
 	credentials/credential_manager.c \
@@ -407,6 +409,8 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	credentials/certificates/certificate.lo \
 	credentials/certificates/crl.lo \
 	credentials/certificates/ocsp_response.lo \
+	credentials/certificates/x509.lo \
+	credentials/certificates/certificate_printer.lo \
 	credentials/containers/container.lo \
 	credentials/containers/pkcs12.lo \
 	credentials/credential_manager.lo \
@@ -539,6 +543,7 @@ am__nobase_strongswan_include_HEADERS_DIST = library.h asn1/asn1.h \
 	credentials/certificates/ocsp_request.h \
 	credentials/certificates/ocsp_response.h \
 	credentials/certificates/pgp_certificate.h \
+	credentials/certificates/certificate_printer.h \
 	credentials/containers/container.h \
 	credentials/containers/pkcs7.h credentials/containers/pkcs12.h \
 	credentials/credential_manager.h \
@@ -865,6 +870,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -900,6 +907,8 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	credentials/certificates/certificate.c \
 	credentials/certificates/crl.c \
 	credentials/certificates/ocsp_response.c \
+	credentials/certificates/x509.c \
+	credentials/certificates/certificate_printer.c \
 	credentials/containers/container.c \
 	credentials/containers/pkcs12.c \
 	credentials/credential_manager.c \
@@ -961,6 +970,7 @@ settings/settings_types.h
 @USE_DEV_HEADERS_TRUE@credentials/certificates/pkcs10.h credentials/certificates/ocsp_request.h \
 @USE_DEV_HEADERS_TRUE@credentials/certificates/ocsp_response.h \
 @USE_DEV_HEADERS_TRUE@credentials/certificates/pgp_certificate.h \
+@USE_DEV_HEADERS_TRUE@credentials/certificates/certificate_printer.h \
 @USE_DEV_HEADERS_TRUE@credentials/containers/container.h credentials/containers/pkcs7.h \
 @USE_DEV_HEADERS_TRUE@credentials/containers/pkcs12.h \
 @USE_DEV_HEADERS_TRUE@credentials/credential_manager.h credentials/sets/auth_cfg_wrapper.h \
@@ -1339,6 +1349,12 @@ credentials/certificates/crl.lo:  \
 	credentials/certificates/$(am__dirstamp) \
 	credentials/certificates/$(DEPDIR)/$(am__dirstamp)
 credentials/certificates/ocsp_response.lo:  \
+	credentials/certificates/$(am__dirstamp) \
+	credentials/certificates/$(DEPDIR)/$(am__dirstamp)
+credentials/certificates/x509.lo:  \
+	credentials/certificates/$(am__dirstamp) \
+	credentials/certificates/$(DEPDIR)/$(am__dirstamp)
+credentials/certificates/certificate_printer.lo:  \
 	credentials/certificates/$(am__dirstamp) \
 	credentials/certificates/$(DEPDIR)/$(am__dirstamp)
 credentials/containers/$(am__dirstamp):
@@ -1735,8 +1751,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/$(DEPDIR)/credential_factory.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/$(DEPDIR)/credential_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/certificates/$(DEPDIR)/certificate.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@credentials/certificates/$(DEPDIR)/certificate_printer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/certificates/$(DEPDIR)/crl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/certificates/$(DEPDIR)/ocsp_response.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@credentials/certificates/$(DEPDIR)/x509.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/containers/$(DEPDIR)/container.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/containers/$(DEPDIR)/pkcs12.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@credentials/keys/$(DEPDIR)/private_key.Plo@am__quote@

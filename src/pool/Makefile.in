@@ -109,7 +109,6 @@ am__pool_SOURCES_DIST = pool.c pool_attributes.c pool_attributes.h \
 @USE_ATTR_SQL_TRUE@	pool_usage.$(OBJEXT)
 pool_OBJECTS = $(am_pool_OBJECTS)
 @USE_ATTR_SQL_TRUE@pool_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la \
-@USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libhydra/libhydra.la \
 @USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libcharon/libcharon.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -416,6 +415,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -435,13 +436,11 @@ xml_LIBS = @xml_LIBS@
 
 @USE_ATTR_SQL_TRUE@AM_CPPFLAGS = \
 @USE_ATTR_SQL_TRUE@	-I$(top_srcdir)/src/libstrongswan \
-@USE_ATTR_SQL_TRUE@	-I$(top_srcdir)/src/libhydra \
 @USE_ATTR_SQL_TRUE@	-I$(top_srcdir)/src/libcharon \
 @USE_ATTR_SQL_TRUE@	-DPLUGINS=\""${pool_plugins}\""
 
 @USE_ATTR_SQL_TRUE@pool_LDADD = \
 @USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-@USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libhydra/libhydra.la \
 @USE_ATTR_SQL_TRUE@	$(top_builddir)/src/libcharon/libcharon.la
 
 templatesdir = $(pkgdatadir)/templates/database/sql

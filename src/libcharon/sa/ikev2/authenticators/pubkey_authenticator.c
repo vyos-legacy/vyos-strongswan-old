@@ -55,11 +55,6 @@ struct private_pubkey_authenticator_t {
 	 * Reserved bytes of ID payload
 	 */
 	char reserved[3];
-
-	/**
-	 * Whether to store signature schemes on remote auth configs.
-	 */
-	bool store_signature_scheme;
 };
 
 /**
@@ -130,7 +125,7 @@ static array_t *select_signature_schemes(keymat_v2_t *keymat,
 	enumerator = auth->create_enumerator(auth);
 	while (enumerator->enumerate(enumerator, &rule, &config))
 	{
-		if (rule != AUTH_RULE_SIGNATURE_SCHEME)
+		if (rule != AUTH_RULE_IKE_SIGNATURE_SCHEME)
 		{
 			continue;
 		}
@@ -369,6 +364,8 @@ METHOD(authenticator_t, process, status_t,
 	signature_scheme_t scheme;
 	status_t status = NOT_FOUND;
 	keymat_v2_t *keymat;
+	const char *reason = "unsupported";
+	bool online;
 
 	auth_payload = (auth_payload_t*)message->get_payload(message, PLV2_AUTH);
 	if (!auth_payload)
@@ -397,8 +394,11 @@ METHOD(authenticator_t, process, status_t,
 			{
 				break;
 			}
+			reason = "payload invalid";
 			/* fall-through */
 		default:
+			DBG1(DBG_IKE, "%N authentication %s", auth_method_names,
+				 auth_method, reason);
 			return INVALID_ARG;
 	}
 	id = this->ike_sa->get_other_id(this->ike_sa);
@@ -409,8 +409,10 @@ METHOD(authenticator_t, process, status_t,
 		return FAILED;
 	}
 	auth = this->ike_sa->get_auth_cfg(this->ike_sa, FALSE);
+	online = !this->ike_sa->has_condition(this->ike_sa,
+										  COND_ONLINE_VALIDATION_SUSPENDED);
 	enumerator = lib->credmgr->create_public_enumerator(lib->credmgr,
-														key_type, id, auth);
+													key_type, id, auth, online);
 	while (enumerator->enumerate(enumerator, &public, &current_auth))
 	{
 		if (public->verify(public, scheme, octets, auth_data))
@@ -421,9 +423,10 @@ METHOD(authenticator_t, process, status_t,
 			status = SUCCESS;
 			auth->merge(auth, current_auth, FALSE);
 			auth->add(auth, AUTH_RULE_AUTH_CLASS, AUTH_CLASS_PUBKEY);
-			if (this->store_signature_scheme)
+			auth->add(auth, AUTH_RULE_IKE_SIGNATURE_SCHEME, (uintptr_t)scheme);
+			if (!online)
 			{
-				auth->add(auth, AUTH_RULE_SIGNATURE_SCHEME, (uintptr_t)scheme);
+				auth->add(auth, AUTH_RULE_CERT_VALIDATION_SUSPENDED, TRUE);
 			}
 			break;
 		}
@@ -497,8 +500,6 @@ pubkey_authenticator_t *pubkey_authenticator_create_verifier(ike_sa_t *ike_sa,
 		.ike_sa = ike_sa,
 		.ike_sa_init = received_init,
 		.nonce = sent_nonce,
-		.store_signature_scheme = lib->settings->get_bool(lib->settings,
-					"%s.signature_authentication_constraints", TRUE, lib->ns),
 	);
 	memcpy(this->reserved, reserved, sizeof(this->reserved));
 

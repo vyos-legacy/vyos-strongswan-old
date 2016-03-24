@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2015 Tobias Brunner
+ * Hochschule fuer Technik Rapperswil
+ *
  * Copyright (C) 2014 Martin Willi
  * Copyright (C) 2014 revosec AG
  *
@@ -20,6 +23,7 @@
 
 #include <daemon.h>
 #include <collections/array.h>
+#include <processing/jobs/redirect_job.h>
 
 typedef struct private_vici_control_t private_vici_control_t;
 
@@ -134,7 +138,7 @@ static child_cfg_t* get_child_from_peer(peer_cfg_t *peer_cfg, char *name)
 /**
  * Find a peer/child config from a child config name
  */
-static child_cfg_t* find_child_cfg(char *name, peer_cfg_t **out)
+static child_cfg_t* find_child_cfg(char *name, char *pname, peer_cfg_t **out)
 {
 	enumerator_t *enumerator;
 	peer_cfg_t *peer_cfg;
@@ -144,6 +148,10 @@ static child_cfg_t* find_child_cfg(char *name, peer_cfg_t **out)
 							charon->backends, NULL, NULL, NULL, NULL, IKE_ANY);
 	while (enumerator->enumerate(enumerator, &peer_cfg))
 	{
+		if (pname && !streq(pname, peer_cfg->get_name(peer_cfg)))
+		{
+			continue;
+		}
 		child_cfg = get_child_from_peer(peer_cfg, name);
 		if (child_cfg)
 		{
@@ -161,15 +169,17 @@ CALLBACK(initiate, vici_message_t*,
 {
 	child_cfg_t *child_cfg = NULL;
 	peer_cfg_t *peer_cfg;
-	char *child;
-	u_int timeout;
+	char *child, *ike;
+	int timeout;
 	bool limits;
+	controller_cb_t log_cb = NULL;
 	log_info_t log = {
 		.dispatcher = this->dispatcher,
 		.id = id,
 	};
 
 	child = request->get_str(request, NULL, "child");
+	ike = request->get_str(request, NULL, "ike");
 	timeout = request->get_int(request, 0, "timeout");
 	limits = request->get_bool(request, FALSE, "init-limits");
 	log.level = request->get_int(request, 1, "loglevel");
@@ -178,16 +188,20 @@ CALLBACK(initiate, vici_message_t*,
 	{
 		return send_reply(this, "missing configuration name");
 	}
+	if (timeout >= 0)
+	{
+		log_cb = (controller_cb_t)log_vici;
+	}
 
 	DBG1(DBG_CFG, "vici initiate '%s'", child);
 
-	child_cfg = find_child_cfg(child, &peer_cfg);
+	child_cfg = find_child_cfg(child, ike, &peer_cfg);
 	if (!child_cfg)
 	{
 		return send_reply(this, "CHILD_SA config '%s' not found", child);
 	}
 	switch (charon->controller->initiate(charon->controller, peer_cfg,
-				child_cfg, (controller_cb_t)log_vici, &log, timeout, limits))
+									child_cfg, log_cb, &log, timeout, limits))
 	{
 		case SUCCESS:
 			return send_reply(this, NULL);
@@ -208,11 +222,13 @@ CALLBACK(terminate, vici_message_t*,
 {
 	enumerator_t *enumerator, *isas, *csas;
 	char *child, *ike, *errmsg = NULL;
-	u_int timeout, child_id, ike_id, current, *del, done = 0;
+	u_int child_id, ike_id, current, *del, done = 0;
+	int timeout;
 	ike_sa_t *ike_sa;
 	child_sa_t *child_sa;
 	array_t *ids;
 	vici_builder_t *builder;
+	controller_cb_t log_cb = NULL;
 	log_info_t log = {
 		.dispatcher = this->dispatcher,
 		.id = id,
@@ -245,6 +261,11 @@ CALLBACK(terminate, vici_message_t*,
 	if (child)
 	{
 		DBG1(DBG_CFG, "vici terminate CHILD_SA '%s'", child);
+	}
+
+	if (timeout >= 0)
+	{
+		log_cb = (controller_cb_t)log_vici;
 	}
 
 	ids = array_create(sizeof(u_int), 0);
@@ -296,7 +317,7 @@ CALLBACK(terminate, vici_message_t*,
 		if (child || child_id)
 		{
 			if (charon->controller->terminate_child(charon->controller, *del,
-						(controller_cb_t)log_vici, &log, timeout) == SUCCESS)
+											log_cb, &log, timeout) == SUCCESS)
 			{
 				done++;
 			}
@@ -304,7 +325,7 @@ CALLBACK(terminate, vici_message_t*,
 		else
 		{
 			if (charon->controller->terminate_ike(charon->controller, *del,
-						(controller_cb_t)log_vici, &log, timeout) == SUCCESS)
+											log_cb, &log, timeout) == SUCCESS)
 			{
 				done++;
 			}
@@ -336,6 +357,150 @@ CALLBACK(terminate, vici_message_t*,
 		builder->add_kv(builder, "errmsg", "%s", errmsg);
 	}
 	array_destroy(ids);
+	return builder->finalize(builder);
+}
+
+/**
+ * Parse a peer-ip specified, which can be a subnet in CIDR notation, a range
+ * or a single IP address.
+ */
+static traffic_selector_t *parse_peer_ip(char *ip)
+{
+	traffic_selector_t *ts;
+	host_t *from, *to;
+	ts_type_t type;
+
+	if (host_create_from_range(ip, &from, &to))
+	{
+		if (to->get_family(to) == AF_INET)
+		{
+			type = TS_IPV4_ADDR_RANGE;
+		}
+		else
+		{
+			type = TS_IPV6_ADDR_RANGE;
+		}
+		ts = traffic_selector_create_from_bytes(0, type,
+												from->get_address(from), 0,
+												to->get_address(to), 0xFFFF);
+		from->destroy(from);
+		to->destroy(to);
+		return ts;
+	}
+	return traffic_selector_create_from_cidr(ip, 0, 0, 0xFFFF);
+}
+
+CALLBACK(redirect, vici_message_t*,
+	private_vici_control_t *this, char *name, u_int id, vici_message_t *request)
+{
+	enumerator_t *sas;
+	char *ike, *peer_ip, *peer_id, *gw, *errmsg = NULL;
+	u_int ike_id, current, found = 0;
+	identification_t *gateway, *identity = NULL, *other_id;
+	traffic_selector_t *ts = NULL;
+	ike_sa_t *ike_sa;
+	vici_builder_t *builder;
+
+	ike = request->get_str(request, NULL, "ike");
+	ike_id = request->get_int(request, 0, "ike-id");
+	peer_ip = request->get_str(request, NULL, "peer-ip");
+	peer_id = request->get_str(request, NULL, "peer-id");
+	gw = request->get_str(request, NULL, "gateway");
+
+	if (!gw || !(gateway = identification_create_from_string(gw)))
+	{
+		return send_reply(this, "missing target gateway");
+	}
+	switch (gateway->get_type(gateway))
+	{
+		case ID_IPV4_ADDR:
+		case ID_IPV6_ADDR:
+		case ID_FQDN:
+			break;
+		default:
+			return send_reply(this, "unsupported gateway identity");
+	}
+	if (peer_ip)
+	{
+		ts = parse_peer_ip(peer_ip);
+		if (!ts)
+		{
+			return send_reply(this, "invalid peer IP selector");
+		}
+		DBG1(DBG_CFG, "vici redirect IKE_SAs with src %R to %Y", ts,
+			 gateway);
+	}
+	if (peer_id)
+	{
+		identity = identification_create_from_string(peer_id);
+		if (!identity)
+		{
+			DESTROY_IF(ts);
+			return send_reply(this, "invalid peer identity selector");
+		}
+		DBG1(DBG_CFG, "vici redirect IKE_SAs with ID '%Y' to %Y", identity,
+			 gateway);
+	}
+	if (ike_id)
+	{
+		DBG1(DBG_CFG, "vici redirect IKE_SA #%d to '%Y'", ike_id, gateway);
+	}
+	if (ike)
+	{
+		DBG1(DBG_CFG, "vici redirect IKE_SA '%s' to '%Y'", ike, gateway);
+	}
+	if (!peer_ip && !peer_id && !ike && !ike_id)
+	{
+		return send_reply(this, "missing redirect selector");
+	}
+
+	sas = charon->controller->create_ike_sa_enumerator(charon->controller, TRUE);
+	while (sas->enumerate(sas, &ike_sa))
+	{
+		if (ike_sa->get_version(ike_sa) != IKEV2)
+		{
+			continue;
+		}
+		current = ike_sa->get_unique_id(ike_sa);
+		if (ike_id && ike_id != current)
+		{
+			continue;
+		}
+		if (ike && !streq(ike, ike_sa->get_name(ike_sa)))
+		{
+			continue;
+		}
+		if (ts && !ts->includes(ts, ike_sa->get_other_host(ike_sa)))
+		{
+			continue;
+		}
+		if (identity)
+		{
+			other_id = ike_sa->get_other_eap_id(ike_sa);
+			if (!other_id->matches(other_id, identity))
+			{
+				continue;
+			}
+		}
+		lib->processor->queue_job(lib->processor,
+				(job_t*)redirect_job_create(ike_sa->get_id(ike_sa), gateway));
+		found++;
+	}
+	sas->destroy(sas);
+
+	builder = vici_builder_create();
+	if (!found)
+	{
+		errmsg = "no matching SAs to redirect found";
+	}
+	builder->add_kv(builder, "success", errmsg ? "no" : "yes");
+	if (errmsg)
+	{
+		builder->add_kv(builder, "errmsg", "%s", errmsg);
+	}
+	gateway->destroy(gateway);
+	DESTROY_IF(identity);
+	DESTROY_IF(ts);
 	return builder->finalize(builder);
 }
 
@@ -379,10 +544,11 @@ CALLBACK(install, vici_message_t*,
 {
 	child_cfg_t *child_cfg = NULL;
 	peer_cfg_t *peer_cfg;
-	char *child;
+	char *child, *ike;
 	bool ok;
 
 	child = request->get_str(request, NULL, "child");
+	ike = request->get_str(request, NULL, "ike");
 	if (!child)
 	{
 		return send_reply(this, "missing configuration name");
@@ -390,7 +556,7 @@ CALLBACK(install, vici_message_t*,
 
 	DBG1(DBG_CFG, "vici install '%s'", child);
 
-	child_cfg = find_child_cfg(child, &peer_cfg);
+	child_cfg = find_child_cfg(child, ike, &peer_cfg);
 	if (!child_cfg)
 	{
 		return send_reply(this, "configuration name not found");
@@ -480,6 +646,7 @@ static void manage_commands(private_vici_control_t *this, bool reg)
 {
 	manage_command(this, "initiate", initiate, reg);
 	manage_command(this, "terminate", terminate, reg);
+	manage_command(this, "redirect", redirect, reg);
 	manage_command(this, "install", install, reg);
 	manage_command(this, "uninstall", uninstall, reg);
 	manage_command(this, "reload-settings", reload_settings, reg);

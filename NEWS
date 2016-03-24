@@ -1,3 +1,43 @@
+strongswan-5.4.0
+----------------
+
+- Support for IKEv2 redirection (RFC 5685) has been added.  Plugins may
+  implement the redirect_provider_t interface to decide if and when to redirect
+  connecting clients.  It is also possible to redirect established IKE_SAs based
+  on different selectors via VICI/swanctl.  Unless disabled in strongswan.conf
+  the charon daemon will follow redirect requests received from servers.
+
+- The ike: prefix enables the explicit configuration of signature scheme
+  constraints against IKEv2 authentication in rightauth, which allows the use
+  of different signature schemes for trustchain verification and authentication.
+
+- The initiator of an IKEv2 make-before-break reauthentication now suspends
+  online certificate revocation checks (OCSP, CRLs) until the new IKE_SA and all
+  CHILD_SAs are established.  This is required if the checks are done over the
+  CHILD_SA established with the new IKE_SA.  This is not possible until the
+  initiator installs this SA and that only happens after the authentication is
+  completed successfully.  So we suspend the checks during the reauthentication
+  and do them afterwards, if they fail the IKE_SA is closed.  This change has no
+  effect on the behavior during the authentication of the initial IKE_SA.
+
+- For the vici plugin a Vici:Session Perl CPAN module has been added to allow
+  Perl applications to control and/or monitor the IKE daemon using the VICI
+  interface, similar to the existing Python egg or Ruby gem.
+
+- Traffic selectors with port ranges can now be configured in the Linux kernel:
+  e.g. remote_ts = 10.1.0.0/16[tcp/20-23] local_ts = dynamic[tcp/32768-65535].
+  The port range must map to a port mask, though since the kernel does not
+  support arbitrary ranges.
+
+- The vici plugin allows the configuration of IPv4 and IPv6 address ranges
+  in local and remote traffic selectors. Since both the Linux kernel and
+  iptables cannot handle arbitrary ranges, address ranges are mapped to the next
+  larger CIDR subnet by the kernel-netlink and updown plugins, respectively.
+
+- Implemented IKEv1 IPv4/IPv6 address subnet and range identities that can be
+  used as owners of shared secrets.
+
+
 strongswan-5.3.5
 ----------------
 
