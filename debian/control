@@ -68,7 +68,6 @@ Description: strongSwan utility and crypto library
   - x509 (Advanced X.509 plugin for parsing/generating X.509 certificates/CRLs
     and OCSP messages)
   - xcbc (XCBC wrapper using various ciphers)
- For libhydra (IKE daemon plugins):
   - attr (Provides IKE attributes configured in strongswan.conf)
   - kernel-netlink [linux] (IPsec/Networking kernel interface using Linux
     Netlink)

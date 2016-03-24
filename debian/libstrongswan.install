@@ -70,8 +70,6 @@ etc/strongswan.d/charon/sha2.conf
 etc/strongswan.d/charon/sshkey.conf
 etc/strongswan.d/charon/x509.conf
 etc/strongswan.d/charon/xcbc.conf
-# libhydra plugins
-usr/lib/ipsec/libhydra.so*
 usr/lib/ipsec/plugins/libstrongswan-attr.so
 usr/lib/ipsec/plugins/libstrongswan-resolve.so
 # config files

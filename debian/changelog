@@ -5,6 +5,8 @@ strongswan (5.4.0-1) UNRELEASED; urgency=medium
     - 0001-configure-Support-systemd-209 dropped, included upstream.
     - 0001-charon-systemd-Inherit-all-settings-from-the-charon- dropped as
       well, a different version was included upstream.
+  * debian/libstrongswan.install:
+    - drop libhydra lines, it's been removed.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 24 Mar 2016 11:59:50 +0100
 
