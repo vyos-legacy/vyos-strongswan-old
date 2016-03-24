@@ -367,6 +367,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -455,6 +457,7 @@ plugins = \
 	plugins/ntru.opt \
 	plugins/openssl.opt \
 	plugins/osx-attr.opt \
+	plugins/p-cscf.opt \
 	plugins/pkcs11.opt \
 	plugins/radattr.opt \
 	plugins/random.opt \

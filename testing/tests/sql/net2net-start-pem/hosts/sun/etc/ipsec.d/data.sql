@@ -105,25 +105,25 @@ INSERT INTO private_key_identity (
 INSERT INTO proposals (
   proposal
 ) VALUES (
-  'aes128-sha256-modp2048'
+  'aes128-sha256-modp3072'
 );
 
 INSERT INTO proposals (
   proposal
 ) VALUES (
-  'aes192-sha384-modp3072'
+  'aes192-sha384-modp8192'
 );
 
 INSERT INTO proposals (
   proposal
 ) VALUES (
-  'aes128gcm128'
+  'aes128gcm16-modp3072'
 );
 
 INSERT INTO proposals (
   proposal
 ) VALUES (
-  'aes192gcm128'
+  'aes192gcm16-modp8192'
 );
 
 /* Configurations */
@@ -155,19 +155,19 @@ INSERT INTO peer_configs (
 INSERT INTO child_configs (
   name, updown, start_action, dpd_action
 ) VALUES (
-  'net-1', 'ipsec _updown iptables', 0, 0
+  'net-1', '/usr/local/libexec/ipsec/_updown iptables', 0, 0
 );
 
 INSERT INTO child_configs (
   name, updown, start_action, dpd_action
 ) VALUES (
-  'net-2', 'ipsec _updown iptables', 0, 0
+  'net-2', '/usr/local/libexec/ipsec/_updown iptables', 0, 0
 );
 
 INSERT INTO child_configs (
   name, updown, start_action, dpd_action
 ) VALUES (
-  'net-3', 'ipsec _updown iptables', 0, 0
+  'net-3', '/usr/local/libexec/ipsec/_updown iptables', 0, 0
 );
 
 INSERT INTO peer_config_child_config (

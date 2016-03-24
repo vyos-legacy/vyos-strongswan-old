@@ -23,7 +23,6 @@
 
 #include <unistd.h>
 
-#include <hydra.h>
 #include <daemon.h>
 #include <processing/jobs/callback_job.h>
 #include <threading/condvar.h>
@@ -240,16 +239,24 @@ METHOD(plugin_t, get_features, int,
 				PLUGIN_SDEPEND(PRIVKEY, KEY_RSA),
 				PLUGIN_SDEPEND(CERT_DECODE, CERT_ANY),
 				PLUGIN_SDEPEND(CERT_DECODE, CERT_X509),
+		PLUGIN_CALLBACK(kernel_ipsec_register, load_tester_ipsec_create),
+			PLUGIN_PROVIDE(CUSTOM, "kernel-ipsec"),
 	};
+	int count = countof(f);
+
 	*features = f;
-	return countof(f);
+
+	if (!lib->settings->get_bool(lib->settings,
+			"%s.plugins.load-tester.fake_kernel", FALSE, lib->ns))
+	{
+		count -= 2;
+	}
+	return count;
 }
 
 METHOD(plugin_t, destroy, void,
 	private_load_tester_plugin_t *this)
 {
-	hydra->kernel_interface->remove_ipsec_interface(hydra->kernel_interface,
-						(kernel_ipsec_constructor_t)load_tester_ipsec_create);
 	this->mutex->destroy(this->mutex);
 	this->condvar->destroy(this->condvar);
 	free(this);
@@ -289,12 +296,5 @@ plugin_t *load_tester_plugin_create()
 		.mutex = mutex_create(MUTEX_TYPE_DEFAULT),
 		.condvar = condvar_create(CONDVAR_TYPE_DEFAULT),
 	);
-
-	if (lib->settings->get_bool(lib->settings,
-			"%s.plugins.load-tester.fake_kernel", FALSE, lib->ns))
-	{
-		hydra->kernel_interface->add_ipsec_interface(hydra->kernel_interface,
-						(kernel_ipsec_constructor_t)load_tester_ipsec_create);
-	}
 	return &this->public.plugin;
 }

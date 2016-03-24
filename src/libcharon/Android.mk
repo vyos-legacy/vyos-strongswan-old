@@ -47,7 +47,10 @@ encoding/payloads/unknown_payload.c encoding/payloads/unknown_payload.h \
 encoding/payloads/vendor_id_payload.c encoding/payloads/vendor_id_payload.h \
 encoding/payloads/hash_payload.c encoding/payloads/hash_payload.h \
 encoding/payloads/fragment_payload.c encoding/payloads/fragment_payload.h \
-kernel/kernel_handler.c kernel/kernel_handler.h \
+kernel/kernel_interface.c kernel/kernel_interface.h \
+kernel/kernel_ipsec.c kernel/kernel_ipsec.h \
+kernel/kernel_net.c kernel/kernel_net.h \
+kernel/kernel_listener.h kernel/kernel_handler.c kernel/kernel_handler.h \
 network/receiver.c network/receiver.h network/sender.c network/sender.h \
 network/socket.c network/socket.h \
 network/socket_manager.c network/socket_manager.h \
@@ -56,6 +59,7 @@ processing/jobs/delete_child_sa_job.c processing/jobs/delete_child_sa_job.h \
 processing/jobs/delete_ike_sa_job.c processing/jobs/delete_ike_sa_job.h \
 processing/jobs/migrate_job.c processing/jobs/migrate_job.h \
 processing/jobs/process_message_job.c processing/jobs/process_message_job.h \
+processing/jobs/redirect_job.c processing/jobs/redirect_job.h \
 processing/jobs/rekey_child_sa_job.c processing/jobs/rekey_child_sa_job.h \
 processing/jobs/rekey_ike_sa_job.c processing/jobs/rekey_ike_sa_job.h \
 processing/jobs/retransmit_job.c processing/jobs/retransmit_job.h \
@@ -81,6 +85,7 @@ sa/child_sa_manager.c sa/child_sa_manager.h \
 sa/task_manager.h sa/task_manager.c \
 sa/shunt_manager.c sa/shunt_manager.h \
 sa/trap_manager.c sa/trap_manager.h \
+sa/redirect_provider.h sa/redirect_manager.c sa/redirect_manager.h \
 sa/task.c sa/task.h
 
 libcharon_la_SOURCES += \
@@ -104,8 +109,10 @@ sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
 sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
 sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
 sa/ikev2/tasks/ike_reauth_complete.c sa/ikev2/tasks/ike_reauth_complete.h \
+sa/ikev2/tasks/ike_redirect.c sa/ikev2/tasks/ike_redirect.h \
 sa/ikev2/tasks/ike_auth_lifetime.c sa/ikev2/tasks/ike_auth_lifetime.h \
-sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h
+sa/ikev2/tasks/ike_vendor.c sa/ikev2/tasks/ike_vendor.h \
+sa/ikev2/tasks/ike_verify_peer_cert.c sa/ikev2/tasks/ike_verify_peer_cert.h
 
 libcharon_la_SOURCES += \
 sa/ikev1/keymat_v1.c sa/ikev1/keymat_v1.h \
@@ -148,6 +155,8 @@ LOCAL_LDLIBS += -llog
 endif
 
 LOCAL_SRC_FILES += $(call add_plugin, attr)
+
+LOCAL_SRC_FILES += $(call add_plugin, p-cscf)
 
 LOCAL_SRC_FILES += $(call add_plugin, eap-aka)
 
@@ -216,6 +225,10 @@ endif
 
 LOCAL_SRC_FILES += $(call add_plugin, load-tester)
 
+LOCAL_SRC_FILES += $(call add_plugin, kernel-pfkey)
+
+LOCAL_SRC_FILES += $(call add_plugin, kernel-netlink)
+
 LOCAL_SRC_FILES += $(call add_plugin, socket-default)
 
 LOCAL_SRC_FILES += $(call add_plugin, socket-dynamic)
@@ -228,7 +241,6 @@ endif
 # build libcharon --------------------------------------------------------------
 
 LOCAL_C_INCLUDES += \
-	$(strongswan_PATH)/src/libhydra \
 	$(strongswan_PATH)/src/libstrongswan
 
 LOCAL_CFLAGS := $(strongswan_CFLAGS)
@@ -241,6 +253,6 @@ LOCAL_ARM_MODE := arm
 
 LOCAL_PRELINK_MODULE := false
 
-LOCAL_SHARED_LIBRARIES += libstrongswan libhydra
+LOCAL_SHARED_LIBRARIES += libstrongswan
 
 include $(BUILD_SHARED_LIBRARY)

@@ -1,6 +1,6 @@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra \
+	-I$(top_srcdir)/src/libstrongswan/plugins/pubkey \
 	-I$(top_srcdir)/src/libcharon \
 	-DIPSEC_PIDDIR=\"${piddir}\"
 
@@ -18,6 +18,7 @@ libstrongswan_vici_la_SOURCES = \
 	vici_message.h vici_message.c \
 	vici_builder.h vici_builder.c \
 	vici_dispatcher.h vici_dispatcher.c \
+	vici_cert_info.h vici_cert_info.c \
 	vici_query.h vici_query.c \
 	vici_control.h vici_control.c \
 	vici_config.h vici_config.c \
@@ -38,6 +39,7 @@ ipseclib_LTLIBRARIES = libvici.la
 libvici_la_SOURCES = \
 	vici_message.c vici_message.h \
 	vici_builder.c vici_builder.h \
+	vici_cert_info.h vici_cert_info.c \
 	libvici.c libvici.h
 
 libvici_la_LIBADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -78,4 +80,8 @@ endif
 
 if USE_PYTHON_EGGS
 SUBDIRS += python
+endif
+
+if USE_PERL_CPAN
+SUBDIRS += perl
 endif

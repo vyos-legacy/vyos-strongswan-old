@@ -97,6 +97,13 @@ Strictly require at least one test vector to enable an algorithm.
 Whether to test RNG with TRUE quality; requires a lot of entropy.
 
 .TP
+.BR charon.delete_rekeyed " [no]"
+Delete CHILD_SAs right after they got successfully rekeyed (IKEv1 only). Reduces
+the number of stale CHILD_SAs in scenarios with a lot of rekeyings. However,
+this might cause problems with implementations that continue to use rekeyed SAs
+until they expire.
+
+.TP
 .BR charon.dh_exponent_ansi_x9_42 " [yes]"
 Use ANSI X9.42 DH exponent size or optimum size matched to cryptographic
 strength.
@@ -175,6 +182,10 @@ passed to
 If enabled objects used during authentication (certificates, identities etc.)
 are released to free memory once an IKE_SA is established. Enabling this might
 conflict with plugins that later need access to e.g. the used certificates.
+
+.TP
+.BR charon.follow_redirects " [yes]"
+Whether to follow IKEv2 redirects (RFC 5685).
 
 .TP
 .BR charon.fragment_size " [0]"
@@ -1191,6 +1202,17 @@ Set OpenSSL FIPS mode: disabled(0), enabled(1), Suite B enabled(2).
 Whether DNS servers are appended to existing entries, instead of replacing them.
 
 .TP
+.B charon.plugins.p-cscf.enable
+.br
+Section to enable requesting P\-CSCF server addresses for individual connections.
+
+.TP
+.BR charon.plugins.p-cscf.enable.<conn> " [no]"
+<conn> is the name of a connection with an ePDG from which to request P\-CSCF
+server addresses.  Requests will be sent for addresses of the same families for
+which internal IPs are requested.
+
+.TP
 .BR charon.plugins.pkcs11.load_certs " [yes]"
 Whether to load certificates from tokens.
 
@@ -1572,7 +1594,7 @@ resolution failed), 0 to disable retries.
 
 .TP
 .BR charon.reuse_ikesa " [yes]"
-Initiate CHILD_SA within existing IKE_SAs.
+Initiate CHILD_SA within existing IKE_SAs (always enabled for IKEv1).
 
 .TP
 .BR charon.routing_table " []"

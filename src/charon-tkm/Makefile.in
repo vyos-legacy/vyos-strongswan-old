@@ -329,6 +329,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -347,16 +349,14 @@ OBJ = $(abs_top_builddir)/src
 AM_CPPFLAGS = \
 	-include $(abs_top_builddir)/config.h \
 	-I$(SRC)/libstrongswan \
-	-I$(SRC)/libhydra \
 	-I$(SRC)/libcharon
 
 LIBLD = \
 	-L$(OBJ)/libstrongswan/.libs \
-	-L$(OBJ)/libhydra/.libs \
 	-L$(OBJ)/libcharon/.libs
 
-LIBPT = $(OBJ)/libstrongswan/.libs:$(OBJ)/libhydra/.libs:$(OBJ)/libcharon/.libs
-LIBFL = -lstrongswan -lhydra -lcharon
+LIBPT = $(OBJ)/libstrongswan/.libs:$(OBJ)/libcharon/.libs
+LIBFL = -lstrongswan -lcharon
 BUILD_OPTS = \
 	-XOBJ_DIR=$(abs_builddir)/obj \
 	-cargs $(AM_CPPFLAGS) $(DEFS) \

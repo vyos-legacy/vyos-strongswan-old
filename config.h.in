@@ -329,6 +329,9 @@
 /* support for IKEv2 protocol */
 #undef USE_IKEV2
 
+/* use thread ID for thread identification, if available */
+#undef USE_THREAD_IDS
+
 /* use Vstr string library for printf hooks */
 #undef USE_VSTR
 

@@ -109,7 +109,6 @@ am_libcharon_tests_OBJECTS =  \
 libcharon_tests_OBJECTS = $(am_libcharon_tests_OBJECTS)
 libcharon_tests_DEPENDENCIES =  \
 	$(top_builddir)/src/libcharon/libcharon.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -415,6 +414,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -436,7 +437,6 @@ libcharon_tests_SOURCES = \
 
 libcharon_tests_CFLAGS = \
   -I$(top_srcdir)/src/libcharon \
-  -I$(top_srcdir)/src/libhydra \
   -I$(top_srcdir)/src/libstrongswan \
   -I$(top_srcdir)/src/libstrongswan/tests \
   -DPLUGINDIR=\""$(abs_top_builddir)/src/libstrongswan/plugins\"" \
@@ -446,7 +446,6 @@ libcharon_tests_CFLAGS = \
 libcharon_tests_LDFLAGS = @COVERAGE_LDFLAGS@
 libcharon_tests_LDADD = \
   $(top_builddir)/src/libcharon/libcharon.la \
-  $(top_builddir)/src/libhydra/libhydra.la \
   $(top_builddir)/src/libstrongswan/libstrongswan.la \
   $(top_builddir)/src/libstrongswan/tests/libtest.la
 

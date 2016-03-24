@@ -4,6 +4,7 @@ swanctl_SOURCES = \
 	command.c command.h \
 	commands/initiate.c \
 	commands/terminate.c \
+	commands/redirect.c \
 	commands/install.c \
 	commands/list_sas.c \
 	commands/list_pols.c \
@@ -11,6 +12,7 @@ swanctl_SOURCES = \
 	commands/list_conns.c \
 	commands/list_certs.c \
 	commands/list_pools.c \
+	commands/list_algs.c \
 	commands/load_all.c \
 	commands/load_authorities.h  commands/load_authorities.c \
 	commands/load_conns.c commands/load_conns.h \
@@ -24,7 +26,8 @@ swanctl_SOURCES = \
 
 swanctl_LDADD = \
 	$(top_builddir)/src/libcharon/plugins/vici/libvici.la \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(PTHREADLIB) $(DLLIB)
 
 swanctl.o :		$(top_builddir)/config.status
 
@@ -62,10 +65,13 @@ install-data-local: swanctl.conf
 	test -e "$(DESTDIR)$(swanctldir)/x509" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ca" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ca" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509aa" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509aa" || true
+	test -e "$(DESTDIR)$(swanctldir)/x509ocsp" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ocsp" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509crl" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509crl" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ac" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ac" || true
+	test -e "$(DESTDIR)$(swanctldir)/pubkey" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/pubkey" || true
 	test -e "$(DESTDIR)$(swanctldir)/rsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/rsa" || true
 	test -e "$(DESTDIR)$(swanctldir)/ecdsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/ecdsa" || true
+	test -e "$(DESTDIR)$(swanctldir)/bliss" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/bliss" || true
 	test -e "$(DESTDIR)$(swanctldir)/pkcs8" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/pkcs8" || true
 	test -e "$(DESTDIR)$(swanctldir)/pkcs12" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/pkcs12" || true
 	test -e "$(DESTDIR)$(swanctldir)/swanctl.conf" || $(INSTALL) -m 640 $(srcdir)/swanctl.conf $(DESTDIR)$(swanctldir)/swanctl.conf || true

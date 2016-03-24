@@ -42,9 +42,9 @@ connections.<conn>.remote_addrs = %any
 	be specified.
 
 connections.<conn>.local_port = 500
-	Local UPD port for IKE communication.
+	Local UDP port for IKE communication.
 
-	Local UPD port for IKE communication. By default the port of the socket
+	Local UDP port for IKE communication. By default the port of the socket
 	backend is used, which is usually _500_. If port _500_ is used, automatic
 	IKE port floating to port 4500 is used to work around NAT issues.
 
@@ -54,7 +54,7 @@ connections.<conn>.local_port = 500
 connections.<conn>.remote_port = 500
 	Remote UDP port for IKE communication.
 
-	Remote UPD port for IKE communication. If the default of port _500_ is used,
+	Remote UDP port for IKE communication. If the default of port _500_ is used,
 	automatic IKE port floating to port 4500 is used to work around NAT issues.
 
 connections.<conn>.proposals = default
@@ -140,14 +140,15 @@ connections.<conn>.dpd_timeout = 0s
 	specified; this option has no effect on connections using IKE2.
 
 connections.<conn>.fragmentation = no
-	Use IKEv1 UDP packet fragmentation (_yes_, _no_ or _force_).
+	Use IKE UDP datagram fragmentation.  (_yes_, _no_ or _force_).
 
-	The default of _no_ disables IKEv1 fragmentation mechanism, _yes_ enables
-	it if support has been indicated by the peer. _force_ enforces
-	fragmentation if required even before the peer had a chance to indicate
-	support for it.
-
-	IKE fragmentation is currently not supported with IKEv2.
+	Use IKE fragmentation (proprietary IKEv1 extension or RFC 7383 IKEv2
+	fragmentation).  Acceptable  values  are _yes_, _force_ and _no_ (the
+	default). Fragmented IKE messages sent by a peer are always accepted
+	irrespective of  the  value  of  this option. If set to _yes_, and the peer
+	supports it, oversized IKE messages will be sent in fragments.  If set  to
+	_force_  (only  supported  for IKEv1) the initial IKE message will already
+	be fragmented if required.
 
 connections.<conn>.send_certreq = yes
 	Send certificate requests payloads (_yes_ or _no_).
@@ -267,16 +268,31 @@ connections.<conn>.local<suffix> {}
 	unique suffix. To define a single authentication round, the suffix may be
 	omitted.
 
+connections.<conn>.local<suffix>.round = 0
+	Optional numeric identifier by which authentication rounds are sorted.  If
+	not specified rounds are ordered by their position in the config file/VICI
+	message.
+
 connections.<conn>.local<suffix>.certs =
 	Comma separated list of certificate candidates to use for authentication.
 
 	Comma separated list of certificate candidates to use for authentication.
 	The certificates may use a relative path from the **swanctl** _x509_
-	directory, or an absolute path.
+	directory or an absolute path.
 
 	The certificate used for authentication is selected based on the received
 	certificate request payloads. If no appropriate CA can be located, the
 	first certificate is used.
+
+connections.<conn>.local<suffix>.pubkeys =
+	Comma separated list of raw public key candidates to use for authentication.
+
+	Comma separated list of raw public key candidates to use for authentication.
+	The public keys may use a relative path from the **swanctl** _pubkey_
+	directory or an absolute path.
+
+	Even though multiple local public keys could be defined in principle, only
+	the	first public key in the list is used for authentication.
 
 connections.<conn>.local<suffix>.auth = pubkey
 	Authentication to perform locally (_pubkey_, _psk_, _xauth[-backend]_ or
@@ -297,6 +313,19 @@ connections.<conn>.local<suffix>.auth = pubkey
 	For _eap_, a specific EAP method name may be appended, separated by a dash.
 	An EAP module implementing the appropriate method is selected to perform
 	the EAP conversation.
+
+	If both peers support RFC 7427 ("Signature Authentication in IKEv2")
+	specific hash algorithms to be used during IKEv2 authentication may be
+	configured. To do so use _ike:_ followed by a trust chain signature scheme
+	constraint (see description of the **remote** section's **auth** keyword).
+	For example, with _ike:pubkey-sha384-sha256_ a public key signature scheme
+	with either SHA-384 or SHA-256 would get used for authentication, in that
+	order and depending on the hash algorithms supported by the peer. If no
+	specific hash algorithms are configured, the default is to prefer an
+	algorithm that matches or exceeds the strength of the signature key.
+	If no constraints with _ike:_ prefix are configured any signature scheme
+	constraint (without _ike:_ prefix) will also apply to IKEv2 authentication,
+	unless this is disabled in **strongswan.conf**(5).
 
 connections.<conn>.local<suffix>.id =
 	IKE identity to use for authentication round.
@@ -350,6 +379,11 @@ connections.<conn>.remote<suffix> {}
 	optional unique suffix. To define a single authentication round, the suffix
 	may be omitted.
 
+connections.<conn>.remote<suffix>.round = 0
+	Optional numeric identifier by which authentication rounds are sorted.  If
+	not specified rounds are ordered by their position in the config file/VICI
+	message.
+
 connections.<conn>.remote<suffix>.id = %any
 	IKE identity to expect for authentication round.
 
@@ -369,14 +403,21 @@ connections.<conn>.remote<suffix>.certs =
 
 	Comma separated list of certificates to accept for authentication.
 	The certificates may use a relative path from the **swanctl** _x509_
-	directory, or an absolute path.
+	directory or an absolute path.
 
 connections.<conn>.remote<suffix>.cacerts =
 	Comma separated list of CA certificates to accept for authentication.
 
 	Comma separated list of CA certificates to accept for authentication.
 	The certificates may use a relative path from the **swanctl** _x509ca_
-	directory, or an absolute path.
+	directory or an absolute path.
+
+connections.<conn>.remote<suffix>.pubkeys =
+	Comma separated list of raw public keys to accept for authentication.
+
+	Comma separated list of raw public keys to accept for authentication.
+	The public keys may use a relative path from the **swanctl** _x509_
+	directory or an absolute path.
 
 connections.<conn>.remote<suffix>.revocation = relaxed
 	Certificate revocation policy, (_strict_, _ifuri_ or _relaxed_).
@@ -397,8 +438,24 @@ connections.<conn>.remote<suffix>.auth = pubkey
 	Authentication to expect from remote (_pubkey_, _psk_, _xauth[-backend]_ or
 	_eap[-method]_).
 
-	Authentication to expect from remote. See the **local** sections **auth**
+	Authentication to expect from remote. See the **local** section's **auth**
 	keyword description about the details of supported mechanisms.
+
+	To require a trustchain public key strength for the remote side, specify the
+	key type followed by the minimum strength in bits (for example _ecdsa-384_
+	or _rsa-2048-ecdsa-256_). To limit the acceptable set of hashing algorithms
+	for trustchain validation, append hash algorithms to _pubkey_ or a key
+	strength definition (for example _pubkey-sha1-sha256_ or
+	_rsa-2048-ecdsa-256-sha256-sha384-sha512_).
+	Unless disabled in **strongswan.conf**(5), or explicit IKEv2 signature
+	constraints are configured (refer to the description of the **local**
+	section's **auth** keyword for details), such key types and hash algorithms
+	are also applied as constraints against IKEv2 signature authentication
+	schemes used by the remote side.
+
+	To specify trust chain constraints for EAP-(T)TLS, append a colon to the
+	EAP method, followed by the key type/size and hash algorithm as discussed
+	above (e.g. _eap-tls:ecdsa-384-sha384_).
 
 connections.<conn>.children.<child> {}
 	CHILD_SA configuration sub-section.
@@ -586,8 +643,8 @@ connections.<conn>.children.<child>.mode = tunnel
 	Both _transport_ and _beet_ modes are subject to mode negotiation; _tunnel_
 	mode is negotiated if the preferred mode is not available.
 
-	_pass_ and _drop_ are used to install shunt policies, which explicitly
-	bypass the defined traffic from IPsec processing, or drop it, respectively.
+	_pass_ and _drop_ are used to install shunt policies which explicitly
+	bypass the defined traffic from IPsec processing or drop it, respectively.
 
 connections.<conn>.children.<child>.policies = yes
 	Whether to install IPsec policies or not.
@@ -703,7 +760,7 @@ secrets { # }
 
 	It is not recommended to define any private key decryption passphrases,
 	as then there is no real security benefit in having encrypted keys. Either
-	store the key unencrypted, or enter the keys manually when loading
+	store the key unencrypted or enter the keys manually when loading
 	credentials.
 
 secrets.eap<suffix> { # }
@@ -724,7 +781,7 @@ secrets.eap<suffix>.secret =
 	Value of the EAP/XAuth secret.
 
 	Value of the EAP/XAuth secret. It may either be an ASCII string, a hex
-	encoded string if it has a _0x_ prefix, or a Base64 encoded string if it
+	encoded string if it has a _0x_ prefix or a Base64 encoded string if it
 	has a _0s_ prefix in its value.
 
 secrets.eap<suffix>.id<suffix> =
@@ -744,7 +801,7 @@ secrets.ike<suffix>.secret =
 	Value of the IKE preshared secret.
 
 	Value of the IKE preshared secret. It may either be an ASCII string,
-	a hex encoded string if it has a _0x_ prefix, or a Base64 encoded string if
+	a hex encoded string if it has a _0x_ prefix or a Base64 encoded string if
 	it has a _0s_ prefix in its value.
 
 secrets.ike<suffix>.id<suffix> =
@@ -804,7 +861,7 @@ pools.<name>.addrs =
 	Addresses allocated in pool.
 
 	Subnet or range defining addresses allocated in pool. Accepts a single CIDR
-	subnet defining the pool to allocate addresses from, or an address range
+	subnet defining the pool to allocate addresses from or an address range
 	(<from>-<to>).  Pools must be unique and non-overlapping.
 
 pools.<name>.<attr> =
@@ -827,7 +884,7 @@ authorities.<name>.cacert =
 	CA certificate belonging to the certification authority.
 
 	The certificates may use a relative path from the **swanctl** _x509ca_
-	directory, or an absolute path.
+	directory or an absolute path.
 
 authorities.<name>.crl_uris =
 	Comma-separated list of CRL distribution points
