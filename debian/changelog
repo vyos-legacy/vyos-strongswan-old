@@ -1,4 +1,4 @@
-strongswan (5.4.0-1) UNRELEASED; urgency=medium
+strongswan (5.4.0-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/patches
@@ -9,7 +9,7 @@ strongswan (5.4.0-1) UNRELEASED; urgency=medium
     - drop libhydra lines, it's been removed.
   * debian/copyright: remove hydra lines as well.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 24 Mar 2016 11:59:50 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Apr 2016 11:35:16 +0200
 
 strongswan (5.3.5-2) unstable; urgency=medium
 
