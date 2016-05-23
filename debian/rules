@@ -6,7 +6,6 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ldap --enable-curl \
 		--enable-pkcs11 \
-		--enable-mediation --enable-medsrv --enable-medcli \
 		--enable-openssl --enable-agent \
 		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
 		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
@@ -30,6 +29,8 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# Don't --enable-cisco-quirks, because some other IPsec implementations
 	# (most notably the Phion one) have problems connecting when pluto 
 	# sends these Cisco options.
+	# don't enable mediation right now (20160523) since clearsilver FTBFS
+	#--enable-mediation --enable-medsrv --enable-medcli \
 
 # get the various DEB_BUILD/DEB_HOST variables
 include /usr/share/dpkg/architecture.mk
