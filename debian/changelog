@@ -1,3 +1,15 @@
+strongswan (5.4.0-2) UNRELEASED; urgency=medium
+
+  * debian/rules:
+    - stop building web interface for now since clearsilver is not building
+      right now.
+  * debian/control:
+    - drop build-dep on clearsilver-dev and libfcgi-dev
+  * debian/libcharon-extra-plugins:
+    - stop shipping medsrv and medcli plugin.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 23 May 2016 10:52:31 +0200
+
 strongswan (5.4.0-1) unstable; urgency=medium
 
   * New upstream release.
