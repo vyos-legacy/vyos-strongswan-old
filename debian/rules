@@ -20,7 +20,6 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-lookip \
 		--enable-error-notify \
 		--enable-unity \
-		--enable-connmark \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -53,6 +52,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--enable-farp \
 		--enable-dhcp \
 		--enable-af-alg \
+		--enable-connmark \
 		--enable-systemd --enable-swanctl
 endif
 
@@ -89,6 +89,9 @@ override_dh_install-arch:
 	# first special cases
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	# handle Linux-only plugins
+	dh_install -p libstrongswan-standard-plugins usr/lib/ipsec/plugins/libstrongswan-connmark.so
+	dh_install -p libstrongswan-standard-plugins usr/share/strongswan/templates/config/plugins/connmark.conf
+	dh_install -p libstrongswan-standard-plugins etc/strongswan.d/charon/connmark.conf
 	dh_install -p libcharon-extra-plugins usr/lib/ipsec/plugins/libstrongswan-dhcp.so
 	dh_install -p libcharon-extra-plugins usr/share/strongswan/templates/config/plugins/dhcp.conf
 	dh_install -p libcharon-extra-plugins etc/strongswan.d/charon/dhcp.conf
@@ -148,6 +151,7 @@ endif
 	dh_install --fail-missing \
 		-X\.la -X\.a \
 		-Xmedsrv -Xman3 \
+		-Xlibstrongswan-connmark.so -X connmark.conf \
 		-Xlibstrongswan-kernel- -X kernel- \
 		-Xlibstrongswan-dhcp.so -X dhcp.conf \
 		-Xlibstrongswan-farp.so -X farp.conf \

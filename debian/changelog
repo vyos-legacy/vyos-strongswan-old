@@ -3,12 +3,17 @@ strongswan (5.4.0-2) UNRELEASED; urgency=medium
   * debian/rules:
     - stop building web interface for now since clearsilver is not building
       right now.
+    - enable connmark only on Linux
+    - install connmark plugins files only on Linux
   * debian/control:
     - drop build-dep on clearsilver-dev and libfcgi-dev
+    - make iptables-dev build-dep Linux-only.
   * debian/libcharon-extra-plugins:
     - stop shipping medsrv and medcli plugin.
+  * debian/libstrongswan-standard-plugins.install:
+    - stop installing connmark plugins files inconditionnaly.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 23 May 2016 10:52:31 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 23 May 2016 13:09:39 +0200
 
 strongswan (5.4.0-1) unstable; urgency=medium
 
