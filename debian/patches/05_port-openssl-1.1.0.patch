@@ -111,9 +111,37 @@ index cb02c663ca0b..20bac6be57dc 100644
  	this->issuer = openssl_x509_name2id(X509_CRL_get_issuer(this->crl));
  	if (!this->issuer)
 diff --git a/src/libstrongswan/plugins/openssl/openssl_crypter.c b/src/libstrongswan/plugins/openssl/openssl_crypter.c
-index 26f4700b81e8..a690adbcd2c0 100644
+index 26f4700b81e8..b9085f9aaa4c 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_crypter.c
 +++ b/src/libstrongswan/plugins/openssl/openssl_crypter.c
+@@ -43,7 +43,7 @@ struct private_openssl_crypter_t {
+ /**
+  * Look up an OpenSSL algorithm name and validate its key size
+  */
+-static char* lookup_algorithm(u_int16_t ikev2_algo, size_t *key_size)
++static char* lookup_algorithm(uint16_t ikev2_algo, size_t *key_size)
+ {
+ 	struct {
+ 		/* identifier specified in IKEv2 */
+@@ -57,12 +57,12 @@ static char* lookup_algorithm(u_int16_t ikev2_algo, size_t *key_size)
+ 		/* maximum key size */
+ 		size_t key_max;
+ 	} mappings[] = {
+-		{ENCR_DES, 			"des",			 8,		 8,		  8},
+-		{ENCR_3DES, 		"des3",			24,		24,		 24},
+-		{ENCR_RC5, 			"rc5", 			16,		 5,		255},
+-		{ENCR_IDEA, 		"idea",			16,		16,		 16},
+-		{ENCR_CAST, 		"cast",			16,		 5,		 16},
+-		{ENCR_BLOWFISH, 	"blowfish",		16,		 5,		 56},
++		{ENCR_DES, 			"des-cbc",		 8,		 8,		  8},
++		{ENCR_3DES, 		"des-ede3-cbc",	24,		24,		 24},
++		{ENCR_RC5, 			"rc5-cbc",		16,		 5,		255},
++		{ENCR_IDEA, 		"idea-cbc",		16,		16,		 16},
++		{ENCR_CAST, 		"cast5-cbc",	16,		 5,		 16},
++		{ENCR_BLOWFISH, 	"bf-cbc",		16,		 5,		 56},
+ 	};
+ 	int i;
+ 
 @@ -93,8 +93,10 @@ static char* lookup_algorithm(u_int16_t ikev2_algo, size_t *key_size)
  static bool crypt(private_openssl_crypter_t *this, chunk_t data, chunk_t iv,
  				  chunk_t *dst, int enc)
@@ -171,6 +199,40 @@ index 26f4700b81e8..a690adbcd2c0 100644
  }
  
  METHOD(crypter_t, get_key_size, size_t,
+@@ -193,13 +198,13 @@ openssl_crypter_t *openssl_crypter_create(encryption_algorithm_t algo,
+ 					key_size = 16;
+ 					/* FALL */
+ 				case 16:        /* AES 128 */
+-					this->cipher = EVP_get_cipherbyname("aes128");
++					this->cipher = EVP_get_cipherbyname("aes-128-cbc");
+ 					break;
+ 				case 24:        /* AES-192 */
+-					this->cipher = EVP_get_cipherbyname("aes192");
++					this->cipher = EVP_get_cipherbyname("aes-192-cbc");
+ 					break;
+ 				case 32:        /* AES-256 */
+-					this->cipher = EVP_get_cipherbyname("aes256");
++					this->cipher = EVP_get_cipherbyname("aes-256-cbc");
+ 					break;
+ 				default:
+ 					free(this);
+@@ -213,13 +218,13 @@ openssl_crypter_t *openssl_crypter_create(encryption_algorithm_t algo,
+ 					key_size = 16;
+ 					/* FALL */
+ 				case 16:        /* CAMELLIA 128 */
+-					this->cipher = EVP_get_cipherbyname("camellia128");
++					this->cipher = EVP_get_cipherbyname("camellia-128-cbc");
+ 					break;
+ 				case 24:        /* CAMELLIA 192 */
+-					this->cipher = EVP_get_cipherbyname("camellia192");
++					this->cipher = EVP_get_cipherbyname("camellia-192-cbc");
+ 					break;
+ 				case 32:        /* CAMELLIA 256 */
+-					this->cipher = EVP_get_cipherbyname("camellia256");
++					this->cipher = EVP_get_cipherbyname("camellia-256-cbc");
+ 					break;
+ 				default:
+ 					free(this);
 diff --git a/src/libstrongswan/plugins/openssl/openssl_diffie_hellman.c b/src/libstrongswan/plugins/openssl/openssl_diffie_hellman.c
 index 49ec4880480f..f08dfff7e8f1 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_diffie_hellman.c
@@ -441,8 +503,30 @@ index 147e4afb449e..6bbe4af9560c 100644
  }
  
  METHOD(aead_t, get_icv_size, size_t,
+diff --git a/src/libstrongswan/plugins/openssl/openssl_hasher.c b/src/libstrongswan/plugins/openssl/openssl_hasher.c
+index 50b14698be93..96ee230c9b25 100644
+--- a/src/libstrongswan/plugins/openssl/openssl_hasher.c
++++ b/src/libstrongswan/plugins/openssl/openssl_hasher.c
+@@ -43,7 +43,7 @@ struct private_openssl_hasher_t {
+ METHOD(hasher_t, get_hash_size, size_t,
+ 	private_openssl_hasher_t *this)
+ {
+-	return this->hasher->md_size;
++	return EVP_MD_size(this->hasher);
+ }
+ 
+ METHOD(hasher_t, reset, bool,
+@@ -53,7 +53,7 @@ METHOD(hasher_t, reset, bool,
+ }
+ 
+ METHOD(hasher_t, get_hash, bool,
+-	private_openssl_hasher_t *this, chunk_t chunk, u_int8_t *hash)
++	private_openssl_hasher_t *this, chunk_t chunk, uint8_t *hash)
+ {
+ 	if (EVP_DigestUpdate(this->ctx, chunk.ptr, chunk.len) != 1)
+ 	{
 diff --git a/src/libstrongswan/plugins/openssl/openssl_hmac.c b/src/libstrongswan/plugins/openssl/openssl_hmac.c
-index 065187a8c301..6498cb4d6f98 100644
+index 065187a8c301..16e7071166e5 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_hmac.c
 +++ b/src/libstrongswan/plugins/openssl/openssl_hmac.c
 @@ -68,7 +68,14 @@ struct private_mac_t {
@@ -461,7 +545,7 @@ index 065187a8c301..6498cb4d6f98 100644
  
  	/**
  	 * Key set on HMAC_CTX?
-@@ -80,14 +87,14 @@ METHOD(mac_t, set_key, bool,
+@@ -80,28 +87,28 @@ METHOD(mac_t, set_key, bool,
  	private_mac_t *this, chunk_t key)
  {
  #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -478,7 +562,14 @@ index 065187a8c301..6498cb4d6f98 100644
  	this->key_set = TRUE;
  	return TRUE;
  #endif
-@@ -101,7 +108,7 @@ METHOD(mac_t, get_mac, bool,
+ }
+ 
+ METHOD(mac_t, get_mac, bool,
+-	private_mac_t *this, chunk_t data, u_int8_t *out)
++	private_mac_t *this, chunk_t data, uint8_t *out)
+ {
+ 	if (!this->key_set)
+ 	{
  		return FALSE;
  	}
  #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -682,12 +773,15 @@ index aeb9be409b77..3e3b986dffc0 100644
  	{
  		DBG1(DBG_CFG, "no RNG found to seed OpenSSL");
 diff --git a/src/libstrongswan/plugins/openssl/openssl_rng.c b/src/libstrongswan/plugins/openssl/openssl_rng.c
-index c807bb607262..884594620aeb 100644
+index c807bb607262..a25b6b4b6656 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_rng.c
 +++ b/src/libstrongswan/plugins/openssl/openssl_rng.c
-@@ -49,13 +49,6 @@ struct private_openssl_rng_t {
+@@ -47,15 +47,8 @@ struct private_openssl_rng_t {
+ };
+ 
  METHOD(rng_t, get_bytes, bool,
- 	private_openssl_rng_t *this, size_t bytes, u_int8_t *buffer)
+-	private_openssl_rng_t *this, size_t bytes, u_int8_t *buffer)
++	private_openssl_rng_t *this, size_t bytes, uint8_t *buffer)
  {
 -	if (this->quality == RNG_WEAK)
 -	{
@@ -837,8 +931,30 @@ index db928569f31f..d66d5016e81c 100644
  	}
  	destroy(this);
  	return NULL;
+diff --git a/src/libstrongswan/plugins/openssl/openssl_sha1_prf.c b/src/libstrongswan/plugins/openssl/openssl_sha1_prf.c
+index 446c93e2b7c7..f6df03f12d99 100644
+--- a/src/libstrongswan/plugins/openssl/openssl_sha1_prf.c
++++ b/src/libstrongswan/plugins/openssl/openssl_sha1_prf.c
+@@ -40,7 +40,7 @@ struct private_openssl_sha1_prf_t {
+ };
+ 
+ METHOD(prf_t, get_bytes, bool,
+-	private_openssl_sha1_prf_t *this, chunk_t seed, u_int8_t *bytes)
++	private_openssl_sha1_prf_t *this, chunk_t seed, uint8_t *bytes)
+ {
+ #if OPENSSL_VERSION_NUMBER >= 0x10000000L
+ 	if (!SHA1_Update(&this->ctx, seed.ptr, seed.len))
+@@ -53,7 +53,7 @@ METHOD(prf_t, get_bytes, bool,
+ 
+ 	if (bytes)
+ 	{
+-		u_int32_t *hash = (u_int32_t*)bytes;
++		uint32_t *hash = (uint32_t*)bytes;
+ 
+ 		hash[0] = htonl(this->ctx.h0);
+ 		hash[1] = htonl(this->ctx.h1);
 diff --git a/src/libstrongswan/plugins/openssl/openssl_util.c b/src/libstrongswan/plugins/openssl/openssl_util.c
-index 2f981370174b..84749616a353 100644
+index 2f981370174b..6580e1c7df3a 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_util.c
 +++ b/src/libstrongswan/plugins/openssl/openssl_util.c
 @@ -22,6 +22,12 @@
@@ -854,6 +970,15 @@ index 2f981370174b..84749616a353 100644
  /**
   * Described in header.
   */
+@@ -51,7 +57,7 @@ bool openssl_hash_chunk(int hash_type, chunk_t data, chunk_t *hash)
+ 		goto error;
+ 	}
+ 
+-	*hash = chunk_alloc(hasher->md_size);
++	*hash = chunk_alloc(EVP_MD_size(hasher));
+ 	if (!EVP_DigestFinal_ex(ctx, hash->ptr, NULL))
+ 	{
+ 		chunk_free(hash);
 @@ -70,7 +76,8 @@ error:
  /**
   * Described in header.
@@ -883,7 +1008,7 @@ index 2f981370174b..84749616a353 100644
  	return chunk_empty;
  }
 diff --git a/src/libstrongswan/plugins/openssl/openssl_util.h b/src/libstrongswan/plugins/openssl/openssl_util.h
-index 2db073139214..9621d5c138b3 100644
+index 2db073139214..f4186e8c4690 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_util.h
 +++ b/src/libstrongswan/plugins/openssl/openssl_util.h
 @@ -60,7 +60,8 @@ bool openssl_hash_chunk(int hash_type, chunk_t data, chunk_t *hash);
@@ -905,7 +1030,7 @@ index 2db073139214..9621d5c138b3 100644
  
  /**
   * Allocate a chunk using the i2d function of a given object
-@@ -134,4 +135,36 @@ int openssl_asn1_known_oid(ASN1_OBJECT *obj);
+@@ -134,4 +135,42 @@ int openssl_asn1_known_oid(ASN1_OBJECT *obj);
   */
  time_t openssl_asn1_to_time(ASN1_TIME *time);
  
@@ -915,26 +1040,32 @@ index 2db073139214..9621d5c138b3 100644
 + */
 +#define OPENSSL_KEY_FALLBACK(...) VA_ARGS_DISPATCH(OPENSSL_KEY_FALLBACK, __VA_ARGS__)(__VA_ARGS__)
 +#define OPENSSL_KEY_FALLBACK3(type, k1, k2) \
++__attribute__((unused)) \
 +static inline void type##_get0(const type *o, const BIGNUM **k1, const BIGNUM **k2) { \
 +	if (k1) *k1 = o->k1; \
 +	if (k2) *k2 = o->k2; } \
++__attribute__((unused)) \
 +static inline int type##_set0(type *o, BIGNUM *k1, BIGNUM *k2) { \
 +	if (k1) { BN_clear_free(o->k1); o->k1 = k1; } \
 +	if (k2) { BN_clear_free(o->k2); o->k2 = k2; } \
 +	return 1; }
 +#define OPENSSL_KEY_FALLBACK4(type, name, k1, k2) \
++__attribute__((unused)) \
 +static inline void type##_get0_##name(const type *o, const BIGNUM **k1, const BIGNUM **k2) { \
 +	if (k1) *k1 = o->k1; \
 +	if (k2) *k2 = o->k2; } \
++__attribute__((unused)) \
 +static inline int type##_set0_##name(type *o, BIGNUM *k1, BIGNUM *k2) { \
 +	if (k1) { BN_clear_free(o->k1); o->k1 = k1; } \
 +	if (k2) { BN_clear_free(o->k2); o->k2 = k2; } \
 +	return 1; }
 +#define OPENSSL_KEY_FALLBACK5(type, name, k1, k2, k3) \
++__attribute__((unused)) \
 +static inline void type##_get0_##name(const type *o, const BIGNUM **k1, const BIGNUM **k2, const BIGNUM **k3) { \
 +	if (k1) *k1 = o->k1; \
 +	if (k2) *k2 = o->k2; \
 +	if (k3) *k3 = o->k3; } \
++__attribute__((unused)) \
 +static inline int type##_set0_##name(type *o, BIGNUM *k1, BIGNUM *k2, BIGNUM *k3) { \
 +	if (k1) { BN_clear_free(o->k1); o->k1 = k1; } \
 +	if (k2) { BN_clear_free(o->k2); o->k2 = k2; } \
@@ -943,10 +1074,10 @@ index 2db073139214..9621d5c138b3 100644
 +
  #endif /** OPENSSL_UTIL_H_ @}*/
 diff --git a/src/libstrongswan/plugins/openssl/openssl_x509.c b/src/libstrongswan/plugins/openssl/openssl_x509.c
-index 7a5b206dddfb..f82080730aa3 100644
+index 7a5b206dddfb..e95eb729bb72 100644
 --- a/src/libstrongswan/plugins/openssl/openssl_x509.c
 +++ b/src/libstrongswan/plugins/openssl/openssl_x509.c
-@@ -60,6 +60,22 @@
+@@ -60,6 +60,25 @@
  #define OPENSSL_NO_RFC3779
  #endif
  
@@ -964,12 +1095,15 @@ index 7a5b206dddfb..f82080730aa3 100644
 +#define X509_get0_tbs_sigalg(x509) ({ (x509)->cert_info->signature; })
 +#define X509_ALGOR_get0(oid, ppt, ppv, alg) ({ *(oid) = (alg)->algorithm; })
 +#define X509_PUBKEY_get0_param(oid, pk, len, pa, pub) X509_ALGOR_get0(oid, NULL, NULL, (pub)->algor)
++#define X509v3_addr_get_afi v3_addr_get_afi
++#define X509v3_addr_get_range v3_addr_get_range
++#define X509v3_addr_is_canonical v3_addr_is_canonical
 +#endif
 +
  typedef struct private_openssl_x509_t private_openssl_x509_t;
  
  /**
-@@ -380,6 +396,7 @@ METHOD(certificate_t, issued_by, bool,
+@@ -380,6 +399,7 @@ METHOD(certificate_t, issued_by, bool,
  	public_key_t *key;
  	bool valid;
  	x509_t *x509 = (x509_t*)issuer;
@@ -977,7 +1111,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	chunk_t tbs;
  
  	if (&this->public.x509.interface == issuer)
-@@ -413,9 +430,14 @@ METHOD(certificate_t, issued_by, bool,
+@@ -413,9 +433,14 @@ METHOD(certificate_t, issued_by, bool,
  	{
  		return FALSE;
  	}
@@ -994,7 +1128,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	free(tbs.ptr);
  	key->destroy(key);
  	if (valid && scheme)
-@@ -850,7 +872,7 @@ static void parse_ipAddrBlock_ext_fam(private_openssl_x509_t *this,
+@@ -850,7 +875,7 @@ static void parse_ipAddrBlock_ext_fam(private_openssl_x509_t *this,
  		return;
  	}
  
@@ -1003,7 +1137,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	switch (afi)
  	{
  		case IANA_AFI_IPV4:
-@@ -871,7 +893,7 @@ static void parse_ipAddrBlock_ext_fam(private_openssl_x509_t *this,
+@@ -871,7 +896,7 @@ static void parse_ipAddrBlock_ext_fam(private_openssl_x509_t *this,
  	for (i = 0; i < sk_IPAddressOrRange_num(list); i++)
  	{
  		aor = sk_IPAddressOrRange_value(list, i);
@@ -1012,7 +1146,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  		{
  			ts = traffic_selector_create_from_bytes(0, type, from, 0, to, 65535);
  			if (ts)
-@@ -897,7 +919,7 @@ static bool parse_ipAddrBlock_ext(private_openssl_x509_t *this,
+@@ -897,7 +922,7 @@ static bool parse_ipAddrBlock_ext(private_openssl_x509_t *this,
  		return FALSE;
  	}
  
@@ -1021,7 +1155,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	{
  		sk_IPAddressFamily_free(blocks);
  		return FALSE;
-@@ -964,7 +986,7 @@ static bool parse_extensions(private_openssl_x509_t *this)
+@@ -964,7 +989,7 @@ static bool parse_extensions(private_openssl_x509_t *this)
  	STACK_OF(X509_EXTENSION) *extensions;
  	int i, num;
  
@@ -1030,7 +1164,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	if (extensions)
  	{
  		num = sk_X509_EXTENSION_num(extensions);
-@@ -1041,6 +1063,8 @@ static bool parse_certificate(private_openssl_x509_t *this)
+@@ -1041,6 +1066,8 @@ static bool parse_certificate(private_openssl_x509_t *this)
  	const unsigned char *ptr = this->encoding.ptr;
  	hasher_t *hasher;
  	chunk_t chunk;
@@ -1039,7 +1173,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  
  	this->x509 = d2i_X509(NULL, &ptr, this->encoding.len);
  	if (!this->x509)
-@@ -1057,7 +1081,12 @@ static bool parse_certificate(private_openssl_x509_t *this)
+@@ -1057,7 +1084,12 @@ static bool parse_certificate(private_openssl_x509_t *this)
  	this->subject = openssl_x509_name2id(X509_get_subject_name(this->x509));
  	this->issuer = openssl_x509_name2id(X509_get_issuer_name(this->x509));
  
@@ -1053,7 +1187,7 @@ index 7a5b206dddfb..f82080730aa3 100644
  	{
  		case OID_RSA_ENCRYPTION:
  			this->pubkey = lib->creds->create(lib->creds,
-@@ -1086,14 +1115,18 @@ static bool parse_certificate(private_openssl_x509_t *this)
+@@ -1086,14 +1118,18 @@ static bool parse_certificate(private_openssl_x509_t *this)
  	this->notBefore = openssl_asn1_to_time(X509_get_notBefore(this->x509));
  	this->notAfter = openssl_asn1_to_time(X509_get_notAfter(this->x509));
  
@@ -1077,45 +1211,3 @@ index 7a5b206dddfb..f82080730aa3 100644
  
  	if (!parse_extensions(this))
  	{
-diff --git a/src/libstrongswan/utils/leak_detective.c b/src/libstrongswan/utils/leak_detective.c
-index 99f4843ad6c6..f9bbd8ae4f77 100644
---- a/src/libstrongswan/utils/leak_detective.c
-+++ b/src/libstrongswan/utils/leak_detective.c
-@@ -562,6 +562,10 @@ char *whitelist[] = {
- 	"ECDSA_do_sign_ex",
- 	"ECDSA_verify",
- 	"RSA_new_method",
-+	/* OpenSSL 1.1.0 does not cleanup anymore until the library is unloaded */
-+	"OPENSSL_init_crypto",
-+	"CRYPTO_THREAD_lock_new",
-+	"ERR_add_error_data",
- 	/* OpenSSL libssl */
- 	"SSL_COMP_get_compression_methods",
- 	/* NSPR */
-@@ -837,6 +841,18 @@ HOOK(void, free, void *ptr)
- 
- 	if (!enabled || thread_disabled->get(thread_disabled))
- 	{
-+		/* after deinitialization we might have to free stuff we allocated
-+		 * while we were enabled */
-+		if (!first_header.magic && ptr)
-+		{
-+			hdr = ptr - sizeof(memory_header_t);
-+			tail = ptr + hdr->bytes;
-+			if (hdr->magic == MEMORY_HEADER_MAGIC &&
-+				tail->magic == MEMORY_TAIL_MAGIC)
-+			{
-+				ptr = hdr;
-+			}
-+		}
- 		real_free(ptr);
- 		return;
- 	}
-@@ -953,6 +969,7 @@ METHOD(leak_detective_t, destroy, void,
- 	lock->destroy(lock);
- 	thread_disabled->destroy(thread_disabled);
- 	free(this);
-+	first_header.magic = 0;
- 	first_header.next = NULL;
- }
- 
