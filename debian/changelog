@@ -1,3 +1,10 @@
+strongswan (5.4.0-3) UNRELEASED; urgency=medium
+
+  * debian/patches:
+    - 05_port-openssl-1.1.0 added, port to OpenSSL 1.1.0.       closes: #828561
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 28 Jun 2016 16:23:28 +0200
+
 strongswan (5.4.0-2) unstable; urgency=medium
 
   * debian/rules:
