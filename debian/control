@@ -33,7 +33,8 @@ Build-Depends: bison,
                libxml2-dev,
                network-manager-dev (>= 0.7) [linux-any],
                pkg-config,
-               po-debconf
+               po-debconf,
+               systemd
 Homepage: http://www.strongswan.org
 
 Package: strongswan

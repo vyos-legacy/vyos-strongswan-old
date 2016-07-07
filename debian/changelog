@@ -1,3 +1,10 @@
+strongswan (5.4.0-4) UNRELEASED; urgency=medium
+
+  * debian/control:
+    - add build-dep on systemd.                                 closes: #828945
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 07 Jul 2016 22:22:58 +0200
+
 strongswan (5.4.0-3) unstable; urgency=medium
 
   * debian/patches:
