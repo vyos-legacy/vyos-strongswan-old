@@ -2,6 +2,8 @@ strongswan (5.4.0-3) UNRELEASED; urgency=medium
 
   * debian/patches:
     - 05_port-openssl-1.1.0 added, port to OpenSSL 1.1.0.       closes: #828561
+  * debian/control:
+    - update standards version to 3.9.8.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Tue, 28 Jun 2016 16:23:28 +0200
 
