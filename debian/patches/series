@@ -1,4 +1,3 @@
 01_fix-manpages.patch
 03_systemd-service.patch
 04_disable-libtls-tests.patch
-05_port-openssl-1.1.0.patch

@@ -3,6 +3,8 @@ strongswan (5.5.0-1) UNRELEASED; urgency=medium
   * New upstream release.
   * debian/control:
     - add build-dep on systemd.                                 closes: #828945
+  * debian/patches:
+    - 05_port-openssl-1.1.0 dropped, included upstream.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sat, 16 Jul 2016 15:20:03 +0200
 
