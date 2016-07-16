@@ -1,4 +1,4 @@
-strongswan (5.5.0-1) UNRELEASED; urgency=medium
+strongswan (5.5.0-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/control:
@@ -6,7 +6,7 @@ strongswan (5.5.0-1) UNRELEASED; urgency=medium
   * debian/patches:
     - 05_port-openssl-1.1.0 dropped, included upstream.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sat, 16 Jul 2016 15:20:03 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 16 Jul 2016 15:32:04 +0200
 
 strongswan (5.4.0-3) unstable; urgency=medium
 
