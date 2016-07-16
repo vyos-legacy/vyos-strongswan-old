@@ -121,9 +121,9 @@ END_TEST
 START_TEST(test_htoun)
 {
 	chunk_t net64, expected;
-	u_int16_t host16 = 513;
-	u_int32_t net16 = 0, host32 = 67305985;
-	u_int64_t net32 = 0, host64 = 578437695752307201ULL;
+	uint16_t host16 = 513;
+	uint32_t net16 = 0, host32 = 67305985;
+	uint64_t net32 = 0, host64 = 578437695752307201ULL;
 
 	net64 = chunk_alloca(16);
 	memset(net64.ptr, 0, net64.len);
@@ -133,14 +133,14 @@ START_TEST(test_htoun)
 	ck_assert(chunk_equals(expected, chunk_from_thing(net16)));
 
 	expected = chunk_from_chars(0x00, 0x00, 0x04, 0x03, 0x02, 0x01, 0x00, 0x00);
-	htoun32((u_int16_t*)&net32 + 1, host32);
+	htoun32((uint16_t*)&net32 + 1, host32);
 	ck_assert(chunk_equals(expected, chunk_from_thing(net32)));
 
 	expected = chunk_from_chars(0x00, 0x00, 0x00, 0x00,
 								0x08, 0x07, 0x06, 0x05,
 								0x04, 0x03, 0x02, 0x01,
 								0x00, 0x00, 0x00, 0x00);
-	htoun64((u_int32_t*)net64.ptr + 1, host64);
+	htoun64((uint32_t*)net64.ptr + 1, host64);
 	ck_assert(chunk_equals(expected, net64));
 }
 END_TEST
@@ -148,9 +148,9 @@ END_TEST
 START_TEST(test_untoh)
 {
 	chunk_t net;
-	u_int16_t host16;
-	u_int32_t host32;
-	u_int64_t host64;
+	uint16_t host16;
+	uint32_t host32;
+	uint64_t host64;
 
 	net = chunk_from_chars(0x00, 0x02, 0x01, 0x00);
 	host16 = untoh16(net.ptr + 1);
@@ -193,6 +193,82 @@ START_TEST(test_round)
 	ck_assert_int_eq(round_down(3, 4), 0);
 	ck_assert_int_eq(round_down(4, 4), 4);
 	ck_assert_int_eq(round_down(5, 4), 4);
+}
+END_TEST
+
+/*******************************************************************************
+ * streq
+ */
+
+static struct {
+	char *a;
+	char *b;
+	bool eq;
+	bool case_eq;
+} streq_data[] = {
+	{NULL, NULL, TRUE, TRUE},
+	{NULL, "", FALSE, FALSE},
+	{"", NULL, FALSE, FALSE},
+	{"abc", "", FALSE, FALSE},
+	{"abc", "abc", TRUE, TRUE},
+	{"abc", "ABC", FALSE, TRUE},
+};
+
+START_TEST(test_streq)
+{
+	bool eq;
+
+	ck_assert(streq(streq_data[_i].a, streq_data[_i].a));
+	ck_assert(streq(streq_data[_i].b, streq_data[_i].b));
+	eq = streq(streq_data[_i].a, streq_data[_i].b);
+	ck_assert(eq == streq_data[_i].eq);
+
+	ck_assert(strcaseeq(streq_data[_i].a, streq_data[_i].a));
+	ck_assert(strcaseeq(streq_data[_i].b, streq_data[_i].b));
+	eq = strcaseeq(streq_data[_i].a, streq_data[_i].b);
+	ck_assert(eq == streq_data[_i].case_eq);
+}
+END_TEST
+
+/*******************************************************************************
+ * strneq
+ */
+
+static struct {
+	char *a;
+	char *b;
+	size_t n;
+	bool eq;
+	bool case_eq;
+} strneq_data[] = {
+	{NULL, NULL, 0, TRUE, TRUE},
+	{NULL, NULL, 10, TRUE, TRUE},
+	{NULL, "", 0, FALSE, FALSE},
+	{"", NULL, 0, FALSE, FALSE},
+	{"abc", "", 0, TRUE, TRUE},
+	{"abc", "", 1, FALSE, FALSE},
+	{"abc", "ab", 1, TRUE, TRUE},
+	{"abc", "ab", 2, TRUE, TRUE},
+	{"abc", "ab", 3, FALSE, FALSE},
+	{"abc", "abc", 3, TRUE, TRUE},
+	{"abc", "abc", 4, TRUE, TRUE},
+	{"abc", "abC", 2, TRUE, TRUE},
+	{"abc", "abC", 3, FALSE, TRUE},
+};
+
+START_TEST(test_strneq)
+{
+	bool eq;
+
+	ck_assert(strneq(strneq_data[_i].a, strneq_data[_i].a, strneq_data[_i].n));
+	ck_assert(strneq(strneq_data[_i].b, strneq_data[_i].b, strneq_data[_i].n));
+	eq = strneq(strneq_data[_i].a, strneq_data[_i].b, strneq_data[_i].n);
+	ck_assert(eq == strneq_data[_i].eq);
+
+	ck_assert(strncaseeq(strneq_data[_i].a, strneq_data[_i].a,  strneq_data[_i].n));
+	ck_assert(strncaseeq(strneq_data[_i].b, strneq_data[_i].b,  strneq_data[_i].n));
+	eq = strncaseeq(strneq_data[_i].a, strneq_data[_i].b,  strneq_data[_i].n);
+	ck_assert(eq == strneq_data[_i].case_eq);
 }
 END_TEST
 
@@ -308,7 +384,7 @@ END_TEST
 
 START_TEST(test_memxor_aligned)
 {
-	u_int64_t a = 0, b = 0;
+	uint64_t a = 0, b = 0;
 	chunk_t ca, cb;
 	int i;
 
@@ -848,6 +924,8 @@ Suite *utils_suite_create()
 	suite_add_tcase(s, tc);
 
 	tc = tcase_create("string helper");
+	tcase_add_loop_test(tc, test_streq, 0, countof(streq_data));
+	tcase_add_loop_test(tc, test_strneq, 0, countof(strneq_data));
 	tcase_add_loop_test(tc, test_strpfx, 0, countof(strpfx_data));
 	suite_add_tcase(s, tc);
 

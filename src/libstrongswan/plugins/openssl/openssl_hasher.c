@@ -43,7 +43,7 @@ struct private_openssl_hasher_t {
 METHOD(hasher_t, get_hash_size, size_t,
 	private_openssl_hasher_t *this)
 {
-	return this->hasher->md_size;
+	return EVP_MD_size(this->hasher);
 }
 
 METHOD(hasher_t, reset, bool,
@@ -53,7 +53,7 @@ METHOD(hasher_t, reset, bool,
 }
 
 METHOD(hasher_t, get_hash, bool,
-	private_openssl_hasher_t *this, chunk_t chunk, u_int8_t *hash)
+	private_openssl_hasher_t *this, chunk_t chunk, uint8_t *hash)
 {
 	if (EVP_DigestUpdate(this->ctx, chunk.ptr, chunk.len) != 1)
 	{

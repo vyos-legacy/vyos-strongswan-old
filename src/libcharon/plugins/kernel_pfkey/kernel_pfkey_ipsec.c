@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2008-2015 Tobias Brunner
+ * Copyright (C) 2008-2016 Tobias Brunner
  * Copyright (C) 2008 Andreas Steffen
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -141,17 +141,17 @@
 #define SOL_UDP IPPROTO_UDP
 #endif
 
-/** base priority for installed policies */
-#define PRIO_BASE 384
+/** Base priority for installed policies */
+#define PRIO_BASE 100000
 
 #ifdef __APPLE__
 /** from xnu/bsd/net/pfkeyv2.h */
 #define SADB_X_EXT_NATT 0x002
 	struct sadb_sa_2 {
 		struct sadb_sa	sa;
-		u_int16_t		sadb_sa_natt_port;
-		u_int16_t		sadb_reserved0;
-		u_int32_t		sadb_reserved1;
+		uint16_t		sadb_sa_natt_port;
+		uint16_t		sadb_reserved0;
+		uint32_t		sadb_reserved1;
 	};
 #endif
 
@@ -286,7 +286,7 @@ struct route_entry_t {
 	chunk_t dst_net;
 
 	/** destination net prefixlen */
-	u_int8_t prefixlen;
+	uint8_t prefixlen;
 
 	/** reference to exclude route, if any */
 	exclude_route_t *exclude;
@@ -352,7 +352,7 @@ static bool ipsec_sa_equals(ipsec_sa_t *sa, ipsec_sa_t *other_sa)
 {
 	return sa->src->ip_equals(sa->src, other_sa->src) &&
 		   sa->dst->ip_equals(sa->dst, other_sa->dst) &&
-		   memeq(&sa->cfg, &other_sa->cfg, sizeof(ipsec_sa_cfg_t));
+		   ipsec_sa_cfg_equals(&sa->cfg, &other_sa->cfg);
 }
 
 /**
@@ -400,14 +400,17 @@ static void ipsec_sa_destroy(private_kernel_pfkey_ipsec_t *this,
 }
 
 typedef struct policy_sa_t policy_sa_t;
-typedef struct policy_sa_in_t policy_sa_in_t;
+typedef struct policy_sa_out_t policy_sa_out_t;
 
 /**
  * Mapping between a policy and an IPsec SA.
  */
 struct policy_sa_t {
 	/** Priority assigned to the policy when installed with this SA */
-	u_int32_t priority;
+	uint32_t priority;
+
+	/** Base priority assigned to the policy when installed with this SA */
+	uint32_t auto_priority;
 
 	/** Type of the policy */
 	policy_type_t type;
@@ -417,10 +420,10 @@ struct policy_sa_t {
 };
 
 /**
- * For input policies we also cache the traffic selectors in order to install
+ * For outbound policies we also cache the traffic selectors in order to install
  * the route.
  */
-struct policy_sa_in_t {
+struct policy_sa_out_t {
 	/** Generic interface */
 	policy_sa_t generic;
 
@@ -440,14 +443,14 @@ static policy_sa_t *policy_sa_create(private_kernel_pfkey_ipsec_t *this,
 {
 	policy_sa_t *policy;
 
-	if (dir == POLICY_IN)
+	if (dir == POLICY_OUT)
 	{
-		policy_sa_in_t *in;
-		INIT(in,
+		policy_sa_out_t *out;
+		INIT(out,
 			.src_ts = src_ts->clone(src_ts),
 			.dst_ts = dst_ts->clone(dst_ts),
 		);
-		policy = &in->generic;
+		policy = &out->generic;
 	}
 	else
 	{
@@ -464,11 +467,11 @@ static policy_sa_t *policy_sa_create(private_kernel_pfkey_ipsec_t *this,
 static void policy_sa_destroy(policy_sa_t *policy, policy_dir_t *dir,
 							  private_kernel_pfkey_ipsec_t *this)
 {
-	if (*dir == POLICY_IN)
+	if (*dir == POLICY_OUT)
 	{
-		policy_sa_in_t *in = (policy_sa_in_t*)policy;
-		in->src_ts->destroy(in->src_ts);
-		in->dst_ts->destroy(in->dst_ts);
+		policy_sa_out_t *out = (policy_sa_out_t*)policy;
+		out->src_ts->destroy(out->src_ts);
+		out->dst_ts->destroy(out->dst_ts);
 	}
 	ipsec_sa_destroy(this, policy->sa);
 	free(policy);
@@ -481,19 +484,19 @@ typedef struct policy_entry_t policy_entry_t;
  */
 struct policy_entry_t {
 	/** Index assigned by the kernel */
-	u_int32_t index;
+	uint32_t index;
 
 	/** Direction of this policy: in, out, forward */
-	u_int8_t direction;
+	uint8_t direction;
 
 	/** Parameters of installed policy */
 	struct {
 		/** Subnet and port */
 		host_t *net;
 		/** Subnet mask */
-		u_int8_t mask;
+		uint8_t mask;
 		/** Protocol */
-		u_int8_t proto;
+		uint8_t proto;
 	} src, dst;
 
 	/** Associated route installed for this policy */
@@ -514,8 +517,8 @@ static policy_entry_t *create_policy_entry(traffic_selector_t *src_ts,
 	INIT(policy,
 		.direction = dir,
 	);
-	u_int16_t port;
-	u_int8_t proto;
+	uint16_t port;
+	uint8_t proto;
 
 	src_ts->to_subnet(src_ts, &policy->src.net, &policy->src.mask);
 	dst_ts->to_subnet(dst_ts, &policy->dst.net, &policy->dst.mask);
@@ -583,40 +586,51 @@ static inline bool policy_entry_equals(policy_entry_t *current,
  * compare the given kernel index with that of a policy
  */
 static inline bool policy_entry_match_byindex(policy_entry_t *current,
-											  u_int32_t *index)
+											  uint32_t *index)
 {
 	return current->index == *index;
 }
 
 /**
  * Calculate the priority of a policy
+ *
+ * This is the same formula we use in the kernel-netlink interface, but some
+ * features are currently not or only partially supported by PF_KEY.
+ *
+ * bits 0-0:  reserved for interface restriction (0..1)     1 bit
+ * bits 1-6:  src + dst port mask bits (2 * 0..16)          6 bits
+ * bits 7-7:  restriction to protocol (0..1)                1 bit
+ * bits 8-16: src + dst network mask bits (2 * 0..128)      9 bits
+ *                                                         17 bits
+ *
+ * smallest value: 000000000 0 000000 0:      0, lowest priority = 100'000
+ * largest value : 100000000 1 100000 0: 65'728, highst priority =  34'272
  */
-static inline u_int32_t get_priority(policy_entry_t *policy,
+static inline uint32_t get_priority(policy_entry_t *policy,
 									 policy_priority_t prio)
 {
-	u_int32_t priority = PRIO_BASE;
+	uint32_t priority = PRIO_BASE;
+
 	switch (prio)
 	{
 		case POLICY_PRIORITY_FALLBACK:
-			priority <<= 1;
+			priority += PRIO_BASE;
 			/* fall-through */
 		case POLICY_PRIORITY_ROUTED:
-			priority <<= 1;
+			priority += PRIO_BASE;
 			/* fall-through */
 		case POLICY_PRIORITY_DEFAULT:
-			priority <<= 1;
-			/* fall-trough */
+			priority += PRIO_BASE;
+			/* fall-through */
 		case POLICY_PRIORITY_PASS:
 			break;
 	}
-	/* calculate priority based on selector size, small size = high prio */
-	priority -= policy->src.mask;
-	priority -= policy->dst.mask;
-	priority <<= 2; /* make some room for the two flags */
-	priority += policy->src.net->get_port(policy->src.net) ||
-				policy->dst.net->get_port(policy->dst.net) ?
-				0 : 2;
-	priority += policy->src.proto != IPSEC_PROTO_ANY ? 0 : 1;
+
+	/* calculate priority */
+	priority -= (policy->src.mask + policy->dst.mask) * 256;
+	priority -=  policy->src.proto != IPSEC_PROTO_ANY ? 128 : 0;
+	priority -= policy->src.net->get_port(policy->src.net) ? 32 : 0;
+	priority -= policy->dst.net->get_port(policy->dst.net) ? 32 : 0;
 	return priority;
 }
 
@@ -697,7 +711,7 @@ ENUM(sadb_ext_type_names, SADB_EXT_RESERVED, SADB_EXT_MAX,
 /**
  * convert a protocol identifier to the PF_KEY sa type
  */
-static u_int8_t proto2satype(u_int8_t proto)
+static uint8_t proto2satype(uint8_t proto)
 {
 	switch (proto)
 	{
@@ -715,7 +729,7 @@ static u_int8_t proto2satype(u_int8_t proto)
 /**
  * convert a PF_KEY sa type to a protocol identifier
  */
-static u_int8_t satype2proto(u_int8_t satype)
+static uint8_t satype2proto(uint8_t satype)
 {
 	switch (satype)
 	{
@@ -733,7 +747,7 @@ static u_int8_t satype2proto(u_int8_t satype)
 /**
  * convert the general ipsec mode to the one defined in ipsec.h
  */
-static u_int8_t mode2kernel(ipsec_mode_t mode)
+static uint8_t mode2kernel(ipsec_mode_t mode)
 {
 	switch (mode)
 	{
@@ -753,7 +767,7 @@ static u_int8_t mode2kernel(ipsec_mode_t mode)
 /**
  * convert the general policy direction to the one defined in ipsec.h
  */
-static u_int8_t dir2kernel(policy_dir_t dir)
+static uint8_t dir2kernel(policy_dir_t dir)
 {
 	switch (dir)
 	{
@@ -773,7 +787,7 @@ static u_int8_t dir2kernel(policy_dir_t dir)
 /**
  * convert the policy type to the one defined in ipsec.h
  */
-static inline u_int16_t type2kernel(policy_type_t type)
+static inline uint16_t type2kernel(policy_type_t type)
 {
 	switch (type)
 	{
@@ -791,7 +805,7 @@ static inline u_int16_t type2kernel(policy_type_t type)
 /**
  * convert the policy direction in ipsec.h to the general one.
  */
-static policy_dir_t kernel2dir(u_int8_t  dir)
+static policy_dir_t kernel2dir(uint8_t  dir)
 {
 	switch (dir)
 	{
@@ -898,7 +912,7 @@ static kernel_algorithm_t compression_algs[] = {
 static int lookup_algorithm(transform_type_t type, int ikev2)
 {
 	kernel_algorithm_t *list;
-	u_int16_t alg = 0;
+	uint16_t alg = 0;
 
 	switch (type)
 	{
@@ -929,7 +943,7 @@ static int lookup_algorithm(transform_type_t type, int ikev2)
 /**
  * Helper to set a port in a sockaddr_t, the port has to be in host order
  */
-static void set_port(sockaddr_t *addr, u_int16_t port)
+static void set_port(sockaddr_t *addr, uint16_t port)
 {
 	switch (addr->sa_family)
 	{
@@ -971,8 +985,8 @@ static size_t hostcpy(void *dest, host_t *host, bool include_port)
 /**
  * add a host to the given sadb_msg
  */
-static void add_addr_ext(struct sadb_msg *msg, host_t *host, u_int16_t type,
-						 u_int8_t proto, u_int8_t prefixlen, bool include_port)
+static void add_addr_ext(struct sadb_msg *msg, host_t *host, uint16_t type,
+						 uint8_t proto, uint8_t prefixlen, bool include_port)
 {
 	struct sadb_address *addr = (struct sadb_address*)PFKEY_EXT_ADD_NEXT(msg);
 	size_t len;
@@ -988,7 +1002,7 @@ static void add_addr_ext(struct sadb_msg *msg, host_t *host, u_int16_t type,
 /**
  * adds an empty address extension to the given sadb_msg
  */
-static void add_anyaddr_ext(struct sadb_msg *msg, int family, u_int8_t type)
+static void add_anyaddr_ext(struct sadb_msg *msg, int family, uint8_t type)
 {
 	socklen_t len = (family == AF_INET) ? sizeof(struct sockaddr_in) :
 										  sizeof(struct sockaddr_in6);
@@ -1039,7 +1053,7 @@ static traffic_selector_t* sadb_address2ts(struct sadb_address *address)
 {
 	traffic_selector_t *ts;
 	host_t *host;
-	u_int8_t proto;
+	uint8_t proto;
 
 	proto = address->sadb_address_proto;
 	proto = proto == IPSEC_PROTO_ANY ? 0 : proto;
@@ -1240,7 +1254,7 @@ static void process_acquire(private_kernel_pfkey_ipsec_t *this,
 							struct sadb_msg* msg)
 {
 	pfkey_msg_t response;
-	u_int32_t index, reqid = 0;
+	uint32_t index, reqid = 0;
 	traffic_selector_t *src_ts, *dst_ts;
 	policy_entry_t *policy;
 	policy_sa_t *sa;
@@ -1292,8 +1306,8 @@ static void process_expire(private_kernel_pfkey_ipsec_t *this,
 						   struct sadb_msg* msg)
 {
 	pfkey_msg_t response;
-	u_int8_t protocol;
-	u_int32_t spi;
+	uint8_t protocol;
+	uint32_t spi;
 	host_t *dst;
 	bool hard;
 
@@ -1330,7 +1344,7 @@ static void process_migrate(private_kernel_pfkey_ipsec_t *this,
 	pfkey_msg_t response;
 	traffic_selector_t *src_ts, *dst_ts;
 	policy_dir_t dir;
-	u_int32_t reqid = 0;
+	uint32_t reqid = 0;
 	host_t *local = NULL, *remote = NULL;
 
 	DBG2(DBG_KNL, "received an SADB_X_MIGRATE");
@@ -1350,13 +1364,13 @@ static void process_migrate(private_kernel_pfkey_ipsec_t *this,
 	if (response.x_kmaddress)
 	{
 		sockaddr_t *local_addr, *remote_addr;
-		u_int32_t local_len;
+		uint32_t local_len;
 
 		local_addr  = (sockaddr_t*)&response.x_kmaddress[1];
 		local = host_create_from_sockaddr(local_addr);
 		local_len = (local_addr->sa_family == AF_INET6)?
 					sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
-		remote_addr = (sockaddr_t*)((u_int8_t*)local_addr + local_len);
+		remote_addr = (sockaddr_t*)((uint8_t*)local_addr + local_len);
 		remote = host_create_from_sockaddr(remote_addr);
 		DBG2(DBG_KNL, "  kmaddress: %H...%H", local, remote);
 	}
@@ -1384,7 +1398,7 @@ static void process_mapping(private_kernel_pfkey_ipsec_t *this,
 							struct sadb_msg* msg)
 {
 	pfkey_msg_t response;
-	u_int32_t spi;
+	uint32_t spi;
 	sockaddr_t *sa;
 	host_t *dst, *new;
 
@@ -1517,14 +1531,14 @@ static bool receive_events(private_kernel_pfkey_ipsec_t *this, int fd,
  */
 
 static status_t get_spi_internal(private_kernel_pfkey_ipsec_t *this,
-	host_t *src, host_t *dst, u_int8_t proto, u_int32_t min, u_int32_t max,
-	u_int32_t *spi)
+	host_t *src, host_t *dst, uint8_t proto, uint32_t min, uint32_t max,
+	uint32_t *spi)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
 	struct sadb_spirange *range;
 	pfkey_msg_t response;
-	u_int32_t received_spi = 0;
+	uint32_t received_spi = 0;
 	size_t len;
 
 	memset(&request, 0, sizeof(request));
@@ -1570,7 +1584,7 @@ static status_t get_spi_internal(private_kernel_pfkey_ipsec_t *this,
 
 METHOD(kernel_ipsec_t, get_spi, status_t,
 	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	u_int8_t protocol, u_int32_t *spi)
+	uint8_t protocol, uint32_t *spi)
 {
 	if (get_spi_internal(this, src, dst, protocol,
 						 0xc0000000, 0xcFFFFFFF, spi) != SUCCESS)
@@ -1585,9 +1599,9 @@ METHOD(kernel_ipsec_t, get_spi, status_t,
 
 METHOD(kernel_ipsec_t, get_cpi, status_t,
 	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	u_int16_t *cpi)
+	uint16_t *cpi)
 {
-	u_int32_t received_spi = 0;
+	uint32_t received_spi = 0;
 
 	DBG2(DBG_KNL, "getting CPI");
 
@@ -1598,20 +1612,15 @@ METHOD(kernel_ipsec_t, get_cpi, status_t,
 		return FAILED;
 	}
 
-	*cpi = htons((u_int16_t)ntohl(received_spi));
+	*cpi = htons((uint16_t)ntohl(received_spi));
 
 	DBG2(DBG_KNL, "got CPI %.4x", ntohs(*cpi));
 	return SUCCESS;
 }
 
 METHOD(kernel_ipsec_t, add_sa, status_t,
-	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst, u_int32_t spi,
-	u_int8_t protocol, u_int32_t reqid, mark_t mark, u_int32_t tfc,
-	lifetime_cfg_t *lifetime, u_int16_t enc_alg, chunk_t enc_key,
-	u_int16_t int_alg, chunk_t int_key, ipsec_mode_t mode,
-	u_int16_t ipcomp, u_int16_t cpi, u_int32_t replay_window,
-	bool initiator, bool encap, bool esn, bool inbound, bool update,
-	linked_list_t *src_ts, linked_list_t *dst_ts)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_add_sa_t *data)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -1620,22 +1629,42 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	struct sadb_lifetime *lft;
 	struct sadb_key *key;
 	size_t len;
+	uint16_t ipcomp = data->ipcomp;
+	ipsec_mode_t mode = data->mode;
 
 	/* if IPComp is used, we install an additional IPComp SA. if the cpi is 0
 	 * we are in the recursive call below */
-	if (ipcomp != IPCOMP_NONE && cpi != 0)
+	if (ipcomp != IPCOMP_NONE && data->cpi != 0)
 	{
 		lifetime_cfg_t lft = {{0,0,0},{0,0,0},{0,0,0}};
-		add_sa(this, src, dst, htonl(ntohs(cpi)), IPPROTO_COMP, reqid, mark,
-			   tfc, &lft, ENCR_UNDEFINED, chunk_empty, AUTH_UNDEFINED,
-			   chunk_empty, mode, ipcomp, 0, 0, FALSE, FALSE, FALSE, inbound,
-			   update, NULL, NULL);
+		kernel_ipsec_sa_id_t ipcomp_id = {
+			.src = id->src,
+			.dst = id->dst,
+			.spi = htonl(ntohs(data->cpi)),
+			.proto = IPPROTO_COMP,
+			.mark = id->mark,
+		};
+		kernel_ipsec_add_sa_t ipcomp_sa = {
+			.reqid = data->reqid,
+			.mode = data->mode,
+			.src_ts = data->src_ts,
+			.dst_ts = data->dst_ts,
+			.lifetime = &lft,
+			.enc_alg = ENCR_UNDEFINED,
+			.int_alg = AUTH_UNDEFINED,
+			.tfc = data->tfc,
+			.ipcomp = data->ipcomp,
+			.initiator = data->initiator,
+			.inbound = data->inbound,
+			.update = data->update,
+		};
+		add_sa(this, &ipcomp_id, &ipcomp_sa);
 		ipcomp = IPCOMP_NONE;
 		/* use transport mode ESP SA, IPComp uses tunnel mode */
 		mode = MODE_TRANSPORT;
 	}
 
-	if (update)
+	if (data->update)
 	{
 		/* As we didn't know the reqid during SPI allocation, we used reqid
 		 * zero. Unfortunately we can't SADB_UPDATE to the new reqid, hence we
@@ -1643,10 +1672,16 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		 * selector does not count for that, therefore we have to delete
 		 * that state before installing the new SA to avoid deleting the
 		 * the new state after installing it. */
-		mark_t zeromark = {0, 0};
+		kernel_ipsec_sa_id_t del_id = {
+			.src = id->src,
+			.dst = id->dst,
+			.spi = id->spi,
+			.proto = id->proto,
+		};
+		kernel_ipsec_del_sa_t del = { 0 };
 
-		if (this->public.interface.del_sa(&this->public.interface,
-					src, dst, spi, protocol, 0, zeromark) != SUCCESS)
+		if (this->public.interface.del_sa(&this->public.interface, &del_id,
+										  &del) != SUCCESS)
 		{
 			DBG1(DBG_KNL, "deleting SPI allocation SA failed");
 		}
@@ -1655,20 +1690,20 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	memset(&request, 0, sizeof(request));
 
 	DBG2(DBG_KNL, "adding SAD entry with SPI %.8x and reqid {%u}",
-				   ntohl(spi), reqid);
+		 ntohl(id->spi), data->reqid);
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_ADD;
-	msg->sadb_msg_satype = proto2satype(protocol);
+	msg->sadb_msg_satype = proto2satype(id->proto);
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
 #ifdef __APPLE__
-	if (encap)
+	if (data->encap)
 	{
 		struct sadb_sa_2 *sa_2;
 		sa_2 = (struct sadb_sa_2*)PFKEY_EXT_ADD_NEXT(msg);
-		sa_2->sadb_sa_natt_port = dst->get_port(dst);
+		sa_2->sadb_sa_natt_port = id->dst->get_port(id->dst);
 		sa = &sa_2->sa;
 		sa->sadb_sa_flags |= SADB_X_EXT_NATT;
 		len = sizeof(struct sadb_sa_2);
@@ -1681,22 +1716,29 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	}
 	sa->sadb_sa_exttype = SADB_EXT_SA;
 	sa->sadb_sa_len = PFKEY_LEN(len);
-	sa->sadb_sa_spi = spi;
-	if (protocol == IPPROTO_COMP)
+	sa->sadb_sa_spi = id->spi;
+	if (id->proto == IPPROTO_COMP)
 	{
-		sa->sadb_sa_encrypt = lookup_algorithm(COMPRESSION_ALGORITHM, ipcomp);
+		sa->sadb_sa_encrypt = lookup_algorithm(COMPRESSION_ALGORITHM,
+											   ipcomp);
 	}
 	else
 	{
 		/* Linux interprets sadb_sa_replay as number of packets/bits in the
-		 * replay window, whereas on BSD it's the size of the window in bytes */
+		 * replay window, whereas on BSD it's the size of the window in bytes.
+		 * Only set for the inbound SA as it's not relevant for the outbound
+		 * SA and might waste memory with large windows. */
+		if (data->inbound)
+		{
 #ifdef __linux__
-		sa->sadb_sa_replay = min(replay_window, 32);
+			sa->sadb_sa_replay = min(data->replay_window, 32);
 #else
-		sa->sadb_sa_replay = (replay_window + 7) / 8;
+			sa->sadb_sa_replay = (data->replay_window + 7) / 8;
 #endif
-		sa->sadb_sa_auth = lookup_algorithm(INTEGRITY_ALGORITHM, int_alg);
-		sa->sadb_sa_encrypt = lookup_algorithm(ENCRYPTION_ALGORITHM, enc_alg);
+		}
+		sa->sadb_sa_auth = lookup_algorithm(INTEGRITY_ALGORITHM, data->int_alg);
+		sa->sadb_sa_encrypt = lookup_algorithm(ENCRYPTION_ALGORITHM,
+											   data->enc_alg);
 	}
 	PFKEY_EXT_ADD(msg, sa);
 
@@ -1704,86 +1746,88 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	sa2->sadb_x_sa2_exttype = SADB_X_EXT_SA2;
 	sa2->sadb_x_sa2_len = PFKEY_LEN(sizeof(struct sadb_spirange));
 	sa2->sadb_x_sa2_mode = mode2kernel(mode);
-	sa2->sadb_x_sa2_reqid = reqid;
+	sa2->sadb_x_sa2_reqid = data->reqid;
 	PFKEY_EXT_ADD(msg, sa2);
 
-	add_addr_ext(msg, src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
-	add_addr_ext(msg, dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
+	add_addr_ext(msg, id->src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
+	add_addr_ext(msg, id->dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
 
 	lft = (struct sadb_lifetime*)PFKEY_EXT_ADD_NEXT(msg);
 	lft->sadb_lifetime_exttype = SADB_EXT_LIFETIME_SOFT;
 	lft->sadb_lifetime_len = PFKEY_LEN(sizeof(struct sadb_lifetime));
-	lft->sadb_lifetime_allocations = lifetime->packets.rekey;
-	lft->sadb_lifetime_bytes = lifetime->bytes.rekey;
-	lft->sadb_lifetime_addtime = lifetime->time.rekey;
+	lft->sadb_lifetime_allocations = data->lifetime->packets.rekey;
+	lft->sadb_lifetime_bytes = data->lifetime->bytes.rekey;
+	lft->sadb_lifetime_addtime = data->lifetime->time.rekey;
 	lft->sadb_lifetime_usetime = 0; /* we only use addtime */
 	PFKEY_EXT_ADD(msg, lft);
 
 	lft = (struct sadb_lifetime*)PFKEY_EXT_ADD_NEXT(msg);
 	lft->sadb_lifetime_exttype = SADB_EXT_LIFETIME_HARD;
 	lft->sadb_lifetime_len = PFKEY_LEN(sizeof(struct sadb_lifetime));
-	lft->sadb_lifetime_allocations = lifetime->packets.life;
-	lft->sadb_lifetime_bytes = lifetime->bytes.life;
-	lft->sadb_lifetime_addtime = lifetime->time.life;
+	lft->sadb_lifetime_allocations = data->lifetime->packets.life;
+	lft->sadb_lifetime_bytes = data->lifetime->bytes.life;
+	lft->sadb_lifetime_addtime = data->lifetime->time.life;
 	lft->sadb_lifetime_usetime = 0; /* we only use addtime */
 	PFKEY_EXT_ADD(msg, lft);
 
-	if (enc_alg != ENCR_UNDEFINED)
+	if (data->enc_alg != ENCR_UNDEFINED)
 	{
 		if (!sa->sadb_sa_encrypt)
 		{
 			DBG1(DBG_KNL, "algorithm %N not supported by kernel!",
-						   encryption_algorithm_names, enc_alg);
+				 encryption_algorithm_names, data->enc_alg);
 			return FAILED;
 		}
 		DBG2(DBG_KNL, "  using encryption algorithm %N with key size %d",
-						 encryption_algorithm_names, enc_alg, enc_key.len * 8);
+			 encryption_algorithm_names, data->enc_alg, data->enc_key.len * 8);
 
 		key = (struct sadb_key*)PFKEY_EXT_ADD_NEXT(msg);
 		key->sadb_key_exttype = SADB_EXT_KEY_ENCRYPT;
-		key->sadb_key_bits = enc_key.len * 8;
-		key->sadb_key_len = PFKEY_LEN(sizeof(struct sadb_key) + enc_key.len);
-		memcpy(key + 1, enc_key.ptr, enc_key.len);
+		key->sadb_key_bits = data->enc_key.len * 8;
+		key->sadb_key_len = PFKEY_LEN(sizeof(struct sadb_key) + data->enc_key.len);
+		memcpy(key + 1, data->enc_key.ptr, data->enc_key.len);
 
 		PFKEY_EXT_ADD(msg, key);
 	}
 
-	if (int_alg != AUTH_UNDEFINED)
+	if (data->int_alg != AUTH_UNDEFINED)
 	{
 		if (!sa->sadb_sa_auth)
 		{
 			DBG1(DBG_KNL, "algorithm %N not supported by kernel!",
-						   integrity_algorithm_names, int_alg);
+				 integrity_algorithm_names, data->int_alg);
 			return FAILED;
 		}
 		DBG2(DBG_KNL, "  using integrity algorithm %N with key size %d",
-						 integrity_algorithm_names, int_alg, int_key.len * 8);
+			 integrity_algorithm_names, data->int_alg, data->int_key.len * 8);
 
 		key = (struct sadb_key*)PFKEY_EXT_ADD_NEXT(msg);
 		key->sadb_key_exttype = SADB_EXT_KEY_AUTH;
-		key->sadb_key_bits = int_key.len * 8;
-		key->sadb_key_len = PFKEY_LEN(sizeof(struct sadb_key) + int_key.len);
-		memcpy(key + 1, int_key.ptr, int_key.len);
+		key->sadb_key_bits = data->int_key.len * 8;
+		key->sadb_key_len = PFKEY_LEN(sizeof(struct sadb_key) + data->int_key.len);
+		memcpy(key + 1, data->int_key.ptr, data->int_key.len);
 
 		PFKEY_EXT_ADD(msg, key);
 	}
 
 #ifdef HAVE_NATT
-	if (encap)
+	if (data->encap)
 	{
-		add_encap_ext(msg, src, dst);
+		add_encap_ext(msg, id->src, id->dst);
 	}
 #endif /*HAVE_NATT*/
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to add SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to add SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
 		DBG1(DBG_KNL, "unable to add SAD entry with SPI %.8x: %s (%d)",
-				ntohl(spi), strerror(out->sadb_msg_errno), out->sadb_msg_errno);
+			 ntohl(id->spi), strerror(out->sadb_msg_errno),
+			 out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
@@ -1793,9 +1837,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 }
 
 METHOD(kernel_ipsec_t, update_sa, status_t,
-	private_kernel_pfkey_ipsec_t *this, u_int32_t spi, u_int8_t protocol,
-	u_int16_t cpi, host_t *src, host_t *dst, host_t *new_src, host_t *new_dst,
-	bool encap, bool new_encap, mark_t mark)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_update_sa_t *data)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -1806,72 +1849,84 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	/* we can't update the SA if any of the ip addresses have changed.
 	 * that's because we can't use SADB_UPDATE and by deleting and readding the
 	 * SA the sequence numbers would get lost */
-	if (!src->ip_equals(src, new_src) ||
-		!dst->ip_equals(dst, new_dst))
+	if (!id->src->ip_equals(id->src, data->new_src) ||
+		!id->dst->ip_equals(id->dst, data->new_dst))
 	{
 		DBG1(DBG_KNL, "unable to update SAD entry with SPI %.8x: address "
-					  "changes are not supported", ntohl(spi));
+			 "changes are not supported", ntohl(id->spi));
 		return NOT_SUPPORTED;
 	}
 
 	/* if IPComp is used, we first update the IPComp SA */
-	if (cpi)
+	if (data->cpi)
 	{
-		update_sa(this, htonl(ntohs(cpi)), IPPROTO_COMP, 0,
-				  src, dst, new_src, new_dst, FALSE, FALSE, mark);
+		kernel_ipsec_sa_id_t ipcomp_id = {
+			.src = id->src,
+			.dst = id->dst,
+			.spi = htonl(ntohs(data->cpi)),
+			.proto = IPPROTO_COMP,
+			.mark = id->mark,
+		};
+		kernel_ipsec_update_sa_t ipcomp = {
+			.new_src = data->new_src,
+			.new_dst = data->new_dst,
+		};
+		update_sa(this, &ipcomp_id, &ipcomp);
 	}
 
 	memset(&request, 0, sizeof(request));
 
-	DBG2(DBG_KNL, "querying SAD entry with SPI %.8x", ntohl(spi));
+	DBG2(DBG_KNL, "querying SAD entry with SPI %.8x for update",
+		 ntohl(id->spi));
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_GET;
-	msg->sadb_msg_satype = proto2satype(protocol);
+	msg->sadb_msg_satype = proto2satype(id->proto);
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
 	sa = (struct sadb_sa*)PFKEY_EXT_ADD_NEXT(msg);
 	sa->sadb_sa_exttype = SADB_EXT_SA;
 	sa->sadb_sa_len = PFKEY_LEN(sizeof(struct sadb_sa));
-	sa->sadb_sa_spi = spi;
+	sa->sadb_sa_spi = id->spi;
 	PFKEY_EXT_ADD(msg, sa);
 
 	/* the kernel wants a SADB_EXT_ADDRESS_SRC to be present even though
 	 * it is not used for anything. */
-	add_anyaddr_ext(msg, dst->get_family(dst), SADB_EXT_ADDRESS_SRC);
-	add_addr_ext(msg, dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
+	add_anyaddr_ext(msg, id->dst->get_family(id->dst), SADB_EXT_ADDRESS_SRC);
+	add_addr_ext(msg, id->dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
 		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x: %s (%d)",
-					   ntohl(spi), strerror(out->sadb_msg_errno),
-					   out->sadb_msg_errno);
+			 ntohl(id->spi), strerror(out->sadb_msg_errno),
+			 out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
 	else if (parse_pfkey_message(out, &response) != SUCCESS)
 	{
 		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x: parsing "
-					  "response from kernel failed", ntohl(spi));
+			 "response from kernel failed", ntohl(id->spi));
 		free(out);
 		return FAILED;
 	}
 
 	DBG2(DBG_KNL, "updating SAD entry with SPI %.8x from %#H..%#H to %#H..%#H",
-				   ntohl(spi), src, dst, new_src, new_dst);
+		 ntohl(id->spi), id->src, id->dst, data->new_src, data->new_dst);
 
 	memset(&request, 0, sizeof(request));
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_UPDATE;
-	msg->sadb_msg_satype = proto2satype(protocol);
+	msg->sadb_msg_satype = proto2satype(id->proto);
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
 #ifdef __APPLE__
@@ -1880,9 +1935,9 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 		sa_2 = (struct sadb_sa_2*)PFKEY_EXT_ADD_NEXT(msg);
 		sa_2->sa.sadb_sa_len = PFKEY_LEN(sizeof(struct sadb_sa_2));
 		memcpy(&sa_2->sa, response.sa, sizeof(struct sadb_sa));
-		if (encap)
+		if (data->encap)
 		{
-			sa_2->sadb_sa_natt_port = new_dst->get_port(new_dst);
+			sa_2->sadb_sa_natt_port = data->new_dst->get_port(data->new_dst);
 			sa_2->sa.sadb_sa_flags |= SADB_X_EXT_NATT;
 		}
 	}
@@ -1908,9 +1963,9 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	}
 
 #ifdef HAVE_NATT
-	if (new_encap)
+	if (data->new_encap)
 	{
-		add_encap_ext(msg, new_src, new_dst);
+		add_encap_ext(msg, data->new_src, data->new_dst);
 	}
 #endif /*HAVE_NATT*/
 
@@ -1918,14 +1973,14 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to update SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to update SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
 		DBG1(DBG_KNL, "unable to update SAD entry with SPI %.8x: %s (%d)",
-					   ntohl(spi), strerror(out->sadb_msg_errno),
-					   out->sadb_msg_errno);
+			 ntohl(id->spi), strerror(out->sadb_msg_errno), out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
@@ -1935,9 +1990,9 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 }
 
 METHOD(kernel_ipsec_t, query_sa, status_t,
-	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	u_int32_t spi, u_int8_t protocol, mark_t mark,
-	u_int64_t *bytes, u_int64_t *packets, time_t *time)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_query_sa_t *data, uint64_t *bytes, uint64_t *packets,
+	time_t *time)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -1947,42 +2002,44 @@ METHOD(kernel_ipsec_t, query_sa, status_t,
 
 	memset(&request, 0, sizeof(request));
 
-	DBG2(DBG_KNL, "querying SAD entry with SPI %.8x", ntohl(spi));
+	DBG2(DBG_KNL, "querying SAD entry with SPI %.8x", ntohl(id->spi));
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_GET;
-	msg->sadb_msg_satype = proto2satype(protocol);
+	msg->sadb_msg_satype = proto2satype(id->proto);
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
 	sa = (struct sadb_sa*)PFKEY_EXT_ADD_NEXT(msg);
 	sa->sadb_sa_exttype = SADB_EXT_SA;
 	sa->sadb_sa_len = PFKEY_LEN(sizeof(struct sadb_sa));
-	sa->sadb_sa_spi = spi;
+	sa->sadb_sa_spi = id->spi;
 	PFKEY_EXT_ADD(msg, sa);
 
 	/* the Linux Kernel doesn't care for the src address, but other systems do
 	 * (e.g. FreeBSD)
 	 */
-	add_addr_ext(msg, src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
-	add_addr_ext(msg, dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
+	add_addr_ext(msg, id->src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
+	add_addr_ext(msg, id->dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
 		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x: %s (%d)",
-					   ntohl(spi), strerror(out->sadb_msg_errno),
-					   out->sadb_msg_errno);
+			 ntohl(id->spi), strerror(out->sadb_msg_errno),
+			 out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
 	else if (parse_pfkey_message(out, &response) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to query SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		free(out);
 		return FAILED;
 	}
@@ -2013,8 +2070,8 @@ METHOD(kernel_ipsec_t, query_sa, status_t,
 }
 
 METHOD(kernel_ipsec_t, del_sa, status_t,
-	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	u_int32_t spi, u_int8_t protocol, u_int16_t cpi, mark_t mark)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_sa_id_t *id,
+	kernel_ipsec_del_sa_t *data)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -2022,48 +2079,57 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 	size_t len;
 
 	/* if IPComp was used, we first delete the additional IPComp SA */
-	if (cpi)
+	if (data->cpi)
 	{
-		del_sa(this, src, dst, htonl(ntohs(cpi)), IPPROTO_COMP, 0, mark);
+		kernel_ipsec_sa_id_t ipcomp_id = {
+			.src = id->src,
+			.dst = id->dst,
+			.spi = htonl(ntohs(data->cpi)),
+			.proto = IPPROTO_COMP,
+			.mark = id->mark,
+		};
+		kernel_ipsec_del_sa_t ipcomp = { 0 };
+		del_sa(this, &ipcomp_id, &ipcomp);
 	}
 
 	memset(&request, 0, sizeof(request));
 
-	DBG2(DBG_KNL, "deleting SAD entry with SPI %.8x", ntohl(spi));
+	DBG2(DBG_KNL, "deleting SAD entry with SPI %.8x", ntohl(id->spi));
 
 	msg = (struct sadb_msg*)request;
 	msg->sadb_msg_version = PF_KEY_V2;
 	msg->sadb_msg_type = SADB_DELETE;
-	msg->sadb_msg_satype = proto2satype(protocol);
+	msg->sadb_msg_satype = proto2satype(id->proto);
 	msg->sadb_msg_len = PFKEY_LEN(sizeof(struct sadb_msg));
 
 	sa = (struct sadb_sa*)PFKEY_EXT_ADD_NEXT(msg);
 	sa->sadb_sa_exttype = SADB_EXT_SA;
 	sa->sadb_sa_len = PFKEY_LEN(sizeof(struct sadb_sa));
-	sa->sadb_sa_spi = spi;
+	sa->sadb_sa_spi = id->spi;
 	PFKEY_EXT_ADD(msg, sa);
 
 	/* the Linux Kernel doesn't care for the src address, but other systems do
 	 * (e.g. FreeBSD)
 	 */
-	add_addr_ext(msg, src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
-	add_addr_ext(msg, dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
+	add_addr_ext(msg, id->src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
+	add_addr_ext(msg, id->dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to delete SAD entry with SPI %.8x", ntohl(spi));
+		DBG1(DBG_KNL, "unable to delete SAD entry with SPI %.8x",
+			 ntohl(id->spi));
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
 		DBG1(DBG_KNL, "unable to delete SAD entry with SPI %.8x: %s (%d)",
-					   ntohl(spi), strerror(out->sadb_msg_errno),
-					   out->sadb_msg_errno);
+			 ntohl(id->spi), strerror(out->sadb_msg_errno),
+			 out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
 
-	DBG2(DBG_KNL, "deleted SAD entry with SPI %.8x", ntohl(spi));
+	DBG2(DBG_KNL, "deleted SAD entry with SPI %.8x", ntohl(id->spi));
 	free(out);
 	return SUCCESS;
 }
@@ -2074,7 +2140,7 @@ METHOD(kernel_ipsec_t, flush_sas, status_t,
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
 	struct {
-		u_int8_t proto;
+		uint8_t proto;
 		char *name;
 	} protos[] = {
 		{ SADB_SATYPE_AH, "AH" },
@@ -2138,7 +2204,7 @@ static void add_exclude_route(private_kernel_pfkey_ipsec_t *this,
 	if (!route->exclude)
 	{
 		DBG2(DBG_KNL, "installing new exclude route for %H src %H", dst, src);
-		gtw = charon->kernel->get_nexthop(charon->kernel, dst, -1, NULL);
+		gtw = charon->kernel->get_nexthop(charon->kernel, dst, -1, NULL, NULL);
 		if (gtw)
 		{
 			char *if_name = NULL;
@@ -2226,56 +2292,58 @@ static void remove_exclude_route(private_kernel_pfkey_ipsec_t *this,
 }
 
 /**
- * Try to install a route to the given inbound policy
+ * Try to install a route to the given outbound policy
  */
 static bool install_route(private_kernel_pfkey_ipsec_t *this,
-						  policy_entry_t *policy, policy_sa_in_t *in)
+						  policy_entry_t *policy, policy_sa_out_t *out)
 {
 	route_entry_t *route, *old;
 	host_t *host, *src, *dst;
 	bool is_virtual;
 
-	if (charon->kernel->get_address_by_ts(charon->kernel, in->dst_ts, &host,
+	if (charon->kernel->get_address_by_ts(charon->kernel, out->src_ts, &host,
 										  &is_virtual) != SUCCESS)
 	{
 		return FALSE;
 	}
 
-	/* switch src/dst, as we handle an IN policy */
-	src = in->generic.sa->dst;
-	dst = in->generic.sa->src;
-
 	INIT(route,
-		.prefixlen = policy->src.mask,
+		.prefixlen = policy->dst.mask,
 		.src_ip = host,
-		.dst_net = chunk_clone(policy->src.net->get_address(policy->src.net)),
+		.dst_net = chunk_clone(policy->dst.net->get_address(policy->dst.net)),
 	);
+
+	src = out->generic.sa->src;
+	dst = out->generic.sa->dst;
 
 	if (!dst->is_anyaddr(dst))
 	{
 		route->gateway = charon->kernel->get_nexthop(charon->kernel, dst, -1,
-													 src);
+													 src, &route->if_name);
 
 		/* if the IP is virtual, we install the route over the interface it has
 		 * been installed on. Otherwise we use the interface we use for IKE, as
 		 * this is required for example on Linux. */
 		if (is_virtual)
 		{
+			free(route->if_name);
+			route->if_name = NULL;
 			src = route->src_ip;
 		}
 	}
 	else
 	{	/* for shunt policies */
 		route->gateway = charon->kernel->get_nexthop(charon->kernel,
-											policy->src.net, policy->src.mask,
-											route->src_ip);
+											policy->dst.net, policy->dst.mask,
+											route->src_ip, &route->if_name);
 
 		/* we don't have a source address, use the address we found */
 		src = route->src_ip;
 	}
 
 	/* get interface for route, using source address */
-	if (!charon->kernel->get_interface(charon->kernel, src, &route->if_name))
+	if (!route->if_name &&
+		!charon->kernel->get_interface(charon->kernel, src, &route->if_name))
 	{
 		route_entry_destroy(route);
 		return FALSE;
@@ -2296,7 +2364,7 @@ static bool install_route(private_kernel_pfkey_ipsec_t *this,
 									  old->src_ip, old->if_name) != SUCCESS)
 		{
 			DBG1(DBG_KNL, "error uninstalling route installed with policy "
-				 "%R === %R %N", in->src_ts, in->dst_ts,
+				 "%R === %R %N", out->src_ts, out->dst_ts,
 				policy_dir_names, policy->direction);
 		}
 		route_entry_destroy(old);
@@ -2306,22 +2374,22 @@ static bool install_route(private_kernel_pfkey_ipsec_t *this,
 	/* if remote traffic selector covers the IKE peer, add an exclude route */
 	if (charon->kernel->get_features(charon->kernel) & KERNEL_REQUIRE_EXCLUDE_ROUTE)
 	{
-		if (in->src_ts->is_host(in->src_ts, dst))
+		if (out->dst_ts->is_host(out->dst_ts, dst))
 		{
 			DBG1(DBG_KNL, "can't install route for %R === %R %N, conflicts "
-				 "with IKE traffic", in->src_ts, in->dst_ts, policy_dir_names,
+				 "with IKE traffic", out->src_ts, out->dst_ts, policy_dir_names,
 				 policy->direction);
 			route_entry_destroy(route);
 			return FALSE;
 		}
-		if (in->src_ts->includes(in->src_ts, dst))
+		if (out->dst_ts->includes(out->dst_ts, dst))
 		{
-			add_exclude_route(this, route, in->generic.sa->dst, dst);
+			add_exclude_route(this, route, out->generic.sa->src, dst);
 		}
 	}
 
 	DBG2(DBG_KNL, "installing route: %R via %H src %H dev %s",
-		 in->src_ts, route->gateway, route->src_ip, route->if_name);
+		 out->dst_ts, route->gateway, route->src_ip, route->if_name);
 
 	switch (charon->kernel->add_route(charon->kernel, route->dst_net,
 									  route->prefixlen, route->gateway,
@@ -2338,7 +2406,7 @@ static bool install_route(private_kernel_pfkey_ipsec_t *this,
 			return TRUE;
 		default:
 			DBG1(DBG_KNL, "installing route failed: %R via %H src %H dev %s",
-				 in->src_ts, route->gateway, route->src_ip, route->if_name);
+				 out->dst_ts, route->gateway, route->src_ip, route->if_name);
 			remove_exclude_route(this, route);
 			route_entry_destroy(route);
 			return FALSE;
@@ -2381,53 +2449,56 @@ static status_t add_policy_internal(private_kernel_pfkey_ipsec_t *this,
 	pol->sadb_x_policy_priority = mapping->priority;
 #endif
 
-	/* one or more sadb_x_ipsecrequest extensions are added to the
-	 * sadb_x_policy extension */
-	proto_mode = ipsec->cfg.mode;
-
-	req = (struct sadb_x_ipsecrequest*)(pol + 1);
-
-	if (ipsec->cfg.ipcomp.transform != IPCOMP_NONE)
+	if (mapping->type == POLICY_IPSEC && ipsec->cfg.reqid)
 	{
-		req->sadb_x_ipsecrequest_proto = IPPROTO_COMP;
+		/* one or more sadb_x_ipsecrequest extensions are added to the
+		 * sadb_x_policy extension */
+		proto_mode = ipsec->cfg.mode;
 
+		req = (struct sadb_x_ipsecrequest*)(pol + 1);
+
+		if (ipsec->cfg.ipcomp.transform != IPCOMP_NONE)
+		{
+			req->sadb_x_ipsecrequest_proto = IPPROTO_COMP;
+
+			/* !!! the length here MUST be in octets instead of 64 bit words */
+			req->sadb_x_ipsecrequest_len = sizeof(struct sadb_x_ipsecrequest);
+			req->sadb_x_ipsecrequest_mode = mode2kernel(ipsec->cfg.mode);
+			req->sadb_x_ipsecrequest_reqid = ipsec->cfg.reqid;
+			req->sadb_x_ipsecrequest_level = (policy->direction == POLICY_OUT) ?
+											IPSEC_LEVEL_UNIQUE : IPSEC_LEVEL_USE;
+			if (ipsec->cfg.mode == MODE_TUNNEL)
+			{
+				len = hostcpy(req + 1, ipsec->src, FALSE);
+				req->sadb_x_ipsecrequest_len += len;
+				len = hostcpy((char*)(req + 1) + len, ipsec->dst, FALSE);
+				req->sadb_x_ipsecrequest_len += len;
+				/* use transport mode for other SAs */
+				proto_mode = MODE_TRANSPORT;
+			}
+
+			pol->sadb_x_policy_len += PFKEY_LEN(req->sadb_x_ipsecrequest_len);
+			req = (struct sadb_x_ipsecrequest*)((char*)(req) +
+												req->sadb_x_ipsecrequest_len);
+		}
+
+		req->sadb_x_ipsecrequest_proto = ipsec->cfg.esp.use ? IPPROTO_ESP
+															: IPPROTO_AH;
 		/* !!! the length here MUST be in octets instead of 64 bit words */
 		req->sadb_x_ipsecrequest_len = sizeof(struct sadb_x_ipsecrequest);
-		req->sadb_x_ipsecrequest_mode = mode2kernel(ipsec->cfg.mode);
+		req->sadb_x_ipsecrequest_mode = mode2kernel(proto_mode);
 		req->sadb_x_ipsecrequest_reqid = ipsec->cfg.reqid;
-		req->sadb_x_ipsecrequest_level = (policy->direction == POLICY_OUT) ?
-										  IPSEC_LEVEL_UNIQUE : IPSEC_LEVEL_USE;
-		if (ipsec->cfg.mode == MODE_TUNNEL)
+		req->sadb_x_ipsecrequest_level = IPSEC_LEVEL_UNIQUE;
+		if (proto_mode == MODE_TUNNEL)
 		{
 			len = hostcpy(req + 1, ipsec->src, FALSE);
 			req->sadb_x_ipsecrequest_len += len;
 			len = hostcpy((char*)(req + 1) + len, ipsec->dst, FALSE);
 			req->sadb_x_ipsecrequest_len += len;
-			/* use transport mode for other SAs */
-			proto_mode = MODE_TRANSPORT;
 		}
 
 		pol->sadb_x_policy_len += PFKEY_LEN(req->sadb_x_ipsecrequest_len);
-		req = (struct sadb_x_ipsecrequest*)((char*)(req) +
-											req->sadb_x_ipsecrequest_len);
 	}
-
-	req->sadb_x_ipsecrequest_proto = ipsec->cfg.esp.use ? IPPROTO_ESP
-														: IPPROTO_AH;
-	/* !!! the length here MUST be in octets instead of 64 bit words */
-	req->sadb_x_ipsecrequest_len = sizeof(struct sadb_x_ipsecrequest);
-	req->sadb_x_ipsecrequest_mode = mode2kernel(proto_mode);
-	req->sadb_x_ipsecrequest_reqid = ipsec->cfg.reqid;
-	req->sadb_x_ipsecrequest_level = IPSEC_LEVEL_UNIQUE;
-	if (proto_mode == MODE_TUNNEL)
-	{
-		len = hostcpy(req + 1, ipsec->src, FALSE);
-		req->sadb_x_ipsecrequest_len += len;
-		len = hostcpy((char*)(req + 1) + len, ipsec->dst, FALSE);
-		req->sadb_x_ipsecrequest_len += len;
-	}
-
-	pol->sadb_x_policy_len += PFKEY_LEN(req->sadb_x_ipsecrequest_len);
 	PFKEY_EXT_ADD(msg, pol);
 
 	add_addr_ext(msg, policy->src.net, SADB_EXT_ADDRESS_SRC, policy->src.proto,
@@ -2492,37 +2563,42 @@ static status_t add_policy_internal(private_kernel_pfkey_ipsec_t *this,
 	free(out);
 
 	/* install a route, if:
-	 * - this is an inbound policy (to just get one for each child)
-	 * - we are in tunnel mode or install a bypass policy
+	 * - this is an outbound policy (to just get one for each child)
 	 * - routing is not disabled via strongswan.conf
+	 * - the selector is not for a specific protocol/port
+	 * - we are in tunnel mode or install a bypass policy
 	 */
-	if (policy->direction == POLICY_IN && this->install_routes &&
-		(mapping->type != POLICY_IPSEC || ipsec->cfg.mode != MODE_TRANSPORT))
+	if (policy->direction == POLICY_OUT && this->install_routes &&
+		policy->src.proto == IPSEC_PROTO_ANY &&
+		!policy->src.net->get_port(policy->src.net) &&
+		!policy->dst.net->get_port(policy->dst.net))
 	{
-		install_route(this, policy, (policy_sa_in_t*)mapping);
+		if (mapping->type == POLICY_PASS ||
+		   (mapping->type == POLICY_IPSEC && ipsec->cfg.mode != MODE_TRANSPORT))
+		{
+			install_route(this, policy, (policy_sa_out_t*)mapping);
+		}
 	}
 	this->mutex->unlock(this->mutex);
 	return SUCCESS;
 }
 
 METHOD(kernel_ipsec_t, add_policy, status_t,
-	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
-	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
-	mark_t mark, policy_priority_t priority)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_policy_id_t *id,
+	kernel_ipsec_manage_policy_t *data)
 {
 	policy_entry_t *policy, *found = NULL;
 	policy_sa_t *assigned_sa, *current_sa;
 	enumerator_t *enumerator;
 	bool update = TRUE;
 
-	if (dir2kernel(direction) == IPSEC_DIR_INVALID)
+	if (dir2kernel(id->dir) == IPSEC_DIR_INVALID)
 	{	/* FWD policies are not supported on all platforms */
 		return SUCCESS;
 	}
 
 	/* create a policy */
-	policy = create_policy_entry(src_ts, dst_ts, direction);
+	policy = create_policy_entry(id->src_ts, id->dst_ts, id->dir);
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
@@ -2531,7 +2607,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 								  (void**)&found, policy) == SUCCESS)
 	{	/* use existing policy */
 		DBG2(DBG_KNL, "policy %R === %R %N already exists, increasing "
-					  "refcount", src_ts, dst_ts, policy_dir_names, direction);
+			 "refcount", id->src_ts, id->dst_ts, policy_dir_names, id->dir);
 		policy_entry_destroy(policy, this);
 		policy = found;
 	}
@@ -2542,17 +2618,34 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	}
 
 	/* cache the assigned IPsec SA */
-	assigned_sa = policy_sa_create(this, direction, type, src, dst, src_ts,
-								   dst_ts, sa);
-	assigned_sa->priority = get_priority(policy, priority);
+	assigned_sa = policy_sa_create(this, id->dir, data->type, data->src,
+								   data->dst, id->src_ts, id->dst_ts, data->sa);
+	assigned_sa->auto_priority = get_priority(policy, data->prio);
+	assigned_sa->priority = data->manual_prio ? data->manual_prio :
+												assigned_sa->auto_priority;
+
 
 	/* insert the SA according to its priority */
 	enumerator = policy->used_by->create_enumerator(policy->used_by);
 	while (enumerator->enumerate(enumerator, (void**)&current_sa))
 	{
-		if (current_sa->priority >= assigned_sa->priority)
+		if (current_sa->priority > assigned_sa->priority)
 		{
 			break;
+		}
+		if (current_sa->priority == assigned_sa->priority)
+		{
+			/* in case of equal manual prios order SAs by automatic priority */
+			if (current_sa->auto_priority > assigned_sa->auto_priority)
+			{
+				break;
+			}
+			/* prefer SAs with a reqid over those without */
+			if (current_sa->auto_priority == assigned_sa->auto_priority &&
+				(!current_sa->sa->cfg.reqid || assigned_sa->sa->cfg.reqid))
+			{
+				break;
+			}
 		}
 		update = FALSE;
 	}
@@ -2567,23 +2660,22 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	}
 
 	DBG2(DBG_KNL, "%s policy %R === %R %N",
-				   found ? "updating" : "adding", src_ts, dst_ts,
-				   policy_dir_names, direction);
+		 found ? "updating" : "adding", id->src_ts, id->dst_ts,
+		 policy_dir_names, id->dir);
 
 	if (add_policy_internal(this, policy, assigned_sa, found) != SUCCESS)
 	{
 		DBG1(DBG_KNL, "unable to %s policy %R === %R %N",
-					   found ? "update" : "add", src_ts, dst_ts,
-					   policy_dir_names, direction);
+			 found ? "update" : "add", id->src_ts, id->dst_ts,
+			 policy_dir_names, id->dir);
 		return FAILED;
 	}
 	return SUCCESS;
 }
 
 METHOD(kernel_ipsec_t, query_policy, status_t,
-	private_kernel_pfkey_ipsec_t *this, traffic_selector_t *src_ts,
-	traffic_selector_t *dst_ts, policy_dir_t direction, mark_t mark,
-	time_t *use_time)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_policy_id_t *id,
+	kernel_ipsec_query_policy_t *data, time_t *use_time)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -2592,16 +2684,16 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 	pfkey_msg_t response;
 	size_t len;
 
-	if (dir2kernel(direction) == IPSEC_DIR_INVALID)
+	if (dir2kernel(id->dir) == IPSEC_DIR_INVALID)
 	{	/* FWD policies are not supported on all platforms */
 		return NOT_FOUND;
 	}
 
-	DBG2(DBG_KNL, "querying policy %R === %R %N", src_ts, dst_ts,
-				   policy_dir_names, direction);
+	DBG2(DBG_KNL, "querying policy %R === %R %N", id->src_ts, id->dst_ts,
+		 policy_dir_names, id->dir);
 
 	/* create a policy */
-	policy = create_policy_entry(src_ts, dst_ts, direction);
+	policy = create_policy_entry(id->src_ts, id->dst_ts, id->dir);
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
@@ -2609,8 +2701,8 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 								  (linked_list_match_t)policy_entry_equals,
 								  (void**)&found, policy) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "querying policy %R === %R %N failed, not found", src_ts,
-					   dst_ts, policy_dir_names, direction);
+		DBG1(DBG_KNL, "querying policy %R === %R %N failed, not found",
+			 id->src_ts, id->dst_ts, policy_dir_names, id->dir);
 		policy_entry_destroy(policy, this);
 		this->mutex->unlock(this->mutex);
 		return NOT_FOUND;
@@ -2630,7 +2722,7 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 	pol->sadb_x_policy_exttype = SADB_X_EXT_POLICY;
 	pol->sadb_x_policy_id = policy->index;
 	pol->sadb_x_policy_len = PFKEY_LEN(sizeof(struct sadb_x_policy));
-	pol->sadb_x_policy_dir = dir2kernel(direction);
+	pol->sadb_x_policy_dir = dir2kernel(id->dir);
 	pol->sadb_x_policy_type = IPSEC_POLICY_IPSEC;
 	PFKEY_EXT_ADD(msg, pol);
 
@@ -2643,30 +2735,31 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to query policy %R === %R %N", src_ts, dst_ts,
-					   policy_dir_names, direction);
+		DBG1(DBG_KNL, "unable to query policy %R === %R %N", id->src_ts,
+			 id->dst_ts, policy_dir_names, id->dir);
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
-		DBG1(DBG_KNL, "unable to query policy %R === %R %N: %s (%d)", src_ts,
-					   dst_ts, policy_dir_names, direction,
-					   strerror(out->sadb_msg_errno), out->sadb_msg_errno);
+		DBG1(DBG_KNL, "unable to query policy %R === %R %N: %s (%d)",
+			 id->src_ts, id->dst_ts, policy_dir_names, id->dir,
+			 strerror(out->sadb_msg_errno), out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
 	else if (parse_pfkey_message(out, &response) != SUCCESS)
 	{
 		DBG1(DBG_KNL, "unable to query policy %R === %R %N: parsing response "
-					  "from kernel failed", src_ts, dst_ts, policy_dir_names,
-					   direction);
+			 "from kernel failed", id->src_ts, id->dst_ts, policy_dir_names,
+			 id->dir);
 		free(out);
 		return FAILED;
 	}
 	else if (response.lft_current == NULL)
 	{
 		DBG2(DBG_KNL, "unable to query policy %R === %R %N: kernel reports no "
-					  "use time", src_ts, dst_ts, policy_dir_names, direction);
+			 "use time", id->src_ts, id->dst_ts, policy_dir_names,
+			 id->dir);
 		free(out);
 		return FAILED;
 	}
@@ -2686,10 +2779,8 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 }
 
 METHOD(kernel_ipsec_t, del_policy, status_t,
-	private_kernel_pfkey_ipsec_t *this, host_t *src, host_t *dst,
-	traffic_selector_t *src_ts, traffic_selector_t *dst_ts,
-	policy_dir_t direction, policy_type_t type, ipsec_sa_cfg_t *sa,
-	mark_t mark, policy_priority_t prio)
+	private_kernel_pfkey_ipsec_t *this, kernel_ipsec_policy_id_t *id,
+	kernel_ipsec_manage_policy_t *data)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -2698,24 +2789,24 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	policy_sa_t *mapping, *to_remove = NULL;
 	enumerator_t *enumerator;
 	bool first = TRUE, is_installed = TRUE;
-	u_int32_t priority;
+	uint32_t priority, auto_priority;
 	size_t len;
 	ipsec_sa_t assigned_sa = {
-		.src = src,
-		.dst = dst,
-		.cfg = *sa,
+		.src = data->src,
+		.dst = data->dst,
+		.cfg = *data->sa,
 	};
 
-	if (dir2kernel(direction) == IPSEC_DIR_INVALID)
+	if (dir2kernel(id->dir) == IPSEC_DIR_INVALID)
 	{	/* FWD policies are not supported on all platforms */
 		return SUCCESS;
 	}
 
-	DBG2(DBG_KNL, "deleting policy %R === %R %N", src_ts, dst_ts,
-				   policy_dir_names, direction);
+	DBG2(DBG_KNL, "deleting policy %R === %R %N", id->src_ts, id->dst_ts,
+		 policy_dir_names, id->dir);
 
 	/* create a policy */
-	policy = create_policy_entry(src_ts, dst_ts, direction);
+	policy = create_policy_entry(id->src_ts, id->dst_ts, id->dir);
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
@@ -2723,8 +2814,8 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 								  (linked_list_match_t)policy_entry_equals,
 								  (void**)&found, policy) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "deleting policy %R === %R %N failed, not found", src_ts,
-					   dst_ts, policy_dir_names, direction);
+		DBG1(DBG_KNL, "deleting policy %R === %R %N failed, not found",
+			 id->src_ts, id->dst_ts, policy_dir_names, id->dir);
 		policy_entry_destroy(policy, this);
 		this->mutex->unlock(this->mutex);
 		return NOT_FOUND;
@@ -2734,11 +2825,14 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 
 	/* remove mapping to SA by reqid and priority, if multiple match, which
 	 * could happen when rekeying due to an address change, remove the oldest */
-	priority = get_priority(policy, prio);
+	auto_priority = get_priority(policy, data->prio);
+	priority = data->manual_prio ? data->manual_prio : auto_priority;
 	enumerator = policy->used_by->create_enumerator(policy->used_by);
 	while (enumerator->enumerate(enumerator, (void**)&mapping))
 	{
 		if (priority == mapping->priority &&
+			auto_priority == mapping->auto_priority &&
+			data->type == mapping->type &&
 			ipsec_sa_equals(mapping->sa, &assigned_sa))
 		{
 			to_remove = mapping;
@@ -2762,7 +2856,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	if (policy->used_by->get_count(policy->used_by) > 0)
 	{	/* policy is used by more SAs, keep in kernel */
 		DBG2(DBG_KNL, "policy still used by another CHILD_SA, not removed");
-		policy_sa_destroy(mapping, &direction, this);
+		policy_sa_destroy(mapping, &id->dir, this);
 
 		if (!is_installed)
 		{	/* no need to update as the policy was not installed for this SA */
@@ -2770,13 +2864,13 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 			return SUCCESS;
 		}
 
-		DBG2(DBG_KNL, "updating policy %R === %R %N", src_ts, dst_ts,
-					   policy_dir_names, direction);
+		DBG2(DBG_KNL, "updating policy %R === %R %N", id->src_ts, id->dst_ts,
+			 policy_dir_names, id->dir);
 		policy->used_by->get_first(policy->used_by, (void**)&mapping);
 		if (add_policy_internal(this, policy, mapping, TRUE) != SUCCESS)
 		{
 			DBG1(DBG_KNL, "unable to update policy %R === %R %N",
-						   src_ts, dst_ts, policy_dir_names, direction);
+				 id->src_ts, id->dst_ts, policy_dir_names, id->dir);
 			return FAILED;
 		}
 		return SUCCESS;
@@ -2793,7 +2887,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	pol = (struct sadb_x_policy*)PFKEY_EXT_ADD_NEXT(msg);
 	pol->sadb_x_policy_exttype = SADB_X_EXT_POLICY;
 	pol->sadb_x_policy_len = PFKEY_LEN(sizeof(struct sadb_x_policy));
-	pol->sadb_x_policy_dir = dir2kernel(direction);
+	pol->sadb_x_policy_dir = dir2kernel(id->dir);
 	pol->sadb_x_policy_type = type2kernel(mapping->type);
 	PFKEY_EXT_ADD(msg, pol);
 
@@ -2810,28 +2904,28 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 									  route->src_ip, route->if_name) != SUCCESS)
 		{
 			DBG1(DBG_KNL, "error uninstalling route installed with "
-						  "policy %R === %R %N", src_ts, dst_ts,
-						   policy_dir_names, direction);
+				 "policy %R === %R %N", id->src_ts, id->dst_ts,
+				 policy_dir_names, id->dir);
 		}
 		remove_exclude_route(this, route);
 	}
 
 	this->policies->remove(this->policies, found, NULL);
-	policy_sa_destroy(mapping, &direction, this);
+	policy_sa_destroy(mapping, &id->dir, this);
 	policy_entry_destroy(policy, this);
 	this->mutex->unlock(this->mutex);
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
 	{
-		DBG1(DBG_KNL, "unable to delete policy %R === %R %N", src_ts, dst_ts,
-					   policy_dir_names, direction);
+		DBG1(DBG_KNL, "unable to delete policy %R === %R %N", id->src_ts,
+			 id->dst_ts, policy_dir_names, id->dir);
 		return FAILED;
 	}
 	else if (out->sadb_msg_errno)
 	{
-		DBG1(DBG_KNL, "unable to delete policy %R === %R %N: %s (%d)", src_ts,
-					   dst_ts, policy_dir_names, direction,
-					   strerror(out->sadb_msg_errno), out->sadb_msg_errno);
+		DBG1(DBG_KNL, "unable to delete policy %R === %R %N: %s (%d)",
+			 id->src_ts, id->dst_ts, policy_dir_names, id->dir,
+			 strerror(out->sadb_msg_errno), out->sadb_msg_errno);
 		free(out);
 		return FAILED;
 	}
@@ -2876,7 +2970,7 @@ METHOD(kernel_ipsec_t, flush_policies, status_t,
  * Register a socket for ACQUIRE/EXPIRE messages
  */
 static status_t register_pfkey_socket(private_kernel_pfkey_ipsec_t *this,
-									  u_int8_t satype)
+									  uint8_t satype)
 {
 	unsigned char request[PFKEY_BUFFER_SIZE];
 	struct sadb_msg *msg, *out;
@@ -2931,7 +3025,7 @@ METHOD(kernel_ipsec_t, bypass_socket, bool,
 	}
 
 	memset(&policy, 0, sizeof(policy));
-	policy.sadb_x_policy_len = sizeof(policy) / sizeof(u_int64_t);
+	policy.sadb_x_policy_len = sizeof(policy) / sizeof(uint64_t);
 	policy.sadb_x_policy_exttype = SADB_X_EXT_POLICY;
 	policy.sadb_x_policy_type = IPSEC_POLICY_BYPASS;
 
@@ -2953,7 +3047,7 @@ METHOD(kernel_ipsec_t, bypass_socket, bool,
 }
 
 METHOD(kernel_ipsec_t, enable_udp_decap, bool,
-	private_kernel_pfkey_ipsec_t *this, int fd, int family, u_int16_t port)
+	private_kernel_pfkey_ipsec_t *this, int fd, int family, uint16_t port)
 {
 #ifndef __APPLE__
 	int type = UDP_ENCAP_ESPINUDP;

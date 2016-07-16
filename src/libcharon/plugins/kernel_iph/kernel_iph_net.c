@@ -562,7 +562,8 @@ METHOD(kernel_net_t, get_source_addr, host_t*,
 }
 
 METHOD(kernel_net_t, get_nexthop, host_t*,
-	private_kernel_iph_net_t *this, host_t *dest, int prefix, host_t *src)
+	private_kernel_iph_net_t *this, host_t *dest, int prefix, host_t *src,
+	char **iface)
 {
 	MIB_IPFORWARD_ROW2 route;
 	SOCKADDR_INET best, *sai_dst, *sai_src = NULL;
@@ -592,6 +593,10 @@ METHOD(kernel_net_t, get_nexthop, host_t*,
 	{
 		if (!nexthop->is_anyaddr(nexthop))
 		{
+			if (iface)
+			{
+				*iface = NULL;
+			}
 			return nexthop;
 		}
 		nexthop->destroy(nexthop);
@@ -617,7 +622,7 @@ METHOD(kernel_net_t, del_ip, status_t,
  * Add or remove a route
  */
 static status_t manage_route(private_kernel_iph_net_t *this, bool add,
-					chunk_t dst, u_int8_t prefixlen, host_t *gtw, char *name)
+					chunk_t dst, uint8_t prefixlen, host_t *gtw, char *name)
 {
 	MIB_IPFORWARD_ROW2 row = {
 		.DestinationPrefix = {
@@ -705,14 +710,14 @@ static status_t manage_route(private_kernel_iph_net_t *this, bool add,
 }
 
 METHOD(kernel_net_t, add_route, status_t,
-	private_kernel_iph_net_t *this, chunk_t dst, u_int8_t prefixlen,
+	private_kernel_iph_net_t *this, chunk_t dst, uint8_t prefixlen,
 	host_t *gateway, host_t *src, char *name)
 {
 	return manage_route(this, TRUE, dst, prefixlen, gateway, name);
 }
 
 METHOD(kernel_net_t, del_route, status_t,
-	private_kernel_iph_net_t *this, chunk_t dst, u_int8_t prefixlen,
+	private_kernel_iph_net_t *this, chunk_t dst, uint8_t prefixlen,
 	host_t *gateway, host_t *src, char *name)
 {
 	return manage_route(this, FALSE, dst, prefixlen, gateway, name);

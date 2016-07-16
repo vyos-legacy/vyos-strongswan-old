@@ -35,40 +35,40 @@ struct private_pts_comp_func_name_t {
 	/**
 	 * PTS Component Functional Name Vendor ID
 	 */
-	u_int32_t vid;
+	uint32_t vid;
 
 	/**
 	 * PTS Component Functional Name
 	 */
-	u_int32_t name;
+	uint32_t name;
 
 	/**
 	 * PTS Component Functional Name Qualifier
 	 */
-	u_int8_t qualifier;
+	uint8_t qualifier;
 
 };
 
-METHOD(pts_comp_func_name_t, get_vendor_id, u_int32_t,
+METHOD(pts_comp_func_name_t, get_vendor_id, uint32_t,
 	private_pts_comp_func_name_t *this)
 {
 	return this->vid;
 }
 
-METHOD(pts_comp_func_name_t, get_name, u_int32_t,
+METHOD(pts_comp_func_name_t, get_name, uint32_t,
 	private_pts_comp_func_name_t *this)
 {
 	return this->name;
 }
 
-METHOD(pts_comp_func_name_t, get_qualifier, u_int8_t,
+METHOD(pts_comp_func_name_t, get_qualifier, uint8_t,
 	private_pts_comp_func_name_t *this)
 {
 	return this->qualifier;
 }
 
 METHOD(pts_comp_func_name_t, set_qualifier, void,
-	private_pts_comp_func_name_t *this, u_int8_t qualifier)
+	private_pts_comp_func_name_t *this, uint8_t qualifier)
 {
 	this->qualifier = qualifier;
 }
@@ -117,12 +117,12 @@ METHOD(pts_comp_func_name_t, log_, void,
 
 	if (names && types)
 	{
-		DBG2(DBG_PTS, "%s%N functional component '%N' [%s] '%N'",
+		DBG3(DBG_PTS, "%s%N functional component '%N' [%s] '%N'",
 			 label, pen_names, this->vid, names, this->name, flags, types, type);
 	}
 	else
 	{
-		DBG2(DBG_PTS, "%s0x%06x functional component 0x%08x 0x%02x",
+		DBG3(DBG_PTS, "%s0x%06x functional component 0x%08x 0x%02x",
 			 label, this->vid, this->name, this->qualifier);
 	}
 }
@@ -136,8 +136,8 @@ METHOD(pts_comp_func_name_t, destroy, void,
 /**
  * See header
  */
-pts_comp_func_name_t* pts_comp_func_name_create(u_int32_t vid, u_int32_t name,
-												u_int8_t qualifier)
+pts_comp_func_name_t* pts_comp_func_name_create(uint32_t vid, uint32_t name,
+												uint8_t qualifier)
 {
 	private_pts_comp_func_name_t *this;
 

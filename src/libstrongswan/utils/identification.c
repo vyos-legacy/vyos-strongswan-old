@@ -80,6 +80,7 @@ static const x501rdn_t x501rdns[] = {
 	{"G", 					OID_GIVEN_NAME,				ASN1_PRINTABLESTRING},
 	{"I", 					OID_INITIALS,				ASN1_PRINTABLESTRING},
 	{"dnQualifier", 		OID_DN_QUALIFIER,			ASN1_PRINTABLESTRING},
+	{"dmdName", 			OID_DMD_NAME,				ASN1_PRINTABLESTRING},
 	{"pseudonym", 			OID_PSEUDONYM,				ASN1_PRINTABLESTRING},
 	{"ID", 					OID_UNIQUE_IDENTIFIER,		ASN1_PRINTABLESTRING},
 	{"EN", 					OID_EMPLOYEE_NUMBER,		ASN1_PRINTABLESTRING},
@@ -220,6 +221,7 @@ METHOD(enumerator_t, rdn_part_enumerate, bool,
 		{OID_GIVEN_NAME,		ID_PART_RDN_G},
 		{OID_INITIALS,			ID_PART_RDN_I},
 		{OID_DN_QUALIFIER,		ID_PART_RDN_DNQ},
+		{OID_DMD_NAME,			ID_PART_RDN_DMDN},
 		{OID_PSEUDONYM,			ID_PART_RDN_PN},
 		{OID_UNIQUE_IDENTIFIER,	ID_PART_RDN_ID},
 		{OID_EMAIL_ADDRESS,		ID_PART_RDN_E},
@@ -727,7 +729,8 @@ METHOD(identification_t, equals_strcasecmp,  bool,
 
 	/* we do some extra sanity checks to check for invalid IDs with a
 	 * terminating null in it. */
-	if (this->encoded.len == encoded.len &&
+	if (this->type == other->get_type(other) &&
+		this->encoded.len == encoded.len &&
 		memchr(this->encoded.ptr, 0, this->encoded.len) == NULL &&
 		memchr(encoded.ptr, 0, encoded.len) == NULL &&
 		strncasecmp(this->encoded.ptr, encoded.ptr, this->encoded.len) == 0)
@@ -1152,15 +1155,15 @@ static private_identification_t *identification_create(id_type_t type)
 	{
 		case ID_ANY:
 			this->public.hash = _hash_binary;
-			this->public.matches = _matches_any;
 			this->public.equals = _equals_binary;
+			this->public.matches = _matches_any;
 			this->public.contains_wildcards = return_true;
 			break;
 		case ID_FQDN:
 		case ID_RFC822_ADDR:
 			this->public.hash = _hash_binary;
-			this->public.matches = _matches_string;
 			this->public.equals = _equals_strcasecmp;
+			this->public.matches = _matches_string;
 			this->public.contains_wildcards = _contains_wildcards_memchr;
 			break;
 		case ID_DER_ASN1_DN:

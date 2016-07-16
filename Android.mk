@@ -61,15 +61,11 @@ strongswan_CFLAGS := \
 	-DHAVE_ALLOCA \
 	-DHAVE_CLOCK_GETTIME \
 	-DHAVE_DLADDR \
-	-DHAVE_PTHREAD_COND_TIMEDWAIT_MONOTONIC \
 	-DHAVE_PRCTL \
 	-DHAVE_LINUX_UDP_H \
 	-DHAVE_STRUCT_SADB_X_POLICY_SADB_X_POLICY_PRIORITY \
 	-DHAVE_IPSEC_MODE_BEET \
 	-DHAVE_IPSEC_DIR_FWD \
-	-DOPENSSL_NO_EC \
-	-DOPENSSL_NO_ECDSA \
-	-DOPENSSL_NO_ECDH \
 	-DOPENSSL_NO_ENGINE \
 	-DCONFIG_H_INCLUDED \
 	-DCAPABILITIES \
@@ -100,7 +96,8 @@ strongswan_BUILD := \
 	libstrongswan \
 	libtncif \
 	libtnccs \
-	libimcv
+	libimcv \
+	libtpmtss
 
 ifneq ($(strongswan_BUILD_STARTER),)
 strongswan_BUILD += \

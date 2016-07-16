@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.2"
+#define YYBISON_VERSION "3.0.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -180,7 +180,7 @@ extern int settings_parser_debug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
 #line 77 "settings/settings_parser.y" /* yacc.c:355  */
@@ -191,6 +191,8 @@ union YYSTYPE
 
 #line 193 "settings/settings_parser.c" /* yacc.c:355  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
@@ -203,7 +205,7 @@ int settings_parser_parse (parser_helper_t *ctx);
 
 /* Copy the second part of user declarations.  */
 
-#line 207 "settings/settings_parser.c" /* yacc.c:358  */
+#line 209 "settings/settings_parser.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1027,43 +1029,43 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, parser_helper_t *c
           case 3: /* NAME  */
 #line 91 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1031 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1033 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 4: /* STRING  */
 #line 91 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1037 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1039 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 13: /* section  */
 #line 93 "settings/settings_parser.y" /* yacc.c:1257  */
       { pop_section(ctx); settings_section_destroy(((*yyvaluep).sec), NULL); }
-#line 1043 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1045 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 14: /* section_start  */
 #line 93 "settings/settings_parser.y" /* yacc.c:1257  */
       { pop_section(ctx); settings_section_destroy(((*yyvaluep).sec), NULL); }
-#line 1049 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1051 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 15: /* setting  */
 #line 94 "settings/settings_parser.y" /* yacc.c:1257  */
       { settings_kv_destroy(((*yyvaluep).kv), NULL); }
-#line 1055 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1057 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 16: /* value  */
 #line 91 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1061 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1063 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 17: /* valuepart  */
 #line 91 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1067 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1069 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
 
@@ -1333,7 +1335,7 @@ yyreduce:
     {
 		add_section(ctx, (yyvsp[0].sec));
 	}
-#line 1337 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1339 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 6:
@@ -1341,7 +1343,7 @@ yyreduce:
     {
 		add_setting(ctx, (yyvsp[0].kv));
 	}
-#line 1345 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1347 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 7:
@@ -1350,7 +1352,7 @@ yyreduce:
 		pop_section(ctx);
 		(yyval.sec) = (yyvsp[-2].sec);
 	}
-#line 1354 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1356 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 8:
@@ -1358,7 +1360,7 @@ yyreduce:
     {
 		(yyval.sec) = push_section(ctx, (yyvsp[-1].s));
 	}
-#line 1362 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1364 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 9:
@@ -1366,7 +1368,7 @@ yyreduce:
     {
 		(yyval.sec) = push_section(ctx, (yyvsp[-2].s));
 	}
-#line 1370 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1372 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 10:
@@ -1374,7 +1376,7 @@ yyreduce:
     {
 		(yyval.kv) = settings_kv_create((yyvsp[-2].s), (yyvsp[0].s));
 	}
-#line 1378 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1380 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 11:
@@ -1382,7 +1384,7 @@ yyreduce:
     {
 		(yyval.kv) = settings_kv_create((yyvsp[-1].s), NULL);
 	}
-#line 1386 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1388 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 13:
@@ -1397,11 +1399,11 @@ yyreduce:
 		free((yyvsp[-1].s));
 		free((yyvsp[0].s));
 	}
-#line 1401 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1403 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
 
-#line 1405 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1407 "settings/settings_parser.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

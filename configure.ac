@@ -1,8 +1,8 @@
 #
 # Copyright (C) 2007-2015 Tobias Brunner
-# Copyright (C) 2006-2015 Andreas Steffen
+# Copyright (C) 2006-2016 Andreas Steffen
 # Copyright (C) 2006-2014 Martin Willi
-# Hochschule fuer Technik Rapperswil
+# HSR Hochschule fuer Technik Rapperswil
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.4.0])
+AC_INIT([strongSwan],[5.5.0])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -62,8 +62,6 @@ ARG_WITH_SUBST([routing-table],      [220], [set routing table to use for IPsec 
 ARG_WITH_SUBST([routing-table-prio], [220], [set priority for IPsec routing table])
 ARG_WITH_SUBST([ipsec-script],       [ipsec], [change the name of the ipsec script])
 ARG_WITH_SUBST([fips-mode],          [0], [set openssl FIPS mode: disabled(0), enabled(1), Suite B enabled(2)])
-
-ARG_WITH_SET([tss],                  [no], [set implementation of the Trusted Computing Group's Software Stack (TSS). Currently the only supported value is "trousers"])
 ARG_WITH_SET([capabilities],         [no], [set capability dropping library. Currently supported values are "libcap" and "native"])
 ARG_WITH_SET([mpz_powm_sec],         [yes], [use the more side-channel resistant mpz_powm_sec in libgmp, if available])
 ARG_WITH_SET([dev-headers],          [no], [install strongSwan development headers to directory.])
@@ -269,7 +267,8 @@ ARG_ENABL_SET([systime-fix],    [enable plugin to handle cert lifetimes with inv
 ARG_ENABL_SET([test-vectors],   [enable plugin providing crypto test vectors.])
 ARG_DISBL_SET([updown],         [disable updown firewall script plugin.])
 # programs/components
-ARG_ENABL_SET([aikgen],         [enable AIK generator.])
+ARG_ENABL_SET([aikgen],         [enable AIK generator for TPM 1.2.])
+ARG_ENABL_SET([aikpub2],        [enable AIK extractor for TPM 2.0.])
 ARG_DISBL_SET([charon],         [disable the IKEv1/IKEv2 keying daemon charon.])
 ARG_ENABL_SET([cmd],            [enable the command line IKE client charon-cmd.])
 ARG_ENABL_SET([conftest],       [enforce Suite B conformance test framework.])
@@ -302,6 +301,9 @@ ARG_ENABL_SET([python-eggs],    [enable build of provided python eggs.])
 ARG_ENABL_SET([python-eggs-install],[enable installation of provided python eggs.])
 ARG_ENABL_SET([perl-cpan],      [enable build of provided perl CPAN module.])
 ARG_ENABL_SET([perl-cpan-install],[enable installation of provided CPAN module.])
+ARG_ENABL_SET([tss-trousers],   [enable the use of the TrouSerS Trusted Software Stack])
+ARG_ENABL_SET([tss-tss2],       [enable the use of the TSS 2.0 Trusted Software Stack])
+
 # compile options
 ARG_ENABL_SET([coverage],       [enable lcov coverage report generation.])
 ARG_ENABL_SET([leak-detective], [enable malloc hooks to find memory leaks.])
@@ -455,6 +457,14 @@ if test x$perl_cpan_install = xtrue; then
 	perl_cpan=true
 fi
 
+if test x$aikgen = xtrue; then
+	tss_trousers=true
+fi
+
+if test x$aikpub2 = xtrue; then
+	tss_tss2=true
+fi
+
 # ===========================================
 #  check required libraries and header files
 # ===========================================
@@ -486,9 +496,14 @@ AC_SEARCH_LIBS(socket, socket, [SOCKLIB=$LIBS],
 AC_SUBST(SOCKLIB)
 
 # Android has pthread_* functions in bionic (libc), others need libpthread
-LIBS=""
+LIBS=$DLLIB
 AC_SEARCH_LIBS(pthread_create, pthread, [PTHREADLIB=$LIBS])
 AC_SUBST(PTHREADLIB)
+
+# uClibc requires explicit -latomic for __atomic_* operations
+LIBS=""
+AC_SEARCH_LIBS(__atomic_load, atomic, [ATOMICLIB=$LIBS])
+AC_SUBST(ATOMICLIB)
 
 LIBS=$saved_LIBS
 # ------------------------------------------------------
@@ -504,10 +519,10 @@ AC_COMPILE_IFELSE(
 	[AC_MSG_RESULT([no])]
 )
 
-# check if pthread_condattr_setclock(CLOCK_MONOTONE) is supported
+# check if pthread_condattr_setclock(CLOCK_MONOTONIC) is supported
 saved_LIBS=$LIBS
 LIBS=$PTHREADLIB
-AC_MSG_CHECKING([for pthread_condattr_setclock(CLOCK_MONOTONE)])
+AC_MSG_CHECKING([for pthread_condattr_setclock(CLOCK_MONOTONIC)])
 AC_RUN_IFELSE(
 	[AC_LANG_SOURCE(
 		[[#include <pthread.h>
@@ -917,9 +932,9 @@ if test x$curl = xtrue; then
 fi
 
 if test x$unbound = xtrue; then
-	AC_HAVE_LIBRARY([ldns],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library ldns not found])])
+	AC_CHECK_LIB([ldns],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library ldns not found])],[])
 	AC_CHECK_HEADER([ldns/ldns.h],,[AC_MSG_ERROR([UNBOUND header ldns/ldns.h not found!])])
-	AC_HAVE_LIBRARY([unbound],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library libunbound not found])])
+	AC_CHECK_LIB([unbound],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([UNBOUND library libunbound not found])],[])
 	AC_CHECK_HEADER([unbound.h],,[AC_MSG_ERROR([UNBOUND header unbound.h not found!])])
 fi
 
@@ -955,12 +970,17 @@ if test x$systemd = xtrue; then
 	)
 fi
 
-if test x$tss = xtrousers; then
+if test x$tss_trousers = xtrue; then
 	AC_CHECK_LIB([tspi],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([TrouSerS library libtspi not found])],[])
 	AC_CHECK_HEADER([trousers/tss.h],,[AC_MSG_ERROR([TrouSerS header trousers/tss.h not found!])])
-	AC_DEFINE([TSS_TROUSERS], [], [use TrouSerS library libtspi as TSS implementation])
+	AC_DEFINE([TSS_TROUSERS], [], [use TrouSerS library libtspi])
 fi
 
+if test x$tss_tss2 = xtrue; then
+	AC_CHECK_LIB([tss2],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([TTS 2.0 library libtss2 not found])],[])
+	AC_CHECK_HEADER([tss2/tpm20.h],,[AC_MSG_ERROR([TSS 2.0 header tss2/tpm20.h not found!])])
+	AC_DEFINE([TSS_TSS2], [], [use TSS 2.0 library libtss2])
+fi
 if test x$imv_swid = xtrue; then
 	PKG_CHECK_MODULES(json, [json-c], [],
 		[PKG_CHECK_MODULES(json, [json])])
@@ -1244,6 +1264,8 @@ fi
 AM_CONDITIONAL(RUBY_GEMS_INSTALL, [test "x$ruby_gems_install" = xtrue])
 
 if test x$python_eggs = xtrue; then
+	PYTHON_PACKAGE_VERSION=`echo "$PACKAGE_VERSION" | $SED 's/dr/dev/'`
+	AC_SUBST([PYTHON_PACKAGE_VERSION])
 	if test x$python_eggs_install = xtrue; then
 		AC_PATH_PROG([EASY_INSTALL], [easy_install], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 		if test x$EASY_INSTALL = x; then
@@ -1604,12 +1626,13 @@ AM_CONDITIONAL(USE_PKI, test x$pki = xtrue)
 AM_CONDITIONAL(USE_SCEPCLIENT, test x$scepclient = xtrue)
 AM_CONDITIONAL(USE_SCRIPTS, test x$scripts = xtrue)
 AM_CONDITIONAL(USE_CONFTEST, test x$conftest = xtrue)
-AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$pki = xtrue -o x$scepclient = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$tls = xtrue -o x$tnc_tnccs = xtrue -o x$aikgen = xtrue -o x$svc = xtrue -o x$systemd = xtrue)
+AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$pki = xtrue -o x$scepclient = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$tls = xtrue -o x$tnc_tnccs = xtrue -o x$aikgen = xtrue -o x$aikpub2 = xtrue -o x$svc = xtrue -o x$systemd = xtrue)
 AM_CONDITIONAL(USE_LIBCHARON, test x$charon = xtrue -o x$conftest = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$svc = xtrue -o x$systemd = xtrue)
 AM_CONDITIONAL(USE_LIBIPSEC, test x$libipsec = xtrue)
 AM_CONDITIONAL(USE_LIBTNCIF, test x$tnc_tnccs = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_LIBTNCCS, test x$tnc_tnccs = xtrue)
 AM_CONDITIONAL(USE_LIBPTTLS, test x$tnc_tnccs = xtrue)
+AM_CONDITIONAL(USE_LIBTPMTSS, test x$tss_trousers = xtrue -o x$tss_tss2 = xtrue -o x$aikgen = xtrue -o x$aikpub2 = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_FILE_CONFIG, test x$stroke = xtrue)
 AM_CONDITIONAL(USE_IPSEC_SCRIPT, test x$stroke = xtrue -o x$scepclient = xtrue -o x$conftest = xtrue)
 AM_CONDITIONAL(USE_LIBCAP, test x$capabilities = xlibcap)
@@ -1619,7 +1642,8 @@ AM_CONDITIONAL(USE_SIMAKA, test x$simaka = xtrue)
 AM_CONDITIONAL(USE_TLS, test x$tls = xtrue)
 AM_CONDITIONAL(USE_RADIUS, test x$radius = xtrue)
 AM_CONDITIONAL(USE_IMCV, test x$imcv = xtrue)
-AM_CONDITIONAL(USE_TROUSERS, test x$tss = xtrousers -o x$aikgen = xtrue)
+AM_CONDITIONAL(USE_TROUSERS, test x$tss_trousers = xtrue)
+AM_CONDITIONAL(USE_TSS2, test x$tss_tss2 = xtrue)
 AM_CONDITIONAL(MONOLITHIC, test x$monolithic = xtrue)
 AM_CONDITIONAL(USE_SILENT_RULES, test x$enable_silent_rules = xyes)
 AM_CONDITIONAL(COVERAGE, test x$coverage = xtrue)
@@ -1627,6 +1651,7 @@ AM_CONDITIONAL(USE_DBGHELP, test x$dbghelp_backtraces = xtrue)
 AM_CONDITIONAL(USE_TKM, test x$tkm = xtrue)
 AM_CONDITIONAL(USE_CMD, test x$cmd = xtrue)
 AM_CONDITIONAL(USE_AIKGEN, test x$aikgen = xtrue)
+AM_CONDITIONAL(USE_AIKPUB2, test x$aikpub2 = xtrue)
 AM_CONDITIONAL(USE_SWANCTL, test x$swanctl = xtrue)
 AM_CONDITIONAL(USE_SVC, test x$svc = xtrue)
 AM_CONDITIONAL(USE_SYSTEMD, test x$systemd = xtrue)
@@ -1666,6 +1691,7 @@ fi
 strongswan_options=
 
 AM_COND_IF([USE_AIKGEN], [strongswan_options=${strongswan_options}" aikgen"])
+AM_COND_IF([USE_AIKPUB2], [strongswan_options=${strongswan_options}" aikpub2"])
 AM_COND_IF([USE_ATTR_SQL], [strongswan_options=${strongswan_options}" pool"])
 AM_COND_IF([USE_CHARON], [strongswan_options=${strongswan_options}" charon charon-logging"])
 AM_COND_IF([USE_FILE_CONFIG], [strongswan_options=${strongswan_options}" starter"])
@@ -1858,6 +1884,7 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/attr/Makefile
 	src/libcharon/plugins/attr_sql/Makefile
 	src/libcharon/tests/Makefile
+	src/libtpmtss/Makefile
 	src/stroke/Makefile
 	src/ipsec/Makefile
 	src/starter/Makefile
@@ -1866,6 +1893,7 @@ AC_CONFIG_FILES([
 	src/_copyright/Makefile
 	src/scepclient/Makefile
 	src/aikgen/Makefile
+	src/aikpub2/Makefile
 	src/pki/Makefile
 	src/pki/man/Makefile
 	src/pool/Makefile

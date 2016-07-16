@@ -1537,6 +1537,12 @@ otherwise a random port
 will be allocated.
 
 .TP
+.BR charon.prefer_configured_proposals " [yes]"
+Prefer locally configured proposals for IKE/IPsec over supplied ones as
+responder (disabling this can avoid keying retries due to INVALID_KE_PAYLOAD
+notifies).
+
+.TP
 .BR charon.prefer_temporary_addrs " [no]"
 By default public IPv6 addresses are preferred over temporary ones (RFC 4941),
 to make connections more stable. Enable this option to reverse this.
@@ -1780,6 +1786,10 @@ AIK encrypted private key blob file.
 AIK certificate file.
 
 .TP
+.BR libimcv.plugins.imc-attestation.aik_handle " []"
+AIK object handle.
+
+.TP
 .BR libimcv.plugins.imc-attestation.aik_pubkey " []"
 AIK public key file.
 
@@ -1822,6 +1832,10 @@ Whether to send pcr_before and pcr_after info.
 .TP
 .BR libimcv.plugins.imc-attestation.use_quote2 " [yes]"
 Use Quote2 AIK signature instead of Quote signature.
+
+.TP
+.BR libimcv.plugins.imc-attestation.use_version_info " [no]"
+Version Info is included in Quote2 signature.
 
 .TP
 .BR libimcv.plugins.imc-hcd.push_info " [yes]"
