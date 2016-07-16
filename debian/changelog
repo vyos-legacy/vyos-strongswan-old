@@ -1,9 +1,10 @@
-strongswan (5.4.0-4) UNRELEASED; urgency=medium
+strongswan (5.5.0-1) UNRELEASED; urgency=medium
 
+  * New upstream release.
   * debian/control:
     - add build-dep on systemd.                                 closes: #828945
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 07 Jul 2016 22:22:58 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 16 Jul 2016 15:20:03 +0200
 
 strongswan (5.4.0-3) unstable; urgency=medium
 
