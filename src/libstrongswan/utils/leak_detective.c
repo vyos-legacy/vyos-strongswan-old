@@ -120,17 +120,17 @@ struct memory_header_t {
 	/**
 	 * Padding to make sizeof(memory_header_t) == 32
 	 */
-	u_int32_t padding[sizeof(void*) == sizeof(u_int32_t) ? 3 : 0];
+	uint32_t padding[sizeof(void*) == sizeof(uint32_t) ? 3 : 0];
 
 	/**
 	 * Number of bytes following after the header
 	 */
-	u_int32_t bytes;
+	uint32_t bytes;
 
 	/**
 	 * magic bytes to detect bad free or heap underflow, MEMORY_HEADER_MAGIC
 	 */
-	u_int32_t magic;
+	uint32_t magic;
 
 }__attribute__((__packed__));
 
@@ -142,7 +142,7 @@ struct memory_tail_t {
 	/**
 	 * Magic bytes to detect heap overflow, MEMORY_TAIL_MAGIC
 	 */
-	u_int32_t magic;
+	uint32_t magic;
 
 }__attribute__((__packed__));
 
@@ -522,6 +522,7 @@ char *whitelist[] = {
 	"vsyslog",
 	"__syslog_chk",
 	"__vsyslog_chk",
+	"__fprintf_chk",
 	"getaddrinfo",
 	"setlocale",
 	"getpass",
@@ -532,6 +533,7 @@ char *whitelist[] = {
 	"getpwuid_r",
 	"initgroups",
 	"tzset",
+	"_IO_file_doallocate",
 	/* ignore dlopen, as we do not dlclose to get proper leak reports */
 	"dlopen",
 	"dlerror",
@@ -562,6 +564,10 @@ char *whitelist[] = {
 	"ECDSA_do_sign_ex",
 	"ECDSA_verify",
 	"RSA_new_method",
+	/* OpenSSL 1.1.0 does not cleanup anymore until the library is unloaded */
+	"OPENSSL_init_crypto",
+	"CRYPTO_THREAD_lock_new",
+	"ERR_add_error_data",
 	/* OpenSSL libssl */
 	"SSL_COMP_get_compression_methods",
 	/* NSPR */
@@ -808,10 +814,11 @@ HOOK(void*, malloc, size_t bytes)
 HOOK(void*, calloc, size_t nmemb, size_t size)
 {
 	void *ptr;
+	volatile size_t total;
 
-	size *= nmemb;
-	ptr = malloc(size);
-	memset(ptr, 0, size);
+	total = nmemb * size;
+	ptr = malloc(total);
+	memset(ptr, 0, total);
 
 	return ptr;
 }
@@ -837,6 +844,18 @@ HOOK(void, free, void *ptr)
 
 	if (!enabled || thread_disabled->get(thread_disabled))
 	{
+		/* after deinitialization we might have to free stuff we allocated
+		 * while we were enabled */
+		if (!first_header.magic && ptr)
+		{
+			hdr = ptr - sizeof(memory_header_t);
+			tail = ptr + hdr->bytes;
+			if (hdr->magic == MEMORY_HEADER_MAGIC &&
+				tail->magic == MEMORY_TAIL_MAGIC)
+			{
+				ptr = hdr;
+			}
+		}
 		real_free(ptr);
 		return;
 	}
@@ -953,6 +972,7 @@ METHOD(leak_detective_t, destroy, void,
 	lock->destroy(lock);
 	thread_disabled->destroy(thread_disabled);
 	free(this);
+	first_header.magic = 0;
 	first_header.next = NULL;
 }
 

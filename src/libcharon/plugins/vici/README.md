@@ -277,8 +277,8 @@ Terminates an SA while streaming _control-log_ events.
 	{
 		child = <terminate a CHILD_SA by configuration name>
 		ike = <terminate an IKE_SA by configuration name>
-		child_id = <terminate a CHILD_SA by its reqid>
-		ike_id = <terminate an IKE_SA by its unique id>
+		child-id = <terminate a CHILD_SA by its reqid>
+		ike-id = <terminate an IKE_SA by its unique id>
 		timeout = <timeout in ms before returning>
 		loglevel = <loglevel to issue "control-log" events for>
 	} => {
@@ -337,7 +337,7 @@ events.
 	{
 		noblock = <use non-blocking mode if key is set>
 		ike = <filter listed IKE_SAs by its name>
-		ike_id = <filter listed IKE_SA by its unique id>
+		ike-id = <filter listed IKE_SA by its unique id>
 	} => {
 		# completes after streaming list-sa events
 	}
@@ -734,6 +734,8 @@ _list-conns_ command.
 				<list of valid remote IKE endpoint addresses>
 			]
 			version = <IKE version as string, IKEv1|IKEv2 or 0 for any>
+			reauth_time = <IKE_SA reauthentication interval in seconds>
+			rekey_time = <IKE_SA rekeying interval in seconds>
 
 			local*, remote* = { # multiple local and remote auth sections
 				class = <authentication type>
@@ -758,6 +760,9 @@ _list-conns_ command.
 			children = {
 				<CHILD_SA config name>* = {
 					mode = <IPsec mode>
+					rekey_time = <CHILD_SA rekeying interval in seconds>
+					rekey_bytes = <CHILD_SA rekeying interval in bytes>
+					rekey_packets = <CHILD_SA rekeying interval in packets>
 					local-ts = [
 						<list of local traffic selectors>
 					]

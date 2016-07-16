@@ -412,6 +412,90 @@ INSERT INTO products (			/* 69 */
  'Debian 7.9 armv7l'
 );
 
+INSERT INTO products (			/* 70 */
+  name
+) VALUES (
+ 'Ubuntu 15.04 i686'
+);
+
+INSERT INTO products (			/* 71 */
+  name
+) VALUES (
+ 'Ubuntu 15.04 x86_64'
+);
+
+INSERT INTO products (			/* 72 */
+  name
+) VALUES (
+ 'Ubuntu 15.10 i686'
+);
+
+INSERT INTO products (			/* 73 */
+  name
+) VALUES (
+ 'Ubuntu 15.10 x86_64'
+);
+
+INSERT INTO products (			/* 74 */
+  name
+) VALUES (
+ 'Ubuntu 16.04 i686'
+);
+
+INSERT INTO products (			/* 75 */
+  name
+) VALUES (
+ 'Ubuntu 16.04 x86_64'
+);
+
+INSERT INTO products (			/* 76 */
+  name
+) VALUES (
+ 'Debian 7.10 i686'
+);
+
+INSERT INTO products (			/* 77 */
+  name
+) VALUES (
+ 'Debian 7.10 x86_64'
+);
+
+INSERT INTO products (			/* 78 */
+  name
+) VALUES (
+ 'Debian 7.10 armv6l'
+);
+
+INSERT INTO products (			/* 79 */
+  name
+) VALUES (
+ 'Debian 7.10 armv7l'
+);
+
+INSERT INTO products (			/* 80 */
+  name
+) VALUES (
+ 'Android 6.0'
+);
+
+INSERT INTO products (			/* 81 */
+  name
+) VALUES (
+ 'Android 6.0.1'
+);
+
+INSERT INTO products (          /* 82 */
+  name
+) VALUES (
+ 'Debian 8.5 i686'
+);
+
+INSERT INTO products (          /* 83 */
+  name
+) VALUES (
+ 'Debian 8.5 x86_64'
+);
+
 /* Directories */
 
 INSERT INTO directories (		/*  1 */
@@ -541,19 +625,19 @@ INSERT INTO files (				/*  6 */
 INSERT INTO algorithms (
   id, name
 ) VALUES (
-  32768, 'SHA1' 
+  32768, 'SHA1'
 );
 
 INSERT INTO algorithms (
   id, name
 ) VALUES (
-  16384, 'SHA256' 
+  16384, 'SHA256'
 );
 
 INSERT INTO algorithms (
   id, name
 ) VALUES (
-  8192, 'SHA384' 
+  8192, 'SHA384'
 );
 
 /* File Hashes */
@@ -919,6 +1003,12 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  4, 76
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   5, 2
 );
 
@@ -991,6 +1081,18 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  5, 77
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  5, 83
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   6, 9
 );
 
@@ -1040,6 +1142,24 @@ INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
   6, 61
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  6, 70
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  6, 72
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  6, 74
 );
 
 INSERT INTO groups_product_defaults (
@@ -1105,6 +1225,24 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  7, 71
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  7, 73
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  7, 75
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   3, 21
 );
 
@@ -1165,6 +1303,12 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  3, 51
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   3, 63
 );
 
@@ -1177,7 +1321,13 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
-  3, 51
+  3, 80
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  3, 81
 );
 
 INSERT INTO groups_product_defaults (
@@ -1243,6 +1393,12 @@ INSERT INTO groups_product_defaults (
 INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
+  14, 78
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
   15, 65
 );
 
@@ -1250,6 +1406,12 @@ INSERT INTO groups_product_defaults (
   group_id, product_id
 ) VALUES (
   15, 69
+);
+
+INSERT INTO groups_product_defaults (
+  group_id, product_id
+) VALUES (
+  15, 79
 );
 
 /* Policies */

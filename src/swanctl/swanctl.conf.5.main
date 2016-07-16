@@ -519,7 +519,7 @@ an absolute path.
 Comma separated list of raw public keys to accept for authentication. The public
 keys may use a relative path from the
 .RB "" "swanctl" ""
-.RI "" "x509" ""
+.RI "" "pubkey" ""
 directory or an
 absolute path.
 
@@ -854,6 +854,18 @@ but works only if each CHILD_SA configuration is instantiated not more than
 once. The default of
 .RI "" "0" ""
 uses dynamic reqids, allocated incrementally.
+
+.TP
+.BR connections.<conn>.children.<child>.priority " [0]"
+Optional fixed priority for IPsec policies. This could be useful to install
+high\-priority drop policies.  The default of
+.RI "" "0" ""
+uses dynamically calculated
+priorities based on the size of the traffic selectors.
+
+.TP
+.BR connections.<conn>.children.<child>.interface " []"
+Optional interface name to restrict IPsec policies.
 
 .TP
 .BR connections.<conn>.children.<child>.mark_in " [0/0x00000000]"

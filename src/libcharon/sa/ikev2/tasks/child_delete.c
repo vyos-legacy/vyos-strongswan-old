@@ -1,6 +1,7 @@
 /*
+ * Copyright (C) 2009-2016 Tobias Brunner
  * Copyright (C) 2006-2007 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,7 +19,7 @@
 #include <daemon.h>
 #include <encoding/payloads/delete_payload.h>
 #include <sa/ikev2/tasks/child_create.h>
-
+#include <sa/ikev2/tasks/child_rekey.h>
 
 typedef struct private_child_delete_t private_child_delete_t;
 
@@ -50,7 +51,7 @@ struct private_child_delete_t {
 	/**
 	 * Inbound SPI of CHILD_SA to delete
 	 */
-	u_int32_t spi;
+	uint32_t spi;
 
 	/**
 	 * whether to enforce delete action policy
@@ -86,7 +87,7 @@ static void build_payloads(private_child_delete_t *this, message_t *message)
 	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
 		protocol_id_t protocol = child_sa->get_protocol(child_sa);
-		u_int32_t spi = child_sa->get_spi(child_sa, TRUE);
+		uint32_t spi = child_sa->get_spi(child_sa, TRUE);
 
 		switch (protocol)
 		{
@@ -119,6 +120,33 @@ static void build_payloads(private_child_delete_t *this, message_t *message)
 }
 
 /**
+ * Check if the given CHILD_SA is the redundant SA created in a rekey collision.
+ */
+static bool is_redundant(private_child_delete_t *this, child_sa_t *child)
+{
+	enumerator_t *tasks;
+	task_t *task;
+
+	tasks = this->ike_sa->create_task_enumerator(this->ike_sa,
+												 TASK_QUEUE_ACTIVE);
+	while (tasks->enumerate(tasks, &task))
+	{
+		if (task->get_type(task) == TASK_CHILD_REKEY)
+		{
+			child_rekey_t *rekey = (child_rekey_t*)task;
+
+			if (rekey->is_redundant(rekey, child))
+			{
+				tasks->destroy(tasks);
+				return TRUE;
+			}
+		}
+	}
+	tasks->destroy(tasks);
+	return FALSE;
+}
+
+/**
  * read in payloads and find the children to delete
  */
 static void process_payloads(private_child_delete_t *this, message_t *message)
@@ -126,7 +154,7 @@ static void process_payloads(private_child_delete_t *this, message_t *message)
 	enumerator_t *payloads, *spis;
 	payload_t *payload;
 	delete_payload_t *delete_payload;
-	u_int32_t spi;
+	uint32_t spi;
 	protocol_id_t protocol;
 	child_sa_t *child_sa;
 
@@ -157,24 +185,31 @@ static void process_payloads(private_child_delete_t *this, message_t *message)
 
 				switch (child_sa->get_state(child_sa))
 				{
-					case CHILD_REKEYING:
+					case CHILD_REKEYED:
 						this->rekeyed = TRUE;
-						/* we reply as usual, rekeying will fail */
 						break;
 					case CHILD_DELETING:
 						/* we don't send back a delete if we initiated ourself */
 						if (!this->initiator)
 						{
-							this->ike_sa->destroy_child_sa(this->ike_sa,
-														   protocol, spi);
 							continue;
 						}
 						/* fall through */
+					case CHILD_REKEYING:
+						/* we reply as usual, rekeying will fail */
 					case CHILD_INSTALLED:
 						if (!this->initiator)
-						{	/* reestablish installed children if required */
-							this->check_delete_action = TRUE;
+						{
+							if (is_redundant(this, child_sa))
+							{
+								this->rekeyed = TRUE;
+							}
+							else
+							{
+								this->check_delete_action = TRUE;
+							}
 						}
+						break;
 					default:
 						break;
 				}
@@ -199,14 +234,14 @@ static status_t destroy_and_reestablish(private_child_delete_t *this)
 	child_sa_t *child_sa;
 	child_cfg_t *child_cfg;
 	protocol_id_t protocol;
-	u_int32_t spi, reqid;
+	uint32_t spi, reqid;
 	action_t action;
 	status_t status = SUCCESS;
 
 	enumerator = this->child_sas->create_enumerator(this->child_sas);
 	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
-		/* signal child down event if we are not rekeying */
+		/* signal child down event if we weren't rekeying */
 		if (!this->rekeyed)
 		{
 			charon->bus->child_updown(charon->bus, child_sa, FALSE);
@@ -254,7 +289,7 @@ static void log_children(private_child_delete_t *this)
 	linked_list_t *my_ts, *other_ts;
 	enumerator_t *enumerator;
 	child_sa_t *child_sa;
-	u_int64_t bytes_in, bytes_out;
+	uint64_t bytes_in, bytes_out;
 
 	enumerator = this->child_sas->create_enumerator(this->child_sas);
 	while (enumerator->enumerate(enumerator, (void**)&child_sa))
@@ -308,7 +343,7 @@ METHOD(task_t, build_i, status_t,
 		this->spi = child_sa->get_spi(child_sa, TRUE);
 	}
 	this->child_sas->insert_last(this->child_sas, child_sa);
-	if (child_sa->get_state(child_sa) == CHILD_REKEYING)
+	if (child_sa->get_state(child_sa) == CHILD_REKEYED)
 	{
 		this->rekeyed = TRUE;
 	}
@@ -347,11 +382,7 @@ METHOD(task_t, process_r, status_t,
 METHOD(task_t, build_r, status_t,
 	private_child_delete_t *this, message_t *message)
 {
-	/* if we are rekeying, we send an empty informational */
-	if (this->ike_sa->get_state(this->ike_sa) != IKE_REKEYING)
-	{
-		build_payloads(this, message);
-	}
+	build_payloads(this, message);
 	DBG1(DBG_IKE, "CHILD_SA closed");
 	return destroy_and_reestablish(this);
 }
@@ -391,7 +422,7 @@ METHOD(task_t, destroy, void,
  * Described in header.
  */
 child_delete_t *child_delete_create(ike_sa_t *ike_sa, protocol_id_t protocol,
-									u_int32_t spi, bool expired)
+									uint32_t spi, bool expired)
 {
 	private_child_delete_t *this;
 

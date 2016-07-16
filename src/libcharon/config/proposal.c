@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 Tobias Brunner
+ * Copyright (C) 2008-2016 Tobias Brunner
  * Copyright (C) 2006-2010 Martin Willi
  * Copyright (C) 2013-2015 Andreas Steffen
  * Hochschule fuer Technik Rapperswil
@@ -61,7 +61,7 @@ struct private_proposal_t {
 	/**
 	 * senders SPI
 	 */
-	u_int64_t spi;
+	uint64_t spi;
 
 	/**
 	 * Proposal number
@@ -76,14 +76,14 @@ typedef struct {
 	/** Type of the transform */
 	transform_type_t type;
 	/** algorithm identifier */
-	u_int16_t alg;
+	uint16_t alg;
 	/** key size in bits, or zero if not needed */
-	u_int16_t key_size;
+	uint16_t key_size;
 } entry_t;
 
 METHOD(proposal_t, add_algorithm, void,
 	private_proposal_t *this, transform_type_t type,
-	u_int16_t alg, u_int16_t key_size)
+	uint16_t alg, uint16_t key_size)
 {
 	entry_t entry = {
 		.type = type,
@@ -97,8 +97,8 @@ METHOD(proposal_t, add_algorithm, void,
 /**
  * filter function for peer configs
  */
-static bool alg_filter(uintptr_t type, entry_t **in, u_int16_t *alg,
-					   void **unused, u_int16_t *key_size)
+static bool alg_filter(uintptr_t type, entry_t **in, uint16_t *alg,
+					   void **unused, uint16_t *key_size)
 {
 	entry_t *entry = *in;
 
@@ -127,7 +127,7 @@ METHOD(proposal_t, create_enumerator, enumerator_t*,
 
 METHOD(proposal_t, get_algorithm, bool,
 	private_proposal_t *this, transform_type_t type,
-	u_int16_t *alg, u_int16_t *key_size)
+	uint16_t *alg, uint16_t *key_size)
 {
 	enumerator_t *enumerator;
 	bool found = FALSE;
@@ -147,7 +147,7 @@ METHOD(proposal_t, has_dh_group, bool,
 {
 	bool found = FALSE, any = FALSE;
 	enumerator_t *enumerator;
-	u_int16_t current;
+	uint16_t current;
 
 	enumerator = create_enumerator(this, DIFFIE_HELLMAN_GROUP);
 	while (enumerator->enumerate(enumerator, &current, NULL))
@@ -193,7 +193,7 @@ static bool select_algo(private_proposal_t *this, proposal_t *other,
 						proposal_t *selected, transform_type_t type, bool priv)
 {
 	enumerator_t *e1, *e2;
-	u_int16_t alg1, alg2, ks1, ks2;
+	uint16_t alg1, alg2, ks1, ks2;
 	bool found = FALSE, optional = FALSE;
 
 	if (type == INTEGRITY_ALGORITHM &&
@@ -210,7 +210,7 @@ static bool select_algo(private_proposal_t *this, proposal_t *other,
 
 	e1 = create_enumerator(this, type);
 	e2 = other->create_enumerator(other, type);
-	if (!e1->enumerate(e1, NULL, NULL))
+	if (!e1->enumerate(e1, &alg1, NULL))
 	{
 		if (!e2->enumerate(e2, &alg2, NULL))
 		{
@@ -219,10 +219,21 @@ static bool select_algo(private_proposal_t *this, proposal_t *other,
 		else if (optional)
 		{
 			do
-			{	/* if the other peer proposes NONE, we accept the proposal */
+			{	/* if NONE is proposed, we accept the proposal */
 				found = !alg2;
 			}
 			while (!found && e2->enumerate(e2, &alg2, NULL));
+		}
+	}
+	else if (!e2->enumerate(e2, NULL, NULL))
+	{
+		if (optional)
+		{
+			do
+			{	/* if NONE is proposed, we accept the proposal */
+				found = !alg1;
+			}
+			while (!found && e1->enumerate(e1, &alg1, NULL));
 		}
 	}
 
@@ -244,7 +255,6 @@ static bool select_algo(private_proposal_t *this, proposal_t *other,
 						 "but peer implementation is unknown, skipped");
 					continue;
 				}
-				/* ok, we have an algorithm */
 				selected->add_algorithm(selected, type, alg1, ks1);
 				found = TRUE;
 				break;
@@ -288,9 +298,7 @@ METHOD(proposal_t, select_proposal, proposal_t*,
 	}
 
 	DBG2(DBG_CFG, "  proposal matches");
-
 	selected->set_spi(selected, other->get_spi(other));
-
 	return selected;
 }
 
@@ -301,12 +309,12 @@ METHOD(proposal_t, get_protocol, protocol_id_t,
 }
 
 METHOD(proposal_t, set_spi, void,
-	private_proposal_t *this, u_int64_t spi)
+	private_proposal_t *this, uint64_t spi)
 {
 	this->spi = spi;
 }
 
-METHOD(proposal_t, get_spi, u_int64_t,
+METHOD(proposal_t, get_spi, uint64_t,
 	private_proposal_t *this)
 {
 	return this->spi;
@@ -319,7 +327,7 @@ static bool algo_list_equals(private_proposal_t *this, proposal_t *other,
 							 transform_type_t type)
 {
 	enumerator_t *e1, *e2;
-	u_int16_t alg1, alg2, ks1, ks2;
+	uint16_t alg1, alg2, ks1, ks2;
 	bool equals = TRUE;
 
 	e1 = create_enumerator(this, type);
@@ -418,7 +426,7 @@ static void check_proposal(private_proposal_t *this)
 {
 	enumerator_t *e;
 	entry_t *entry;
-	u_int16_t alg, ks;
+	uint16_t alg, ks;
 	bool all_aead = TRUE;
 	int i;
 
@@ -442,6 +450,16 @@ static void check_proposal(private_proposal_t *this)
 						break;
 					}
 				}
+			}
+		}
+		e->destroy(e);
+		/* remove MODP_NONE from IKE proposal */
+		e = array_create_enumerator(this->transforms);
+		while (e->enumerate(e, &entry))
+		{
+			if (entry->type == DIFFIE_HELLMAN_GROUP && !entry->alg)
+			{
+				array_remove_at(this->transforms, e);
 			}
 		}
 		e->destroy(e);
@@ -516,7 +534,7 @@ static int print_alg(private_proposal_t *this, printf_hook_data_t *data,
 {
 	enumerator_t *enumerator;
 	size_t written = 0;
-	u_int16_t alg, size;
+	uint16_t alg, size;
 
 	enumerator = create_enumerator(this, kind);
 	while (enumerator->enumerate(enumerator, &alg, &size))
@@ -861,16 +879,18 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 			case MODP_768_BIT:
 				/* weak */
 				break;
-			case MODP_2048_BIT:
-			case MODP_2048_256:
 			case MODP_2048_224:
 			case MODP_1536_BIT:
-			case MODP_1024_BIT:
 			case MODP_1024_160:
 			case ECP_224_BIT:
 			case ECP_224_BP:
 			case ECP_192_BIT:
 			case NTRU_112_BIT:
+				/* rarely used */
+				break;
+			case MODP_2048_BIT:
+			case MODP_2048_256:
+			case MODP_1024_BIT:
 				add_algorithm(this, DIFFIE_HELLMAN_GROUP, group, 0);
 				break;
 			default:
