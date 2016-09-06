@@ -194,7 +194,7 @@ override_dh_installchangelogs:
 	dh_installchangelogs NEWS
 
 override_dh_strip:
-	dh_strip --ddeb-migration='strongswan-dbg (<< 5.3.5-2~)'
+	dh_strip --dbgsym-migration='strongswan-dbg (<< 5.3.5-2~)'
 
 override_dh_fixperms:
 	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan

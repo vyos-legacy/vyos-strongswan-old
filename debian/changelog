@@ -3,6 +3,10 @@ strongswan (5.5.0-2) UNRELEASED; urgency=medium
   * debian/rules:
     - add patch from Raphaël Geissert to use /etc/ssl/certs instead of
       /usr/share/ca-certificates for strongswan-nm.             closes: #835095
+    - update argument name for dh_strip dbgsym migration
+  * debian/control:
+    - update debhelper dependency to a version which supports dbgsym
+      migration.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Mon, 22 Aug 2016 16:09:44 +0200
 
