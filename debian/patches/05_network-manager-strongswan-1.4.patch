@@ -1,0 +1,72 @@
+From 9e74a0952e27e3ac0055b0831919aaddfef1e1b5 Mon Sep 17 00:00:00 2001
+From: Tobias Brunner <tobias@strongswan.org>
+Date: Mon, 5 Sep 2016 10:54:07 +0200
+Subject: [PATCH] nm: Enforce min. length for PSKs in backend
+
+---
+ src/charon-nm/nm/nm_service.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/charon-nm/nm/nm_service.c b/src/charon-nm/nm/nm_service.c
+index 5991c24..c0c78ef 100644
+--- a/src/charon-nm/nm/nm_service.c
++++ b/src/charon-nm/nm/nm_service.c
+@@ -428,6 +428,16 @@ static gboolean connect_(NMVPNPlugin *plugin, NMConnection *connection,
+ 		{
+ 			user = identification_create_from_string((char*)str);
+ 			str = nm_setting_vpn_get_secret(vpn, "password");
++			if (auth_class == AUTH_CLASS_PSK &&
++				strlen(str) < 20)
++			{
++				g_set_error(err, NM_VPN_PLUGIN_ERROR,
++							NM_VPN_PLUGIN_ERROR_BAD_ARGUMENTS,
++							"pre-shared key is too short.");
++				gateway->destroy(gateway);
++				user->destroy(user);
++				return FALSE;
++			}
+ 			priv->creds->set_username_password(priv->creds, user, (char*)str);
+ 		}
+ 	}
+-- 
+1.9.1
+
+From f201d86debb12731b634625a0278e289e3e05e10 Mon Sep 17 00:00:00 2001
+From: Tobias Brunner <tobias@strongswan.org>
+Date: Mon, 5 Sep 2016 14:34:07 +0200
+Subject: [PATCH] nm: Pass external gateway to NM
+
+This seems to be required by newer versions.
+---
+ src/charon-nm/nm/nm_service.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/charon-nm/nm/nm_service.c b/src/charon-nm/nm/nm_service.c
+index c0c78ef..0fe10e0 100644
+--- a/src/charon-nm/nm/nm_service.c
++++ b/src/charon-nm/nm/nm_service.c
+@@ -88,12 +88,19 @@ static void signal_ipv4_config(NMVPNPlugin *plugin,
+ 	GValue *val;
+ 	GHashTable *config;
+ 	enumerator_t *enumerator;
+-	host_t *me;
++	host_t *me, *other;
+ 	nm_handler_t *handler;
+ 
+ 	config = g_hash_table_new(g_str_hash, g_str_equal);
+ 	handler = priv->handler;
+ 
++	/* NM apparently requires to know the gateway */
++	val = g_slice_new0 (GValue);
++	g_value_init (val, G_TYPE_UINT);
++	other = ike_sa->get_other_host(ike_sa);
++	g_value_set_uint (val, *(uint32_t*)other->get_address(other).ptr);
++	g_hash_table_insert (config, NM_VPN_PLUGIN_IP4_CONFIG_EXT_GATEWAY, val);
++
+ 	/* NM requires a tundev, but netkey does not use one. Passing the physical
+ 	 * interface does not work, as NM fiddles around with it. So we pass a dummy
+ 	 * TUN device along for NM to play with... */
+-- 
+1.9.1
+
+
