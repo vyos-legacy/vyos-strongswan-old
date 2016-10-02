@@ -34,7 +34,8 @@ Build-Depends: bison,
                network-manager-dev (>= 0.7) [linux-any],
                pkg-config,
                po-debconf,
-               systemd
+               systemd,
+               tzdata
 Homepage: http://www.strongswan.org
 
 Package: strongswan
