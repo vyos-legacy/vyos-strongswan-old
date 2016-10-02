@@ -1,9 +1,9 @@
-strongswan (5.5.0-3) UNRELEASED; urgency=medium
+strongswan (5.5.0-3) unstable; urgency=medium
 
   * debian/control:
     - add build-dep on tzdata, fix FTBFS when absent.           closes: #839459
 
- -- Yves-Alexis Perez <corsac@debian.org>  Sun, 02 Oct 2016 15:22:08 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 02 Oct 2016 15:22:54 +0200
 
 strongswan (5.5.0-2) unstable; urgency=medium
 
