@@ -6,6 +6,7 @@ usr/lib/ipsec/_copyright
 usr/sbin/ipsec
 etc/ipsec.d
 etc/ipsec.conf
+etc/ipsec.secrets
 usr/share/man/man8/ipsec.8
 usr/share/man/man5/ipsec.conf.5
 usr/share/man/man5/ipsec.secrets.5
