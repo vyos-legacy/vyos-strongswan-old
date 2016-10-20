@@ -1,6 +1,8 @@
 strongswan (5.5.1-1) UNRELEASED; urgency=medium
 
   * New upstream bugfix release.
+  * debian/patches:
+    - 05_network-manager-strongswan-1.4 dropped, included upstream.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 20 Oct 2016 16:18:48 +0200
 
