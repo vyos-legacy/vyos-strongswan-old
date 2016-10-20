@@ -119,7 +119,7 @@ am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
 	commands/list_authorities.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
 	commands/list_pools.$(OBJEXT) commands/list_algs.$(OBJEXT) \
-	commands/load_all.$(OBJEXT) \
+	commands/flush_certs.$(OBJEXT) commands/load_all.$(OBJEXT) \
 	commands/load_authorities.$(OBJEXT) \
 	commands/load_conns.$(OBJEXT) commands/load_creds.$(OBJEXT) \
 	commands/load_pools.$(OBJEXT) commands/log.$(OBJEXT) \
@@ -370,7 +370,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -404,8 +403,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -459,6 +456,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -475,6 +474,7 @@ swanctl_SOURCES = \
 	commands/list_certs.c \
 	commands/list_pools.c \
 	commands/list_algs.c \
+	commands/flush_certs.c \
 	commands/load_all.c \
 	commands/load_authorities.h  commands/load_authorities.c \
 	commands/load_conns.c commands/load_conns.h \
@@ -621,6 +621,8 @@ commands/list_pools.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/list_algs.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/flush_certs.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_all.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/load_authorities.$(OBJEXT): commands/$(am__dirstamp) \
@@ -653,6 +655,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/command.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/swanctl.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/flush_certs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/initiate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/install.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/list_algs.Po@am__quote@
@@ -1037,6 +1040,7 @@ install-data-local: swanctl.conf
 	test -e "$(DESTDIR)$(swanctldir)/x509crl" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509crl" || true
 	test -e "$(DESTDIR)$(swanctldir)/x509ac" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/x509ac" || true
 	test -e "$(DESTDIR)$(swanctldir)/pubkey" || $(INSTALL) -d "$(DESTDIR)$(swanctldir)/pubkey" || true
+	test -e "$(DESTDIR)$(swanctldir)/private" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/private" || true
 	test -e "$(DESTDIR)$(swanctldir)/rsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/rsa" || true
 	test -e "$(DESTDIR)$(swanctldir)/ecdsa" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/ecdsa" || true
 	test -e "$(DESTDIR)$(swanctldir)/bliss" || $(INSTALL) -d -m 750 "$(DESTDIR)$(swanctldir)/bliss" || true

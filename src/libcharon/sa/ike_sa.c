@@ -921,6 +921,7 @@ METHOD(ike_sa_t, reset, void,
 							this->ike_sa_id->is_initiator(this->ike_sa_id));
 
 	this->task_manager->reset(this->task_manager, 0, 0);
+	this->task_manager->queue_ike(this->task_manager);
 }
 
 METHOD(ike_sa_t, get_keymat, keymat_t*,
@@ -1780,16 +1781,12 @@ METHOD(ike_sa_t, delete_, status_t,
 {
 	switch (this->state)
 	{
-		case IKE_REKEYING:
-			if (this->version == IKEV1)
-			{	/* SA has been reauthenticated, delete */
-				charon->bus->ike_updown(charon->bus, &this->public, FALSE);
-				break;
-			}
-			/* FALL */
 		case IKE_ESTABLISHED:
-			if (time_monotonic(NULL) >= this->stats[STAT_DELETE])
-			{	/* IKE_SA hard lifetime hit */
+		case IKE_REKEYING:
+			if (time_monotonic(NULL) >= this->stats[STAT_DELETE] &&
+				!(this->version == IKEV1 && this->state == IKE_REKEYING))
+			{	/* IKE_SA hard lifetime hit, ignored for reauthenticated
+				 * IKEv1 SAs */
 				charon->bus->alert(charon->bus, ALERT_IKE_SA_EXPIRED);
 			}
 			this->task_manager->queue_ike_delete(this->task_manager);
@@ -1831,7 +1828,6 @@ METHOD(ike_sa_t, reauth, status_t,
 		DBG0(DBG_IKE, "reinitiating IKE_SA %s[%d]",
 			 get_name(this), this->unique_id);
 		reset(this);
-		this->task_manager->queue_ike(this->task_manager);
 		return this->task_manager->initiate(this->task_manager);
 	}
 	/* we can't reauthenticate as responder when we use EAP or virtual IPs.
@@ -2335,7 +2331,6 @@ METHOD(ike_sa_t, retransmit, status_t,
 						 this->keyingtry + 1, tries);
 					reset(this);
 					resolve_hosts(this);
-					this->task_manager->queue_ike(this->task_manager);
 					return this->task_manager->initiate(this->task_manager);
 				}
 				DBG1(DBG_IKE, "establishing IKE_SA failed, peer not responding");
@@ -2980,7 +2975,7 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 		.flush_auth_cfg = lib->settings->get_bool(lib->settings,
 								"%s.flush_auth_cfg", FALSE, lib->ns),
 		.fragment_size = lib->settings->get_int(lib->settings,
-								"%s.fragment_size", 0, lib->ns),
+								"%s.fragment_size", 1280, lib->ns),
 		.follow_redirects = lib->settings->get_bool(lib->settings,
 								"%s.follow_redirects", TRUE, lib->ns),
 	);

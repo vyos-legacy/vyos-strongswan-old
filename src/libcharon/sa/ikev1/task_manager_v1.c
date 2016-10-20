@@ -515,13 +515,13 @@ METHOD(task_manager_t, initiate, status_t,
 					new_mid = TRUE;
 					break;
 				}
-				if (activate_task(this, TASK_ISAKMP_DELETE))
+				if (activate_task(this, TASK_QUICK_DELETE))
 				{
 					exchange = INFORMATIONAL_V1;
 					new_mid = TRUE;
 					break;
 				}
-				if (activate_task(this, TASK_QUICK_DELETE))
+				if (activate_task(this, TASK_ISAKMP_DELETE))
 				{
 					exchange = INFORMATIONAL_V1;
 					new_mid = TRUE;
@@ -541,6 +541,14 @@ METHOD(task_manager_t, initiate, status_t,
 					break;
 				}
 				if (activate_task(this, TASK_ISAKMP_DPD))
+				{
+					exchange = INFORMATIONAL_V1;
+					new_mid = TRUE;
+					break;
+				}
+				break;
+			case IKE_REKEYING:
+				if (activate_task(this, TASK_ISAKMP_DELETE))
 				{
 					exchange = INFORMATIONAL_V1;
 					new_mid = TRUE;
@@ -1181,7 +1189,7 @@ static status_t process_response(private_task_manager_t *this,
 	}
 	enumerator->destroy(enumerator);
 
-	if (this->initiating.retransmitted)
+	if (this->initiating.retransmitted > 1)
 	{
 		packet_t *packet = NULL;
 		array_get(this->initiating.packets, 0, &packet);
@@ -1660,6 +1668,9 @@ METHOD(task_manager_t, queue_ike_delete, void,
 {
 	enumerator_t *enumerator;
 	child_sa_t *child_sa;
+
+	/* cancel any currently active task to get the DELETE done quickly */
+	flush_queue(this, TASK_QUEUE_ACTIVE);
 
 	enumerator = this->ike_sa->create_child_sa_enumerator(this->ike_sa);
 	while (enumerator->enumerate(enumerator, &child_sa))

@@ -248,6 +248,9 @@
 /* have syscall(SYS_gettid) */
 #undef HAVE_SYS_GETTID
 
+/* Define to 1 if you have the <sys/param.h> header file. */
+#undef HAVE_SYS_PARAM_H
+
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #undef HAVE_SYS_SOCKIO_H
 
@@ -319,7 +322,7 @@
 /* use TrouSerS library libtspi */
 #undef TSS_TROUSERS
 
-/* use TSS 2.0 library libtss2 */
+/* use TSS 2.0 libraries */
 #undef TSS_TSS2
 
 /* using builtin printf for printf hooks */

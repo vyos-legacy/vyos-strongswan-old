@@ -143,18 +143,19 @@ am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
 	test_vectors/aes_ctr.lo test_vectors/aes_xcbc.lo \
 	test_vectors/aes_cmac.lo test_vectors/aes_ccm.lo \
 	test_vectors/aes_gcm.lo test_vectors/chacha20poly1305.lo \
-	test_vectors/blowfish.lo test_vectors/camellia_cbc.lo \
-	test_vectors/camellia_ctr.lo test_vectors/camellia_xcbc.lo \
-	test_vectors/cast.lo test_vectors/des.lo test_vectors/idea.lo \
-	test_vectors/null.lo test_vectors/rc2.lo test_vectors/rc5.lo \
+	test_vectors/chacha20_xof.lo test_vectors/blowfish.lo \
+	test_vectors/camellia_cbc.lo test_vectors/camellia_ctr.lo \
+	test_vectors/camellia_xcbc.lo test_vectors/cast.lo \
+	test_vectors/des.lo test_vectors/idea.lo test_vectors/null.lo \
+	test_vectors/rc2.lo test_vectors/rc5.lo \
 	test_vectors/serpent_cbc.lo test_vectors/twofish_cbc.lo \
 	test_vectors/md2.lo test_vectors/md4.lo test_vectors/md5.lo \
 	test_vectors/md5_hmac.lo test_vectors/sha1.lo \
 	test_vectors/sha1_hmac.lo test_vectors/sha2.lo \
 	test_vectors/sha2_hmac.lo test_vectors/sha3.lo \
-	test_vectors/fips_prf.lo test_vectors/modp.lo \
-	test_vectors/modpsub.lo test_vectors/ecp.lo \
-	test_vectors/ecpbp.lo test_vectors/rng.lo
+	test_vectors/sha3_shake.lo test_vectors/fips_prf.lo \
+	test_vectors/modp.lo test_vectors/modpsub.lo \
+	test_vectors/ecp.lo test_vectors/ecpbp.lo test_vectors/rng.lo
 libstrongswan_test_vectors_la_OBJECTS =  \
 	$(am_libstrongswan_test_vectors_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -369,7 +370,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -403,8 +403,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -458,6 +456,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -479,6 +479,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/aes_ccm.c \
 	test_vectors/aes_gcm.c \
 	test_vectors/chacha20poly1305.c \
+	test_vectors/chacha20_xof.c \
 	test_vectors/blowfish.c \
 	test_vectors/camellia_cbc.c \
 	test_vectors/camellia_ctr.c \
@@ -500,6 +501,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/sha2.c \
 	test_vectors/sha2_hmac.c \
 	test_vectors/sha3.c \
+	test_vectors/sha3_shake.c \
 	test_vectors/fips_prf.c \
 	test_vectors/modp.c \
 	test_vectors/modpsub.c \
@@ -609,6 +611,8 @@ test_vectors/aes_gcm.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/chacha20poly1305.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/chacha20_xof.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/blowfish.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/camellia_cbc.lo: test_vectors/$(am__dirstamp) \
@@ -651,6 +655,8 @@ test_vectors/sha2_hmac.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/sha3.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/sha3_shake.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/fips_prf.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/modp.lo: test_vectors/$(am__dirstamp) \
@@ -688,6 +694,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/camellia_ctr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/camellia_xcbc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/cast.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/chacha20_xof.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/chacha20poly1305.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/des.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecp.Plo@am__quote@
@@ -710,6 +717,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha2_hmac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha3.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/sha3_shake.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/twofish_cbc.Plo@am__quote@
 
 .c.o:

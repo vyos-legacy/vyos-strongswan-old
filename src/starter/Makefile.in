@@ -91,7 +91,6 @@ build_triplet = @build@
 host_triplet = @host@
 ipsec_PROGRAMS = starter$(EXEEXT)
 @USE_LOAD_WARNING_TRUE@am__append_1 = -DLOAD_WARNING
-@USE_SCEPCLIENT_TRUE@am__append_2 = -DGENERATE_SELFCERT
 subdir = src/starter
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -396,7 +395,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -430,8 +428,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -485,6 +481,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -509,8 +507,7 @@ AM_CPPFLAGS = -I${linux_headers} -I$(top_srcdir)/src/libstrongswan \
 	-DIPSEC_SCRIPT=\"${ipsec_script}\" \
 	-DDEV_RANDOM=\"${random_device}\" \
 	-DDEV_URANDOM=\"${urandom_device}\" \
-	-DPLUGINS=\""${starter_plugins}\"" -DDEBUG $(am__append_1) \
-	$(am__append_2)
+	-DPLUGINS=\""${starter_plugins}\"" -DDEBUG $(am__append_1)
 AM_CFLAGS = \
 	@COVERAGE_CFLAGS@
 
@@ -521,7 +518,7 @@ starter_LDADD = \
 	libstarter.la \
 	$(SOCKLIB) $(PTHREADLIB) $(ATOMICLIB)
 
-EXTRA_DIST = keywords.txt ipsec.conf Android.mk
+EXTRA_DIST = keywords.txt ipsec.conf ipsec.secrets Android.mk
 MAINTAINERCLEANFILES = keywords.c
 BUILT_SOURCES = keywords.c parser/parser.h
 all: $(BUILT_SOURCES)
@@ -1007,6 +1004,7 @@ install-exec-local :
 		test -e "$(DESTDIR)${sysconfdir}/ipsec.d/reqs" || $(INSTALL) -d "$(DESTDIR)$(sysconfdir)/ipsec.d/reqs" || true
 		test -e "$(DESTDIR)${sysconfdir}/ipsec.d/private" || $(INSTALL) -d -m 750 "$(DESTDIR)$(sysconfdir)/ipsec.d/private" || true
 		test -e "$(DESTDIR)$(sysconfdir)/ipsec.conf" || $(INSTALL) -m 644 $(srcdir)/ipsec.conf $(DESTDIR)$(sysconfdir)/ipsec.conf || true
+		test -e "$(DESTDIR)$(sysconfdir)/ipsec.secrets" || $(INSTALL) -m 600 $(srcdir)/ipsec.secrets $(DESTDIR)$(sysconfdir)/ipsec.secrets || true
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
