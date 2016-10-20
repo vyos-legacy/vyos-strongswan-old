@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.5.0])
+AC_INIT([strongSwan],[5.5.1])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -136,6 +136,8 @@ ARG_DISBL_SET([gmp],            [disable GNU MP (libgmp) based crypto implementa
 ARG_DISBL_SET([hmac],           [disable HMAC crypto implementation plugin.])
 ARG_ENABL_SET([md4],            [enable MD4 software implementation plugin.])
 ARG_DISBL_SET([md5],            [disable MD5 software implementation plugin.])
+ARG_ENABL_SET([mgf1],           [enable the MGF1 software implementation plugin.])
+ARG_ENABL_SET([newhope],        [enable New Hope crypto plugin.])
 ARG_DISBL_SET([nonce],          [disable nonce generation plugin.])
 ARG_ENABL_SET([ntru],           [enables the NTRU crypto plugin.])
 ARG_ENABL_SET([openssl],        [enables the OpenSSL crypto plugin.])
@@ -261,7 +263,6 @@ ARG_ENABL_SET([ha],             [enable high availability cluster plugin.])
 ARG_ENABL_SET([led],            [enable plugin to control LEDs on IKEv2 activity using the Linux kernel LED subsystem.])
 ARG_ENABL_SET([load-tester],    [enable load testing plugin for IKEv2 daemon.])
 ARG_ENABL_SET([lookip],         [enable fast virtual IP lookup and notification plugin.])
-ARG_ENABL_SET([maemo],          [enable Maemo specific plugin.])
 ARG_ENABL_SET([radattr],        [enable plugin to inject and process custom RADIUS attributes as IKEv2 client.])
 ARG_ENABL_SET([systime-fix],    [enable plugin to handle cert lifetimes with invalid system time gracefully.])
 ARG_ENABL_SET([test-vectors],   [enable plugin providing crypto test vectors.])
@@ -465,6 +466,10 @@ if test x$aikpub2 = xtrue; then
 	tss_tss2=true
 fi
 
+if test x$ntru = xtrue -o x$bliss = xtrue; then
+	mgf1=true
+fi
+
 # ===========================================
 #  check required libraries and header files
 # ===========================================
@@ -500,9 +505,20 @@ LIBS=$DLLIB
 AC_SEARCH_LIBS(pthread_create, pthread, [PTHREADLIB=$LIBS])
 AC_SUBST(PTHREADLIB)
 
-# uClibc requires explicit -latomic for __atomic_* operations
+# Some architectures require explicit -latomic for __atomic_* operations
+# AC_SEARCH_LIBS() does not work when checking built-ins due to conflicting types
 LIBS=""
-AC_SEARCH_LIBS(__atomic_load, atomic, [ATOMICLIB=$LIBS])
+AC_MSG_CHECKING(for library containing __atomic_and_fetch)
+AC_LINK_IFELSE(
+	[AC_LANG_PROGRAM([[]], [[int x; __atomic_and_fetch(&x, 1, __ATOMIC_RELAXED);]])],
+	[AC_MSG_RESULT([none required])],
+	[LIBS="-latomic";
+	 AC_LINK_IFELSE(
+		[AC_LANG_PROGRAM([[]], [[int x; __atomic_and_fetch(&x, 1, __ATOMIC_RELAXED);]])],
+		[AC_MSG_RESULT([-latomic]); ATOMICLIB=$LIBS],
+		[AC_MSG_RESULT([no])])
+	]
+)
 AC_SUBST(ATOMICLIB)
 
 LIBS=$saved_LIBS
@@ -617,7 +633,7 @@ AC_CHECK_FUNC([syslog], [
 ])
 AM_CONDITIONAL(USE_SYSLOG, [test "x$syslog" = xtrue])
 
-AC_CHECK_HEADERS(sys/sockio.h sys/syscall.h glob.h net/if_tun.h)
+AC_CHECK_HEADERS(sys/sockio.h sys/syscall.h sys/param.h glob.h net/if_tun.h)
 AC_CHECK_HEADERS(net/pfkeyv2.h netipsec/ipsec.h netinet6/ipsec.h linux/udp.h)
 AC_CHECK_HEADERS([netinet/ip6.h linux/fib_rules.h], [], [],
 [
@@ -977,10 +993,11 @@ if test x$tss_trousers = xtrue; then
 fi
 
 if test x$tss_tss2 = xtrue; then
-	AC_CHECK_LIB([tss2],[main],[LIBS="$LIBS"],[AC_MSG_ERROR([TTS 2.0 library libtss2 not found])],[])
-	AC_CHECK_HEADER([tss2/tpm20.h],,[AC_MSG_ERROR([TSS 2.0 header tss2/tpm20.h not found!])])
-	AC_DEFINE([TSS_TSS2], [], [use TSS 2.0 library libtss2])
+	PKG_CHECK_MODULES(tss2, [tcti-socket], [AC_DEFINE([TSS_TSS2], [], [use TSS 2.0 libraries])])
+	AC_SUBST(tss2_CFLAGS)
+	AC_SUBST(tss2_LIBS)
 fi
+
 if test x$imv_swid = xtrue; then
 	PKG_CHECK_MODULES(json, [json-c], [],
 		[PKG_CHECK_MODULES(json, [json])])
@@ -1125,14 +1142,6 @@ if test x$android_dns = xtrue; then
 	# above does not work correctly when cross-compiling for android.
 	DLLIB="-ldl"
 	AC_SUBST(DLLIB)
-fi
-
-if test x$maemo = xtrue; then
-	PKG_CHECK_MODULES(maemo, [glib-2.0 gthread-2.0 libosso osso-af-settings])
-	AC_SUBST(maemo_CFLAGS)
-	AC_SUBST(maemo_LIBS)
-	dbusservicedir="/usr/share/dbus-1/system-services"
-	AC_SUBST(dbusservicedir)
 fi
 
 if test x$eap_sim_pcsc = xtrue; then
@@ -1323,6 +1332,7 @@ ADD_PLUGIN([sha3],                 [s charon scepclient pki scripts medsrv attes
 ADD_PLUGIN([sha1],                 [s charon scepclient pki scripts manager medsrv attest nm cmd aikgen])
 ADD_PLUGIN([md4],                  [s charon scepclient pki nm cmd])
 ADD_PLUGIN([md5],                  [s charon scepclient pki scripts attest nm cmd aikgen])
+ADD_PLUGIN([mgf1],                 [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
 ADD_PLUGIN([rdrand],               [s charon scepclient pki scripts medsrv attest nm cmd aikgen])
 ADD_PLUGIN([random],               [s charon scepclient pki scripts manager medsrv attest nm cmd aikgen])
 ADD_PLUGIN([nonce],                [s charon nm cmd aikgen])
@@ -1357,6 +1367,7 @@ ADD_PLUGIN([ctr],                  [s charon scripts nm cmd])
 ADD_PLUGIN([ccm],                  [s charon scripts nm cmd])
 ADD_PLUGIN([gcm],                  [s charon scripts nm cmd])
 ADD_PLUGIN([ntru],                 [s charon scripts nm cmd])
+ADD_PLUGIN([newhope],              [s charon scripts nm cmd])
 ADD_PLUGIN([bliss],                [s charon pki scripts nm cmd])
 ADD_PLUGIN([curl],                 [s charon scepclient pki scripts nm cmd])
 ADD_PLUGIN([files],                [s charon scepclient pki scripts nm cmd])
@@ -1433,7 +1444,6 @@ ADD_PLUGIN([led],                  [c charon])
 ADD_PLUGIN([duplicheck],           [c charon])
 ADD_PLUGIN([coupling],             [c charon])
 ADD_PLUGIN([radattr],              [c charon])
-ADD_PLUGIN([maemo],                [c charon])
 ADD_PLUGIN([uci],                  [c charon])
 ADD_PLUGIN([addrblock],            [c charon])
 ADD_PLUGIN([unity],                [c charon])
@@ -1478,6 +1488,7 @@ AM_CONDITIONAL(USE_MD5, test x$md5 = xtrue)
 AM_CONDITIONAL(USE_SHA1, test x$sha1 = xtrue)
 AM_CONDITIONAL(USE_SHA2, test x$sha2 = xtrue)
 AM_CONDITIONAL(USE_SHA3, test x$sha3 = xtrue)
+AM_CONDITIONAL(USE_MGF1, test x$mgf1 = xtrue)
 AM_CONDITIONAL(USE_FIPS_PRF, test x$fips_prf = xtrue)
 AM_CONDITIONAL(USE_GMP, test x$gmp = xtrue)
 AM_CONDITIONAL(USE_RDRAND, test x$rdrand = xtrue)
@@ -1514,6 +1525,7 @@ AM_CONDITIONAL(USE_CCM, test x$ccm = xtrue)
 AM_CONDITIONAL(USE_GCM, test x$gcm = xtrue)
 AM_CONDITIONAL(USE_AF_ALG, test x$af_alg = xtrue)
 AM_CONDITIONAL(USE_NTRU, test x$ntru = xtrue)
+AM_CONDITIONAL(USE_NEWHOPE, test x$newhope = xtrue)
 AM_CONDITIONAL(USE_BLISS, test x$bliss = xtrue)
 
 #  charon plugins
@@ -1527,7 +1539,6 @@ AM_CONDITIONAL(USE_OSX_ATTR, test x$osx_attr = xtrue)
 AM_CONDITIONAL(USE_P_CSCF, test x$p_cscf = xtrue)
 AM_CONDITIONAL(USE_ANDROID_DNS, test x$android_dns = xtrue)
 AM_CONDITIONAL(USE_ANDROID_LOG, test x$android_log = xtrue)
-AM_CONDITIONAL(USE_MAEMO, test x$maemo = xtrue)
 AM_CONDITIONAL(USE_SMP, test x$smp = xtrue)
 AM_CONDITIONAL(USE_SQL, test x$sql = xtrue)
 AM_CONDITIONAL(USE_DNSCERT, test x$dnscert = xtrue)
@@ -1629,6 +1640,7 @@ AM_CONDITIONAL(USE_CONFTEST, test x$conftest = xtrue)
 AM_CONDITIONAL(USE_LIBSTRONGSWAN, test x$charon = xtrue -o x$pki = xtrue -o x$scepclient = xtrue -o x$conftest = xtrue -o x$fast = xtrue -o x$imcv = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$tls = xtrue -o x$tnc_tnccs = xtrue -o x$aikgen = xtrue -o x$aikpub2 = xtrue -o x$svc = xtrue -o x$systemd = xtrue)
 AM_CONDITIONAL(USE_LIBCHARON, test x$charon = xtrue -o x$conftest = xtrue -o x$nm = xtrue -o x$tkm = xtrue -o x$cmd = xtrue -o x$svc = xtrue -o x$systemd = xtrue)
 AM_CONDITIONAL(USE_LIBIPSEC, test x$libipsec = xtrue)
+AM_CONDITIONAL(USE_LIBNTTFFT, test x$bliss = xtrue -o x$newhope = xtrue)
 AM_CONDITIONAL(USE_LIBTNCIF, test x$tnc_tnccs = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_LIBTNCCS, test x$tnc_tnccs = xtrue)
 AM_CONDITIONAL(USE_LIBPTTLS, test x$tnc_tnccs = xtrue)
@@ -1721,6 +1733,8 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/include/Makefile
 	src/libstrongswan/Makefile
+	src/libstrongswan/math/libnttfft/Makefile
+	src/libstrongswan/math/libnttfft/tests/Makefile
 	src/libstrongswan/plugins/aes/Makefile
 	src/libstrongswan/plugins/cmac/Makefile
 	src/libstrongswan/plugins/des/Makefile
@@ -1731,6 +1745,7 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/sha1/Makefile
 	src/libstrongswan/plugins/sha2/Makefile
 	src/libstrongswan/plugins/sha3/Makefile
+	src/libstrongswan/plugins/mgf1/Makefile
 	src/libstrongswan/plugins/fips_prf/Makefile
 	src/libstrongswan/plugins/gmp/Makefile
 	src/libstrongswan/plugins/rdrand/Makefile
@@ -1774,6 +1789,8 @@ AC_CONFIG_FILES([
 	src/libstrongswan/plugins/ntru/Makefile
 	src/libstrongswan/plugins/bliss/Makefile
 	src/libstrongswan/plugins/bliss/tests/Makefile
+	src/libstrongswan/plugins/newhope/Makefile
+	src/libstrongswan/plugins/newhope/tests/Makefile
 	src/libstrongswan/plugins/test_vectors/Makefile
 	src/libstrongswan/tests/Makefile
 	src/libipsec/Makefile
@@ -1871,7 +1888,6 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/p_cscf/Makefile
 	src/libcharon/plugins/android_dns/Makefile
 	src/libcharon/plugins/android_log/Makefile
-	src/libcharon/plugins/maemo/Makefile
 	src/libcharon/plugins/stroke/Makefile
 	src/libcharon/plugins/vici/Makefile
 	src/libcharon/plugins/vici/ruby/Makefile

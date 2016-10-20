@@ -139,17 +139,20 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
-libbliss_params_la_LIBADD =
-am_libbliss_params_la_OBJECTS = bliss_param_set.lo bliss_fft_params.lo
+libbliss_params_la_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la
+am_libbliss_params_la_OBJECTS = bliss_param_set.lo
 libbliss_params_la_OBJECTS = $(am_libbliss_params_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libbliss_la_DEPENDENCIES = libbliss-params.la
+libbliss_la_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
+	libbliss-params.la
 am_libbliss_la_OBJECTS = bliss_private_key.lo bliss_public_key.lo \
 	bliss_signature.lo bliss_utils.lo bliss_bitpacker.lo \
-	bliss_fft.lo bliss_huffman_code.lo bliss_huffman_code_1.lo \
+	bliss_huffman_code.lo bliss_huffman_code_1.lo \
 	bliss_huffman_code_3.lo bliss_huffman_code_4.lo \
 	bliss_huffman_coder.lo bliss_sampler.lo
 libbliss_la_OBJECTS = $(am_libbliss_la_OBJECTS)
@@ -166,7 +169,9 @@ libstrongswan_bliss_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 PROGRAMS = $(noinst_PROGRAMS)
 am_bliss_huffman_OBJECTS = bliss_huffman.$(OBJEXT)
 bliss_huffman_OBJECTS = $(am_bliss_huffman_OBJECTS)
-bliss_huffman_DEPENDENCIES = libbliss-params.la
+bliss_huffman_DEPENDENCIES =  \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
+	libbliss-params.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -370,7 +375,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -404,8 +408,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -459,11 +461,14 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 AM_CPPFLAGS = \
-	-I$(top_srcdir)/src/libstrongswan
+	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libstrongswan/math/libnttfft
 
 AM_CFLAGS = \
 	$(PLUGIN_CFLAGS) \
@@ -476,8 +481,10 @@ AM_CFLAGS = \
 # because of the subdirectory, which would cause distclean to fail
 noinst_LTLIBRARIES = libbliss-params.la libbliss.la $(am__append_1)
 libbliss_params_la_SOURCES = \
-	bliss_param_set.h bliss_param_set.c \
-	bliss_fft_params.h bliss_fft_params.c
+	bliss_param_set.h bliss_param_set.c
+
+libbliss_params_la_LIBADD = \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la
 
 libbliss_la_SOURCES = \
 	bliss_private_key.h bliss_private_key.c \
@@ -485,13 +492,15 @@ libbliss_la_SOURCES = \
 	bliss_signature.h bliss_signature.c \
 	bliss_utils.h bliss_utils.c \
 	bliss_bitpacker.h bliss_bitpacker.c \
-	bliss_fft.h bliss_fft.c \
 	bliss_huffman_code.h bliss_huffman_code.c \
 	bliss_huffman_code_1.c bliss_huffman_code_3.c bliss_huffman_code_4.c \
 	bliss_huffman_coder.h bliss_huffman_coder.c \
 	bliss_sampler.h bliss_sampler.c
 
-libbliss_la_LIBADD = libbliss-params.la
+libbliss_la_LIBADD = \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
+	libbliss-params.la
+
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-bliss.la
 libstrongswan_bliss_la_SOURCES = \
 	bliss_plugin.h bliss_plugin.c
@@ -499,7 +508,10 @@ libstrongswan_bliss_la_SOURCES = \
 libstrongswan_bliss_la_LDFLAGS = -module -avoid-version
 libstrongswan_bliss_la_LIBADD = libbliss.la
 bliss_huffman_SOURCES = bliss_huffman.c
-bliss_huffman_LDADD = -lm libbliss-params.la
+bliss_huffman_LDADD = -lm \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
+	libbliss-params.la
+
 all: all-am
 
 .SUFFIXES:
@@ -609,8 +621,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_bitpacker.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_fft.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_fft_params.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_huffman.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_huffman_code.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_huffman_code_1.Plo@am__quote@

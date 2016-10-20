@@ -239,60 +239,58 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_ANDROID_DNS_TRUE@am__append_91 = plugins/android_dns/libstrongswan-android-dns.la
 @USE_ANDROID_LOG_TRUE@am__append_92 = plugins/android_log
 @MONOLITHIC_TRUE@@USE_ANDROID_LOG_TRUE@am__append_93 = plugins/android_log/libstrongswan-android-log.la
-@USE_MAEMO_TRUE@am__append_94 = plugins/maemo
-@MONOLITHIC_TRUE@@USE_MAEMO_TRUE@am__append_95 = plugins/maemo/libstrongswan-maemo.la
-@USE_HA_TRUE@am__append_96 = plugins/ha
-@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_97 = plugins/ha/libstrongswan-ha.la
-@USE_KERNEL_PFKEY_TRUE@am__append_98 = plugins/kernel_pfkey
-@MONOLITHIC_TRUE@@USE_KERNEL_PFKEY_TRUE@am__append_99 = plugins/kernel_pfkey/libstrongswan-kernel-pfkey.la
-@USE_KERNEL_PFROUTE_TRUE@am__append_100 = plugins/kernel_pfroute
-@MONOLITHIC_TRUE@@USE_KERNEL_PFROUTE_TRUE@am__append_101 = plugins/kernel_pfroute/libstrongswan-kernel-pfroute.la
-@USE_KERNEL_NETLINK_TRUE@am__append_102 = plugins/kernel_netlink
-@MONOLITHIC_TRUE@@USE_KERNEL_NETLINK_TRUE@am__append_103 = plugins/kernel_netlink/libstrongswan-kernel-netlink.la
-@USE_KERNEL_LIBIPSEC_TRUE@am__append_104 = plugins/kernel_libipsec
-@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_105 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
-@USE_KERNEL_WFP_TRUE@am__append_106 = plugins/kernel_wfp
-@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_107 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
-@USE_KERNEL_IPH_TRUE@am__append_108 = plugins/kernel_iph
-@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_109 = plugins/kernel_iph/libstrongswan-kernel-iph.la
-@USE_WHITELIST_TRUE@am__append_110 = plugins/whitelist
-@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_111 = plugins/whitelist/libstrongswan-whitelist.la
-@USE_LOOKIP_TRUE@am__append_112 = plugins/lookip
-@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_113 = plugins/lookip/libstrongswan-lookip.la
-@USE_ERROR_NOTIFY_TRUE@am__append_114 = plugins/error_notify
-@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_115 = plugins/error_notify/libstrongswan-error-notify.la
-@USE_CERTEXPIRE_TRUE@am__append_116 = plugins/certexpire
-@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_117 = plugins/certexpire/libstrongswan-certexpire.la
-@USE_SYSTIME_FIX_TRUE@am__append_118 = plugins/systime_fix
-@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_119 = plugins/systime_fix/libstrongswan-systime-fix.la
-@USE_LED_TRUE@am__append_120 = plugins/led
-@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_121 = plugins/led/libstrongswan-led.la
-@USE_DUPLICHECK_TRUE@am__append_122 = plugins/duplicheck
-@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_123 = plugins/duplicheck/libstrongswan-duplicheck.la
-@USE_COUPLING_TRUE@am__append_124 = plugins/coupling
-@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_125 = plugins/coupling/libstrongswan-coupling.la
-@USE_RADATTR_TRUE@am__append_126 = plugins/radattr
-@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_127 = plugins/radattr/libstrongswan-radattr.la
-@USE_UCI_TRUE@am__append_128 = plugins/uci
-@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_129 = plugins/uci/libstrongswan-uci.la
-@USE_ADDRBLOCK_TRUE@am__append_130 = plugins/addrblock
-@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_131 = plugins/addrblock/libstrongswan-addrblock.la
-@USE_UNITY_TRUE@am__append_132 = plugins/unity
-@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_133 = plugins/unity/libstrongswan-unity.la
-@USE_XAUTH_GENERIC_TRUE@am__append_134 = plugins/xauth_generic
-@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_135 = plugins/xauth_generic/libstrongswan-xauth-generic.la
-@USE_XAUTH_EAP_TRUE@am__append_136 = plugins/xauth_eap
-@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_137 = plugins/xauth_eap/libstrongswan-xauth-eap.la
-@USE_XAUTH_PAM_TRUE@am__append_138 = plugins/xauth_pam
-@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_139 = plugins/xauth_pam/libstrongswan-xauth-pam.la
-@USE_XAUTH_NOAUTH_TRUE@am__append_140 = plugins/xauth_noauth
-@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_141 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
-@USE_RESOLVE_TRUE@am__append_142 = plugins/resolve
-@MONOLITHIC_TRUE@@USE_RESOLVE_TRUE@am__append_143 = plugins/resolve/libstrongswan-resolve.la
-@USE_ATTR_TRUE@am__append_144 = plugins/attr
-@MONOLITHIC_TRUE@@USE_ATTR_TRUE@am__append_145 = plugins/attr/libstrongswan-attr.la
-@USE_ATTR_SQL_TRUE@am__append_146 = plugins/attr_sql
-@MONOLITHIC_TRUE@@USE_ATTR_SQL_TRUE@am__append_147 = plugins/attr_sql/libstrongswan-attr-sql.la
+@USE_HA_TRUE@am__append_94 = plugins/ha
+@MONOLITHIC_TRUE@@USE_HA_TRUE@am__append_95 = plugins/ha/libstrongswan-ha.la
+@USE_KERNEL_PFKEY_TRUE@am__append_96 = plugins/kernel_pfkey
+@MONOLITHIC_TRUE@@USE_KERNEL_PFKEY_TRUE@am__append_97 = plugins/kernel_pfkey/libstrongswan-kernel-pfkey.la
+@USE_KERNEL_PFROUTE_TRUE@am__append_98 = plugins/kernel_pfroute
+@MONOLITHIC_TRUE@@USE_KERNEL_PFROUTE_TRUE@am__append_99 = plugins/kernel_pfroute/libstrongswan-kernel-pfroute.la
+@USE_KERNEL_NETLINK_TRUE@am__append_100 = plugins/kernel_netlink
+@MONOLITHIC_TRUE@@USE_KERNEL_NETLINK_TRUE@am__append_101 = plugins/kernel_netlink/libstrongswan-kernel-netlink.la
+@USE_KERNEL_LIBIPSEC_TRUE@am__append_102 = plugins/kernel_libipsec
+@MONOLITHIC_TRUE@@USE_KERNEL_LIBIPSEC_TRUE@am__append_103 = plugins/kernel_libipsec/libstrongswan-kernel-libipsec.la
+@USE_KERNEL_WFP_TRUE@am__append_104 = plugins/kernel_wfp
+@MONOLITHIC_TRUE@@USE_KERNEL_WFP_TRUE@am__append_105 = plugins/kernel_wfp/libstrongswan-kernel-wfp.la
+@USE_KERNEL_IPH_TRUE@am__append_106 = plugins/kernel_iph
+@MONOLITHIC_TRUE@@USE_KERNEL_IPH_TRUE@am__append_107 = plugins/kernel_iph/libstrongswan-kernel-iph.la
+@USE_WHITELIST_TRUE@am__append_108 = plugins/whitelist
+@MONOLITHIC_TRUE@@USE_WHITELIST_TRUE@am__append_109 = plugins/whitelist/libstrongswan-whitelist.la
+@USE_LOOKIP_TRUE@am__append_110 = plugins/lookip
+@MONOLITHIC_TRUE@@USE_LOOKIP_TRUE@am__append_111 = plugins/lookip/libstrongswan-lookip.la
+@USE_ERROR_NOTIFY_TRUE@am__append_112 = plugins/error_notify
+@MONOLITHIC_TRUE@@USE_ERROR_NOTIFY_TRUE@am__append_113 = plugins/error_notify/libstrongswan-error-notify.la
+@USE_CERTEXPIRE_TRUE@am__append_114 = plugins/certexpire
+@MONOLITHIC_TRUE@@USE_CERTEXPIRE_TRUE@am__append_115 = plugins/certexpire/libstrongswan-certexpire.la
+@USE_SYSTIME_FIX_TRUE@am__append_116 = plugins/systime_fix
+@MONOLITHIC_TRUE@@USE_SYSTIME_FIX_TRUE@am__append_117 = plugins/systime_fix/libstrongswan-systime-fix.la
+@USE_LED_TRUE@am__append_118 = plugins/led
+@MONOLITHIC_TRUE@@USE_LED_TRUE@am__append_119 = plugins/led/libstrongswan-led.la
+@USE_DUPLICHECK_TRUE@am__append_120 = plugins/duplicheck
+@MONOLITHIC_TRUE@@USE_DUPLICHECK_TRUE@am__append_121 = plugins/duplicheck/libstrongswan-duplicheck.la
+@USE_COUPLING_TRUE@am__append_122 = plugins/coupling
+@MONOLITHIC_TRUE@@USE_COUPLING_TRUE@am__append_123 = plugins/coupling/libstrongswan-coupling.la
+@USE_RADATTR_TRUE@am__append_124 = plugins/radattr
+@MONOLITHIC_TRUE@@USE_RADATTR_TRUE@am__append_125 = plugins/radattr/libstrongswan-radattr.la
+@USE_UCI_TRUE@am__append_126 = plugins/uci
+@MONOLITHIC_TRUE@@USE_UCI_TRUE@am__append_127 = plugins/uci/libstrongswan-uci.la
+@USE_ADDRBLOCK_TRUE@am__append_128 = plugins/addrblock
+@MONOLITHIC_TRUE@@USE_ADDRBLOCK_TRUE@am__append_129 = plugins/addrblock/libstrongswan-addrblock.la
+@USE_UNITY_TRUE@am__append_130 = plugins/unity
+@MONOLITHIC_TRUE@@USE_UNITY_TRUE@am__append_131 = plugins/unity/libstrongswan-unity.la
+@USE_XAUTH_GENERIC_TRUE@am__append_132 = plugins/xauth_generic
+@MONOLITHIC_TRUE@@USE_XAUTH_GENERIC_TRUE@am__append_133 = plugins/xauth_generic/libstrongswan-xauth-generic.la
+@USE_XAUTH_EAP_TRUE@am__append_134 = plugins/xauth_eap
+@MONOLITHIC_TRUE@@USE_XAUTH_EAP_TRUE@am__append_135 = plugins/xauth_eap/libstrongswan-xauth-eap.la
+@USE_XAUTH_PAM_TRUE@am__append_136 = plugins/xauth_pam
+@MONOLITHIC_TRUE@@USE_XAUTH_PAM_TRUE@am__append_137 = plugins/xauth_pam/libstrongswan-xauth-pam.la
+@USE_XAUTH_NOAUTH_TRUE@am__append_138 = plugins/xauth_noauth
+@MONOLITHIC_TRUE@@USE_XAUTH_NOAUTH_TRUE@am__append_139 = plugins/xauth_noauth/libstrongswan-xauth-noauth.la
+@USE_RESOLVE_TRUE@am__append_140 = plugins/resolve
+@MONOLITHIC_TRUE@@USE_RESOLVE_TRUE@am__append_141 = plugins/resolve/libstrongswan-resolve.la
+@USE_ATTR_TRUE@am__append_142 = plugins/attr
+@MONOLITHIC_TRUE@@USE_ATTR_TRUE@am__append_143 = plugins/attr/libstrongswan-attr.la
+@USE_ATTR_SQL_TRUE@am__append_144 = plugins/attr_sql
+@MONOLITHIC_TRUE@@USE_ATTR_SQL_TRUE@am__append_145 = plugins/attr_sql/libstrongswan-attr-sql.la
 subdir = src/libcharon
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -370,7 +368,7 @@ libcharon_la_DEPENDENCIES =  \
 	$(am__append_127) $(am__append_129) $(am__append_131) \
 	$(am__append_133) $(am__append_135) $(am__append_137) \
 	$(am__append_139) $(am__append_141) $(am__append_143) \
-	$(am__append_145) $(am__append_147)
+	$(am__append_145)
 am__libcharon_la_SOURCES_DIST = attributes/attributes.c \
 	attributes/attributes.h attributes/attribute_provider.h \
 	attributes/attribute_handler.h attributes/attribute_manager.c \
@@ -747,16 +745,15 @@ DIST_SUBDIRS = . plugins/load_tester plugins/socket_default \
 	plugins/eap_tnc plugins/tnc_ifmap plugins/tnc_pdp \
 	plugins/medsrv plugins/medcli plugins/dhcp plugins/osx_attr \
 	plugins/p_cscf plugins/android_dns plugins/android_log \
-	plugins/maemo plugins/ha plugins/kernel_pfkey \
-	plugins/kernel_pfroute plugins/kernel_netlink \
-	plugins/kernel_libipsec plugins/kernel_wfp plugins/kernel_iph \
-	plugins/whitelist plugins/lookip plugins/error_notify \
-	plugins/certexpire plugins/systime_fix plugins/led \
-	plugins/duplicheck plugins/coupling plugins/radattr \
-	plugins/uci plugins/addrblock plugins/unity \
-	plugins/xauth_generic plugins/xauth_eap plugins/xauth_pam \
-	plugins/xauth_noauth plugins/resolve plugins/attr \
-	plugins/attr_sql tests
+	plugins/ha plugins/kernel_pfkey plugins/kernel_pfroute \
+	plugins/kernel_netlink plugins/kernel_libipsec \
+	plugins/kernel_wfp plugins/kernel_iph plugins/whitelist \
+	plugins/lookip plugins/error_notify plugins/certexpire \
+	plugins/systime_fix plugins/led plugins/duplicheck \
+	plugins/coupling plugins/radattr plugins/uci plugins/addrblock \
+	plugins/unity plugins/xauth_generic plugins/xauth_eap \
+	plugins/xauth_pam plugins/xauth_noauth plugins/resolve \
+	plugins/attr plugins/attr_sql tests
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -923,7 +920,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -957,8 +953,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -1012,6 +1006,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -1159,8 +1155,7 @@ libcharon_la_LIBADD =  \
 	$(am__append_123) $(am__append_125) $(am__append_127) \
 	$(am__append_129) $(am__append_131) $(am__append_133) \
 	$(am__append_135) $(am__append_137) $(am__append_139) \
-	$(am__append_141) $(am__append_143) $(am__append_145) \
-	$(am__append_147)
+	$(am__append_141) $(am__append_143) $(am__append_145)
 EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@SUBDIRS = . $(am__append_6) $(am__append_8) \
 @MONOLITHIC_FALSE@	$(am__append_10) $(am__append_12) \
@@ -1195,8 +1190,7 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_130) $(am__append_132) \
 @MONOLITHIC_FALSE@	$(am__append_134) $(am__append_136) \
 @MONOLITHIC_FALSE@	$(am__append_138) $(am__append_140) \
-@MONOLITHIC_FALSE@	$(am__append_142) $(am__append_144) \
-@MONOLITHIC_FALSE@	$(am__append_146) tests
+@MONOLITHIC_FALSE@	$(am__append_142) $(am__append_144) tests
 
 # build optional plugins
 ########################
@@ -1233,8 +1227,7 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_130) $(am__append_132) \
 @MONOLITHIC_TRUE@	$(am__append_134) $(am__append_136) \
 @MONOLITHIC_TRUE@	$(am__append_138) $(am__append_140) \
-@MONOLITHIC_TRUE@	$(am__append_142) $(am__append_144) \
-@MONOLITHIC_TRUE@	$(am__append_146) . tests
+@MONOLITHIC_TRUE@	$(am__append_142) $(am__append_144) . tests
 all: all-recursive
 
 .SUFFIXES:

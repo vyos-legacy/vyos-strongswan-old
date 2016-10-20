@@ -137,7 +137,8 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 libstrongswan_sha3_la_LIBADD =
-am_libstrongswan_sha3_la_OBJECTS = sha3_plugin.lo sha3_hasher.lo
+am_libstrongswan_sha3_la_OBJECTS = sha3_plugin.lo sha3_hasher.lo \
+	sha3_shake.lo sha3_keccak.lo
 libstrongswan_sha3_la_OBJECTS = $(am_libstrongswan_sha3_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -350,7 +351,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -384,8 +384,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -439,6 +437,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -451,7 +451,10 @@ AM_CFLAGS = \
 @MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-sha3.la
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-sha3.la
 libstrongswan_sha3_la_SOURCES = \
-	sha3_plugin.h sha3_plugin.c sha3_hasher.c sha3_hasher.h
+	sha3_plugin.h sha3_plugin.c \
+	sha3_hasher.c sha3_hasher.h \
+	sha3_shake.h sha3_shake.c \
+	sha3_keccak.h sha3_keccak.c
 
 libstrongswan_sha3_la_LDFLAGS = -module -avoid-version
 all: all-am
@@ -544,7 +547,9 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha3_hasher.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha3_keccak.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha3_plugin.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha3_shake.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\

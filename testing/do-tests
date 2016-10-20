@@ -46,6 +46,7 @@ SOURCEIP_ROUTING_TABLE=220
 testnumber="0"
 failed_cnt="0"
 passed_cnt="0"
+subdir_cnt="0"
 
 ##############################################################################
 # copy default tests to $BUILDDIR
@@ -181,17 +182,25 @@ echo "strongSwan   : $SWANVERSION"
 echo "Date         : $TESTDATE"
 echo
 
+##############################################################################
+# trap CTRL-C to properly terminate a long run
+#
+
+function abort_tests()
+{
+	echo -n "...aborting..." > /dev/tty
+	aborted=YES
+}
+trap abort_tests INT
 
 ##############################################################################
 # enter specific test directory
 #
-
 if [ $# -gt 0 ]
 then
-    TESTS=$*
+    TESTS=$(printf "%s\n" $* | sort -u)
 else
-    # set internal field seperator
-    TESTS="`ls $DEFAULTTESTSDIR`"
+    TESTS=$(ls $DEFAULTTESTSDIR)
 fi
 
 for SUBDIR in $TESTS
@@ -214,12 +223,18 @@ do
 	else
 	    FIRST="&nbsp;"
 	fi
+
+	if [ $subdir_cnt != 0 ]
+	then
+	    echo "      <td align=\"right\">$subdir_cnt</td>" >> $INDEX
+	    echo "      <td>&nbsp;</td>" >> $INDEX
+	    echo "    </tr>" >> $INDEX
+	    subdir_cnt="0"
+	fi
 	echo "    <tr>" >> $INDEX
     echo "      <td>$FIRST</td>">> $INDEX
     echo "      <td><a href=\"$SUBDIR/index.html\">$SUBDIR</a></td>" >> $INDEX
-    echo "      <td align=\"right\">x</td>" >> $INDEX
-    echo "      <td>&nbsp;</td>" >> $INDEX
-    echo "    </tr>" >> $INDEX
+
 	SUBTESTSINDEX=$TODAYDIR/$SUBDIR/index.html
 	cat > $SUBTESTSINDEX <<@EOF
 <html>
@@ -259,6 +274,7 @@ do
     for name in $SUBTESTS
     do
 	let "testnumber += 1"
+	let "subdir_cnt += 1"
 	testname=$SUBDIR/$name
 	log_action " $testnumber $testname:"
 
@@ -341,7 +357,7 @@ do
 
 
 	##########################################################################
-	# copy test specific configurations to uml hosts and clear auth.log files
+	# copy test specific configurations to hosts and clear log files
 	#
 
 	DBDIR=/etc/db.d
@@ -394,6 +410,16 @@ do
 	done
 
 	##########################################################################
+	# remove leak detective log on all hosts
+	#
+
+	export LEAK_DETECTIVE_LOG=/var/log/leak-detective.log
+	for host in $STRONGSWANHOSTS
+	do
+		ssh $SSHCONF root@`eval echo \\\$ipv4_$host` 'rm -f $LEAK_DETECTIVE_LOG' >/dev/null 2>&1
+	done
+
+	##########################################################################
 	# flush IPsec state on all hosts
 	#
 
@@ -410,7 +436,7 @@ do
 	echo -e "\nPRE-TEST\n" >> $CONSOLE_LOG 2>&1
 
 	eval `awk -F "::" '{
-	    if ($2 != "")
+	    if ($1 !~ /^#.*/ && $2 != "")
 	    {
 		printf("echo \"%s# %s\"; ", $1, $2)
 		printf("ssh \044SSHCONF root@\044ipv4_%s \"%s\"; ", $1, $2)
@@ -447,7 +473,7 @@ do
 	    command=$2
 	    pattern=$3
 	    hit=$4
-	    if (command != "")
+	    if (host !~ /^#.*/ && command != "")
 	    {
 		if (command == "tcpdump")
 		{
@@ -467,18 +493,6 @@ do
 		printf("; then STATUS=\"failed\"; fi; \n")
 	    }
 	}' $TESTDIR/evaltest.dat` >> $CONSOLE_LOG 2>&1
-
-
-	##########################################################################
-	# set counters
-	#
-
-	if [ $STATUS = "failed" ]
-	then
-	    let "failed_cnt += 1"
-	else
-	    let "passed_cnt += 1"
-	fi
 
 
 	##########################################################################
@@ -508,25 +522,34 @@ do
     <img src="../../images/$DIAGRAM" alt="$VIRTHOSTS">
 @EOF
 
+	IPTABLES_CMD_V4="echo -e '=== filter table ==='; iptables  -v -n -L; echo -e '\n=== nat table ==='; iptables  -v -n -t nat -L; echo -e '\n=== mangle table ==='; iptables  -v -n -t mangle -L"
+	IPTABLES_CMD_V6="echo -e '=== filter table ==='; ip6tables -v -n -L; echo -e '\n=== nat table ==='; ip6tables -v -n -t nat -L; echo -e '\n=== mangle table ==='; ip6tables -v -n -t mangle -L"
+
 	if [ -n "$IPV6" ]
 	then
 	    IPROUTE_CMD="ip -6 route list table $SOURCEIP_ROUTING_TABLE"
 	    IPROUTE_DSP=$IPROUTE_CMD
-	    IPTABLES_CMD="ip6tables -v -n -L"
+	    IPTABLES_CMD="$IPTABLES_CMD_V6"
 	    IPTABLES_DSP="ip6tables -L"
+	    IPTABLES_SAVE_CMD="ip6tables-save"
+	    IPTABLES_SAVE_DSP="ip6tables-save"
 	else
 	    IPROUTE_CMD="ip route list table $SOURCEIP_ROUTING_TABLE"
 	    IPROUTE_DSP=$IPROUTE_CMD
-	    IPTABLES_CMD="iptables -v -n -L"
+	    IPTABLES_CMD="$IPTABLES_CMD_V4"
 	    IPTABLES_DSP="iptables -L"
+	    IPTABLES_SAVE_CMD="iptables-save"
+	    IPTABLES_SAVE_DSP="iptables-save"
 	fi
 
 	if [ $name = "net2net-ip4-in-ip6-ikev2" -o $name = "net2net-ip6-in-ip4-ikev2" ]
 	then
 	    IPROUTE_CMD="ip route list table $SOURCEIP_ROUTING_TABLE; echo; ip -6 route list table $SOURCEIP_ROUTING_TABLE"
 	    IPROUTE_DSP="ip (-6) route list table $SOURCEIP_ROUTING_TABLE"
-	    IPTABLES_CMD="iptables -v -n -L ; echo ; ip6tables -v -n -L"
+	    IPTABLES_CMD="$IPTABLES_CMD_V4; echo; $IPTABLES_CMD_V6"
 	    IPTABLES_DSP="iptables -L ; ip6tables -L"
+	    IPTABLES_SAVE_CMD="iptables-save; echo; ip6tables-save"
+	    IPTABLES_SAVE_DSP="iptables-save ; ip6tables-save"
 	fi
 
 	for host in $DBHOSTS
@@ -589,6 +612,8 @@ do
 		    > $TESTRESULTDIR/${host}.ip.route 2>/dev/null
 	    ssh $SSHCONF $HOSTLOGIN $IPTABLES_CMD \
 		    > $TESTRESULTDIR/${host}.iptables 2>/dev/null
+		ssh $SSHCONF $HOSTLOGIN $IPTABLES_SAVE_CMD \
+		    > $TESTRESULTDIR/${host}.iptables-save 2>/dev/null
 	    chmod a+r $TESTRESULTDIR/*
 
 		if [ -n "$SWANCTL" ]
@@ -612,6 +637,7 @@ do
 	    <li><a href="$host.swanctl.pools">swanctl --list-pools</a></li>
 	    <li><a href="$host.swanctl.authorities">swanctl --list-authorities</a></li>
 	    <li><a href="$host.swanctl.stats">swanctl --stats|--list-algs</a></li>
+	    <li><a href="$host.auth.log">auth.log</a></li>
 	    <li><a href="$host.daemon.log">daemon.log</a></li>
 	  </ul>
       </td>
@@ -621,7 +647,7 @@ do
 	    <li><a href="$host.ip.state">ip -s xfrm state</a></li>
 	    <li><a href="$host.ip.route">$IPROUTE_DSP</a></li>
 	    <li><a href="$host.iptables">$IPTABLES_DSP</a></li>
-	    <li><a href="$host.auth.log">auth.log</a></li>
+	    <li><a href="$host.iptables-save">$IPTABLES_SAVE_DSP</a></li>
 	  </ul>
 	  &nbsp;
       </td>
@@ -656,6 +682,7 @@ do
 	    <li><a href="$host.ip.state">ip -s xfrm state</a></li>
 	    <li><a href="$host.ip.route">$IPROUTE_DSP</a></li>
 	    <li><a href="$host.iptables">$IPTABLES_DSP</a></li>
+	    <li><a href="$host.iptables-save">$IPTABLES_SAVE_DSP</a></li>
 	  </ul>
       </td>
     </tr>
@@ -746,7 +773,7 @@ do
 	echo -e "\nPOST-TEST\n" >> $CONSOLE_LOG 2>&1
 
 	eval `awk -F "::" '{
-	    if ($2 != "")
+	    if ($1 !~ /^#.*/ && $2 != "")
 	    {
 		printf("echo \"%s# %s\"; ", $1, $2)
 		printf("ssh \044SSHCONF root@\044ipv4_%s \"%s\"; ", $1, $2)
@@ -772,6 +799,25 @@ do
 			STATUS="failed"
 		fi
 	done
+
+
+	##########################################################################
+	# make sure there were no leaks
+	#
+
+	for host in $STRONGSWANHOSTS
+	do
+		eval HOSTLOGIN=root@\$ipv4_${host}
+		LEAKS=`ssh $SSHCONF $HOSTLOGIN 'cat $LEAK_DETECTIVE_LOG 2>/dev/null | grep -v "No leaks detected.*"'`
+		if [ -n "$LEAKS" ]
+		then
+			echo -e "\n$host# cat $LEAK_DETECTIVE_LOG [NO]" >> $CONSOLE_LOG
+			echo "$LEAKS" >> $CONSOLE_LOG
+			echo "<<< $host $LEAK_DETECTIVE_LOG >>>" >> $CONSOLE_LOG
+			STATUS="failed"
+		fi
+	done
+
 
 	##########################################################################
 	# get a copy of /var/log/auth.log
@@ -830,6 +876,18 @@ do
 
 
 	##########################################################################
+	# set counters
+	#
+
+	if [ $STATUS = "failed" ]
+	then
+	    let "failed_cnt += 1"
+	else
+	    let "passed_cnt += 1"
+	fi
+
+
+	##########################################################################
 	# write test status to html file
 	#
 	testend=$(date +%s)
@@ -873,6 +931,11 @@ do
 	    ssh $SSHCONF $HOSTLOGIN 'if [ -f /var/run/charon.pid ]; then rm /var/run/charon.pid; echo "    removed charon.pid on `hostname`"; fi'
 	done
 
+	if [ -n "$aborted" ]
+	then
+	    break 2
+	fi
+
     done
 
 done
@@ -900,6 +963,15 @@ cat >> $TESTRESULTSHTML << @EOF
 </html>
 @EOF
 
+if [ $subdir_cnt != 0 ]
+then
+cat >> $INDEX << @EOF
+      <td align="right">$subdir_cnt</td>
+      <td>&nbsp;</td>
+    </tr>
+@EOF
+fi
+
 let "all_cnt = $passed_cnt + $failed_cnt"
 
 cat >> $INDEX << @EOF
@@ -923,18 +995,7 @@ cat >> $INDEX << @EOF
 echo
 echo_ok     "Passed : $passed_cnt"
 echo_failed "Failed : $failed_cnt"
-echo
 
-
-##############################################################################
-# copy the test results to the apache server
-#
-
-HTDOCS="/var/www"
-
-ssh $SSHCONF root@${ipv4_winnetou} mkdir -p $HTDOCS/testresults > /dev/null 2>&1
-scp $SSHCONF -r $TODAYDIR root@${ipv4_winnetou}:$HTDOCS/testresults > /dev/null 2>&1
-ssh $SSHCONF root@${ipv4_winnetou} ln -s $HTDOCS/images $HTDOCS/testresults/$TESTDATE/images > /dev/null 2>&1
 echo
 echo "The results are available in $TODAYDIR"
 echo "or via the link http://$ipv4_winnetou/testresults/$TESTDATE"
