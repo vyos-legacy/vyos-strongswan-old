@@ -5,7 +5,8 @@ strongswan (5.5.1-1) UNRELEASED; urgency=medium
     - 05_network-manager-strongswan-1.4 dropped, included upstream.
   * debian/strongswan-starter.install:
     - install the new,empty /etc/ipsec.secrets
-
+  * debian/strongswan-nm.install:
+    - install /etc/dbus-1/system.d/nm-strongswan-service.conf
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 20 Oct 2016 16:18:48 +0200
 
