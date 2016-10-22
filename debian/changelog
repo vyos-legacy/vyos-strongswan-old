@@ -9,6 +9,8 @@ strongswan (5.5.1-1) UNRELEASED; urgency=medium
     - install /etc/dbus-1/system.d/nm-strongswan-service.conf
   * debian/control:
     - add a Replaces on n-m-strongswan because it used to ship the Dbus service.
+    - add dependency on lsb-base to strongswan-starter because the init script
+      uses /lib/lsb/init-functions 
 
  -- Yves-Alexis Perez <corsac@debian.org>  Thu, 20 Oct 2016 16:18:48 +0200
 

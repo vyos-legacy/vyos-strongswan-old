@@ -190,6 +190,7 @@ Package: strongswan-starter
 Architecture: any
 Depends: adduser,
          libstrongswan (= ${binary:Version}),
+         lsb-base (>= 3.0-6),
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: strongswan-charon
