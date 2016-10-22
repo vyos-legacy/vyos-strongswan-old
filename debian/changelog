@@ -1,4 +1,4 @@
-strongswan (5.5.1-1) UNRELEASED; urgency=medium
+strongswan (5.5.1-1) unstable; urgency=medium
 
   * New upstream bugfix release.
   * debian/patches:
@@ -12,7 +12,7 @@ strongswan (5.5.1-1) UNRELEASED; urgency=medium
     - add dependency on lsb-base to strongswan-starter because the init script
       uses /lib/lsb/init-functions 
 
- -- Yves-Alexis Perez <corsac@debian.org>  Thu, 20 Oct 2016 16:18:48 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 22 Oct 2016 21:33:46 +0200
 
 strongswan (5.5.0-3) unstable; urgency=medium
 
