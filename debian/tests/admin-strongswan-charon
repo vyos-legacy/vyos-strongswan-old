@@ -1,0 +1,17 @@
+#!/bin/sh
+#--------------------------
+# Testing strongswan-charon
+#--------------------------
+CMDS="
+/usr/lib/ipsec/charon
+"
+
+for cmd in $CMDS; do
+	$cmd --help > /dev/null 2>&1
+	RET=$?
+
+	if [ $RET -ne 0 ]; then
+	  echo "ERROR, failed to run ${cmd}" >&2
+	  exit $RET
+	fi
+done
