@@ -4,23 +4,37 @@ export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
-		--enable-ldap --enable-curl \
-		--enable-pkcs11 \
-		--enable-openssl --enable-agent \
-		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
-		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
-		--enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 \
-		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
-		--enable-ha \
-		--enable-led --enable-gcrypt \
-		--enable-test-vectors \
-		--enable-xauth-eap --enable-xauth-pam \
-		--enable-cmd \
+		--enable-addrblock \
+		--enable-agent \
+		--enable-ccm \
 		--enable-certexpire \
-		--enable-lookip \
+		--enable-cmd \
+		--enable-ctr \
+		--enable-curl \
+		--enable-eap-aka \
+		--enable-eap-gtc \
+		--enable-eap-identity \
+		--enable-eap-md5 \
+		--enable-eap-mschapv2 \
+		--enable-eap-radius \
+		--enable-eap-tls \
+		--enable-eap-tnc \
+		--enable-eap-ttls \
 		--enable-error-notify \
+		--enable-gcm \
+		--enable-gcrypt \
+		--enable-ha \
+		--enable-ldap \
+		--enable-led \
+		--enable-lookip \
+		--enable-openssl \
+		--enable-pkcs11 \
+		--enable-test-vectors \
 		--enable-unity \
-		--disable-blowfish --disable-des # BSD-Young license
+		--enable-xauth-eap \
+		--enable-xauth-pam \
+		--disable-blowfish \
+		--disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
 	# And for --enable-eap-sim we would need the library, which we don't
