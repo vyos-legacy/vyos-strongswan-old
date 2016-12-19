@@ -176,6 +176,11 @@ endif
 		-Xlibstrongswan-af-alg.so -X af-alg.conf \
 		-Xstrongswan.service
 
+	# AppArmor.
+	dh_apparmor --profile-name=usr.lib.ipsec.charon -p strongswan-charon
+	dh_apparmor --profile-name=usr.lib.ipsec.lookip -p libcharon-extra-plugins
+	dh_apparmor --profile-name=usr.lib.ipsec.stroke -p strongswan-starter
+
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
 	# also "patch" ipsec.conf to include the debconf-managed file

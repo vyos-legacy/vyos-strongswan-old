@@ -38,6 +38,7 @@ etc/strongswan.d/charon/lookip.conf
 etc/strongswan.d/charon/tnc-tnccs.conf
 etc/strongswan.d/charon/unity.conf
 etc/strongswan.d/charon/xauth-*.conf
+debian/usr.lib.ipsec.lookip /etc/apparmor.d/
 # support libs
 #usr/lib/ipsec/libfast.so*
 usr/lib/ipsec/libpttls.so*
