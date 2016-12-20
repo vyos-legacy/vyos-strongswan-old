@@ -11,6 +11,11 @@ strongswan (5.5.1-3) unstable; urgency=medium
   * Add basic DEP8 tests
     - d/tests/* add DEP8 tests
     - d/control enable autotestpkg
+  * Add updated logcheck rules to match recent strongswan output
+    - debian/libstrongswan.strongswan.logcheck.* Remove outdated logcheck files
+    - debian/{rules,strongswan.logcheck}: Add updated logcheck rules
+    - this does no more provide different logcheck levels, but marks all
+      common output to be acceptable
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 20 Dec 2016 13:01:29 +0100
 
