@@ -3,6 +3,11 @@ strongswan (5.5.1-3) unstable; urgency=medium
   * d/rules: Reorganize to ease maintenance
     - one enable option per line
     - sort enable options
+  * Add and install strongswan apparmor profiles
+    - d/rules install AppArmor profiles
+    - d/control add dh-apparmor as build-dep
+    - d/usr.lib.ipsec.{charon, lookip, stroke} add latest AppArmor profiles
+      for charon, lookip and stroke
 
  -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 20 Dec 2016 13:01:29 +0100
 
