@@ -1,4 +1,4 @@
-strongswan (5.5.1-3) unstable; urgency=medium
+strongswan (5.5.1-3) UNRELEASED; urgency=medium
 
   * d/rules: Reorganize to ease maintenance
     - one enable option per line
