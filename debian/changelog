@@ -1,4 +1,4 @@
-strongswan (5.5.1-3) UNRELEASED; urgency=medium
+strongswan (5.5.1-3) unstable; urgency=medium
 
   [ Christian Ehrhardt ]
   * d/rules: Reorganize to ease maintenance
@@ -22,7 +22,7 @@ strongswan (5.5.1-3) UNRELEASED; urgency=medium
   * debian/rules:
     - re-enable mediation (but not medcli/medsrv)               closes: #851507
 
- -- Christian Ehrhardt <christian.ehrhardt@canonical.com>  Tue, 20 Dec 2016 13:01:29 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 16 Jan 2017 12:58:26 +0100
 
 strongswan (5.5.1-2) unstable; urgency=medium
 
