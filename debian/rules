@@ -37,11 +37,11 @@ include /usr/share/dpkg/architecture.mk
 # the padlock plugin only makes sense on i386
 # RdRand only makes sense on i386 and amd64
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
-  CONFIGUREARGS += --enable-padlock --enable-rdrand
+  CONFIGUREARGS += --enable-padlock --enable-rdrand --enable-aesni
 endif
 
 ifeq ($(DEB_BUILD_ARCH_CPU),amd64)
-  CONFIGUREARGS += --enable-rdrand
+  CONFIGUREARGS += --enable-rdrand --enable-aesni
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
@@ -128,12 +128,20 @@ ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/rdrand.conf
 	dh_install -p libstrongswan-extra-plugins etc/strongswan.d/charon/rdrand.conf
+
+	dh_install -p libstrongswan-standard-plugins usr/lib/ipsec/plugins/libstrongswan-aesni.so
+	dh_install -p libstrongswan-standard-plugins usr/share/strongswan/templates/config/plugins/aesni.conf
+	dh_install -p libstrongswan-standard-plugins etc/strongswan.d/charon/aesni.conf
 endif
 
 ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/rdrand.conf
 	dh_install -p libstrongswan-extra-plugins etc/strongswan.d/charon/rdrand.conf
+
+	dh_install -p libstrongswan-standard-plugins usr/lib/ipsec/plugins/libstrongswan-aesni.so
+	dh_install -p libstrongswan-standard-plugins usr/share/strongswan/templates/config/plugins/aesni.conf
+	dh_install -p libstrongswan-standard-plugins etc/strongswan.d/charon/aesni.conf
 endif
 
 	# then install the rest, ignoring the above
@@ -145,6 +153,7 @@ endif
 		-Xlibstrongswan-farp.so -X farp.conf \
 		-Xlibstrongswan-padlock.so -X padlock.conf \
 		-Xlibstrongswan-rdrand.so -X rdrand.conf \
+		-Xlibstrongswan-aesni.so -X aesni.conf \
 		-Xlibstrongswan-af-alg.so -X af-alg.conf \
 		-Xstrongswan.service
 
