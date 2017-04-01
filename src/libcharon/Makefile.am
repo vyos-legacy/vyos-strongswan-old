@@ -105,6 +105,7 @@ sa/ikev2/tasks/ike_delete.c sa/ikev2/tasks/ike_delete.h \
 sa/ikev2/tasks/ike_dpd.c sa/ikev2/tasks/ike_dpd.h \
 sa/ikev2/tasks/ike_init.c sa/ikev2/tasks/ike_init.h \
 sa/ikev2/tasks/ike_natd.c sa/ikev2/tasks/ike_natd.h \
+sa/ikev2/tasks/ike_mid_sync.c sa/ikev2/tasks/ike_mid_sync.h \
 sa/ikev2/tasks/ike_mobike.c sa/ikev2/tasks/ike_mobike.h \
 sa/ikev2/tasks/ike_rekey.c sa/ikev2/tasks/ike_rekey.h \
 sa/ikev2/tasks/ike_reauth.c sa/ikev2/tasks/ike_reauth.h \
@@ -118,6 +119,7 @@ endif
 if USE_IKEV1
 libcharon_la_SOURCES += \
 sa/ikev1/keymat_v1.c sa/ikev1/keymat_v1.h \
+sa/ikev1/iv_manager.c sa/ikev1/iv_manager.h \
 sa/ikev1/task_manager_v1.c sa/ikev1/task_manager_v1.h \
 sa/ikev1/authenticators/psk_v1_authenticator.c sa/ikev1/authenticators/psk_v1_authenticator.h \
 sa/ikev1/authenticators/pubkey_v1_authenticator.c sa/ikev1/authenticators/pubkey_v1_authenticator.h \
@@ -223,6 +225,13 @@ if USE_CONNMARK
   SUBDIRS += plugins/connmark
 if MONOLITHIC
   libcharon_la_LIBADD += plugins/connmark/libstrongswan-connmark.la
+endif
+endif
+
+if USE_BYPASS_LAN
+  SUBDIRS += plugins/bypass_lan
+if MONOLITHIC
+  libcharon_la_LIBADD += plugins/bypass_lan/libstrongswan-bypass-lan.la
 endif
 endif
 

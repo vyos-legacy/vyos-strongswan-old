@@ -88,6 +88,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@USE_WINDOWS_TRUE@am__append_1 = -lws2_32
 subdir = src/libipsec
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -136,8 +137,10 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(ipseclibdir)"
 LTLIBRARIES = $(ipseclib_LTLIBRARIES)
+am__DEPENDENCIES_1 =
 libipsec_la_DEPENDENCIES =  \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__DEPENDENCIES_1)
 am_libipsec_la_OBJECTS = ipsec.lo esp_context.lo esp_packet.lo \
 	ip_packet.lo ipsec_event_relay.lo ipsec_policy.lo \
 	ipsec_policy_mgr.lo ipsec_processor.lo ipsec_sa.lo \
@@ -397,7 +400,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -432,6 +434,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -495,9 +498,9 @@ ipsec_processor.c ipsec_processor.h \
 ipsec_sa.c ipsec_sa.h \
 ipsec_sa_mgr.c ipsec_sa_mgr.h
 
-libipsec_la_LIBADD = \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
-
+libipsec_la_LIBADD =  \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__append_1)
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan
 

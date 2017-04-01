@@ -554,6 +554,11 @@ If
 .B %any
 is used for the remote endpoint it literally means any IP address.
 
+If an
+.B FQDN
+is assigned it is resolved every time a configuration lookup is done. If DNS
+resolution times out, the lookup is delayed for that time.
+
 To limit the connection to a  specific range of hosts, a range (
 .BR 10.1.0.0-10.2.255.255
 ) or a subnet (
@@ -908,7 +913,9 @@ the greatest common subnet. In IKEv1, this may lead to problems with other
 implementations, make sure to configure identical subnets in such
 configurations. IKEv2 supports multiple subnets separated by commas. IKEv1 only
 interprets the first subnet of such a definition, unless the Cisco Unity
-extension plugin is enabled.
+extension plugin is enabled. This is due to a limitation of the IKEv1 protocol,
+which only allows a single pair of subnets per CHILD_SA. So to tunnel several
+subnets a conn entry has to be defined and brought up for each pair of subnets.
 
 The optional part after each subnet enclosed in square brackets specifies a
 protocol/port to restrict the selector for that subnet.
@@ -1053,6 +1060,7 @@ and
 .B pull
 (the default).
 Push mode is currently not supported with IKEv2.
+The setting must be the same on both sides.
 .TP
 .BR reauth " = " yes " | no"
 whether rekeying of an IKE_SA should also reauthenticate the peer. In IKEv1,

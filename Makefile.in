@@ -388,7 +388,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -423,6 +422,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -1031,7 +1031,7 @@ cov-reset-common:
 @COVERAGE_TRUE@		@mkdir $(top_builddir)/coverage
 @COVERAGE_TRUE@		lcov -c -o $(top_builddir)/coverage/coverage.info -d $(top_builddir) \
 @COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
-@COVERAGE_TRUE@		lcov -r $(top_builddir)/coverage/coverage.info '*/tests/*' \
+@COVERAGE_TRUE@		lcov -r $(top_builddir)/coverage/coverage.info '*/tests/*' '*/suites/*' '/usr*' \
 @COVERAGE_TRUE@			 -o $(top_builddir)/coverage/coverage.cleaned.info \
 @COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
 @COVERAGE_TRUE@		genhtml --num-spaces 4 --legend --branch-coverage --ignore-errors source \

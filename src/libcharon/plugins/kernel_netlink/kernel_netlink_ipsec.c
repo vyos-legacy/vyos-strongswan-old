@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Tobias Brunner
+ * Copyright (C) 2006-2017 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2008-2016 Andreas Steffen
  * Copyright (C) 2006-2007 Fabian Hartmann, Noah Heusser
@@ -76,7 +76,7 @@
 #endif
 
 /** Base priority for installed policies */
-#define PRIO_BASE 100000
+#define PRIO_BASE 200000
 
 /** Default lifetime of an acquire XFRM state (in seconds) */
 #define DEFAULT_ACQUIRE_LIFETIME 165
@@ -117,7 +117,7 @@ struct kernel_algorithm_t {
 	/**
 	 * Name of the algorithm in linux crypto API
 	 */
-	char *name;
+	const char *name;
 };
 
 ENUM(xfrm_msg_names, XFRM_MSG_NEWSA, XFRM_MSG_MAPPING,
@@ -221,6 +221,7 @@ static kernel_algorithm_t integrity_algs[] = {
 /*	{AUTH_DES_MAC,				"***"				}, */
 /*	{AUTH_KPDK_MD5,				"***"				}, */
 	{AUTH_AES_XCBC_96,			"xcbc(aes)"			},
+	{AUTH_AES_CMAC_96,			"cmac(aes)"			},
 };
 
 /**
@@ -236,7 +237,7 @@ static kernel_algorithm_t compression_algs[] = {
 /**
  * Look up a kernel algorithm name and its key size
  */
-static char* lookup_algorithm(transform_type_t type, int ikev2)
+static const char* lookup_algorithm(transform_type_t type, int ikev2)
 {
 	kernel_algorithm_t *list;
 	int i, count;
@@ -652,14 +653,15 @@ static inline uint32_t port_mask_bits(uint16_t port_mask)
 /**
  * Calculate the priority of a policy
  *
- * bits 0-0:  restriction to network interface (0..1)   1 bit
- * bits 1-6:  src + dst port mask bits (2 * 0..16)      6 bits
- * bits 7-7:  restriction to protocol (0..1)            1 bit
- * bits 8-16: src + dst network mask bits (2 * 0..128)  9 bits
- *                                                     17 bits
+ * bits 0-0:  separate trap and regular policies (0..1) 1 bit
+ * bits 1-1:  restriction to network interface (0..1)   1 bit
+ * bits 2-7:  src + dst port mask bits (2 * 0..16)      6 bits
+ * bits 8-8:  restriction to protocol (0..1)            1 bit
+ * bits 9-17: src + dst network mask bits (2 * 0..128)  9 bits
+ *                                                     18 bits
  *
- * smallest value: 000000000 0 000000 0:      0, lowest priority = 100'000
- * largest value : 100000000 1 100000 1: 65'729, highst priority =  34'271
+ * smallest value: 000000000 0 000000 0 0:       0, lowest priority = 200'000
+ * largest value : 100000000 1 100000 1 1: 131'459, highst priority =  68'541
  */
 static uint32_t get_priority(policy_entry_t *policy, policy_priority_t prio,
 							 char *interface)
@@ -672,8 +674,6 @@ static uint32_t get_priority(policy_entry_t *policy, policy_priority_t prio,
 			priority += PRIO_BASE;
 			/* fall-through to next case */
 		case POLICY_PRIORITY_ROUTED:
-			priority += PRIO_BASE;
-			/* fall-through to next case */
 		case POLICY_PRIORITY_DEFAULT:
 			priority += PRIO_BASE;
 			/* fall-through to next case */
@@ -684,10 +684,11 @@ static uint32_t get_priority(policy_entry_t *policy, policy_priority_t prio,
 	dport_mask_bits = port_mask_bits(policy->sel.dport_mask);
 
 	/* calculate priority */
-	priority -= (policy->sel.prefixlen_s + policy->sel.prefixlen_d) * 256;
-	priority -=  policy->sel.proto ? 128 : 0;
-	priority -= (sport_mask_bits + dport_mask_bits) * 2;
-	priority -= (interface != NULL);
+	priority -= (policy->sel.prefixlen_s + policy->sel.prefixlen_d) * 512;
+	priority -=  policy->sel.proto ? 256 : 0;
+	priority -= (sport_mask_bits + dport_mask_bits) * 4;
+	priority -= (interface != NULL) * 2;
+	priority -= (prio != POLICY_PRIORITY_ROUTED);
 
 	return priority;
 }
@@ -1210,8 +1211,15 @@ METHOD(kernel_ipsec_t, get_spi, status_t,
 	private_kernel_netlink_ipsec_t *this, host_t *src, host_t *dst,
 	uint8_t protocol, uint32_t *spi)
 {
-	if (get_spi_internal(this, src, dst, protocol,
-						 0xc0000000, 0xcFFFFFFF, spi) != SUCCESS)
+	uint32_t spi_min, spi_max;
+
+	spi_min = lib->settings->get_int(lib->settings, "%s.spi_min",
+									 KERNEL_SPI_MIN, lib->ns);
+	spi_max = lib->settings->get_int(lib->settings, "%s.spi_max",
+									 KERNEL_SPI_MAX, lib->ns);
+
+	if (get_spi_internal(this, src, dst, protocol, min(spi_min, spi_max),
+						 max(spi_min, spi_max), spi) != SUCCESS)
 	{
 		DBG1(DBG_KNL, "unable to get SPI");
 		return FAILED;
@@ -1276,7 +1284,8 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 	kernel_ipsec_add_sa_t *data)
 {
 	netlink_buf_t request;
-	char *alg_name, markstr[32] = "";
+	const char *alg_name;
+	char markstr[32] = "";
 	struct nlmsghdr *hdr;
 	struct xfrm_usersa_info *sa;
 	uint16_t icv_size = 64, ipcomp = data->ipcomp;
@@ -1366,6 +1375,11 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 			break;
 		default:
 			break;
+	}
+	if (id->proto == IPPROTO_AH && sa->family == AF_INET)
+	{	/* use alignment to 4 bytes for IPv4 instead of the incorrect 8 byte
+		 * alignment that's used by default but is only valid for IPv6 */
+		sa->flags |= XFRM_STATE_ALIGN4;
 	}
 
 	sa->reqid = data->reqid;
@@ -2523,7 +2537,7 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 	{	/* we don't update the policy if the priority is lower than that of
 		 * the currently installed one */
 		policy_change_done(this, policy);
-		DBG2(DBG_KNL, "not updating policy %R === %R %N%s [priority %u,"
+		DBG2(DBG_KNL, "not updating policy %R === %R %N%s [priority %u, "
 			 "refcount %d]", id->src_ts, id->dst_ts, policy_dir_names,
 			 id->dir, markstr, cur_priority, use_count);
 		return SUCCESS;

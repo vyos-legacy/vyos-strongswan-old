@@ -617,6 +617,12 @@ METHOD(ike_sa_t, set_message_id, void,
 	}
 }
 
+METHOD(ike_sa_t, get_message_id, uint32_t,
+	private_ike_sa_t *this, bool initiate)
+{
+	return this->task_manager->get_mid(this->task_manager, initiate);
+}
+
 METHOD(ike_sa_t, send_keepalive, void,
 	private_ike_sa_t *this, bool scheduled)
 {
@@ -755,6 +761,10 @@ METHOD(ike_sa_t, send_dpd, status_t,
 	if (this->state == IKE_PASSIVE)
 	{
 		return INVALID_STATE;
+	}
+	if (this->version == IKEV1 && this->state == IKE_REKEYING)
+	{	/* don't send DPDs for rekeyed IKEv1 SAs */
+		return SUCCESS;
 	}
 	delay = this->peer_cfg->get_dpd(this->peer_cfg);
 	if (this->task_manager->busy(this->task_manager))
@@ -2436,6 +2446,25 @@ static bool is_current_path_valid(private_ike_sa_t *this)
 {
 	bool valid = FALSE;
 	host_t *src;
+
+	if (supports_extension(this, EXT_MOBIKE) &&
+		lib->settings->get_bool(lib->settings,
+								"%s.prefer_best_path", FALSE, lib->ns))
+	{
+		/* check if the current path is the best path; migrate otherwise */
+		src = charon->kernel->get_source_addr(charon->kernel, this->other_host,
+											  NULL);
+		if (src)
+		{
+			valid = src->ip_equals(src, this->my_host);
+			src->destroy(src);
+		}
+		if (!valid)
+		{
+			DBG1(DBG_IKE, "old path is not preferred anymore");
+		}
+		return valid;
+	}
 	src = charon->kernel->get_source_addr(charon->kernel, this->other_host,
 										  this->my_host);
 	if (src)
@@ -2445,6 +2474,10 @@ static bool is_current_path_valid(private_ike_sa_t *this)
 			valid = TRUE;
 		}
 		src->destroy(src);
+	}
+	if (!valid)
+	{
+		DBG1(DBG_IKE, "old path is not available anymore, try to find another");
 	}
 	return valid;
 }
@@ -2472,7 +2505,6 @@ static bool is_any_path_valid(private_ike_sa_t *this)
 			break;
 	}
 
-	DBG1(DBG_IKE, "old path is not available anymore, try to find another");
 	enumerator = create_peer_address_enumerator(this);
 	while (enumerator->enumerate(enumerator, &addr))
 	{
@@ -2509,6 +2541,16 @@ METHOD(ike_sa_t, roam, status_t,
 			return SUCCESS;
 		default:
 			break;
+	}
+
+	/* ignore roam events if MOBIKE is not supported/enabled and the local
+	 * address is statically configured */
+	if (this->version == IKEV2 && !supports_extension(this, EXT_MOBIKE) &&
+		ike_cfg_has_address(this->ike_cfg, this->my_host, TRUE))
+	{
+		DBG2(DBG_IKE, "keeping statically configured path %H - %H",
+			 this->my_host, this->other_host);
+		return SUCCESS;
 	}
 
 	/* keep existing path if possible */
@@ -2885,6 +2927,7 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.get_other_host = _get_other_host,
 			.set_other_host = _set_other_host,
 			.set_message_id = _set_message_id,
+			.get_message_id = _get_message_id,
 			.float_ports = _float_ports,
 			.update_hosts = _update_hosts,
 			.get_my_id = _get_my_id,

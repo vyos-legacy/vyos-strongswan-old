@@ -367,7 +367,7 @@ static status_t retransmit_packet(private_task_manager_t *this, uint32_t seqnr,
 	send_packets(this, packets);
 	lib->scheduler->schedule_job_ms(lib->scheduler, (job_t*)
 			retransmit_job_create(seqnr, this->ike_sa->get_id(this->ike_sa)), t);
-	return NEED_MORE;
+	return SUCCESS;
 }
 
 METHOD(task_manager_t, retransmit, status_t,
@@ -380,10 +380,9 @@ METHOD(task_manager_t, retransmit, status_t,
 	{
 		status = retransmit_packet(this, seqnr, this->initiating.mid,
 					this->initiating.retransmitted, this->initiating.packets);
-		if (status == NEED_MORE)
+		if (status == SUCCESS)
 		{
 			this->initiating.retransmitted++;
-			status = SUCCESS;
 		}
 	}
 	if (seqnr == this->responding.seqnr &&
@@ -391,10 +390,9 @@ METHOD(task_manager_t, retransmit, status_t,
 	{
 		status = retransmit_packet(this, seqnr, this->responding.mid,
 					this->responding.retransmitted, this->responding.packets);
-		if (status == NEED_MORE)
+		if (status == SUCCESS)
 		{
 			this->responding.retransmitted++;
-			status = SUCCESS;
 		}
 	}
 	return status;
@@ -554,6 +552,12 @@ METHOD(task_manager_t, initiate, status_t,
 					new_mid = TRUE;
 					break;
 				}
+				if (activate_task(this, TASK_ISAKMP_DPD))
+				{
+					exchange = INFORMATIONAL_V1;
+					new_mid = TRUE;
+					break;
+				}
 				break;
 			default:
 				break;
@@ -685,13 +689,9 @@ METHOD(task_manager_t, initiate, status_t,
 		message->destroy(message);
 		return retransmit(this, this->initiating.seqnr);
 	}
-	if (keep)
-	{	/* keep the packet for retransmission, the responder might request it */
-		send_packets(this, this->initiating.packets);
-	}
-	else
+	send_packets(this, this->initiating.packets);
+	if (!keep)
 	{
-		send_packets(this, this->initiating.packets);
 		clear_packets(this->initiating.packets);
 	}
 	message->destroy(message);
@@ -1902,6 +1902,12 @@ METHOD(task_manager_t, incr_mid, void,
 {
 }
 
+METHOD(task_manager_t, get_mid, uint32_t,
+	private_task_manager_t *this, bool initiate)
+{
+	return initiate ? this->initiating.mid : this->responding.mid;
+}
+
 METHOD(task_manager_t, reset, void,
 	private_task_manager_t *this, uint32_t initiate, uint32_t respond)
 {
@@ -2005,6 +2011,7 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 				.initiate = _initiate,
 				.retransmit = _retransmit,
 				.incr_mid = _incr_mid,
+				.get_mid = _get_mid,
 				.reset = _reset,
 				.adopt_tasks = _adopt_tasks,
 				.adopt_child_tasks = _adopt_child_tasks,

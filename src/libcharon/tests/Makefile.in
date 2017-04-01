@@ -115,6 +115,7 @@ am_exchange_tests_OBJECTS =  \
 	suites/exchange_tests-test_child_delete.$(OBJEXT) \
 	suites/exchange_tests-test_child_rekey.$(OBJEXT) \
 	suites/exchange_tests-test_ike_delete.$(OBJEXT) \
+	suites/exchange_tests-test_ike_mid_sync.$(OBJEXT) \
 	suites/exchange_tests-test_ike_rekey.$(OBJEXT) \
 	utils/exchange_tests-exchange_test_asserts.$(OBJEXT) \
 	utils/exchange_tests-exchange_test_helper.$(OBJEXT) \
@@ -381,7 +382,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -416,6 +416,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -491,6 +492,7 @@ exchange_tests_SOURCES = \
   suites/test_child_delete.c \
   suites/test_child_rekey.c \
   suites/test_ike_delete.c \
+  suites/test_ike_mid_sync.c \
   suites/test_ike_rekey.c \
   utils/exchange_test_asserts.h utils/exchange_test_asserts.c \
   utils/exchange_test_helper.h utils/exchange_test_helper.c \
@@ -572,6 +574,8 @@ suites/exchange_tests-test_child_rekey.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/exchange_tests-test_ike_delete.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/exchange_tests-test_ike_mid_sync.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/exchange_tests-test_ike_rekey.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 utils/$(am__dirstamp):
@@ -623,6 +627,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/exchange_tests-test_child_delete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/exchange_tests-test_child_rekey.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/exchange_tests-test_ike_delete.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/exchange_tests-test_ike_rekey.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libcharon_tests-test_ike_cfg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libcharon_tests-test_mem_pool.Po@am__quote@
@@ -714,6 +719,20 @@ suites/exchange_tests-test_ike_delete.obj: suites/test_ike_delete.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ike_delete.c' object='suites/exchange_tests-test_ike_delete.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -c -o suites/exchange_tests-test_ike_delete.obj `if test -f 'suites/test_ike_delete.c'; then $(CYGPATH_W) 'suites/test_ike_delete.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ike_delete.c'; fi`
+
+suites/exchange_tests-test_ike_mid_sync.o: suites/test_ike_mid_sync.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -MT suites/exchange_tests-test_ike_mid_sync.o -MD -MP -MF suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Tpo -c -o suites/exchange_tests-test_ike_mid_sync.o `test -f 'suites/test_ike_mid_sync.c' || echo '$(srcdir)/'`suites/test_ike_mid_sync.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Tpo suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ike_mid_sync.c' object='suites/exchange_tests-test_ike_mid_sync.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -c -o suites/exchange_tests-test_ike_mid_sync.o `test -f 'suites/test_ike_mid_sync.c' || echo '$(srcdir)/'`suites/test_ike_mid_sync.c
+
+suites/exchange_tests-test_ike_mid_sync.obj: suites/test_ike_mid_sync.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -MT suites/exchange_tests-test_ike_mid_sync.obj -MD -MP -MF suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Tpo -c -o suites/exchange_tests-test_ike_mid_sync.obj `if test -f 'suites/test_ike_mid_sync.c'; then $(CYGPATH_W) 'suites/test_ike_mid_sync.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ike_mid_sync.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Tpo suites/$(DEPDIR)/exchange_tests-test_ike_mid_sync.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ike_mid_sync.c' object='suites/exchange_tests-test_ike_mid_sync.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -c -o suites/exchange_tests-test_ike_mid_sync.obj `if test -f 'suites/test_ike_mid_sync.c'; then $(CYGPATH_W) 'suites/test_ike_mid_sync.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ike_mid_sync.c'; fi`
 
 suites/exchange_tests-test_ike_rekey.o: suites/test_ike_rekey.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(exchange_tests_CFLAGS) $(CFLAGS) -MT suites/exchange_tests-test_ike_rekey.o -MD -MP -MF suites/$(DEPDIR)/exchange_tests-test_ike_rekey.Tpo -c -o suites/exchange_tests-test_ike_rekey.o `test -f 'suites/test_ike_rekey.c' || echo '$(srcdir)/'`suites/test_ike_rekey.c

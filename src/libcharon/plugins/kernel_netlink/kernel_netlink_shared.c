@@ -15,6 +15,29 @@
  * for more details.
  */
 
+/*
+ * Copyright (C) 2016 secunet Security Networks AG
+ * Copyright (C) 2016 Thomas Egerer
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include <sys/socket.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -281,8 +304,9 @@ static status_t send_once(private_netlink_socket_t *this, struct nlmsghdr *in,
 						  uintptr_t seq, struct nlmsghdr **out, size_t *out_len)
 {
 	struct nlmsghdr *hdr;
-	chunk_t result = {};
 	entry_t *entry;
+	u_char *ptr;
+	int i;
 
 	in->nlmsg_seq = seq;
 	in->nlmsg_pid = getpid();
@@ -343,6 +367,14 @@ static status_t send_once(private_netlink_socket_t *this, struct nlmsghdr *in,
 		return OUT_OF_RES;
 	}
 
+	for (i = 0, *out_len = 0; i < array_count(entry->hdrs); i++)
+	{
+		array_get(entry->hdrs, i, &hdr);
+		*out_len += hdr->nlmsg_len;
+	}
+	ptr = malloc(*out_len);
+	*out = (struct nlmsghdr*)ptr;
+
 	while (array_remove(entry->hdrs, ARRAY_HEAD, &hdr))
 	{
 		if (this->names)
@@ -350,14 +382,11 @@ static status_t send_once(private_netlink_socket_t *this, struct nlmsghdr *in,
 			DBG3(DBG_KNL, "received %N %u: %b", this->names, hdr->nlmsg_type,
 				 hdr->nlmsg_seq, hdr, hdr->nlmsg_len);
 		}
-		result = chunk_cat("mm", result,
-						   chunk_create((char*)hdr, hdr->nlmsg_len));
+		memcpy(ptr, hdr, hdr->nlmsg_len);
+		ptr += hdr->nlmsg_len;
+		free(hdr);
 	}
 	destroy_entry(entry);
-
-	*out_len = result.len;
-	*out = (struct nlmsghdr*)result.ptr;
-
 	return SUCCESS;
 }
 
@@ -557,6 +586,8 @@ netlink_socket_t *netlink_socket_create(int protocol, enum_name_t *names,
 	struct sockaddr_nl addr = {
 		.nl_family = AF_NETLINK,
 	};
+	bool force_buf = FALSE;
+	int rcvbuf_size = 0;
 
 	INIT(this,
 		.public = {
@@ -605,6 +636,25 @@ netlink_socket_t *netlink_socket_create(int protocol, enum_name_t *names,
 			 strerror(errno), errno);
 		destroy(this);
 		return NULL;
+	}
+	rcvbuf_size = lib->settings->get_int(lib->settings,
+						"%s.plugins.kernel-netlink.receive_buffer_size",
+						rcvbuf_size, lib->ns);
+	if (rcvbuf_size)
+	{
+		int optname;
+
+		force_buf = lib->settings->get_bool(lib->settings,
+						"%s.plugins.kernel-netlink.force_receive_buffer_size",
+						force_buf, lib->ns);
+		optname = force_buf ? SO_RCVBUFFORCE : SO_RCVBUF;
+
+		if (setsockopt(this->socket, SOL_SOCKET, optname, &rcvbuf_size,
+					   sizeof(rcvbuf_size)) == -1)
+		{
+			DBG1(DBG_KNL, "failed to %supdate receive buffer size to %d: %s",
+					force_buf ? "forcibly " : "", rcvbuf_size, strerror(errno));
+		}
 	}
 	if (this->parallel)
 	{

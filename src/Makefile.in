@@ -121,7 +121,6 @@ host_triplet = @host@
 @USE_LIBPTTLS_TRUE@am__append_32 = pt-tls-client
 @USE_INTEGRITY_TEST_TRUE@am__append_33 = checksum
 @USE_AIKGEN_TRUE@am__append_34 = aikgen
-@USE_AIKPUB2_TRUE@am__append_35 = aikpub2
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -200,7 +199,7 @@ DIST_SUBDIRS = . include libstrongswan libipsec libsimaka libtls \
 	libcharon starter ipsec _copyright charon charon-systemd \
 	charon-nm stroke _updown scepclient pki swanctl conftest dumm \
 	libfast manager medsrv pool charon-tkm charon-cmd charon-svc \
-	pt-tls-client checksum aikgen aikpub2
+	pt-tls-client checksum aikgen
 am__DIST_COMMON = $(srcdir)/Makefile.in
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -374,7 +373,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -409,6 +407,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -469,7 +468,7 @@ SUBDIRS = . include $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_25) $(am__append_26) $(am__append_27) \
 	$(am__append_28) $(am__append_29) $(am__append_30) \
 	$(am__append_31) $(am__append_32) $(am__append_33) \
-	$(am__append_34) $(am__append_35)
+	$(am__append_34)
 all: all-recursive
 
 .SUFFIXES:

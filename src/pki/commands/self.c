@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Martin Willi
- * Copyright (C) 2015 Andreas Steffen
+ * Copyright (C) 2015-2017 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
 #include <collections/linked_list.h>
 #include <credentials/certificates/certificate.h>
 #include <credentials/certificates/x509.h>
+#include <selectors/traffic_selector.h>
 #include <asn1/asn1.h>
 
 /**
@@ -49,7 +50,7 @@ static void destroy_policy_mapping(x509_policy_mapping_t *mapping)
 static int self()
 {
 	cred_encoding_type_t form = CERT_ASN1_DER;
-	key_type_t type = KEY_RSA;
+	key_type_t type = KEY_ANY;
 	hash_algorithm_t digest = HASH_UNKNOWN;
 	certificate_t *cert = NULL;
 	private_key_t *private = NULL;
@@ -57,6 +58,7 @@ static int self()
 	char *file = NULL, *dn = NULL, *hex = NULL, *error = NULL, *keyid = NULL;
 	identification_t *id = NULL;
 	linked_list_t *san, *ocsp, *permitted, *excluded, *policies, *mappings;
+	linked_list_t *addrblocks;
 	int pathlen = X509_NO_CONSTRAINT, inhibit_any = X509_NO_CONSTRAINT;
 	int inhibit_mapping = X509_NO_CONSTRAINT;
 	int require_explicit = X509_NO_CONSTRAINT;
@@ -66,6 +68,7 @@ static int self()
 	char *datenb = NULL, *datena = NULL, *dateform = NULL;
 	x509_flag_t flags = 0;
 	x509_cert_policy_t *policy = NULL;
+	traffic_selector_t *ts;
 	char *arg;
 
 	san = linked_list_create();
@@ -74,6 +77,7 @@ static int self()
 	excluded = linked_list_create();
 	policies = linked_list_create();
 	mappings = linked_list_create();
+	addrblocks = linked_list_create();
 
 	while (TRUE)
 	{
@@ -89,6 +93,10 @@ static int self()
 				else if (streq(arg, "ecdsa"))
 				{
 					type = KEY_ECDSA;
+				}
+				else if (streq(arg, "ed25519"))
+				{
+					type = KEY_ED25519;
 				}
 				else if (streq(arg, "bliss"))
 				{
@@ -148,6 +156,15 @@ static int self()
 				continue;
 			case 'p':
 				pathlen = atoi(arg);
+				continue;
+			case 'B':
+				ts = parse_ts(arg);
+				if (!ts)
+				{
+					error = "invalid addressBlock";
+					goto usage;
+				}
+				addrblocks->insert_last(addrblocks, ts);
 				continue;
 			case 'n':
 				permitted->insert_last(permitted,
@@ -356,6 +373,7 @@ static int self()
 						BUILD_NOT_AFTER_TIME, not_after, BUILD_SERIAL, serial,
 						BUILD_DIGEST_ALG, digest, BUILD_X509_FLAG, flags,
 						BUILD_PATHLEN, pathlen, BUILD_SUBJECT_ALTNAMES, san,
+						BUILD_ADDRBLOCKS, addrblocks,
 						BUILD_OCSP_ACCESS_LOCATIONS, ocsp,
 						BUILD_PERMITTED_NAME_CONSTRAINTS, permitted,
 						BUILD_EXCLUDED_NAME_CONSTRAINTS, excluded,
@@ -390,6 +408,7 @@ end:
 	san->destroy_offset(san, offsetof(identification_t, destroy));
 	permitted->destroy_offset(permitted, offsetof(identification_t, destroy));
 	excluded->destroy_offset(excluded, offsetof(identification_t, destroy));
+	addrblocks->destroy_offset(addrblocks, offsetof(traffic_selector_t, destroy));
 	policies->destroy_function(policies, (void*)destroy_cert_policy);
 	mappings->destroy_function(mappings, (void*)destroy_policy_mapping);
 	ocsp->destroy(ocsp);
@@ -407,6 +426,7 @@ usage:
 	san->destroy_offset(san, offsetof(identification_t, destroy));
 	permitted->destroy_offset(permitted, offsetof(identification_t, destroy));
 	excluded->destroy_offset(excluded, offsetof(identification_t, destroy));
+	addrblocks->destroy_offset(addrblocks, offsetof(traffic_selector_t, destroy));
 	policies->destroy_function(policies, (void*)destroy_cert_policy);
 	mappings->destroy_function(mappings, (void*)destroy_policy_mapping);
 	ocsp->destroy(ocsp);
@@ -421,7 +441,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		self, 's', "self",
 		"create a self signed certificate",
-		{" [--in file|--keyid hex] [--type rsa|ecdsa|bliss|priv]",
+		{" [--in file|--keyid hex] [--type rsa|ecdsa|ed25519|bliss|priv]",
 		 " --dn distinguished-name [--san subjectAltName]+",
 		 "[--lifetime days] [--serial hex] [--ca] [--ocsp uri]+",
 		 "[--flag serverAuth|clientAuth|crlSign|ocspSigning|msSmartcardLogon]+",
@@ -434,7 +454,7 @@ static void __attribute__ ((constructor))reg()
 		{
 			{"help",			'h', 0, "show usage information"},
 			{"in",				'i', 1, "private key input file, default: stdin"},
-			{"keyid",			'x', 1, "keyid on smartcard of private key"},
+			{"keyid",			'x', 1, "smartcard or TPM private key object handle"},
 			{"type",			't', 1, "type of input key, default: priv"},
 			{"dn",				'd', 1, "subject and issuer distinguished name"},
 			{"san",				'a', 1, "subjectAltName to include in certificate"},
@@ -445,6 +465,7 @@ static void __attribute__ ((constructor))reg()
 			{"serial",			's', 1, "serial number in hex, default: random"},
 			{"ca",				'b', 0, "include CA basicConstraint, default: no"},
 			{"pathlen",			'p', 1, "set path length constraint"},
+			{"addrblock",		'B', 1, "RFC 3779 addrBlock to include"},
 			{"nc-permitted",	'n', 1, "add permitted NameConstraint"},
 			{"nc-excluded",		'N', 1, "add excluded NameConstraint"},
 			{"cert-policy",		'P', 1, "certificatePolicy OID to include"},
