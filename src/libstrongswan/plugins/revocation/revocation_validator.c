@@ -36,6 +36,17 @@ struct private_revocation_validator_t {
 	 * Public revocation_validator_t interface.
 	 */
 	revocation_validator_t public;
+
+	/**
+	 * Enable OCSP validation
+	 */
+	bool enable_ocsp;
+
+	/**
+	 * Enable CRL validation
+	 */
+	bool enable_crl;
+
 };
 
 /**
@@ -732,54 +743,63 @@ METHOD(cert_validator_t, validate, bool,
 	certificate_t *issuer, bool online, u_int pathlen, bool anchor,
 	auth_cfg_t *auth)
 {
-	if (subject->get_type(subject) == CERT_X509 &&
-		issuer->get_type(issuer) == CERT_X509 &&
-		online)
+	if (online && (this->enable_ocsp || this->enable_crl) &&
+		subject->get_type(subject) == CERT_X509 &&
+		issuer->get_type(issuer) == CERT_X509)
 	{
 		DBG1(DBG_CFG, "checking certificate status of \"%Y\"",
 					   subject->get_subject(subject));
-		switch (check_ocsp((x509_t*)subject, (x509_t*)issuer,
-						   pathlen ? NULL : auth))
+
+		if (this->enable_ocsp)
 		{
-			case VALIDATION_GOOD:
-				DBG1(DBG_CFG, "certificate status is good");
-				return TRUE;
-			case VALIDATION_REVOKED:
-			case VALIDATION_ON_HOLD:
-				/* has already been logged */
-				lib->credmgr->call_hook(lib->credmgr, CRED_HOOK_REVOKED,
-										subject);
-				return FALSE;
-			case VALIDATION_SKIPPED:
-				DBG2(DBG_CFG, "ocsp check skipped, no ocsp found");
-				break;
-			case VALIDATION_STALE:
-				DBG1(DBG_CFG, "ocsp information stale, fallback to crl");
-				break;
-			case VALIDATION_FAILED:
-				DBG1(DBG_CFG, "ocsp check failed, fallback to crl");
-				break;
+			switch (check_ocsp((x509_t*)subject, (x509_t*)issuer,
+							   pathlen ? NULL : auth))
+			{
+				case VALIDATION_GOOD:
+					DBG1(DBG_CFG, "certificate status is good");
+					return TRUE;
+				case VALIDATION_REVOKED:
+				case VALIDATION_ON_HOLD:
+					/* has already been logged */
+					lib->credmgr->call_hook(lib->credmgr, CRED_HOOK_REVOKED,
+											subject);
+					return FALSE;
+				case VALIDATION_SKIPPED:
+					DBG2(DBG_CFG, "ocsp check skipped, no ocsp found");
+					break;
+				case VALIDATION_STALE:
+					DBG1(DBG_CFG, "ocsp information stale, fallback to crl");
+					break;
+				case VALIDATION_FAILED:
+					DBG1(DBG_CFG, "ocsp check failed, fallback to crl");
+					break;
+			}
 		}
-		switch (check_crl((x509_t*)subject, (x509_t*)issuer,
-						  pathlen ? NULL : auth))
+
+		if (this->enable_crl)
 		{
-			case VALIDATION_GOOD:
-				DBG1(DBG_CFG, "certificate status is good");
-				return TRUE;
-			case VALIDATION_REVOKED:
-			case VALIDATION_ON_HOLD:
-				/* has already been logged */
-				lib->credmgr->call_hook(lib->credmgr, CRED_HOOK_REVOKED,
-										subject);
-				return FALSE;
-			case VALIDATION_FAILED:
-			case VALIDATION_SKIPPED:
-				DBG1(DBG_CFG, "certificate status is not available");
-				break;
-			case VALIDATION_STALE:
-				DBG1(DBG_CFG, "certificate status is unknown, crl is stale");
-				break;
+			switch (check_crl((x509_t*)subject, (x509_t*)issuer,
+							  pathlen ? NULL : auth))
+			{
+				case VALIDATION_GOOD:
+					DBG1(DBG_CFG, "certificate status is good");
+					return TRUE;
+				case VALIDATION_REVOKED:
+				case VALIDATION_ON_HOLD:
+					/* has already been logged */
+					lib->credmgr->call_hook(lib->credmgr, CRED_HOOK_REVOKED,
+											subject);
+					return FALSE;
+				case VALIDATION_FAILED:
+				case VALIDATION_SKIPPED:
+					DBG1(DBG_CFG, "certificate status is not available");
+					break;
+				case VALIDATION_STALE:
+					DBG1(DBG_CFG, "certificate status is unknown, crl is stale");
+					break;
+			}
 		}
+
 		lib->credmgr->call_hook(lib->credmgr, CRED_HOOK_VALIDATION_FAILED,
 								subject);
 	}
@@ -804,7 +824,19 @@ revocation_validator_t *revocation_validator_create()
 			.validator.validate = _validate,
 			.destroy = _destroy,
 		},
+		.enable_ocsp = lib->settings->get_bool(lib->settings,
+							"%s.plugins.revocation.enable_ocsp", TRUE, lib->ns),
+		.enable_crl  = lib->settings->get_bool(lib->settings,
+							"%s.plugins.revocation.enable_crl",  TRUE, lib->ns),
 	);
 
+	if (!this->enable_ocsp)
+	{
+		DBG1(DBG_LIB, "all OCSP validation disabled");
+	}
+	if (!this->enable_crl)
+	{
+		DBG1(DBG_LIB, "all CRL validation disabled");
+	}
 	return &this->public;
 }

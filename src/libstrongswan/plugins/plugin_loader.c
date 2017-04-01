@@ -107,7 +107,7 @@ struct registered_feature_t {
 /**
  * Hash a registered feature
  */
-static bool registered_feature_hash(registered_feature_t *this)
+static u_int registered_feature_hash(registered_feature_t *this)
 {
 	return plugin_feature_hash(this->feature);
 }
@@ -1367,7 +1367,7 @@ void plugin_loader_add_plugindirs(char *basedir, char *plugins)
 	enumerator_t *enumerator;
 	char *name, path[PATH_MAX], dir[64];
 
-	enumerator = enumerator_create_token(plugins, " ", "");
+	enumerator = enumerator_create_token(plugins, " ", "!");
 	while (enumerator->enumerate(enumerator, &name))
 	{
 		snprintf(dir, sizeof(dir), "%s", name);

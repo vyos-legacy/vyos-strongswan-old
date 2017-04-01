@@ -155,7 +155,8 @@ am_libstrongswan_test_vectors_la_OBJECTS = test_vectors_plugin.lo \
 	test_vectors/sha2_hmac.lo test_vectors/sha3.lo \
 	test_vectors/sha3_shake.lo test_vectors/fips_prf.lo \
 	test_vectors/modp.lo test_vectors/modpsub.lo \
-	test_vectors/ecp.lo test_vectors/ecpbp.lo test_vectors/rng.lo
+	test_vectors/ecp.lo test_vectors/ecpbp.lo \
+	test_vectors/curve25519.lo test_vectors/rng.lo
 libstrongswan_test_vectors_la_OBJECTS =  \
 	$(am_libstrongswan_test_vectors_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -377,7 +378,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -412,6 +412,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -507,6 +508,7 @@ libstrongswan_test_vectors_la_SOURCES = \
 	test_vectors/modpsub.c \
 	test_vectors/ecp.c \
 	test_vectors/ecpbp.c \
+	test_vectors/curve25519.c \
 	test_vectors/rng.c
 
 libstrongswan_test_vectors_la_LDFLAGS = -module -avoid-version
@@ -667,6 +669,8 @@ test_vectors/ecp.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/ecpbp.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
+test_vectors/curve25519.lo: test_vectors/$(am__dirstamp) \
+	test_vectors/$(DEPDIR)/$(am__dirstamp)
 test_vectors/rng.lo: test_vectors/$(am__dirstamp) \
 	test_vectors/$(DEPDIR)/$(am__dirstamp)
 
@@ -696,6 +700,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/cast.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/chacha20_xof.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/chacha20poly1305.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/curve25519.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/des.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test_vectors/$(DEPDIR)/ecpbp.Plo@am__quote@

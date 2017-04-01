@@ -1,3 +1,44 @@
+strongswan-5.5.2
+----------------
+
+- Support of Diffie-Hellman group 31 using Curve25519 for IKE as defined
+  by RFC 8031.
+
+- Support of Ed25519 digital signature algorithm for IKEv2 as defined by
+  draft-ietf-ipsecme-eddsa. Ed25519-based public key pairs, X.509 certificates
+  and CRLs can be generated and printed by the pki tool.
+
+- The new "tpm" libtpmtss plugin allows to use persistent private RSA and ECDSA
+  keys bound to a TPM 2.0 for both IKE and TLS authentication. Using the
+  TPM 2.0 object handle as keyid parameter, the pki --pub tool can extract
+  the public key from the TPM thereby replacing the aikpub2 tool. In a similar
+  fashion pki --req can generate a PKCS#10 certificate request signed with
+  the TPM private key.
+
+- The pki tool gained support for generating certificates with the RFC 3779
+  addrblock extension. The charon addrblock plugin now dynamically narrows
+  traffic selectors based on the certificate addrblocks instead of rejecting
+  non-matching selectors completely. This allows generic connections, where
+  the allowed selectors are defined by the used certificates only.
+
+- In-place update of cached base and delta CRLs does not leave dozens
+  of stale copies in cache memory.
+
+- Several new features for the VICI interface and the swanctl utility: Querying
+  specific pools, enumerating and unloading keys and shared secrets, loading
+  keys and certificates from PKCS#11 tokens, the ability to initiate, install
+  and uninstall connections and policies by their exact name (if multiple child
+  sections in different connections share the same name), a command to initiate
+  the rekeying of IKE and IPsec SAs, support for settings previously only
+  supported by the old config files (plain pubkeys, dscp, certificate policies,
+  IPv6 Transport Proxy Mode, NT Hash secrets, mediation extension).
+
+  Important:  Due to issues with VICI bindings that map sub-sections to
+  dictionaries the CHILD_SA sections returned via list-sas now have a unique
+  name, the original name of a CHILD_SA is returned in the "name" key of its
+  section.
+
+
 strongswan-5.5.1
 ----------------
 
@@ -1356,7 +1397,7 @@ strongswan-4.3.5
   correctly if the system time changes (e.g. when using NTP).
 
 - In addition to time based rekeying, charon supports IPsec SA lifetimes based
-  on processed volume or number of packets. They new ipsec.conf paramaters
+  on processed volume or number of packets. They new ipsec.conf parameters
   'lifetime' (an alias to 'keylife'), 'lifebytes' and 'lifepackets' handle
   SA timeouts, while the parameters 'margintime' (an alias to rekeymargin),
   'marginbytes' and 'marginpackets' trigger the rekeying before a SA expires.
@@ -1584,7 +1625,7 @@ strongswan-4.2.10
   counterparts with better lookup times.
 
 - Better parallelization to run charon on multiple cores. Due to improved
-  ressource locking and other optimizations the daemon can take full
+  resource locking and other optimizations the daemon can take full
   advantage of 16 or even more cores.
 
 - The load-tester plugin can use a NULL Diffie-Hellman group and simulate

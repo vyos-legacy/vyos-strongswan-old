@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2008 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2016 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +21,7 @@
 #include <library.h>
 #include <threading/rwlock.h>
 #include <collections/linked_list.h>
+#include <credentials/certificates/crl.h>
 
 /** cache size, a power of 2 for fast modulo */
 #define CACHE_SIZE 32
@@ -87,6 +89,43 @@ static void cache(private_cert_cache_t *this,
 	relation_t *rel;
 	int i, offset, try;
 	u_int total_hits = 0;
+
+	/* cache a CRL by replacing a previous CRL cache entry if present */
+	if (subject->get_type(subject) == CERT_X509_CRL)
+	{
+		crl_t *crl, *cached_crl;
+
+		/* cache a delta CRL ? */
+		crl = (crl_t*)subject;
+
+		for (i = 0; i < CACHE_SIZE; i++)
+		{
+			rel = &this->relations[i];
+
+			if (rel->subject &&
+				rel->subject->get_type(rel->subject) == CERT_X509_CRL &&
+				rel->lock->try_write_lock(rel->lock))
+			{
+				/* double-check having lock */
+				if (rel->subject->get_type(rel->subject) == CERT_X509_CRL &&
+					rel->issuer->equals(rel->issuer, issuer))
+				{
+					cached_crl = (crl_t*)rel->subject;
+
+					if (cached_crl->is_delta_crl(cached_crl, NULL) ==
+							   crl->is_delta_crl(crl, NULL) &&
+						crl_is_newer(crl, cached_crl))
+					{
+						rel->subject->destroy(rel->subject);
+						rel->subject = subject->get_ref(subject);
+						rel->scheme = scheme;
+						return rel->lock->unlock(rel->lock);
+					}
+				}
+				rel->lock->unlock(rel->lock);
+			}
+		}
+	}
 
 	/* check for a unused relation slot first */
 	for (i = 0; i < CACHE_SIZE; i++)

@@ -476,6 +476,11 @@ struct private_kernel_netlink_net_t {
 	bool roam_events;
 
 	/**
+	 * whether to install IPsec policy routes
+	 */
+	bool install_routes;
+
+	/**
 	 * whether to actually install virtual IPs
 	 */
 	bool install_virtual_ip;
@@ -795,6 +800,68 @@ static u_char get_scope(host_t *ip)
 }
 
 /**
+ * Determine the label of the given unicast IP address.
+ *
+ * We currently only support the default table given in RFC 6724:
+ *
+ *  Prefix        Precedence Label
+ *  ::1/128               50     0
+ *  ::/0                  40     1
+ *  ::ffff:0:0/96         35     4
+ *  2002::/16             30     2
+ *  2001::/32              5     5
+ *  fc00::/7               3    13
+ *  ::/96                  1     3
+ *  fec0::/10              1    11
+ *  3ffe::/16              1    12
+ */
+static u_char get_label(host_t *ip)
+{
+	struct {
+		chunk_t net;
+		u_char prefix;
+		u_char label;
+	} priorities[] = {
+		/* priority table ordered by prefix */
+		/* ::1/128 */
+		{ chunk_from_chars(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 128, 0 },
+		/* ::ffff:0:0/96 */
+		{ chunk_from_chars(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00), 96, 4 },
+		/* ::/96 */
+		{ chunk_from_chars(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 96, 3 },
+		/* 2001::/32 */
+		{ chunk_from_chars(0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 32, 5 },
+		/* 2002::/16 */
+		{ chunk_from_chars(0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 16, 2 },
+		/* 3ffe::/16 */
+		{ chunk_from_chars(0x3f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 16, 12 },
+		/* fec0::/10 */
+		{ chunk_from_chars(0xfe, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 10, 11 },
+		/* fc00::/7 */
+		{ chunk_from_chars(0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 7, 13 },
+	};
+	int i;
+
+	for (i = 0; i < countof(priorities); i++)
+	{
+		if (host_in_subnet(ip, priorities[i].net, priorities[i].prefix))
+		{
+			return priorities[i].label;
+		}
+	}
+	/* ::/0 */
+	return 1;
+}
+
+/**
  * Returns the length of the common prefix in bits up to the length of a's
  * prefix, defined by RFC 6724 as the portion of the address not including the
  * interface ID, which is 64-bit for most unicast addresses (see RFC 4291).
@@ -829,7 +896,7 @@ static u_char common_prefix(host_t *a, host_t *b)
 static bool is_address_better(private_kernel_netlink_net_t *this,
 							  addr_entry_t *a, addr_entry_t *b, host_t *d)
 {
-	u_char sa, sb, sd, pa, pb;
+	u_char sa, sb, sd, la, lb, ld, pa, pb;
 
 	/* rule 2: prefer appropriate scope */
 	if (d)
@@ -858,9 +925,22 @@ static bool is_address_better(private_kernel_netlink_net_t *this,
 	/* rule 4 is not applicable as we don't know if an address is a home or
 	 * care-of addresses.
 	 * rule 5 does not apply as we only compare addresses from one interface
-	 * rule 6 requires a policy table (optionally configurable) to match
-	 * configurable labels
 	 */
+	/* rule 6: prefer matching label */
+	if (d)
+	{
+		la = get_label(a->ip);
+		lb = get_label(b->ip);
+		ld = get_label(d);
+		if (la == ld && lb != ld)
+		{
+			return FALSE;
+		}
+		else if (lb == ld && la != ld)
+		{
+			return TRUE;
+		}
+	}
 	/* rule 7: prefer temporary addresses (WE REVERSE THIS BY DEFAULT!) */
 	if ((a->flags & IFA_F_TEMPORARY) != (b->flags & IFA_F_TEMPORARY))
 	{
@@ -1795,12 +1875,22 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 	{	/* kernels prior to 3.0 do not support RTA_PREFSRC for IPv6 routes.
 		 * as we want to ignore routes with virtual IPs we cannot use DUMP
 		 * if these routes are not installed in a separate table */
-		hdr->nlmsg_flags |= NLM_F_DUMP;
+		if (this->install_routes)
+		{
+			hdr->nlmsg_flags |= NLM_F_DUMP;
+		}
 	}
 	if (candidate)
 	{
 		chunk = candidate->get_address(candidate);
-		netlink_add_attribute(hdr, RTA_PREFSRC, chunk, sizeof(request));
+		if (hdr->nlmsg_flags & NLM_F_DUMP)
+		{
+			netlink_add_attribute(hdr, RTA_PREFSRC, chunk, sizeof(request));
+		}
+		else
+		{
+			netlink_add_attribute(hdr, RTA_SRC, chunk, sizeof(request));
+		}
 	}
 	/* we use this below to match against the routes */
 	chunk = dest->get_address(dest);
@@ -2050,6 +2140,146 @@ METHOD(kernel_net_t, get_nexthop, host_t*,
 	return get_route(this, dest, prefix, TRUE, src, iface, 0);
 }
 
+/** enumerator over subnets */
+typedef struct {
+	enumerator_t public;
+	private_kernel_netlink_net_t *private;
+	/** message from the kernel */
+	struct nlmsghdr *msg;
+	/** current message from the kernel */
+	struct nlmsghdr *current;
+	/** remaining length */
+	size_t len;
+	/** last subnet enumerated */
+	host_t *net;
+	/** interface of current net */
+	char ifname[IFNAMSIZ];
+} subnet_enumerator_t;
+
+METHOD(enumerator_t, destroy_subnet_enumerator, void,
+	subnet_enumerator_t *this)
+{
+	DESTROY_IF(this->net);
+	free(this->msg);
+	free(this);
+}
+
+METHOD(enumerator_t, enumerate_subnets, bool,
+	subnet_enumerator_t *this, host_t **net, uint8_t *mask, char **ifname)
+{
+	if (!this->current)
+	{
+		this->current = this->msg;
+	}
+	else
+	{
+		this->current = NLMSG_NEXT(this->current, this->len);
+		DESTROY_IF(this->net);
+		this->net = NULL;
+	}
+
+	while (NLMSG_OK(this->current, this->len))
+	{
+		switch (this->current->nlmsg_type)
+		{
+			case NLMSG_DONE:
+				break;
+			case RTM_NEWROUTE:
+			{
+				struct rtmsg *msg;
+				struct rtattr *rta;
+				size_t rtasize;
+				chunk_t dst = chunk_empty;
+				uint32_t oif = 0;
+
+				msg = NLMSG_DATA(this->current);
+
+				if (!route_usable(this->current))
+				{
+					break;
+				}
+				else if (msg->rtm_table && (
+							msg->rtm_table == RT_TABLE_LOCAL ||
+							msg->rtm_table == this->private->routing_table))
+				{	/* ignore our own and the local routing tables */
+					break;
+				}
+
+				rta = RTM_RTA(msg);
+				rtasize = RTM_PAYLOAD(this->current);
+				while (RTA_OK(rta, rtasize))
+				{
+					switch (rta->rta_type)
+					{
+						case RTA_DST:
+							dst = chunk_create(RTA_DATA(rta), RTA_PAYLOAD(rta));
+							break;
+						case RTA_OIF:
+							if (RTA_PAYLOAD(rta) == sizeof(oif))
+							{
+								oif = *(uint32_t*)RTA_DATA(rta);
+							}
+							break;
+					}
+					rta = RTA_NEXT(rta, rtasize);
+				}
+
+				if (dst.ptr && oif && if_indextoname(oif, this->ifname))
+				{
+					this->net = host_create_from_chunk(msg->rtm_family, dst, 0);
+					*net = this->net;
+					*mask = msg->rtm_dst_len;
+					*ifname = this->ifname;
+					return TRUE;
+				}
+				break;
+			}
+			default:
+				break;
+		}
+		this->current = NLMSG_NEXT(this->current, this->len);
+	}
+	return FALSE;
+}
+
+METHOD(kernel_net_t, create_local_subnet_enumerator, enumerator_t*,
+	private_kernel_netlink_net_t *this)
+{
+	netlink_buf_t request;
+	struct nlmsghdr *hdr, *out;
+	struct rtmsg *msg;
+	size_t len;
+	subnet_enumerator_t *enumerator;
+
+	memset(&request, 0, sizeof(request));
+
+	hdr = &request.hdr;
+	hdr->nlmsg_flags = NLM_F_REQUEST;
+	hdr->nlmsg_type = RTM_GETROUTE;
+	hdr->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	hdr->nlmsg_flags |= NLM_F_DUMP;
+
+	msg = NLMSG_DATA(hdr);
+	msg->rtm_scope = RT_SCOPE_LINK;
+
+	if (this->socket->send(this->socket, hdr, &out, &len) != SUCCESS)
+	{
+		DBG2(DBG_KNL, "enumerating local subnets failed");
+		return enumerator_create_empty();
+	}
+
+	INIT(enumerator,
+		.public = {
+			.enumerate = (void*)_enumerate_subnets,
+			.destroy = _destroy_subnet_enumerator,
+		},
+		.private = this,
+		.msg = out,
+		.len = len,
+	);
+	return &enumerator->public;
+}
+
 /**
  * Manages the creation and deletion of ip addresses on an interface.
  * By setting the appropriate nlmsg_type, the ip will be set or unset.
@@ -2080,16 +2310,22 @@ static status_t manage_ipaddr(private_kernel_netlink_net_t *this, int nlmsg_type
 
 	netlink_add_attribute(hdr, IFA_LOCAL, chunk, sizeof(request));
 
-	if (ip->get_family(ip) == AF_INET6 && this->rta_prefsrc_for_ipv6)
-	{	/* if source routes are possible we let the virtual IP get deprecated
-		 * immediately (but mark it as valid forever) so it gets only used if
-		 * forced by our route, and not by the default IPv6 address selection */
-		struct ifa_cacheinfo cache = {
-			.ifa_valid = 0xFFFFFFFF,
-			.ifa_prefered = 0,
-		};
-		netlink_add_attribute(hdr, IFA_CACHEINFO, chunk_from_thing(cache),
-							  sizeof(request));
+	if (ip->get_family(ip) == AF_INET6)
+	{
+		msg->ifa_flags |= IFA_F_NODAD;
+		if (this->rta_prefsrc_for_ipv6)
+		{
+			/* if source routes are possible we let the virtual IP get
+			 * deprecated immediately (but mark it as valid forever) so it gets
+			 * only used if forced by our route, and not by the default IPv6
+			 * address selection */
+			struct ifa_cacheinfo cache = {
+				.ifa_valid = 0xFFFFFFFF,
+				.ifa_prefered = 0,
+			};
+			netlink_add_attribute(hdr, IFA_CACHEINFO, chunk_from_thing(cache),
+								  sizeof(request));
+		}
 	}
 	return this->socket->send_ack(this->socket, hdr);
 }
@@ -2680,6 +2916,7 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 			.interface = {
 				.get_interface = _get_interface_name,
 				.create_address_enumerator = _create_address_enumerator,
+				.create_local_subnet_enumerator = _create_local_subnet_enumerator,
 				.get_source_addr = _get_source_addr,
 				.get_nexthop = _get_nexthop,
 				.add_ip = _add_ip,
@@ -2715,6 +2952,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 						"%s.routing_table_prio", ROUTING_TABLE_PRIO, lib->ns),
 		.process_route = lib->settings->get_bool(lib->settings,
 						"%s.process_route", TRUE, lib->ns),
+		.install_routes = lib->settings->get_bool(lib->settings,
+						"%s.install_routes", TRUE, lib->ns),
 		.install_virtual_ip = lib->settings->get_bool(lib->settings,
 						"%s.install_virtual_ip", TRUE, lib->ns),
 		.install_virtual_ip_on = lib->settings->get_str(lib->settings,

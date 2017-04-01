@@ -3,10 +3,6 @@
 Plugins to load in ipsec aikgen tool.
 
 .TP
-.BR aikpub2.load " []"
-Plugins to load in aikpub2 tool.
-
-.TP
 .BR attest.database " []"
 File measurement information database URI. If it contains a password, make sure
 to adjust the permissions of the config file accordingly.
@@ -402,6 +398,13 @@ WINS servers assigned to peer via configuration payload (CP).
 WINS servers assigned to peer via configuration payload (CP).
 
 .TP
+.BR charon.plugins.addrblock.strict " [yes]"
+If set to yes, a subject certificate without an addrblock extension is rejected
+if the issuer certificate has such an addrblock extension. If set to no, subject
+certificates issued without the addrblock extension are accepted without any
+traffic selector checks and no policy is enforced by the plugin.
+
+.TP
 .BR charon.plugins.android_log.loglevel " [1]"
 Loglevel for logging to Android specific logger.
 
@@ -440,6 +443,18 @@ Enable logging of SQL IP pool leases.
 .TP
 .BR charon.plugins.bliss.use_bliss_b " [yes]"
 Use the enhanced BLISS\-B key generation and signature algorithm.
+
+.TP
+.BR charon.plugins.bypass-lan.interfaces_ignore " []"
+A comma\-separated list of network interfaces for which connected subnets should
+be ignored, if
+.RB "" "interfaces_use" ""
+is specified this option has no effect.
+
+.TP
+.BR charon.plugins.bypass-lan.interfaces_use " []"
+A comma\-separated list of network interfaces for which connected subnets should
+be considered. All other interfaces are ignored.
 
 .TP
 .BR charon.plugins.certexpire.csv.cron " []"
@@ -922,6 +937,14 @@ to circumvent that problem.
 Buffer size for received Netlink messages.
 
 .TP
+.BR charon.plugins.kernel-netlink.force_receive_buffer_size " [no]"
+If the maximum Netlink socket receive buffer in bytes set by
+.RI "" "receive_buffer_size" ""
+exceeds the system\-wide maximum from
+/proc/sys/net/core/rmem_max, this option can be used to override the limit.
+Enabling this option requires special priviliges (CAP_NET_ADMIN).
+
+.TP
 .BR charon.plugins.kernel-netlink.fwmark " []"
 Firewall mark to set on the routing rule that directs traffic to our routing
 table. The format is [!]mark[/mask], where the optional exclamation mark inverts
@@ -960,6 +983,15 @@ Whether to use port or socket based IKE XFRM bypass policies. IKE bypass
 policies are used to exempt IKE traffic from XFRM processing. The default socket
 based policies are directly tied to the IKE UDP sockets, port based policies use
 global XFRM bypass policies for the used IKE UDP ports.
+
+.TP
+.BR charon.plugins.kernel-netlink.receive_buffer_size " [0]"
+Maximum Netlink socket receive buffer in bytes. This value controls how many
+bytes of Netlink messages can be received on a Netlink socket. The default value
+is set by /proc/sys/net/core/rmem_default. The specified value cannot exceed the
+system\-wide maximum from /proc/sys/net/core/rmem_max, unless
+.RI "" "force_receive_buffer_size" ""
+is enabled.
 
 .TP
 .BR charon.plugins.kernel-netlink.retries " [0]"
@@ -1264,13 +1296,21 @@ server addresses.  Requests will be sent for addresses of the same families for
 which internal IPs are requested.
 
 .TP
-.BR charon.plugins.pkcs11.load_certs " [yes]"
-Whether to load certificates from tokens.
-
-.TP
 .B charon.plugins.pkcs11.modules
 .br
 List of available PKCS#11 modules.
+
+.TP
+.BR charon.plugins.pkcs11.modules.<name>.load_certs " [yes]"
+Whether to automatically load certificates from tokens.
+
+.TP
+.BR charon.plugins.pkcs11.modules.<name>.os_locking " [no]"
+Whether OS locking should be enabled for this module.
+
+.TP
+.BR charon.plugins.pkcs11.modules.<name>.path " []"
+Full path to the shared object file of this PKCS#11 module.
 
 .TP
 .BR charon.plugins.pkcs11.reload_certs " [no]"
@@ -1336,6 +1376,14 @@ valid interface name according to the rules defined by resolvconf.  Also, it
 should have a high priority according to the order defined in
 .RB "" "interface\-order" "(5)."
 
+
+.TP
+.BR charon.plugins.revocation.enable_crl " [yes]"
+Whether CRL validation should be enabled.
+
+.TP
+.BR charon.plugins.revocation.enable_ocsp " [yes]"
+Whether OCSP validation should be enabled.
 
 .TP
 .BR charon.plugins.socket-default.fwmark " []"
@@ -1523,6 +1571,10 @@ Send an unsupported PB\-TNC message type with the NOSKIP flag set.
 Send a PB\-TNC batch with a modified PB\-TNC version.
 
 .TP
+.BR charon.plugins.tpm.use_rng " [no]"
+Whether the TPM should be used as RNG.
+
+.TP
 .BR charon.plugins.unbound.dlv_anchors " []"
 File to read trusted keys for DLV (DNSSEC Lookaside Validation) from. It uses
 the same format as
@@ -1586,6 +1638,15 @@ allocated.  Has to be different from
 .RB "" "charon.port" ","
 otherwise a random port
 will be allocated.
+
+.TP
+.BR charon.prefer_best_path " [no]"
+By default, charon keeps SAs on the routing path with addresses it previously
+used if that path is still usable. By setting this option to yes, it tries more
+aggressively to update SAs with MOBIKE on routing priority changes using the
+cheapest path. This adds more noise, but allows to dynamically adapt SAs to
+routing priority changes. This option has no effect if MOBIKE is not supported
+or disabled.
 
 .TP
 .BR charon.prefer_configured_proposals " [yes]"
@@ -1693,6 +1754,15 @@ in addition to getting
 used as constraints against signature schemes employed in the certificate chain,
 are also used as constraints against the signature scheme used by peers during
 IKEv2.
+
+.TP
+.BR charon.spi_max " [0xcfffffff]"
+The upper limit for SPIs requested from the kernel for IPsec SAs.
+
+.TP
+.BR charon.spi_min " [0xc0000000]"
+The lower limit for SPIs requested from the kernel for IPsec SAs. Should not be
+set lower than 0x00000100 (256), as SPIs between 1 and 255 are reserved by IANA.
 
 .TP
 .B charon.start-scripts

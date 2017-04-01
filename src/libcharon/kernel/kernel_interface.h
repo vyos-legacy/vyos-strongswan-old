@@ -57,6 +57,12 @@ typedef enum kernel_feature_t kernel_feature_t;
 #include <kernel/kernel_net.h>
 
 /**
+ * Default range for SPIs requested from kernels
+ */
+#define KERNEL_SPI_MIN 0xc0000000
+#define KERNEL_SPI_MAX 0xcfffffff
+
+/**
  * Bitfield of optional features a kernel backend supports.
  *
  * This feature-set is for both, kernel_ipsec_t and kernel_net_t. Each
@@ -314,6 +320,17 @@ struct kernel_interface_t {
 	 */
 	enumerator_t *(*create_address_enumerator) (kernel_interface_t *this,
 												kernel_address_type_t which);
+
+	/**
+	 * Creates an enumerator over all local subnets.
+	 *
+	 * Local subnets are subnets the host is directly connected to.
+	 *
+	 * The enumerator returns the network, subnet mask and interface.
+	 *
+	 * @return				enumerator over host_t*, uint8_t, char*
+	 */
+	enumerator_t *(*create_local_subnet_enumerator)(kernel_interface_t *this);
 
 	/**
 	 * Add a virtual IP to an interface.

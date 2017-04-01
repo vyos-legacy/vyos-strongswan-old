@@ -113,9 +113,9 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man5dir)" \
 PROGRAMS = $(sbin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
-	commands/terminate.$(OBJEXT) commands/redirect.$(OBJEXT) \
-	commands/install.$(OBJEXT) commands/list_sas.$(OBJEXT) \
-	commands/list_pols.$(OBJEXT) \
+	commands/terminate.$(OBJEXT) commands/rekey.$(OBJEXT) \
+	commands/redirect.$(OBJEXT) commands/install.$(OBJEXT) \
+	commands/list_sas.$(OBJEXT) commands/list_pols.$(OBJEXT) \
 	commands/list_authorities.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
 	commands/list_pools.$(OBJEXT) commands/list_algs.$(OBJEXT) \
@@ -377,7 +377,6 @@ exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -412,6 +411,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -465,6 +465,7 @@ swanctl_SOURCES = \
 	command.c command.h \
 	commands/initiate.c \
 	commands/terminate.c \
+	commands/rekey.c \
 	commands/redirect.c \
 	commands/install.c \
 	commands/list_sas.c \
@@ -603,6 +604,8 @@ commands/initiate.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/terminate.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
+commands/rekey.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/redirect.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/install.$(OBJEXT): commands/$(am__dirstamp) \
@@ -672,6 +675,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/load_pools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/log.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/redirect.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/rekey.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/reload_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/stats.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/terminate.Po@am__quote@

@@ -642,28 +642,9 @@ static peer_cfg_t *build_peer_cfg(private_stroke_config_t *this,
 		/* force unique connections for mediation connections */
 		msg->add_conn.unique = 1;
 	}
-
-	if (msg->add_conn.ikeme.mediated_by)
+	else if (msg->add_conn.ikeme.mediated_by)
 	{
-		peer_cfg_t *mediated_by;
-
-		mediated_by = charon->backends->get_peer_cfg_by_name(
-							charon->backends, msg->add_conn.ikeme.mediated_by);
-		if (!mediated_by)
-		{
-			DBG1(DBG_CFG, "mediation connection '%s' not found, aborting",
-				 msg->add_conn.ikeme.mediated_by);
-			return NULL;
-		}
-		if (!mediated_by->is_mediation(mediated_by))
-		{
-			DBG1(DBG_CFG, "connection '%s' as referred to by '%s' is "
-				 "no mediation connection, aborting",
-				 msg->add_conn.ikeme.mediated_by, msg->add_conn.name);
-			mediated_by->destroy(mediated_by);
-			return NULL;
-		}
-		peer.mediated_by = mediated_by;
+		peer.mediated_by = msg->add_conn.ikeme.mediated_by;
 		if (msg->add_conn.ikeme.peerid)
 		{
 			peer.peer_id = identification_create_from_string(
@@ -982,73 +963,60 @@ static void add_ts(private_stroke_config_t *this,
 				   stroke_end_t *end, child_cfg_t *child_cfg, bool local)
 {
 	traffic_selector_t *ts;
+	bool ts_added = FALSE;
 
-	if (end->tohost)
+	if (end->subnets)
+	{
+		enumerator_t *enumerator;
+		char *subnet, *pos;
+		uint16_t from_port, to_port;
+		uint8_t proto;
+
+		enumerator = enumerator_create_token(end->subnets, ",", " ");
+		while (enumerator->enumerate(enumerator, &subnet))
+		{
+			from_port = end->from_port;
+			to_port = end->to_port;
+			proto = end->protocol;
+
+			pos = strchr(subnet, '[');
+			if (pos)
+			{
+				*(pos++) = '\0';
+				if (!parse_protoport(pos, &from_port, &to_port, &proto))
+				{
+					DBG1(DBG_CFG, "invalid proto/port: %s, skipped subnet",
+						 pos);
+					continue;
+				}
+			}
+			if (streq(subnet, "%dynamic"))
+			{
+				ts = traffic_selector_create_dynamic(proto,
+													 from_port, to_port);
+			}
+			else
+			{
+				ts = traffic_selector_create_from_cidr(subnet, proto,
+													   from_port, to_port);
+			}
+			if (ts)
+			{
+				child_cfg->add_traffic_selector(child_cfg, local, ts);
+				ts_added = TRUE;
+			}
+			else
+			{
+				DBG1(DBG_CFG, "invalid subnet: %s, skipped", subnet);
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
+	if (!ts_added)
 	{
 		ts = traffic_selector_create_dynamic(end->protocol,
 											 end->from_port, end->to_port);
 		child_cfg->add_traffic_selector(child_cfg, local, ts);
-	}
-	else
-	{
-		if (!end->subnets)
-		{
-			host_t *net;
-
-			net = host_create_from_string(end->address, 0);
-			if (net)
-			{
-				ts = traffic_selector_create_from_subnet(net, 0, end->protocol,
-												end->from_port, end->to_port);
-				child_cfg->add_traffic_selector(child_cfg, local, ts);
-			}
-		}
-		else
-		{
-			enumerator_t *enumerator;
-			char *subnet, *pos;
-			uint16_t from_port, to_port;
-			uint8_t proto;
-
-			enumerator = enumerator_create_token(end->subnets, ",", " ");
-			while (enumerator->enumerate(enumerator, &subnet))
-			{
-				from_port = end->from_port;
-				to_port = end->to_port;
-				proto = end->protocol;
-
-				pos = strchr(subnet, '[');
-				if (pos)
-				{
-					*(pos++) = '\0';
-					if (!parse_protoport(pos, &from_port, &to_port, &proto))
-					{
-						DBG1(DBG_CFG, "invalid proto/port: %s, skipped subnet",
-							 pos);
-						continue;
-					}
-				}
-				if (streq(subnet, "%dynamic"))
-				{
-					ts = traffic_selector_create_dynamic(proto,
-														 from_port, to_port);
-				}
-				else
-				{
-					ts = traffic_selector_create_from_cidr(subnet, proto,
-														   from_port, to_port);
-				}
-				if (ts)
-				{
-					child_cfg->add_traffic_selector(child_cfg, local, ts);
-				}
-				else
-				{
-					DBG1(DBG_CFG, "invalid subnet: %s, skipped", subnet);
-				}
-			}
-			enumerator->destroy(enumerator);
-		}
 	}
 }
 

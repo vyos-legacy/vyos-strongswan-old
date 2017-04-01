@@ -1,4 +1,4 @@
-.TH "PKI \-\-ISSUE" 1 "2013-08-12" "@PACKAGE_VERSION@" "strongSwan"
+.TH "PKI \-\-ISSUE" 1 "2016-12-13" "@PACKAGE_VERSION@" "strongSwan"
 .
 .SH "NAME"
 .
@@ -24,6 +24,7 @@ pki \-\-issue \- Issue a certificate using a CA certificate and key
 .OP \-\-ocsp uri
 .OP \-\-pathlen len
 .OP \-\-nc-permitted name
+.OP \-\-addrblock block
 .OP \-\-nc-excluded name
 .OP \-\-policy\-mapping mapping
 .OP \-\-policy\-explicit len
@@ -68,9 +69,9 @@ key/request is read from \fISTDIN\fR.
 .TP
 .BI "\-t, \-\-type " type
 Type of the input. One of \fIpub\fR (public key), \fIpriv\fR (private key),
-\fIrsa\fR (RSA private key), \fIecdsa\fR (ECDSA private key), \fIbliss\fR (BLISS
-private key) or \fIpkcs10\fR (PKCS#10 certificate request), defaults to
-\fIpub\fR.
+\fIrsa\fR (RSA private key), \fIecdsa\fR (ECDSA private key),
+\fIed25519\fR (Ed25519 private key) \fIbliss\fR (BLISS private key) or
+\fIpkcs10\fR (PKCS#10 certificate request), defaults to \fIpub\fR.
 .TP
 .BI "\-k, \-\-cakey " file
 CA private key file. Either this or
@@ -78,7 +79,8 @@ CA private key file. Either this or
 is required.
 .TP
 .BI "\-x, \-\-cakeyid " hex
-Key ID of a CA private key on a smartcard. Either this or
+Smartcard or TPM CA private key object handle in hex format with an optional
+0x prefix. Either this or
 .B \-\-cakey
 is required.
 .TP
@@ -147,6 +149,14 @@ times.
 .TP
 .BI "\-p, \-\-pathlen " len
 Set path length constraint.
+.TP
+.BI "\-B, \-\-addrblock " block
+RFC 3779 address block to include in certificate. \fIblock\fR is either a
+CIDR subnet (such as \fI10.0.0.0/8\fR) or an arbitrary address range
+(\fI192.168.1.7-192.168.1.13\fR). Can be repeated to include multiple blocks.
+Please note that the supplied blocks are included in the certificate as is,
+so for standards compliance, multiple blocks must be supplied in correct
+order and adjacent blocks must be combined. Refer to RFC 3779 for details.
 .TP
 .BI "\-n, \-\-nc-permitted " name
 Add permitted NameConstraint extension to certificate. For DNS or email

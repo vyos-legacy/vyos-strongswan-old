@@ -1,5 +1,5 @@
 /*
- * Coypright (C) 2016 Andreas Steffen
+ * Copyright (C) 2016 Andreas Steffen
  * Copyright (C) 2006-2016 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2006 Daniel Roethlisberger
@@ -479,7 +479,6 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 				.dst = this->my_addr,
 				.spi = this->my_spi,
 				.proto = proto_ike2ip(this->protocol),
-				.mark = this->mark_in,
 			};
 			kernel_ipsec_query_sa_t query = {};
 
@@ -495,9 +494,11 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 					{
 						this->my_usetime = time;
 					}
-					return SUCCESS;
 				}
-				return FAILED;
+				else
+				{
+					status = FAILED;
+				}
 			}
 		}
 	}
@@ -526,9 +527,11 @@ static status_t update_usebytes(private_child_sa_t *this, bool inbound)
 					{
 						this->other_usetime = time;
 					}
-					return SUCCESS;
 				}
-				return FAILED;
+				else
+				{
+					status = FAILED;
+				}
 			}
 		}
 	}
@@ -797,7 +800,7 @@ METHOD(child_sa_t, install, status_t,
 		.dst = dst,
 		.spi = spi,
 		.proto = proto_ike2ip(this->protocol),
-		.mark = inbound ? this->mark_in : this->mark_out,
+		.mark = inbound ? (mark_t){} : this->mark_out,
 	};
 	sa = (kernel_ipsec_add_sa_t){
 		.reqid = this->reqid,
@@ -1144,7 +1147,6 @@ METHOD(child_sa_t, update, status_t,
 				.dst = this->my_addr,
 				.spi = this->my_spi,
 				.proto = proto_ike2ip(this->protocol),
-				.mark = this->mark_in,
 			};
 			kernel_ipsec_update_sa_t sa = {
 				.cpi = this->ipcomp != IPCOMP_NONE ? this->my_cpi : 0,
@@ -1319,7 +1321,6 @@ METHOD(child_sa_t, destroy, void,
 			.dst = this->my_addr,
 			.spi = this->my_spi,
 			.proto = proto_ike2ip(this->protocol),
-			.mark = this->mark_in,
 		};
 		kernel_ipsec_del_sa_t sa = {
 			.cpi = this->my_cpi,
