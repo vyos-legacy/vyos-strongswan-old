@@ -1,6 +1,7 @@
 strongswan (5.5.2-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * debian/patches/03_systemd-service refreshed.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Sat, 01 Apr 2017 16:26:52 +0200
 
