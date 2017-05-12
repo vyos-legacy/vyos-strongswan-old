@@ -14,7 +14,9 @@ strongswan (5.5.3-3) UNRELEASED; urgency=medium
     upstream to install configuration to output logging information to the
     journal.
   * debian/charon-systemd.install:
-    - install charon-systemd.conf files, thanks Gerald Tuner.   closes: #866325
+    - install charon-systemd.conf files, thanks Gerald Turner.  closes: #866325
+  * Add AppArmor profiles for swanctl and charon-system, thanks Gerald Turner.
+                                                                closes: #866327
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 28 Jun 2017 22:57:48 +0200
 

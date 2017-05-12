@@ -2,3 +2,4 @@ etc/strongswan.d/charon-systemd.conf
 lib/systemd/system/strongswan-swanctl.service
 usr/sbin/charon-systemd
 usr/share/strongswan/templates/config/strongswan.d/charon-systemd.conf
+debian/usr.sbin.charon-systemd /etc/apparmor.d/

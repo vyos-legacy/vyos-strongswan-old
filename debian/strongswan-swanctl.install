@@ -8,3 +8,4 @@ usr/share/man/man8/swanctl.8
 usr/sbin/swanctl
 usr/lib/ipsec/libvici.so*
 usr/lib/ipsec/plugins/libstrongswan-vici.so
+debian/usr.sbin.swanctl /etc/apparmor.d/

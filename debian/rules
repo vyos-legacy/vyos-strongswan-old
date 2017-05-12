@@ -183,6 +183,8 @@ endif
 	dh_apparmor --profile-name=usr.lib.ipsec.charon -p strongswan-charon
 	dh_apparmor --profile-name=usr.lib.ipsec.lookip -p libcharon-extra-plugins
 	dh_apparmor --profile-name=usr.lib.ipsec.stroke -p strongswan-starter
+	dh_apparmor --profile-name=usr.sbin.swanctl -p strongswan-swanctl
+	dh_apparmor --profile-name=usr.sbin.charon-systemd -p charon-systemd
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets
