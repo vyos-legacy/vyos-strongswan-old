@@ -24,3 +24,6 @@ etc/strongswan.d/charon/gcrypt.conf
 etc/strongswan.d/charon/ldap.conf
 etc/strongswan.d/charon/pkcs11.conf
 etc/strongswan.d/charon/test-vectors.conf
+# TPM libs
+usr/lib/ipsec/libtpmtss.so.*
+usr/lib/ipsec/libtpmtss.so

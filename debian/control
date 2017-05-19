@@ -97,6 +97,9 @@ Description: strongSwan utility and crypto library
   - kernel-pfroute [kfreebsd] (Networking kernel interface using PF_ROUTE)
   - resolve (Writes name servers received via IKE to a resolv.conf file or
     installs them via resolvconf(8))
+  .
+  Also included is the libtpmtss library adding support for TPM plugin
+  (https://wiki.strongswan.org/projects/strongswan/wiki/TpmPlugin)
 
 Package: libstrongswan-standard-plugins
 Architecture: any
