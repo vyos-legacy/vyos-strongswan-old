@@ -1,3 +1,5 @@
 01_fix-manpages.patch
 03_systemd-service.patch
 04_disable-libtls-tests.patch
+CVE-2017-9022_insufficient_input_validation_gmp_plugin.patch
+CVE-2017-9023_incorrect_handling_of_choice_types_in_asn1_parser.patch
