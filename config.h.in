@@ -313,6 +313,9 @@
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
 
+/* static plugin constructors */
+#undef STATIC_PLUGIN_CONSTRUCTORS
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
@@ -327,6 +330,9 @@
 
 /* using builtin printf for printf hooks */
 #undef USE_BUILTIN_PRINTF
+
+/* build code for fuzzing */
+#undef USE_FUZZING
 
 /* support for IKEv1 protocol */
 #undef USE_IKEV1

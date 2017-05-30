@@ -445,22 +445,31 @@ force UDP encapsulation for ESP packets even if no NAT situation is detected.
 This may help to surmount restrictive firewalls. In order to force the peer to
 encapsulate packets, NAT detection payloads are faked.
 .TP
-.BR fragmentation " = " yes "  | force | no"
+.BR fragmentation " = " yes "  | accept | force | no"
 whether to use IKE fragmentation (proprietary IKEv1 extension or IKEv2
 fragmentation as per RFC 7383).  Acceptable values are
 .B yes
 (the default),
+.BR accept ,
 .B force
 and
 .BR no .
-Fragmented IKE messages sent by a peer are always accepted
-irrespective of the value of this option. If set to
-.BR yes ,
-and the peer supports it, larger IKE messages will be sent in fragments.
 If set to
+.BR yes ,
+and the peer supports it, oversized IKE messages will be sent in fragments. If
+set to
+.BR accept ,
+support for fragmentation is announced to the peer but the daemon does not send
+its own messages in fragments. If set to
 .B force
 (only supported for IKEv1) the initial IKE message will already be fragmented
-if required.
+if required. Finally, setting the option to
+.B no
+will disable announcing support for this feature.
+
+Note that fragmented IKE messages sent by a peer are always accepted
+irrespective of the value of this option (even when set to
+.BR no ).
 .TP
 .BR ike " = <cipher suites>"
 comma-separated list of IKE/ISAKMP SA encryption/authentication algorithms
@@ -1131,6 +1140,13 @@ a value of 0 disables IPsec replay protection.
 .TP
 .BR reqid " = <number>"
 sets the reqid for a given connection to a pre-configured fixed value.
+.TP
+.BR sha256_96 " = " no " | yes"
+HMAC-SHA-256 is used with 128-bit truncation with IPsec. For compatibility
+with implementations that incorrectly use 96-bit truncation this option may be
+enabled to configure the shorter truncation length in the kernel.  This is not
+negotiated, so this only works with peers that use the incorrect truncation
+length (or have this option enabled).
 .TP
 .BR tfc " = <value>"
 number of bytes to pad ESP payload data to. Traffic Flow Confidentiality

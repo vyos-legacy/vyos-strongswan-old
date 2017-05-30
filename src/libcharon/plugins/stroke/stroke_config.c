@@ -68,13 +68,20 @@ METHOD(backend_t, create_peer_cfg_enumerator, enumerator_t*,
 									 (void*)this->mutex->unlock, this->mutex);
 }
 
-/**
- * filter function for ike configs
- */
-static bool ike_filter(void *data, peer_cfg_t **in, ike_cfg_t **out)
+CALLBACK(ike_filter, bool,
+	void *data, enumerator_t *orig, va_list args)
 {
-	*out = (*in)->get_ike_cfg(*in);
-	return TRUE;
+	peer_cfg_t *cfg;
+	ike_cfg_t **out;
+
+	VA_ARGS_VGET(args, out);
+
+	if (orig->enumerate(orig, &cfg))
+	{
+		*out = cfg->get_ike_cfg(cfg);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 METHOD(backend_t, create_ike_cfg_enumerator, enumerator_t*,
@@ -82,7 +89,7 @@ METHOD(backend_t, create_ike_cfg_enumerator, enumerator_t*,
 {
 	this->mutex->lock(this->mutex);
 	return enumerator_create_filter(this->list->create_enumerator(this->list),
-									(void*)ike_filter, this->mutex,
+									ike_filter, this->mutex,
 									(void*)this->mutex->unlock);
 }
 
@@ -1071,15 +1078,16 @@ static child_cfg_t *build_child_cfg(private_stroke_config_t *this,
 		},
 		.reqid = msg->add_conn.reqid,
 		.mode = msg->add_conn.mode,
-		.proxy_mode = msg->add_conn.proxy_mode,
-		.ipcomp = msg->add_conn.ipcomp,
+		.options = (msg->add_conn.proxy_mode ? OPT_PROXY_MODE : 0) |
+				   (msg->add_conn.ipcomp ? OPT_IPCOMP : 0) |
+				   (msg->add_conn.me.hostaccess ? OPT_HOSTACCESS : 0) |
+				   (msg->add_conn.install_policy ? 0 : OPT_NO_POLICIES) |
+				   (msg->add_conn.sha256_96 ? OPT_SHA256_96 : 0),
 		.tfc = msg->add_conn.tfc,
 		.inactivity = msg->add_conn.inactivity,
 		.dpd_action = map_action(msg->add_conn.dpd.action),
 		.close_action = map_action(msg->add_conn.close_action),
 		.updown = msg->add_conn.me.updown,
-		.hostaccess = msg->add_conn.me.hostaccess,
-		.suppress_policies = !msg->add_conn.install_policy,
 	};
 
 	child_cfg = child_cfg_create(msg->add_conn.name, &child);

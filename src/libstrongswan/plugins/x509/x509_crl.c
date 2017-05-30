@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2008-2009 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2017 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -149,7 +150,7 @@ extern chunk_t x509_parse_authorityKeyIdentifier(chunk_t blob, int level0,
 /**
  * from x509_cert
  */
-extern void x509_parse_crlDistributionPoints(chunk_t blob, int level0,
+extern bool x509_parse_crlDistributionPoints(chunk_t blob, int level0,
 											 linked_list_t *list);
 
 /**
@@ -309,8 +310,11 @@ static bool parse(private_x509_crl_t *this)
 						this->crlNumber = object;
 						break;
 					case OID_FRESHEST_CRL:
-						x509_parse_crlDistributionPoints(object, level,
-														 this->crl_uris);
+						if (!x509_parse_crlDistributionPoints(object, level,
+															  this->crl_uris))
+						{
+							goto end;
+						}
 						break;
 					case OID_DELTA_CRL_INDICATOR:
 						if (!asn1_parse_simple_object(&object, ASN1_INTEGER,
@@ -360,25 +364,33 @@ end:
 	return success;
 }
 
-/**
- * enumerator filter callback for create_enumerator
- */
-static bool filter(void *data, revoked_t **revoked, chunk_t *serial, void *p2,
-				   time_t *date, void *p3, crl_reason_t *reason)
+CALLBACK(filter, bool,
+	void *data, enumerator_t *orig, va_list args)
 {
-	if (serial)
+	revoked_t *revoked;
+	crl_reason_t *reason;
+	chunk_t *serial;
+	time_t *date;
+
+	VA_ARGS_VGET(args, serial, date, reason);
+
+	if (orig->enumerate(orig, &revoked))
 	{
-		*serial = (*revoked)->serial;
+		if (serial)
+		{
+			*serial = revoked->serial;
+		}
+		if (date)
+		{
+			*date = revoked->date;
+		}
+		if (reason)
+		{
+			*reason = revoked->reason;
+		}
+		return TRUE;
 	}
-	if (date)
-	{
-		*date = (*revoked)->date;
-	}
-	if (reason)
-	{
-		*reason = (*revoked)->reason;
-	}
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(crl_t, get_serial, chunk_t,
@@ -418,7 +430,7 @@ METHOD(crl_t, create_enumerator, enumerator_t*,
 {
 	return enumerator_create_filter(
 								this->revoked->create_enumerator(this->revoked),
-								(void*)filter, NULL, NULL);
+								filter, NULL, NULL);
 }
 
 METHOD(certificate_t, get_type, certificate_type_t,

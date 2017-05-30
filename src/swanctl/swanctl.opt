@@ -154,15 +154,19 @@ connections.<conn>.dpd_timeout = 0s
 	specified; this option has no effect on connections using IKE2.
 
 connections.<conn>.fragmentation = yes
-	Use IKE UDP datagram fragmentation.  (_yes_, _no_ or _force_).
+	Use IKE UDP datagram fragmentation.  (_yes_, _accept_, _no_ or _force_).
 
 	Use IKE fragmentation (proprietary IKEv1 extension or RFC 7383 IKEv2
-	fragmentation).  Acceptable  values  are _yes_ (the	default), _force_ and
-	_no_. Fragmented IKE messages sent by a peer are always accepted
-	irrespective of  the  value  of  this option. If set to _yes_, and the peer
-	supports it, oversized IKE messages will be sent in fragments.  If set  to
-	_force_  (only  supported  for IKEv1) the initial IKE message will already
-	be fragmented if required.
+	fragmentation).  Acceptable  values  are _yes_ (the	default), _accept_,
+	_force_ and _no_. If set to _yes_, and the peer	supports it, oversized IKE
+	messages will be sent in fragments. If set to _accept_, support for
+	fragmentation is announced to the peer but the daemon does not send its own
+	messages in fragments.  If set to _force_ (only supported for IKEv1) the
+	initial IKE message will already be fragmented if required. Finally, setting
+	the option to _no_ will disable announcing support for this feature.
+
+	Note that fragmented IKE messages sent by a peer are always accepted
+	irrespective of the value of this option (even when set to _no_).
 
 connections.<conn>.send_certreq = yes
 	Send certificate requests payloads (_yes_ or _no_).
@@ -647,6 +651,15 @@ connections.<conn>.children.<child>.esp_proposals = default
 	for interoperability. If no algorithms are specified for AH nor ESP,
 	the _default_ set of algorithms for ESP is included.
 
+connections.<conn>.children.<child>.sha256_96 = no
+	Use incorrect 96-bit truncation for HMAC-SHA-256.
+
+	HMAC-SHA-256 is used with 128-bit truncation with IPsec. For compatibility
+	with implementations that incorrectly use 96-bit truncation this option may
+	be enabled to configure the shorter truncation length in the kernel.  This
+	is not negotiated, so this only works with peers that use the incorrect
+	truncation length (or have this option enabled).
+
 connections.<conn>.children.<child>.local_ts = dynamic
 	Local traffic selectors to include in CHILD_SA.
 
@@ -883,6 +896,10 @@ connections.<conn>.children.<child>.replay_window = 32
 	IPsec replay window to configure for this CHILD_SA. Larger values than the
 	default of 32 are supported using the Netlink backend only, a value of 0
 	disables IPsec replay protection.
+
+connections.<conn>.children.<child>.hw_offload = no
+	Enable hardware offload for this CHILD_SA, if supported by the IPsec
+	implementation.
 
 connections.<conn>.children.<child>.start_action = none
 	Action to perform after loading the configuration (_none_, _trap_, _start_).

@@ -114,6 +114,14 @@ this might cause problems with implementations that continue to use rekeyed SAs
 until they expire.
 
 .TP
+.BR charon.delete_rekeyed_delay " [5]"
+Delay in seconds until inbound IPsec SAs are deleted after rekeyings (IKEv2
+only). To process delayed packets the inbound part of a CHILD_SA is kept
+installed up to the configured number of seconds after it got replaced during a
+rekeying. If set to 0 the CHILD_SA will be kept installed until it expires (if
+no lifetime is set it will be destroyed immediately).
+
+.TP
 .BR charon.dh_exponent_ansi_x9_42 " [yes]"
 Use ANSI X9.42 DH exponent size or optimum size matched to cryptographic
 strength.
@@ -430,6 +438,11 @@ or the numeric identifier of the attribute
 type. The assigned value can be an IPv4/IPv6 address, a subnet in CIDR notation
 or an arbitrary value depending on the attribute type.  For some attribute types
 multiple values may be specified as a comma separated list.
+
+.TP
+.BR charon.plugins.attr-sql.crash_recovery " [yes]"
+Release all online leases during startup.  Disable this to share the DB between
+multiple VPN gateways.
 
 .TP
 .BR charon.plugins.attr-sql.database " []"
@@ -1049,8 +1062,8 @@ Lifetime of XFRM acquire state created by the kernel when traffic matches a trap
 policy. The value gets written to /proc/sys/net/core/xfrm_acq_expires.
 Indirectly controls the delay between XFRM acquire messages triggered by the
 kernel for a trap policy. The same value is used as timeout for SPIs allocated
-by the kernel. The default value equals the default total retransmission timeout
-for IKE messages, see IKEv2 RETRANSMISSION in
+by the kernel. The default value equals the total   retransmission timeout for
+IKE messages, see IKEv2 RETRANSMISSION in
 .RB "" "strongswan.conf" "(5)."
 
 
@@ -1394,6 +1407,11 @@ Firewall mark to set on outbound packets.
 Set source address on outbound packets, if possible.
 
 .TP
+.BR charon.plugins.socket-default.set_sourceif " [no]"
+Force sending interface on outbound packets, if possible. This allows using IPv6
+link\-local addresses as tunnel endpoints.
+
+.TP
 .BR charon.plugins.socket-default.use_ipv4 " [yes]"
 Listen on IPv4, if possible.
 
@@ -1696,6 +1714,15 @@ Size of the AH/ESP replay window, in packets.
 Base to use for calculating exponential back off, see IKEv2 RETRANSMISSION in
 .RB "" "strongswan.conf" "(5)."
 
+
+.TP
+.BR charon.retransmit_jitter " [0]"
+Maximum jitter in percent to apply randomly to calculated retransmission timeout
+(0 to disable).
+
+.TP
+.BR charon.retransmit_limit " [0]"
+Upper limit in seconds for calculated retransmission timeout (0 to disable).
 
 .TP
 .BR charon.retransmit_timeout " [4.0]"
