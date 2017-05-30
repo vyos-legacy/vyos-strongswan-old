@@ -1,3 +1,9 @@
+strongswan (5.5.3-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 30 May 2017 20:59:36 +0200
+
 strongswan (5.5.2-1) experimental; urgency=medium
 
   * New upstream release.
