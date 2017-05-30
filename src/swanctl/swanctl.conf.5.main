@@ -168,18 +168,29 @@ Use IKE fragmentation (proprietary IKEv1 extension or RFC 7383 IKEv2
 fragmentation).  Acceptable  values  are
 .RI "" "yes" ""
 (the        default),
+.RI "" "accept" ","
 .RI "" "force" ""
 and
 .RI "" "no" "."
-Fragmented IKE messages sent by a peer are always accepted irrespective of
-the  value  of  this option. If set to
+If set to
 .RI "" "yes" ","
-and the peer supports it,
-oversized IKE messages will be sent in fragments.  If set  to
+and the peer     supports it, oversized IKE
+messages will be sent in fragments. If set to
+.RI "" "accept" ","
+support for
+fragmentation is announced to the peer but the daemon does not send its own
+messages in fragments.  If set to
 .RI "" "force" ""
-(only
-supported  for IKEv1) the initial IKE message will already be fragmented if
-required.
+(only supported for IKEv1) the initial
+IKE message will already be fragmented if required. Finally, setting the option
+to
+.RI "" "no" ""
+will disable announcing support for this feature.
+
+Note that fragmented IKE messages sent by a peer are always accepted
+irrespective of the value of this option (even when set to
+.RI "" "no" ")."
+
 
 .TP
 .BR connections.<conn>.send_certreq " [yes]"
@@ -786,6 +797,14 @@ interoperability. If no algorithms are specified for AH nor ESP, the
 set of algorithms for ESP is included.
 
 .TP
+.BR connections.<conn>.children.<child>.sha256_96 " [no]"
+HMAC\-SHA\-256 is used with 128\-bit truncation with IPsec. For compatibility with
+implementations that incorrectly use 96\-bit truncation this option may be
+enabled to configure the shorter truncation length in the kernel.  This is not
+negotiated, so this only works with peers that use the incorrect truncation
+length (or have this option enabled).
+
+.TP
 .BR connections.<conn>.children.<child>.local_ts " [dynamic]"
 Comma separated list of local traffic selectors to include in CHILD_SA. Each
 selector is a CIDR subnet definition, followed by an optional proto/port
@@ -1063,6 +1082,11 @@ padding to create a packet size equal to the Path Maximum Transfer Unit.
 IPsec replay window to configure for this CHILD_SA. Larger values than the
 default of 32 are supported using the Netlink backend only, a value of 0
 disables IPsec replay protection.
+
+.TP
+.BR connections.<conn>.children.<child>.hw_offload " [no]"
+Enable hardware offload for this CHILD_SA, if supported by the IPsec
+implementation.
 
 .TP
 .BR connections.<conn>.children.<child>.start_action " [none]"

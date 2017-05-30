@@ -464,10 +464,10 @@ static policy_sa_t *policy_sa_create(private_kernel_pfkey_ipsec_t *this,
 /**
  * Destroy a policy_sa(_in)_t object
  */
-static void policy_sa_destroy(policy_sa_t *policy, policy_dir_t *dir,
+static void policy_sa_destroy(policy_sa_t *policy, policy_dir_t dir,
 							  private_kernel_pfkey_ipsec_t *this)
 {
-	if (*dir == POLICY_OUT)
+	if (dir == POLICY_OUT)
 	{
 		policy_sa_out_t *out = (policy_sa_out_t*)policy;
 		out->src_ts->destroy(out->src_ts);
@@ -475,6 +475,16 @@ static void policy_sa_destroy(policy_sa_t *policy, policy_dir_t *dir,
 	}
 	ipsec_sa_destroy(this, policy->sa);
 	free(policy);
+}
+
+CALLBACK(policy_sa_destroy_cb, void,
+	policy_sa_t *policy, va_list args)
+{
+	private_kernel_pfkey_ipsec_t *this;
+	policy_dir_t dir;
+
+	VA_ARGS_VGET(args, dir, this);
+	policy_sa_destroy(policy, dir, this);
 }
 
 typedef struct policy_entry_t policy_entry_t;
@@ -557,9 +567,8 @@ static void policy_entry_destroy(policy_entry_t *policy,
 	}
 	if (policy->used_by)
 	{
-		policy->used_by->invoke_function(policy->used_by,
-										(linked_list_invoke_t)policy_sa_destroy,
-										 &policy->direction, this);
+		policy->used_by->invoke_function(policy->used_by, policy_sa_destroy_cb,
+										 policy->direction, this);
 		policy->used_by->destroy(policy->used_by);
 	}
 	DESTROY_IF(policy->src.net);
@@ -567,12 +576,21 @@ static void policy_entry_destroy(policy_entry_t *policy,
 	free(policy);
 }
 
-/**
- * compares two policy_entry_t
- */
-static inline bool policy_entry_equals(policy_entry_t *current,
-									   policy_entry_t *policy)
+CALLBACK(policy_entry_destroy_cb, void,
+	policy_entry_t *policy, va_list args)
 {
+	private_kernel_pfkey_ipsec_t *this;
+
+	VA_ARGS_VGET(args, this);
+	policy_entry_destroy(policy, this);
+}
+
+CALLBACK(policy_entry_equals, bool,
+	policy_entry_t *current, va_list args)
+{
+	policy_entry_t *policy;
+
+	VA_ARGS_VGET(args, policy);
 	return current->direction == policy->direction &&
 		   current->src.proto == policy->src.proto &&
 		   current->dst.proto == policy->dst.proto &&
@@ -582,13 +600,13 @@ static inline bool policy_entry_equals(policy_entry_t *current,
 		   current->dst.net->equals(current->dst.net, policy->dst.net);
 }
 
-/**
- * compare the given kernel index with that of a policy
- */
-static inline bool policy_entry_match_byindex(policy_entry_t *current,
-											  uint32_t *index)
+CALLBACK(policy_entry_match_byindex, bool,
+	policy_entry_t *current, va_list args)
 {
-	return current->index == *index;
+	uint32_t index;
+
+	VA_ARGS_VGET(args, index);
+	return current->index == index;
 }
 
 /**
@@ -999,24 +1017,6 @@ static void add_addr_ext(struct sadb_msg *msg, host_t *host, uint16_t type,
 	PFKEY_EXT_ADD(msg, addr);
 }
 
-/**
- * adds an empty address extension to the given sadb_msg
- */
-static void add_anyaddr_ext(struct sadb_msg *msg, int family, uint8_t type)
-{
-	socklen_t len = (family == AF_INET) ? sizeof(struct sockaddr_in) :
-										  sizeof(struct sockaddr_in6);
-	struct sadb_address *addr = (struct sadb_address*)PFKEY_EXT_ADD_NEXT(msg);
-	addr->sadb_address_exttype = type;
-	sockaddr_t *saddr = (sockaddr_t*)(addr + 1);
-	saddr->sa_family = family;
-#ifdef HAVE_STRUCT_SOCKADDR_SA_LEN
-	saddr->sa_len = len;
-#endif
-	addr->sadb_address_len = PFKEY_LEN(sizeof(*addr) + len);
-	PFKEY_EXT_ADD(msg, addr);
-}
-
 #ifdef HAVE_NATT
 /**
  * add udp encap extensions to a sadb_msg
@@ -1279,9 +1279,8 @@ static void process_acquire(private_kernel_pfkey_ipsec_t *this,
 
 	index = response.x_policy->sadb_x_policy_id;
 	this->mutex->lock(this->mutex);
-	if (this->policies->find_first(this->policies,
-								(linked_list_match_t)policy_entry_match_byindex,
-								(void**)&policy, &index) == SUCCESS &&
+	if (this->policies->find_first(this->policies, policy_entry_match_byindex,
+								  (void**)&policy, index) &&
 		policy->used_by->get_first(policy->used_by, (void**)&sa) == SUCCESS)
 	{
 		reqid = sa->sa->cfg.reqid;
@@ -1854,6 +1853,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	pfkey_msg_t response;
 	size_t len;
 
+#ifndef SADB_X_EXT_NEW_ADDRESS_SRC
 	/* we can't update the SA if any of the ip addresses have changed.
 	 * that's because we can't use SADB_UPDATE and by deleting and readding the
 	 * SA the sequence numbers would get lost */
@@ -1864,6 +1864,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 			 "changes are not supported", ntohl(id->spi));
 		return NOT_SUPPORTED;
 	}
+#endif /*SADB_X_EXT_NEW_ADDRESS_SRC*/
 
 	/* if IPComp is used, we first update the IPComp SA */
 	if (data->cpi)
@@ -1900,9 +1901,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	sa->sadb_sa_state = SADB_SASTATE_MATURE;
 	PFKEY_EXT_ADD(msg, sa);
 
-	/* the kernel wants a SADB_EXT_ADDRESS_SRC to be present even though
-	 * it is not used for anything. */
-	add_anyaddr_ext(msg, id->dst->get_family(id->dst), SADB_EXT_ADDRESS_SRC);
+	add_addr_ext(msg, id->src, SADB_EXT_ADDRESS_SRC, 0, 0, FALSE);
 	add_addr_ext(msg, id->dst, SADB_EXT_ADDRESS_DST, 0, 0, FALSE);
 
 	if (pfkey_send(this, msg, &out, &len) != SUCCESS)
@@ -1944,7 +1943,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 		sa_2 = (struct sadb_sa_2*)PFKEY_EXT_ADD_NEXT(msg);
 		sa_2->sa.sadb_sa_len = PFKEY_LEN(sizeof(struct sadb_sa_2));
 		memcpy(&sa_2->sa, response.sa, sizeof(struct sadb_sa));
-		if (data->encap)
+		if (data->new_encap)
 		{
 			sa_2->sadb_sa_natt_port = data->new_dst->get_port(data->new_dst);
 			sa_2->sa.sadb_sa_flags |= SADB_X_EXT_NATT;
@@ -1977,6 +1976,19 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 		add_encap_ext(msg, data->new_src, data->new_dst);
 	}
 #endif /*HAVE_NATT*/
+
+#ifdef SADB_X_EXT_NEW_ADDRESS_SRC
+	if (!id->src->ip_equals(id->src, data->new_src))
+	{
+		add_addr_ext(msg, data->new_src, SADB_X_EXT_NEW_ADDRESS_SRC, 0, 0,
+					 FALSE);
+	}
+	if (!id->dst->ip_equals(id->dst, data->new_dst))
+	{
+		add_addr_ext(msg, data->new_dst, SADB_X_EXT_NEW_ADDRESS_DST, 0, 0,
+					 FALSE);
+	}
+#endif /*SADB_X_EXT_NEW_ADDRESS_SRC*/
 
 	free(out);
 
@@ -2559,8 +2571,7 @@ static status_t add_policy_internal(private_kernel_pfkey_ipsec_t *this,
 
 	/* we try to find the policy again and update the kernel index */
 	this->mutex->lock(this->mutex);
-	if (this->policies->find_first(this->policies, NULL,
-								  (void**)&policy) != SUCCESS)
+	if (!this->policies->find_first(this->policies, NULL, (void**)&policy))
 	{
 		DBG2(DBG_KNL, "unable to update index, the policy is already gone, "
 					  "ignoring");
@@ -2611,9 +2622,8 @@ METHOD(kernel_ipsec_t, add_policy, status_t,
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
-	if (this->policies->find_first(this->policies,
-								  (linked_list_match_t)policy_entry_equals,
-								  (void**)&found, policy) == SUCCESS)
+	if (this->policies->find_first(this->policies, policy_entry_equals,
+								   (void**)&found, policy))
 	{	/* use existing policy */
 		DBG2(DBG_KNL, "policy %R === %R %N already exists, increasing "
 			 "refcount", id->src_ts, id->dst_ts, policy_dir_names, id->dir);
@@ -2706,9 +2716,8 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
-	if (this->policies->find_first(this->policies,
-								  (linked_list_match_t)policy_entry_equals,
-								  (void**)&found, policy) != SUCCESS)
+	if (!this->policies->find_first(this->policies, policy_entry_equals,
+									(void**)&found, policy))
 	{
 		DBG1(DBG_KNL, "querying policy %R === %R %N failed, not found",
 			 id->src_ts, id->dst_ts, policy_dir_names, id->dir);
@@ -2819,9 +2828,8 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 
 	/* find a matching policy */
 	this->mutex->lock(this->mutex);
-	if (this->policies->find_first(this->policies,
-								  (linked_list_match_t)policy_entry_equals,
-								  (void**)&found, policy) != SUCCESS)
+	if (!this->policies->find_first(this->policies, policy_entry_equals,
+									(void**)&found, policy))
 	{
 		DBG1(DBG_KNL, "deleting policy %R === %R %N failed, not found",
 			 id->src_ts, id->dst_ts, policy_dir_names, id->dir);
@@ -2865,7 +2873,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	if (policy->used_by->get_count(policy->used_by) > 0)
 	{	/* policy is used by more SAs, keep in kernel */
 		DBG2(DBG_KNL, "policy still used by another CHILD_SA, not removed");
-		policy_sa_destroy(mapping, &id->dir, this);
+		policy_sa_destroy(mapping, id->dir, this);
 
 		if (!is_installed)
 		{	/* no need to update as the policy was not installed for this SA */
@@ -2920,7 +2928,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	}
 
 	this->policies->remove(this->policies, found, NULL);
-	policy_sa_destroy(mapping, &id->dir, this);
+	policy_sa_destroy(mapping, id->dir, this);
 	policy_entry_destroy(policy, this);
 	this->mutex->unlock(this->mutex);
 
@@ -3093,8 +3101,7 @@ METHOD(kernel_ipsec_t, destroy, void,
 		lib->watcher->remove(lib->watcher, this->socket_events);
 		close(this->socket_events);
 	}
-	this->policies->invoke_function(this->policies,
-								   (linked_list_invoke_t)policy_entry_destroy,
+	this->policies->invoke_function(this->policies, policy_entry_destroy_cb,
 									this);
 	this->policies->destroy(this->policies);
 	this->excludes->destroy(this->excludes);

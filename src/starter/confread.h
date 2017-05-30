@@ -65,6 +65,7 @@ typedef enum {
 typedef enum {
 		/* same as in ike_cfg.h */
 		FRAGMENTATION_NO,
+		FRAGMENTATION_ACCEPT,
 		FRAGMENTATION_YES,
 		FRAGMENTATION_FORCE,
 } fragmentation_t;
@@ -160,6 +161,8 @@ struct starter_conn {
 		int             dpd_count;
 
 		dpd_action_t    close_action;
+
+		bool            sha256_96;
 
 		time_t          inactivity;
 
