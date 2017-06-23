@@ -1,10 +1,10 @@
-strongswan (5.5.3-1) UNRELEASED; urgency=medium
+strongswan (5.5.3-1) unstable; urgency=medium
 
   * New upstream release.
   * debian/control:
     - update standards version to 4.0.0
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 30 May 2017 20:59:36 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 23 Jun 2017 14:07:42 +0200
 
 strongswan (5.5.2-1) experimental; urgency=medium
 
