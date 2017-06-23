@@ -133,7 +133,7 @@ Description: strongSwan utility and crypto library (extra plugins)
  Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
  .
  This package provides extra plugins for the strongSwan utility and
- cryptograhic library.
+ cryptographic library.
  .
  Included plugins are:
   - af-alg [linux] (AF_ALG Linux crypto API interface, provides
