@@ -5,7 +5,7 @@ Maintainer: strongSwan Maintainers <pkg-swan-devel@lists.alioth.debian.org>
 Uploaders: Rene Mayrhofer <rmayr@debian.org>,
            Yves-Alexis Perez <corsac@debian.org>,
            Romain Francoise <rfrancoise@debian.org>
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-swan/strongswan.git;a=summary
 Vcs-Git: git://anonscm.debian.org/pkg-swan/strongswan.git
 Build-Depends: bison,
