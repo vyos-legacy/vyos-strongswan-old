@@ -143,6 +143,7 @@ Description: strongSwan utility and crypto library (extra plugins)
   - ctr (CTR cipher mode wrapper)
   - curl (libcurl based HTTP/FTP fetcher)
   - curve25519 (support for Diffie-Hellman group 31 using Curve25519 and
+    support for the Ed25519 digital signature algorithm for IKEv2)
   - gcrypt (Crypto backend based on libgcrypt, provides
     RSA/DH/ciphers/hashers/rng)
   - ldap (LDAP fetching plugin based on libldap)
@@ -167,7 +168,6 @@ Description: strongSwan charon library (extra plugins)
   - addrblock (Narrow traffic selectors to RFC 3779 address blocks in X.509
     certificates)
   - certexpire (Export expiration dates of used certificates)
-    support for the Ed25519 digital signature algorithm for IKEv2)
   - eap-aka (Generic EAP-AKA protocol handler using different backends)
   - eap-gtc (EAP-GTC protocol handler authenticating with XAuth backends)
   - eap-identity (EAP-Identity identity exchange algorithm, to use with other
