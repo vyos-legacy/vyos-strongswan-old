@@ -101,6 +101,8 @@ override_dh_auto_clean:
 
 
 override_dh_install-arch:
+	# remove all .la files
+	find debian/tmp/usr/lib -name '*.la' -delete
 
 	# first special cases
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
@@ -164,7 +166,7 @@ ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
 endif
 
 	# then install the rest, ignoring the above
-	dh_install --fail-missing \
+	dh_install \
 		-X\.la -X\.a \
 		-Xmedsrv -Xman3 \
 		-Xlibstrongswan-connmark.so -X connmark.conf \
@@ -229,6 +231,9 @@ override_dh_auto_test:
 ifeq ($(DEB_BUILD_ARCH),amd64)
 	dh_auto_test
 endif
+
+override_dh_missing:
+	dh_missing --fail-missing
 
 %:
 	dh $@ --parallel --with autoreconf,systemd

@@ -1,3 +1,12 @@
+strongswan (5.5.3-3) UNRELEASED; urgency=medium
+
+  * debian/rules:
+    - remove .la files before install
+    - don't call dh_install with --fail-missing
+    - override dh_missing with --fail-missing to catch uninstalled files.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 28 Jun 2017 22:57:48 +0200
+
 strongswan (5.5.3-2) unstable; urgency=medium
 
   * debian/control:
