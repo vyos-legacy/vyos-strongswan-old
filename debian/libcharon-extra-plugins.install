@@ -1,7 +1,6 @@
 # libcharon plugins
 usr/lib/ipsec/plugins/libstrongswan-addrblock.so
 usr/lib/ipsec/plugins/libstrongswan-certexpire.so
-usr/lib/ipsec/plugins/libstrongswan-curve25519.so
 usr/lib/ipsec/plugins/libstrongswan-eap*.so
 usr/lib/ipsec/plugins/libstrongswan-error-notify.so
 usr/lib/ipsec/plugins/libstrongswan-ha.so
@@ -15,7 +14,6 @@ usr/lib/ipsec/plugins/libstrongswan-xauth-*.so
 # standard configuration files
 usr/share/strongswan/templates/config/plugins/addrblock.conf
 usr/share/strongswan/templates/config/plugins/certexpire.conf
-usr/share/strongswan/templates/config/plugins/curve25519.conf
 usr/share/strongswan/templates/config/plugins/eap-*.conf
 usr/share/strongswan/templates/config/plugins/error-notify.conf
 usr/share/strongswan/templates/config/plugins/ha.conf
@@ -30,7 +28,6 @@ usr/share/strongswan/templates/config/strongswan.d/tnc.conf
 etc/strongswan.d/tnc.conf
 etc/strongswan.d/charon/addrblock.conf
 etc/strongswan.d/charon/certexpire.conf
-etc/strongswan.d/charon/curve25519.conf
 etc/strongswan.d/charon/eap-*.conf
 etc/strongswan.d/charon/error-notify.conf
 etc/strongswan.d/charon/ha.conf
