@@ -4,6 +4,9 @@ strongswan (5.5.3-3) UNRELEASED; urgency=medium
     - remove .la files before install
     - don't call dh_install with --fail-missing
     - override dh_missing with --fail-missing to catch uninstalled files.
+  * debian/strongswan-swanctl.install:
+    - install the whole /etc/swanctl folder, including (empty) subfolders.
+                                                                closes: #866324
 
  -- Yves-Alexis Perez <corsac@debian.org>  Wed, 28 Jun 2017 22:57:48 +0200
 

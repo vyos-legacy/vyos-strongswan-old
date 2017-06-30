@@ -1,6 +1,6 @@
 etc/strongswan.d/swanctl.conf
 etc/strongswan.d/charon/vici.conf
-etc/swanctl/swanctl.conf
+etc/swanctl
 usr/share/strongswan/templates/config/plugins/vici.conf
 usr/share/strongswan/templates/config/strongswan.d/swanctl.conf
 usr/share/man/man5/swanctl.conf.5
