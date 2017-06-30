@@ -51,15 +51,15 @@ include /usr/share/dpkg/architecture.mk
 
 # the padlock plugin only makes sense on i386
 # AESNI and RdRand only make sense on i386 and amd64
-ifeq ($(DEB_BUILD_ARCH_CPU),i386)
+ifeq ($(DEB_HOST_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock --enable-rdrand --enable-aesni
 endif
 
-ifeq ($(DEB_BUILD_ARCH_CPU),amd64)
+ifeq ($(DEB_HOST_ARCH_CPU),amd64)
   CONFIGUREARGS += --enable-rdrand --enable-aesni
 endif
 
-ifeq ($(DEB_BUILD_ARCH_OS),linux)
+ifeq ($(DEB_HOST_ARCH_OS),linux)
 	# only enable network-manager and capabilities dropping on linux hosts
 	# some plugins are linux-only too
 	CONFIGUREARGS += --enable-nm \
@@ -72,7 +72,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--enable-systemd --enable-swanctl
 endif
 
-ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
 	# recommended configure line for FreeBSD
 	# http://wiki.strongswan.org/projects/strongswan/wiki/FreeBSD
 	CONFIGUREARGS += --disable-kernel-netlink \
@@ -105,7 +105,7 @@ override_dh_install-arch:
 	find debian/tmp/usr/lib -name '*.la' -delete
 
 	# first special cases
-ifeq ($(DEB_BUILD_ARCH_OS),linux)
+ifeq ($(DEB_HOST_ARCH_OS),linux)
 	# handle Linux-only plugins
 	dh_install -p libstrongswan-standard-plugins usr/lib/ipsec/plugins/libstrongswan-connmark.so
 	dh_install -p libstrongswan-standard-plugins usr/share/strongswan/templates/config/plugins/connmark.conf
@@ -129,7 +129,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	dh_install -p strongswan-starter lib/systemd/system/strongswan.service
 endif
 
-ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
+ifeq ($(DEB_HOST_ARCH_OS),kfreebsd)
 	# handle FreeBSD-only plugins
 	dh_install -p libstrongswan usr/lib/ipsec/plugins/libstrongswan-kernel-pfkey.so
 	dh_install -p libstrongswan usr/share/strongswan/templates/config/plugins/kernel-pfkey.conf
@@ -140,7 +140,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
 	dh_install -p libstrongswan etc/strongswan.d/charon/kernel-pfroute.conf
 endif
 
-ifeq ($(DEB_BUILD_ARCH_CPU),i386)
+ifeq ($(DEB_HOST_ARCH_CPU),i386)
 	# special handling for padlock, as it is only built on i386
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-padlock.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/padlock.conf
@@ -155,7 +155,7 @@ ifeq ($(DEB_BUILD_ARCH_CPU),i386)
 	dh_install -p libstrongswan-standard-plugins etc/strongswan.d/charon/aesni.conf
 endif
 
-ifeq ($(DEB_BUILD_ARCH_CPU), amd64)
+ifeq ($(DEB_HOST_ARCH_CPU), amd64)
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-rdrand.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/rdrand.conf
 	dh_install -p libstrongswan-extra-plugins etc/strongswan.d/charon/rdrand.conf

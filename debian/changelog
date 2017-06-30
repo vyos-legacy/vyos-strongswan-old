@@ -6,6 +6,8 @@ strongswan (5.5.3-3) UNRELEASED; urgency=medium
     - override dh_missing with --fail-missing to catch uninstalled files
     - apply patch from Gerald Turner to restrict permissions on swanctl folder
       containing private material.
+    - replace DEB_BUILD_* by DEB_HOST_* when needed, fix FTCBFS, for example
+      when building for ppc64el on x86. Thanks Helmut Grohne.   closes: #866669
   * debian/strongswan-swanctl.install:
     - install the whole /etc/swanctl folder, including (empty) subfolders.
                                                                 closes: #866324
