@@ -14,10 +14,6 @@ strongswan (5.6.0-1) UNRELEASED; urgency=medium
   * debian/strongswan-swanctl.install:
     - install the whole /etc/swanctl folder, including (empty) subfolders.
                                                                 closes: #866324
-  * debian/patches:
-    - 02_configure-Install-charon-systemd.conf added, cherry-picked from
-    upstream to install configuration to output logging information to the
-    journal.
   * debian/charon-systemd.install:
     - install charon-systemd.conf files, thanks Gerald Turner.  closes: #866325
   * Add AppArmor profiles for swanctl and charon-system, thanks Gerald Turner.
