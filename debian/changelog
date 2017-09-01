@@ -1,6 +1,8 @@
 strongswan (5.6.0-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+    - fix insufficient input validation in gmp plugin, which can cause a
+    denial of service vulnerability (CVE-2017-11185)            closes: #872155
   * debian/rules:
     - remove .la files before install
     - don't call dh_install with --fail-missing
