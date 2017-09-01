@@ -1,5 +1,6 @@
-strongswan (5.5.3-3) UNRELEASED; urgency=medium
+strongswan (5.6.0-1) UNRELEASED; urgency=medium
 
+  * New upstream release.
   * debian/rules:
     - remove .la files before install
     - don't call dh_install with --fail-missing
@@ -20,7 +21,7 @@ strongswan (5.5.3-3) UNRELEASED; urgency=medium
   * Add AppArmor profiles for swanctl and charon-system, thanks Gerald Turner.
                                                                 closes: #866327
 
- -- Yves-Alexis Perez <corsac@debian.org>  Wed, 28 Jun 2017 22:57:48 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 01 Sep 2017 17:21:45 +0200
 
 strongswan (5.5.3-2) unstable; urgency=medium
 
