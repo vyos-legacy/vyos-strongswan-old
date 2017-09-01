@@ -569,6 +569,13 @@ IKE identity to expect for authentication round. Refer to the
 section for details.
 
 .TP
+.BR connections.<conn>.remote<suffix>.eap_id " [id]"
+Identity to use as peer identity during EAP authentication. If set to
+.RI "" "%any" ""
+the
+EAP\-Identity method will be used to ask the client for an identity.
+
+.TP
 .BR connections.<conn>.remote<suffix>.groups " []"
 Comma separated authorization group memberships to require. The peer must prove
 membership to at least one of the specified groups. Group membership can be
@@ -1050,9 +1057,14 @@ Netfilter mark and mask for input traffic. On Linux Netfilter may require marks
 on each packet to match an SA having that option set. This allows Netfilter
 rules to select specific tunnels for incoming traffic. The special value
 .RI "" "%unique" ""
-sets a unique mark on each CHILD_SA instance.
+sets a unique mark on each CHILD_SA instance, beyond that the value
+.RI "" "%unique\-dir" ""
+assigns a different unique mark for each CHILD_SA direction
+(in/out).
 
-An additional mask may be appended to the mark, separated by _/_. The default
+An additional mask may be appended to the mark, separated by
+.RI "" "/" "."
+The default
 mask if omitted is 0xffffffff.
 
 .TP
@@ -1061,9 +1073,14 @@ Netfilter mark and mask for output traffic. On Linux Netfilter may require marks
 on each packet to match a policy having that option set. This allows Netfilter
 rules to select specific tunnels for outgoing traffic. The special value
 .RI "" "%unique" ""
-sets a unique mark on each CHILD_SA instance.
+sets a unique mark on each CHILD_SA instance, beyond that the value
+.RI "" "%unique\-dir" ""
+assigns a different unique mark for each CHILD_SA direction
+(in/out).
 
-An additional mask may be appended to the mark, separated by _/_. The default
+An additional mask may be appended to the mark, separated by
+.RI "" "/" "."
+The default
 mask if omitted is 0xffffffff.
 
 .TP

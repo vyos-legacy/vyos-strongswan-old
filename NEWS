@@ -1,3 +1,45 @@
+strongswan-5.6.0
+----------------
+
+- Fixed a DoS vulnerability in the gmp plugin that was caused by insufficient
+  input validation when verifying RSA signatures, which requires decryption
+  with the operation m^e mod n, where m is the signature, and e and n are the
+  exponent and modulus of the public key.  The value m is an integer between
+  0 and n-1, however, the gmp plugin did not verify this.  So if m equals n the
+  calculation results in 0, in which case mpz_export() returns NULL.  This
+  result wasn't handled properly causing a null-pointer dereference.
+  This vulnerability has been registered as CVE-2017-11185.
+
+- New SWIMA IMC/IMV pair implements the "draft-ietf-sacm-nea-swima-patnc"
+  Internet Draft and has been demonstrated at the IETF 99 Prague Hackathon.
+
+- The IMV database template has been adapted to achieve full compliance
+  with the ISO 19770-2:2015 SWID tag standard.
+
+- The sw-collector tool extracts software events from apt history logs
+  and stores them in an SQLite database to be used by the SWIMA IMC.
+  The tool can also generate SWID tags both for installed and removed
+  package versions.
+
+- The pt-tls-client can attach and use TPM 2.0 protected private keys
+  via the --keyid parameter.
+
+- libtpmtss supports Intel's TSS2 Architecture Broker and Resource
+  Manager interface (tcti-tabrmd).
+
+- The new eap-aka-3gpp plugin implements the 3GPP MILENAGE algorithms
+  in software.  K (optionally concatenated with OPc) may be configured as
+  binary EAP secret.
+
+- CHILD_SA rekeying was fixed in charon-tkm and was slightly changed: The
+  switch to the new outbound IPsec SA now happens via SPI on the outbound
+  policy on Linux, and in case of lost rekey collisions no outbound SA/policy
+  is temporarily installed for the redundant CHILD_SA.
+
+- The new %unique-dir value for mark* settings allocates separate unique marks
+  for each CHILD_SA direction (in/out).
+
+
 strongswan-5.5.3
 ----------------
 
@@ -894,7 +936,7 @@ strongswan-5.0.0
   keying protocols. The feature-set of IKEv1 in charon is almost on par with
   pluto, but currently does not support AH or bundled AH+ESP SAs. Beside
   RSA/ECDSA, PSK and XAuth, charon also supports the Hybrid authentication
-  mode. Informations for interoperability and migration is available at
+  mode. Information for interoperability and migration is available at
   http://wiki.strongswan.org/projects/strongswan/wiki/CharonPlutoIKEv1.
 
 - Charon's bus_t has been refactored so that loggers and other listeners are

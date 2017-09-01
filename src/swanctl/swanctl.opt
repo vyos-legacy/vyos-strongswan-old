@@ -460,6 +460,12 @@ connections.<conn>.remote<suffix>.id = %any
 	IKE identity to expect for authentication round. Refer to the _local_ _id_
 	section for details.
 
+connections.<conn>.remote<suffix>.eap_id = id
+	Identity to use as peer identity during EAP authentication.
+
+	Identity to use as peer identity during EAP authentication. If set to _%any_
+	the EAP-Identity method will be used to ask the client for an identity.
+
 connections.<conn>.remote<suffix>.groups =
 	Authorization group memberships to require.
 
@@ -864,7 +870,9 @@ connections.<conn>.children.<child>.mark_in = 0/0x00000000
 	Netfilter mark and mask for input traffic. On Linux Netfilter may require
 	marks on each packet to match an SA having that option set. This allows
 	Netfilter rules to select specific tunnels for incoming traffic. The
-	special value _%unique_ sets a unique mark on each CHILD_SA instance.
+	special value _%unique_ sets a unique mark on each CHILD_SA instance,
+	beyond that the value _%unique-dir_ assigns a different unique mark for each
+	CHILD_SA direction (in/out).
 
 	An additional mask may be appended to the mark, separated by _/_. The
 	default mask if omitted is 0xffffffff.
@@ -875,7 +883,9 @@ connections.<conn>.children.<child>.mark_out = 0/0x00000000
 	Netfilter mark and mask for output traffic. On Linux Netfilter may require
 	marks on each packet to match a policy having that option set. This allows
 	Netfilter rules to select specific tunnels for outgoing traffic. The
-	special value _%unique_ sets a unique mark on each CHILD_SA instance.
+	special value _%unique_ sets a unique mark on each CHILD_SA instance,
+	beyond that the value _%unique-dir_ assigns a different unique mark for each
+	CHILD_SA direction (in/out).
 
 	An additional mask may be appended to the mark, separated by _/_. The
 	default mask if omitted is 0xffffffff.
@@ -1152,3 +1162,5 @@ authorities.<name>.cert_uri_base =
 	built by appending the SHA1 hash of the DER encoded certificates to this
 	base URI.
 
+include conf.d/*.conf
+	Include config snippets

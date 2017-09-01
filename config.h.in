@@ -322,6 +322,12 @@
 /* Define to 1 if strerror_r returns char *. */
 #undef STRERROR_R_CHAR_P
 
+/* use TCTI Sockets */
+#undef TSS2_TCTI_SOCKET
+
+/* use TCTI Access Broker and Resource Mamager */
+#undef TSS2_TCTI_TABRMD
+
 /* use TrouSerS library libtspi */
 #undef TSS_TROUSERS
 
@@ -339,6 +345,9 @@
 
 /* support for IKEv2 protocol */
 #undef USE_IKEV2
+
+/* build code for JSON */
+#undef USE_JSON
 
 /* use thread ID for thread identification, if available */
 #undef USE_THREAD_IDS
