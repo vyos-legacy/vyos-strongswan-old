@@ -121,6 +121,8 @@ EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_SWANCTL_TRUE@am__append_30 = $(DESTDIR)$(sbindir)/swanctl
 @USE_ATTR_SQL_TRUE@am__append_31 = $(DESTDIR)$(ipsecdir)/pool
 @USE_IMV_ATTESTATION_TRUE@am__append_32 = $(DESTDIR)$(ipsecdir)/attest
+@USE_LIBPTTLS_TRUE@am__append_33 = $(DESTDIR)$(bindir)/pt-tls-client
+@USE_IMC_SWIMA_TRUE@am__append_34 = $(DESTDIR)$(sbindir)/sw-collector
 subdir = src/checksum
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -352,8 +354,6 @@ RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
-RUBYINCLUDE = @RUBYINCLUDE@
-RUBYLIB = @RUBYLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -454,6 +454,8 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
+ruby_CFLAGS = @ruby_CFLAGS@
+ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -482,6 +484,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
+tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
+tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -521,7 +527,8 @@ libs = $(DESTDIR)$(ipseclibdir)/libstrongswan.so $(am__append_3) \
 	$(am__append_19) $(am__append_21) $(am__append_23)
 exes = $(am__append_24) $(am__append_26) $(am__append_27) \
 	$(am__append_28) $(am__append_29) $(am__append_30) \
-	$(am__append_31) $(am__append_32)
+	$(am__append_31) $(am__append_32) $(am__append_33) \
+	$(am__append_34)
 all: all-am
 
 .SUFFIXES:

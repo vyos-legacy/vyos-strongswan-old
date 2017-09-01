@@ -519,6 +519,11 @@ Hashing algorithm to fingerprint coupled certificates.
 Maximum number of coupling entries to create.
 
 .TP
+.BR charon.plugins.curl.redir " [-1]"
+Maximum number of redirects followed by the plugin, set to 0 to disable
+following redirects, set to \-1 for no limit.
+
+.TP
 .BR charon.plugins.dhcp.force_server_address " [no]"
 Always use the configured server address. This might be helpful if the DHCP
 server runs on the same host as strongSwan, and the DHCP daemon does not listen
@@ -556,7 +561,15 @@ Socket provided by the duplicheck plugin.
 .TP
 .BR charon.plugins.eap-aka.request_identity " [yes]"
 .TP
-.BR charon.plugins.eap-aka-3ggp2.seq_check " []"
+.BR charon.plugins.eap-aka-3gpp.seq_check " []"
+Enable to activate sequence check of the AKA SQN values in order to trigger
+resync cycles.
+
+.TP
+.BR charon.plugins.eap-aka-3gpp2.seq_check " []"
+Enable to activate sequence check of the AKA SQN values in order to trigger
+resync cycles.
+
 .TP
 .BR charon.plugins.eap-dynamic.prefer_user " [no]"
 If enabled the EAP methods proposed in an EAP\-Nak message sent by the peer are
@@ -2115,15 +2128,34 @@ Send open listening ports without being prompted.
 Directory where SWID tags are located.
 
 .TP
-.BR libimcv.plugins.imc-swid.swid_full " [FALSE]"
+.BR libimcv.plugins.imc-swid.swid_full " [no]"
 Include file information in the XML\-encoded SWID tags.
 
 .TP
-.BR libimcv.plugins.imc-swid.swid_generator " [/usr/local/bin/swid_generator]"
-SWID generator command to be executed.
+.BR libimcv.plugins.imc-swid.swid_pretty " [no]"
+Generate XML\-encoded SWID tags with pretty indentation.
 
 .TP
-.BR libimcv.plugins.imc-swid.swid_pretty " [FALSE]"
+.BR libimcv.plugins.imc-swima.eid_epoch " [0x11223344]"
+Set 32 bit epoch value for event IDs manually if software collector database is
+not available.
+
+.TP
+.BR libimcv.plugins.imc-swima.swid_database " []"
+URI to software collector database containing event timestamps, software
+creation and deletion events and collected software identifiers. If it contains
+a password, make sure to adjust the permissions of the config file accordingly.
+
+.TP
+.BR libimcv.plugins.imc-swima.swid_directory " [${prefix}/share]"
+Directory where SWID tags are located.
+
+.TP
+.BR libimcv.plugins.imc-swima.swid_full " [no]"
+Include file information in the XML\-encoded SWID tags.
+
+.TP
+.BR libimcv.plugins.imc-swima.swid_pretty " [no]"
 Generate XML\-encoded SWID tags with pretty indentation.
 
 .TP
@@ -2183,6 +2215,14 @@ Timeout of SWID REST API HTTP POST transaction.
 HTTP URI of the SWID REST API.
 
 .TP
+.BR libimcv.plugins.imv-swima.rest_api.timeout " [120]"
+Timeout of SWID REST API HTTP POST transaction.
+
+.TP
+.BR libimcv.plugins.imv-swima.rest_api.uri " []"
+HTTP URI of the SWID REST API.
+
+.TP
 .BR libimcv.plugins.imv-test.rounds " [0]"
 Number of IMC\-IMV retry rounds.
 
@@ -2191,6 +2231,18 @@ Number of IMC\-IMV retry rounds.
 Disable output to stderr with a stand\-alone
 .RI "" "libimcv" ""
 library.
+
+.TP
+.BR libimcv.swid_gen.command " [/usr/local/bin/swid_generator]"
+SWID generator command to be executed.
+
+.TP
+.BR libimcv.swid_gen.tag_creator.name " [strongSwan Project]"
+Name of the tagCreator entity.
+
+.TP
+.BR libimcv.swid_gen.tag_creator.regid " [strongswan.org]"
+regid of the tagCreator entity.
 
 .TP
 .BR manager.database " []"
@@ -2291,6 +2343,45 @@ Location of the ipsec.conf file
 Disable charon plugin load option warning.
 
 .TP
+.B sw-collector
+.br
+Options for the sw\-collector tool.
+
+.TP
+.BR sw-collector.database " []"
+URI to software collector database containing event timestamps, software
+creation and deletion events and collected software identifiers. If it contains
+a password, make sure to adjust the permissions of the config file accordingly.
+
+.TP
+.BR sw-collector.first_file " [/var/log/bootstrap.log]"
+Path pointing to file created when the Linux OS was installed.
+
+.TP
+.BR sw-collector.first_time " [0000-00-00T00:00:00Z]"
+Time in UTC when the Linux OS was installed.
+
+.TP
+.BR sw-collector.history " []"
+Path pointing to apt history.log file.
+
+.TP
+.BR sw-collector.load " []"
+Plugins to load in sw\-collector tool.
+
+.TP
+.BR sw-collector.rest_api.timeout " [120]"
+Timeout of REST API HTTP POST transaction.
+
+.TP
+.BR sw-collector.rest_api.uri " []"
+HTTP URI of the central collector's REST API.
+
+.TP
 .BR swanctl.load " []"
 Plugins to load in swanctl.
+
+.TP
+.BR swanctl.socket " [unix://${piddir}/charon.vici]"
+VICI socket to connect to by default.
 

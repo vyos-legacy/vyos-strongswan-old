@@ -478,6 +478,7 @@ static status_t select_and_install(private_child_create_t *this,
 								   bool no_dh, bool ike_auth)
 {
 	status_t status, status_i, status_o;
+	child_sa_outbound_state_t out_state;
 	chunk_t nonce_i, nonce_r;
 	chunk_t encr_i = chunk_empty, encr_r = chunk_empty;
 	chunk_t integ_i = chunk_empty, integ_r = chunk_empty;
@@ -678,29 +679,42 @@ static status_t select_and_install(private_child_create_t *this,
 			status_i = this->child_sa->install(this->child_sa, encr_r, integ_r,
 							this->my_spi, this->my_cpi, this->initiator,
 							TRUE, this->tfcv3);
-			status_o = this->child_sa->install(this->child_sa, encr_i, integ_i,
-							this->other_spi, this->other_cpi, this->initiator,
-							FALSE, this->tfcv3);
 		}
-		else if (!this->rekey)
+		else
 		{
 			status_i = this->child_sa->install(this->child_sa, encr_i, integ_i,
 							this->my_spi, this->my_cpi, this->initiator,
 							TRUE, this->tfcv3);
-			status_o = this->child_sa->install(this->child_sa, encr_r, integ_r,
+		}
+		if (this->rekey)
+		{	/* during rekeyings we install the outbound SA and/or policies
+			 * separately: as responder when we receive the delete for the old
+			 * SA, as initiator pretty much immediately in the ike-rekey task,
+			 * unless there was a rekey collision that we lost */
+			if (this->initiator)
+			{
+				status_o = this->child_sa->register_outbound(this->child_sa,
+							encr_i, integ_i, this->other_spi, this->other_cpi,
+							this->tfcv3);
+			}
+			else
+			{
+				status_o = this->child_sa->register_outbound(this->child_sa,
+							encr_r, integ_r, this->other_spi, this->other_cpi,
+							this->tfcv3);
+			}
+		}
+		else if (this->initiator)
+		{
+			status_o = this->child_sa->install(this->child_sa, encr_i, integ_i,
 							this->other_spi, this->other_cpi, this->initiator,
 							FALSE, this->tfcv3);
 		}
 		else
-		{	/* as responder during a rekeying we only install the inbound
-			 * SA now, the outbound SA and policies are installed when we
-			 * receive the delete for the old SA */
-			status_i = this->child_sa->install(this->child_sa, encr_i, integ_i,
-							this->my_spi, this->my_cpi, this->initiator,
-							TRUE, this->tfcv3);
-			this->child_sa->register_outbound(this->child_sa, encr_r, integ_r,
-							this->other_spi, this->other_cpi, this->tfcv3);
-			status_o = SUCCESS;
+		{
+			status_o = this->child_sa->install(this->child_sa, encr_r, integ_r,
+							this->other_spi, this->other_cpi, this->initiator,
+							FALSE, this->tfcv3);
 		}
 	}
 
@@ -745,20 +759,15 @@ static status_t select_and_install(private_child_create_t *this,
 	charon->bus->child_keys(charon->bus, this->child_sa, this->initiator,
 							this->dh, nonce_i, nonce_r);
 
-	this->child_sa->set_state(this->child_sa, CHILD_INSTALLED);
-	this->ike_sa->add_child_sa(this->ike_sa, this->child_sa);
-	this->established = TRUE;
-
-	schedule_inactivity_timeout(this);
-
 	my_ts = linked_list_create_from_enumerator(
 				this->child_sa->create_ts_enumerator(this->child_sa, TRUE));
 	other_ts = linked_list_create_from_enumerator(
 				this->child_sa->create_ts_enumerator(this->child_sa, FALSE));
+	out_state = this->child_sa->get_outbound_state(this->child_sa);
 
 	DBG0(DBG_IKE, "%sCHILD_SA %s{%d} established "
 		 "with SPIs %.8x_i %.8x_o and TS %#R === %#R",
-		 this->rekey && !this->initiator ? "inbound " : "",
+		 (out_state == CHILD_OUTBOUND_INSTALLED) ? "" : "inbound ",
 		 this->child_sa->get_name(this->child_sa),
 		 this->child_sa->get_unique_id(this->child_sa),
 		 ntohl(this->child_sa->get_spi(this->child_sa, TRUE)),
@@ -767,6 +776,12 @@ static status_t select_and_install(private_child_create_t *this,
 
 	my_ts->destroy(my_ts);
 	other_ts->destroy(other_ts);
+
+	this->child_sa->set_state(this->child_sa, CHILD_INSTALLED);
+	this->ike_sa->add_child_sa(this->ike_sa, this->child_sa);
+	this->established = TRUE;
+
+	schedule_inactivity_timeout(this);
 	return SUCCESS;
 }
 
@@ -1007,17 +1022,6 @@ METHOD(task_t, build_i, status_t,
 			break;
 	}
 
-	if (this->reqid)
-	{
-		DBG0(DBG_IKE, "establishing CHILD_SA %s{%d}",
-			 this->config->get_name(this->config), this->reqid);
-	}
-	else
-	{
-		DBG0(DBG_IKE, "establishing CHILD_SA %s",
-			 this->config->get_name(this->config));
-	}
-
 	/* check if we want a virtual IP, but don't have one */
 	list = linked_list_create();
 	peer_cfg = this->ike_sa->get_peer_cfg(this->ike_sa);
@@ -1069,6 +1073,19 @@ METHOD(task_t, build_i, status_t,
 			this->ike_sa->get_other_host(this->ike_sa), this->config, this->reqid,
 			this->ike_sa->has_condition(this->ike_sa, COND_NAT_ANY),
 			this->mark_in, this->mark_out);
+
+	if (this->reqid)
+	{
+		DBG0(DBG_IKE, "establishing CHILD_SA %s{%d} reqid %d",
+			 this->child_sa->get_name(this->child_sa),
+			 this->child_sa->get_unique_id(this->child_sa), this->reqid);
+	}
+	else
+	{
+		DBG0(DBG_IKE, "establishing CHILD_SA %s{%d}",
+			 this->child_sa->get_name(this->child_sa),
+			 this->child_sa->get_unique_id(this->child_sa));
+	}
 
 	if (!allocate_spi(this))
 	{

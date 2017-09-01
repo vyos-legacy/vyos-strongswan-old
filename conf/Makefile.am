@@ -24,7 +24,8 @@ options = \
 	options/scepclient.opt \
 	options/starter.opt \
 	options/swanctl.opt \
-	options/tnc.opt
+	options/tnc.opt \
+	options/sw-collector.opt
 
 plugins = \
 	plugins/addrblock.opt \
@@ -35,11 +36,13 @@ plugins = \
 	plugins/bypass-lan.opt \
 	plugins/certexpire.opt \
 	plugins/coupling.opt \
+	plugins/curl.opt \
 	plugins/dhcp.opt \
 	plugins/dnscert.opt \
 	plugins/duplicheck.opt \
 	plugins/eap-aka.opt \
-	plugins/eap-aka-3ggp2.opt \
+	plugins/eap-aka-3gpp.opt \
+	plugins/eap-aka-3gpp2.opt \
 	plugins/eap-dynamic.opt \
 	plugins/eap-gtc.opt \
 	plugins/eap-peap.opt \
@@ -59,11 +62,13 @@ plugins = \
 	plugins/imc-os.opt \
 	plugins/imc-scanner.opt \
 	plugins/imc-swid.opt \
+	plugins/imc-swima.opt \
 	plugins/imc-test.opt \
 	plugins/imv-attestation.opt \
 	plugins/imv-os.opt \
 	plugins/imv-scanner.opt \
 	plugins/imv-swid.opt \
+	plugins/imv-swima.opt \
 	plugins/imv-test.opt \
 	plugins/ipseckey.opt \
 	plugins/led.opt \
