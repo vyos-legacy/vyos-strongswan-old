@@ -247,8 +247,11 @@ ifeq ($(DEB_BUILD_ARCH),amd64)
 	dh_auto_test
 endif
 
-override_dh_missing:
+override_dh_missing-arch:
 	dh_missing --fail-missing
+
+override_dh_missing-indep:
+	dh_missing --list-missing
 
 %:
 	dh $@ --parallel --with autoreconf,systemd
