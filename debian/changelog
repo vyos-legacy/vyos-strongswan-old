@@ -18,6 +18,8 @@ strongswan (5.6.0-1) UNRELEASED; urgency=medium
     - install charon-systemd.conf files, thanks Gerald Turner.  closes: #866325
   * Add AppArmor profiles for swanctl and charon-system, thanks Gerald Turner.
                                                                 closes: #866327
+  * debian/libcharon-extra-plugins.install:
+    - install pt-tls-client in /u/b and also install its manpage.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Fri, 01 Sep 2017 17:21:45 +0200
 

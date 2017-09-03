@@ -47,6 +47,8 @@ usr/lib/ipsec/libsimaka.so*
 usr/lib/ipsec/libtnccs.so*
 usr/lib/ipsec/libtls.so*
 # binaries
+usr/bin/pt-tls-client
 usr/lib/ipsec/error-notify
 usr/lib/ipsec/lookip
-usr/lib/ipsec/pt-tls-client
+# manpages
+usr/share/man/man1/pt-tls-client.1
