@@ -1,4 +1,4 @@
-strongswan (5.6.0-1) UNRELEASED; urgency=medium
+strongswan (5.6.0-1) unstable; urgency=medium
 
   * New upstream release.
     - fix insufficient input validation in gmp plugin, which can cause a
@@ -24,7 +24,7 @@ strongswan (5.6.0-1) UNRELEASED; urgency=medium
     - add lintian overrides for private keys directories using 700
     permissions.
 
- -- Yves-Alexis Perez <corsac@debian.org>  Fri, 01 Sep 2017 17:21:45 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 03 Sep 2017 14:38:09 +0200
 
 strongswan (5.5.3-2) unstable; urgency=medium
 
