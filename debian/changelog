@@ -20,6 +20,9 @@ strongswan (5.6.0-1) UNRELEASED; urgency=medium
                                                                 closes: #866327
   * debian/libcharon-extra-plugins.install:
     - install pt-tls-client in /u/b and also install its manpage.
+  * debian/strongswan-swanctl.lintian-overrides:
+    - add lintian overrides for private keys directories using 700
+    permissions.
 
  -- Yves-Alexis Perez <corsac@debian.org>  Fri, 01 Sep 2017 17:21:45 +0200
 
