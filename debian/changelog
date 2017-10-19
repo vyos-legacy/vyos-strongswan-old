@@ -1,3 +1,10 @@
+strongswan (5.6.0-3) UNRELEASED; urgency=medium
+
+  * debian/control:
+    - remove strongswan-ike{,v1,v2} packages.                   closes: #878979
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 19 Oct 2017 16:45:36 +0200
+
 strongswan (5.6.0-2) unstable; urgency=medium
 
   * debian/rules:

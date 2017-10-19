@@ -240,19 +240,6 @@ Description: strongSwan Internet Key Exchange daemon
  It is written from scratch using a fully multi-threaded design and a modular
  architecture. Various plugins can provide additional functionality.
 
-Package: strongswan-ike
-Architecture: all
-Section: oldlibs
-Priority: extra
-Depends: strongswan-charon, ${misc:Depends}, ${shlibs:Depends}
-Description: strongSwan Internet Key Exchange daemon (transitional package)
- The strongSwan VPN suite uses the native IPsec stack in the standard
- Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
- .
- This package used to install version 5 of the charon daemon and has been
- replaced by the strongswan-charon package. This package can be safely removed
- once it's installed.
-
 Package: strongswan-nm
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -266,32 +253,6 @@ Description: strongSwan plugin to interact with NetworkManager
  and control the IKEv2 daemon directly through D-Bus. It is designed to work
  in conjunction with the network-manager-strongswan package, providing
  a simple graphical frontend to configure IPsec based VPNs.
-
-Package: strongswan-ikev1
-Architecture: all
-Depends: strongswan-ike, ${misc:Depends}
-Section: oldlibs
-Priority: extra
-Description: strongSwan IKEv1 daemon, transitional package
- The strongSwan VPN suite uses the native IPsec stack in the standard
- Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
- .
- This package used to install the pluto daemon, implementing the IKEv1
- protocol. It has been replaced by charon in the strongswan-ike package, so
- this package can be safely removed once it's installed.
-
-Package: strongswan-ikev2
-Architecture: all
-Depends: strongswan-ike, ${misc:Depends}
-Section: oldlibs
-Priority: extra
-Description: strongSwan IKEv2 daemon, transitional package
- The strongSwan VPN suite uses the native IPsec stack in the standard
- Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
- .
- This package used to install the charon daemon, implementing the IKEv2
- protocol. It has been replaced the strongswan-ike package, so it can be safely
- removed.
 
 Package: charon-cmd
 Architecture: any
