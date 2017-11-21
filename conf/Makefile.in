@@ -199,9 +199,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -422,13 +424,13 @@ options = \
 	options/imv_policy_manager.opt \
 	options/manager.opt \
 	options/medsrv.opt \
-	options/pacman.opt \
 	options/pki.opt \
 	options/pool.opt \
 	options/scepclient.opt \
 	options/starter.opt \
 	options/swanctl.opt \
 	options/tnc.opt \
+	options/sec-updater.opt \
 	options/sw-collector.opt
 
 plugins = \
