@@ -31,6 +31,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-openssl \
 		--enable-pkcs11 \
 		--enable-test-vectors \
+		--enable-tpm \
 		--enable-unity \
 		--enable-xauth-eap \
 		--enable-xauth-pam \
