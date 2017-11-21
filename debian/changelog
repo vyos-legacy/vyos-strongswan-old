@@ -1,11 +1,18 @@
-strongswan (5.6.1-1) UNRELEASED; urgency=medium
+strongswan (5.6.1-1) unstable; urgency=medium
 
   * debian/control:
     - remove strongswan-ike{,v1,v2} packages.                   closes: #878979
   * New upstream version 5.6.1
     - fix FTBFS with glibc 2.26+.                               closes: #880561
+  * debian/rules: explicitly enable tpm plugin
+  * debian/strongswan-starter.install: install counters plugin
+  * debian/libstrongswan.install: install MGF1 plugin
+  * debian/libstrongswan-extra-plugins.install: install tpm plugin
+  * debian/control:
+    - update standards version to 4.1.1
+    - replace dh-systemd build-dep by updated build-dep on debhelper
 
- -- Yves-Alexis Perez <corsac@debian.org>  Tue, 21 Nov 2017 10:23:52 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 21 Nov 2017 13:16:32 +0100
 
 strongswan (5.6.0-2) unstable; urgency=medium
 
