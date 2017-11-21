@@ -289,9 +289,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -524,9 +526,9 @@ starter_LDADD = \
 	libstarter.la \
 	$(SOCKLIB) $(PTHREADLIB) $(ATOMICLIB)
 
-EXTRA_DIST = keywords.txt ipsec.conf ipsec.secrets Android.mk
-MAINTAINERCLEANFILES = keywords.c
-BUILT_SOURCES = keywords.c parser/parser.h
+EXTRA_DIST = keywords.h.in keywords.txt ipsec.conf ipsec.secrets Android.mk
+MAINTAINERCLEANFILES = keywords.h keywords.c
+BUILT_SOURCES = keywords.h keywords.c parser/parser.h
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -995,7 +997,13 @@ uninstall-am: uninstall-ipsecPROGRAMS
 .PRECIOUS: Makefile
 
 
-keywords.c:	$(srcdir)/keywords.txt $(srcdir)/keywords.h
+keywords.h: $(srcdir)/keywords.h.in
+		$(AM_V_GEN) \
+		sed \
+		-e "s:\@GPERF_LEN_TYPE\@:$(GPERF_LEN_TYPE):" \
+		$< > $@
+
+keywords.c:	$(srcdir)/keywords.txt keywords.h
 		$(AM_V_GEN) \
 		$(GPERF) -m 10 -C -G -D -t < $(srcdir)/keywords.txt > $@
 

@@ -123,6 +123,7 @@ EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_IMV_ATTESTATION_TRUE@am__append_32 = $(DESTDIR)$(ipsecdir)/attest
 @USE_LIBPTTLS_TRUE@am__append_33 = $(DESTDIR)$(bindir)/pt-tls-client
 @USE_IMC_SWIMA_TRUE@am__append_34 = $(DESTDIR)$(sbindir)/sw-collector
+@USE_IMV_SWIMA_TRUE@am__append_35 = $(DESTDIR)$(sbindir)/sec-updater
 subdir = src/checksum
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -288,9 +289,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -528,7 +531,7 @@ libs = $(DESTDIR)$(ipseclibdir)/libstrongswan.so $(am__append_3) \
 exes = $(am__append_24) $(am__append_26) $(am__append_27) \
 	$(am__append_28) $(am__append_29) $(am__append_30) \
 	$(am__append_31) $(am__append_32) $(am__append_33) \
-	$(am__append_34)
+	$(am__append_34) $(am__append_35)
 all: all-am
 
 .SUFFIXES:

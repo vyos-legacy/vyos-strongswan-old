@@ -1,6 +1,6 @@
 #
 # Copyright (C) 2007-2017 Tobias Brunner
-# Copyright (C) 2006-2016 Andreas Steffen
+# Copyright (C) 2006-2017 Andreas Steffen
 # Copyright (C) 2006-2014 Martin Willi
 # HSR Hochschule fuer Technik Rapperswil
 #
@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.6.0])
+AC_INIT([strongSwan],[5.6.1])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -263,6 +263,7 @@ ARG_ENABL_SET([android-log],    [enable Android specific logger plugin.])
 ARG_ENABL_SET([bypass-lan],     [enable plugin to install bypass policies for local subnets.])
 ARG_ENABL_SET([certexpire],     [enable CSV export of expiration dates of used certificates.])
 ARG_ENABL_SET([connmark],       [enable connmark plugin using conntrack based marks to select return path SA.])
+ARG_ENABL_SET([counters],       [enable plugin that collects several performance counters.])
 ARG_ENABL_SET([forecast],       [enable forecast plugin forwarding broadcast/multicast messages.])
 ARG_ENABL_SET([duplicheck],     [advanced duplicate checking plugin using liveness checks.])
 ARG_ENABL_SET([error-notify],   [enable error notification plugin.])
@@ -378,6 +379,21 @@ AC_PATH_PROG([GPERF], [gperf], [], [$PATH:/bin:/usr/bin:/usr/local/bin])
 AC_MSG_CHECKING([gperf version >= 3.0.0])
 if test -x "$GPERF"; then
 	if test "`$GPERF --version | $AWK -F' ' '/^GNU gperf/ { print $3 }' | $AWK -F. '{ print $1 }'`" -ge "3"; then
+		GPERF_OUTPUT="`echo foo | ${GPERF}`"
+		AC_COMPILE_IFELSE(
+			[AC_LANG_PROGRAM(
+				[[#include <string.h>
+				  const char *in_word_set(const char*, size_t); $GPERF_OUTPUT]])],
+			[GPERF_LEN_TYPE=size_t],
+			[AC_COMPILE_IFELSE(
+				[AC_LANG_PROGRAM(
+					[[#include <string.h>
+					  const char *in_word_set(const char*, unsigned); $GPERF_OUTPUT]])],
+				[GPERF_LEN_TYPE=unsigned],
+				[AC_MSG_ERROR([unable to determine gperf len type])]
+			)]
+		)
+		AC_SUBST(GPERF_LEN_TYPE)
 		AC_MSG_RESULT([yes])
 	else
 		AC_MSG_RESULT([no])
@@ -471,8 +487,12 @@ if test x$aikgen = xtrue; then
 	tss_trousers=true
 fi
 
-if test x$ntru = xtrue -o x$bliss = xtrue; then
+if test x$gmp = xtrue -o x$ntru = xtrue -o x$bliss = xtrue; then
 	mgf1=true
+fi
+
+if test x$stroke = xtrue; then
+	counters=true
 fi
 
 # ===========================================
@@ -827,7 +847,7 @@ AC_COMPILE_IFELSE(
 	[
 		AC_MSG_RESULT([yes])
 		windows=true
-		openssl_lib=eay32
+
 		AC_SUBST(PTHREADLIB, "")
 		# explicitly disable ms-bitfields, as it breaks __attribute__((packed))
 		case "$CFLAGS" in
@@ -837,7 +857,6 @@ AC_COMPILE_IFELSE(
 	],
 	[
 		AC_MSG_RESULT([no])
-		openssl_lib=crypto
 
 		# check for clock_gettime() on non-Windows only. Otherwise this
 		# check might find clock_gettime() in libwinpthread, but we don't want
@@ -851,7 +870,6 @@ AC_COMPILE_IFELSE(
 		LIBS=$saved_LIBS
 	]
 )
-AC_SUBST(OPENSSL_LIB, [-l$openssl_lib])
 AM_CONDITIONAL(USE_WINDOWS, [test "x$windows" = xtrue])
 
 AC_MSG_CHECKING([for working __attribute__((packed))])
@@ -919,9 +937,9 @@ if test x$gmp = xtrue; then
 		AC_COMPILE_IFELSE(
 			[AC_LANG_PROGRAM(
 				[[#include "gmp.h"]],
-				[[void *x = mpz_powm_sec;]])],
+				[[void *x  __attribute__((unused)); x = mpz_powm_sec;]])],
 			[AC_MSG_RESULT([yes]);
-			 AC_DEFINE([HAVE_MPZ_POWM_SEC], [], [have mpz_mown_sec()])],
+			 AC_DEFINE([HAVE_MPZ_POWM_SEC], [], [have mpz_powm_sec()])],
 			[AC_MSG_RESULT([no])]
 		)
 	else
@@ -989,6 +1007,10 @@ if test x$systemd = xtrue; then
 		 AC_SUBST(systemd_journal_CFLAGS)
 		 AC_SUBST(systemd_journal_LIBS)]
 	)
+	saved_LIBS=$LIBS
+	LIBS="$systemd_LIBS $systemd_daemon_LIBS"
+	AC_CHECK_FUNCS(sd_listen_fds_with_names)
+	LIBS=$saved_LIBS
 fi
 
 if test x$tss_trousers = xtrue; then
@@ -1103,8 +1125,17 @@ if test x$sqlite = xtrue; then
 fi
 
 if test x$openssl = xtrue; then
-	AC_CHECK_LIB([$openssl_lib],[EVP_CIPHER_CTX_new],[LIBS="$LIBS"],
-				 [AC_MSG_ERROR([OpenSSL lib$openssl_lib not found])],[$DLLIB])
+	if test "x$windows" = xtrue; then
+		openssl_lib=eay32
+		AC_CHECK_LIB([$openssl_lib],[EVP_CIPHER_CTX_new],[LIBS="$LIBS"],
+			[AC_MSG_RESULT([no]);openssl_lib=""],[$DLLIB])
+	fi
+	if test -z "$openssl_lib"; then
+		openssl_lib=crypto
+		AC_CHECK_LIB([$openssl_lib],[EVP_CIPHER_CTX_new],[LIBS="$LIBS"],
+			[AC_MSG_ERROR([OpenSSL lib$openssl_lib not found])],[$DLLIB])
+	fi
+	AC_SUBST(OPENSSL_LIB, [-l$openssl_lib])
 	AC_CHECK_HEADER([openssl/evp.h],,[AC_MSG_ERROR([OpenSSL header openssl/evp.h not found!])])
 fi
 
@@ -1251,6 +1282,18 @@ if test x$coverage = xtrue; then
 
 	AC_MSG_NOTICE([coverage enabled, adding "-g -O0" to CFLAGS])
 	CFLAGS="${CFLAGS} -g -O0"
+fi
+
+if test x$fuzzing = xtrue; then
+	if test x$libfuzzer = x; then
+		AC_MSG_NOTICE([fuzz targets enabled without libFuzzer, using local driver])
+		CFLAGS="${CFLAGS} -fsanitize=address"
+		libfuzzer="libFuzzerLocal.a"
+	else
+		# required for libFuzzer
+		FUZZING_LDFLAGS="-stdlib=libc++ -lstdc++"
+		AC_SUBST(FUZZING_LDFLAGS)
+	fi
 fi
 
 if test x$ruby_gems = xtrue; then
@@ -1459,6 +1502,7 @@ ADD_PLUGIN([radattr],              [c charon])
 ADD_PLUGIN([uci],                  [c charon])
 ADD_PLUGIN([addrblock],            [c charon])
 ADD_PLUGIN([unity],                [c charon])
+ADD_PLUGIN([counters],             [c charon])
 
 AC_SUBST(charon_plugins)
 AC_SUBST(starter_plugins)
@@ -1635,6 +1679,7 @@ AM_CONDITIONAL(USE_UNITY, test x$unity = xtrue)
 AM_CONDITIONAL(USE_RESOLVE, test x$resolve = xtrue)
 AM_CONDITIONAL(USE_ATTR, test x$attr = xtrue)
 AM_CONDITIONAL(USE_ATTR_SQL, test x$attr_sql = xtrue)
+AM_CONDITIONAL(USE_COUNTERS, test x$counters = xtrue)
 
 #  other options
 # ---------------
@@ -1664,7 +1709,7 @@ AM_CONDITIONAL(USE_LIBNTTFFT, test x$bliss = xtrue -o x$newhope = xtrue)
 AM_CONDITIONAL(USE_LIBTNCIF, test x$tnc_tnccs = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_LIBTNCCS, test x$tnc_tnccs = xtrue)
 AM_CONDITIONAL(USE_LIBPTTLS, test x$tnc_tnccs = xtrue)
-AM_CONDITIONAL(USE_LIBTPMTSS, test x$tss_trousers = xtrue -o x$tss_tss2 = xtrue -o x$tpm -o x$aikgen = xtrue -o x$imcv = xtrue)
+AM_CONDITIONAL(USE_LIBTPMTSS, test x$tss_trousers = xtrue -o x$tss_tss2 = xtrue -o x$tpm = xtrue -o x$aikgen = xtrue -o x$imcv = xtrue)
 AM_CONDITIONAL(USE_FILE_CONFIG, test x$stroke = xtrue)
 AM_CONDITIONAL(USE_IPSEC_SCRIPT, test x$stroke = xtrue -o x$scepclient = xtrue -o x$conftest = xtrue)
 AM_CONDITIONAL(USE_LIBCAP, test x$capabilities = xlibcap)
@@ -1737,7 +1782,7 @@ AM_COND_IF([USE_CHARON], [strongswan_options=${strongswan_options}" charon charo
 AM_COND_IF([USE_FILE_CONFIG], [strongswan_options=${strongswan_options}" starter"])
 AM_COND_IF([USE_IMV_ATTESTATION], [strongswan_options=${strongswan_options}" attest"])
 AM_COND_IF([USE_IMCV], [strongswan_options=${strongswan_options}" imcv"])
-AM_COND_IF([USE_IMV_OS], [strongswan_options=${strongswan_options}" pacman"])
+AM_COND_IF([USE_IMV_SWIMA], [strongswan_options=${strongswan_options}" sec-updater"])
 AM_COND_IF([USE_LIBTNCCS], [strongswan_options=${strongswan_options}" tnc"])
 AM_COND_IF([USE_MANAGER], [strongswan_options=${strongswan_options}" manager"])
 AM_COND_IF([USE_MEDSRV], [strongswan_options=${strongswan_options}" medsrv"])
@@ -1891,6 +1936,7 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/socket_win/Makefile
 	src/libcharon/plugins/bypass_lan/Makefile
 	src/libcharon/plugins/connmark/Makefile
+	src/libcharon/plugins/counters/Makefile
 	src/libcharon/plugins/forecast/Makefile
 	src/libcharon/plugins/farp/Makefile
 	src/libcharon/plugins/smp/Makefile
@@ -1957,6 +2003,7 @@ AC_CONFIG_FILES([
 	src/conftest/Makefile
 	src/pt-tls-client/Makefile
 	src/sw-collector/Makefile
+	src/sec-updater/Makefile
 	src/swanctl/Makefile
 	scripts/Makefile
 	testing/Makefile
@@ -1991,6 +2038,7 @@ AC_CONFIG_FILES([
 	src/swanctl/swanctl.conf.5.tail
 	src/pt-tls-client/pt-tls-client.1
 	src/sw-collector/sw-collector.8
+	src/sec-updater/sec-updater.8
 ])
 
 AC_OUTPUT

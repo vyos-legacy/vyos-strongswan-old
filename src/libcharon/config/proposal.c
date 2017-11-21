@@ -872,9 +872,10 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 				case AUTH_AES_XCBC_96:
 				case AUTH_AES_CMAC_96:
 				case AUTH_HMAC_SHA1_96:
-				case AUTH_HMAC_MD5_96:
 					add_algorithm(this, INTEGRITY_ALGORITHM, integrity, 0);
 					break;
+				case AUTH_HMAC_MD5_96:
+					/* no, thanks */
 				default:
 					break;
 			}
@@ -908,8 +909,10 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 		switch (prf)
 		{
 			case PRF_HMAC_SHA1:
-			case PRF_HMAC_MD5:
 				add_algorithm(this, PSEUDO_RANDOM_FUNCTION, prf, 0);
+				break;
+			case PRF_HMAC_MD5:
+				/* no, thanks */
 				break;
 			default:
 				break;
@@ -970,6 +973,8 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 				/* only for testing purposes */
 				break;
 			case MODP_768_BIT:
+			case MODP_1024_BIT:
+			case MODP_1536_BIT:
 				/* weak */
 				break;
 			case MODP_1024_160:
@@ -977,7 +982,6 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 			case MODP_2048_256:
 				/* RFC 5114 primes are of questionable source */
 				break;
-			case MODP_1536_BIT:
 			case ECP_224_BIT:
 			case ECP_224_BP:
 			case ECP_192_BIT:
@@ -985,7 +989,6 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 				/* rarely used */
 				break;
 			case MODP_2048_BIT:
-			case MODP_1024_BIT:
 				add_algorithm(this, DIFFIE_HELLMAN_GROUP, group, 0);
 				break;
 			default:
@@ -1017,14 +1020,11 @@ proposal_t *proposal_create_default(protocol_id_t protocol)
 			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_AES_CBC,          128);
 			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_AES_CBC,          192);
 			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_AES_CBC,          256);
-			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_3DES,               0);
-			add_algorithm(this, ENCRYPTION_ALGORITHM, ENCR_BLOWFISH,         256);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_256_128,  0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_384_192,  0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_512_256,  0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA1_96,       0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_AES_XCBC_96,        0);
-			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_MD5_96,        0);
 			add_algorithm(this, EXTENDED_SEQUENCE_NUMBERS, NO_EXT_SEQ_NUMBERS, 0);
 			break;
 		case PROTO_AH:
@@ -1033,7 +1033,6 @@ proposal_t *proposal_create_default(protocol_id_t protocol)
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA2_512_256,  0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_SHA1_96,       0);
 			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_AES_XCBC_96,        0);
-			add_algorithm(this, INTEGRITY_ALGORITHM,  AUTH_HMAC_MD5_96,        0);
 			add_algorithm(this, EXTENDED_SEQUENCE_NUMBERS, NO_EXT_SEQ_NUMBERS, 0);
 			break;
 		default:

@@ -343,9 +343,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -550,6 +552,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libstrongswan/plugins/pubkey \
 	-I$(top_srcdir)/src/libcharon \
+	-I$(top_srcdir)/src/libcharon/plugins/counters \
 	-DSWANCTLDIR=\""${swanctldir}\"" \
 	-DIPSEC_PIDDIR=\"${piddir}\"
 
