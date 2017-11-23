@@ -1,3 +1,9 @@
+strongswan (5.6.1-2) unstable; urgency=medium
+
+  * move counters plugin from -starter to -libcharon. closes: #882431
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 23 Nov 2017 20:52:19 +0100
+
 strongswan (5.6.1-1) unstable; urgency=medium
 
   * debian/control:
