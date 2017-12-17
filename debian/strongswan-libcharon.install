@@ -8,3 +8,8 @@ etc/strongswan.d/charon/socket-default.conf
 usr/lib/ipsec/plugins/libstrongswan-counters.so
 usr/share/strongswan/templates/config/plugins/counters.conf
 etc/strongswan.d/charon/counters.conf
+# updown
+usr/lib/ipsec/plugins/libstrongswan-updown.so
+usr/share/strongswan/templates/config/plugins/updown.conf
+etc/strongswan.d/charon/updown.conf
+usr/lib/ipsec/_updown

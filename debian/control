@@ -214,8 +214,8 @@ Architecture: any
 Depends: libstrongswan (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Breaks: strongswan-starter (<= 5.6.1-1)
-Replaces: strongswan-starter (<= 5.6.1-1)
+Breaks: strongswan-starter (<= 5.6.1-2)
+Replaces: strongswan-starter (<= 5.6.1-2)
 Suggests: libcharon-extra-plugins
 Description: strongSwan charon library
  The strongSwan VPN suite uses the native IPsec stack in the standard
