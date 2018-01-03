@@ -225,6 +225,7 @@ Description: strongSwan charon library
  plugins:
    - socket-default
    - counters
+   - bypass-lan (disabled by default)
 
 Package: strongswan-charon
 Architecture: any

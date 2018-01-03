@@ -13,3 +13,7 @@ usr/lib/ipsec/plugins/libstrongswan-updown.so
 usr/share/strongswan/templates/config/plugins/updown.conf
 etc/strongswan.d/charon/updown.conf
 usr/lib/ipsec/_updown
+# bypass-lan
+usr/lib/ipsec/plugins/libstrongswan-bypass-lan.so
+usr/share/strongswan/templates/config/plugins/bypass-lan.conf
+etc/strongswan.d/charon/bypass-lan.conf

@@ -6,6 +6,7 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-addrblock \
 		--enable-agent \
+		--enable-bypass-lan \
 		--enable-ccm \
 		--enable-certexpire \
 		--enable-cmd \
