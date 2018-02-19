@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2008-2016 Tobias Brunner
+ * Copyright (C) 2008-2018 Tobias Brunner
  * Copyright (C) 2006-2010 Martin Willi
  * Copyright (C) 2013-2015 Andreas Steffen
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +19,6 @@
 
 #include "proposal.h"
 
-#include <daemon.h>
 #include <collections/array.h>
 #include <utils/identification.h>
 
@@ -168,6 +167,36 @@ METHOD(proposal_t, has_dh_group, bool,
 	if (!any && group == MODP_NONE)
 	{
 		found = TRUE;
+	}
+	return found;
+}
+
+METHOD(proposal_t, promote_dh_group, bool,
+	private_proposal_t *this, diffie_hellman_group_t group)
+{
+	enumerator_t *enumerator;
+	entry_t *entry;
+	bool found = FALSE;
+
+	enumerator = array_create_enumerator(this->transforms);
+	while (enumerator->enumerate(enumerator, &entry))
+	{
+		if (entry->type == DIFFIE_HELLMAN_GROUP &&
+			entry->alg == group)
+		{
+			array_remove_at(this->transforms, enumerator);
+			found = TRUE;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	if (found)
+	{
+		entry_t entry = {
+			.type = DIFFIE_HELLMAN_GROUP,
+			.alg = group,
+		};
+		array_insert(this->transforms, ARRAY_HEAD, &entry);
 	}
 	return found;
 }
@@ -668,7 +697,7 @@ int proposal_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
 	{
 		enumerator = list->create_enumerator(list);
 		while (enumerator->enumerate(enumerator, &this))
-		{	/* call recursivly */
+		{	/* call recursively */
 			if (first)
 			{
 				written += print_in_hook(data, "%P", this);
@@ -717,6 +746,7 @@ proposal_t *proposal_create(protocol_id_t protocol, u_int number)
 			.create_enumerator = _create_enumerator,
 			.get_algorithm = _get_algorithm,
 			.has_dh_group = _has_dh_group,
+			.promote_dh_group = _promote_dh_group,
 			.strip_dh = _strip_dh,
 			.select = _select_proposal,
 			.get_protocol = _get_protocol,
@@ -954,6 +984,7 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 		{
 			case MODP_3072_BIT:
 			case MODP_4096_BIT:
+			case MODP_6144_BIT:
 			case MODP_8192_BIT:
 				add_algorithm(this, DIFFIE_HELLMAN_GROUP, group, 0);
 				break;

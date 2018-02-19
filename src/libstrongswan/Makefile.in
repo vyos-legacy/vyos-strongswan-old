@@ -335,7 +335,7 @@ am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	collections/enumerator.c collections/hashtable.c \
 	collections/array.c collections/linked_list.c \
 	crypto/crypters/crypter.c crypto/hashers/hasher.c \
-	crypto/hashers/hash_algorithm_set.c \
+	crypto/hashers/hash_algorithm_set.c crypto/proposal/proposal.c \
 	crypto/proposal/proposal_keywords.c \
 	crypto/proposal/proposal_keywords_static.c crypto/prfs/prf.c \
 	crypto/prfs/mac_prf.c crypto/pkcs5.c crypto/rngs/rng.c \
@@ -425,6 +425,7 @@ am_libstrongswan_la_OBJECTS = library.lo asn1/asn1.lo \
 	collections/array.lo collections/linked_list.lo \
 	crypto/crypters/crypter.lo crypto/hashers/hasher.lo \
 	crypto/hashers/hash_algorithm_set.lo \
+	crypto/proposal/proposal.lo \
 	crypto/proposal/proposal_keywords.lo \
 	crypto/proposal/proposal_keywords_static.lo crypto/prfs/prf.lo \
 	crypto/prfs/mac_prf.lo crypto/pkcs5.lo crypto/rngs/rng.lo \
@@ -556,7 +557,8 @@ am__nobase_strongswan_include_HEADERS_DIST = library.h asn1/asn1.h \
 	collections/linked_list.h collections/array.h \
 	collections/dictionary.h crypto/crypters/crypter.h \
 	crypto/hashers/hasher.h crypto/hashers/hash_algorithm_set.h \
-	crypto/mac.h crypto/proposal/proposal_keywords.h \
+	crypto/mac.h crypto/proposal/proposal.h \
+	crypto/proposal/proposal_keywords.h \
 	crypto/proposal/proposal_keywords_static.h crypto/prfs/prf.h \
 	crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
 	crypto/prf_plus.h crypto/signers/signer.h \
@@ -942,7 +944,7 @@ libstrongswan_la_SOURCES = library.c asn1/asn1.c asn1/asn1_parser.c \
 	collections/hashtable.c collections/array.c \
 	collections/linked_list.c crypto/crypters/crypter.c \
 	crypto/hashers/hasher.c crypto/hashers/hash_algorithm_set.c \
-	crypto/proposal/proposal_keywords.c \
+	crypto/proposal/proposal.c crypto/proposal/proposal_keywords.c \
 	crypto/proposal/proposal_keywords_static.c crypto/prfs/prf.c \
 	crypto/prfs/mac_prf.c crypto/pkcs5.c crypto/rngs/rng.c \
 	crypto/prf_plus.c crypto/signers/signer.c \
@@ -1005,7 +1007,7 @@ settings/settings_types.h
 @USE_DEV_HEADERS_TRUE@collections/blocking_queue.h collections/enumerator.h collections/hashtable.h \
 @USE_DEV_HEADERS_TRUE@collections/linked_list.h collections/array.h collections/dictionary.h \
 @USE_DEV_HEADERS_TRUE@crypto/crypters/crypter.h crypto/hashers/hasher.h \
-@USE_DEV_HEADERS_TRUE@crypto/hashers/hash_algorithm_set.h crypto/mac.h \
+@USE_DEV_HEADERS_TRUE@crypto/hashers/hash_algorithm_set.h crypto/mac.h crypto/proposal/proposal.h \
 @USE_DEV_HEADERS_TRUE@crypto/proposal/proposal_keywords.h crypto/proposal/proposal_keywords_static.h \
 @USE_DEV_HEADERS_TRUE@crypto/prfs/prf.h crypto/prfs/mac_prf.h crypto/rngs/rng.h crypto/nonce_gen.h \
 @USE_DEV_HEADERS_TRUE@crypto/prf_plus.h crypto/signers/signer.h crypto/signers/mac_signer.h \
@@ -1302,6 +1304,8 @@ crypto/proposal/$(am__dirstamp):
 crypto/proposal/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) crypto/proposal/$(DEPDIR)
 	@: > crypto/proposal/$(DEPDIR)/$(am__dirstamp)
+crypto/proposal/proposal.lo: crypto/proposal/$(am__dirstamp) \
+	crypto/proposal/$(DEPDIR)/$(am__dirstamp)
 crypto/proposal/proposal_keywords.lo: crypto/proposal/$(am__dirstamp) \
 	crypto/proposal/$(DEPDIR)/$(am__dirstamp)
 crypto/proposal/proposal_keywords_static.lo:  \
@@ -1855,6 +1859,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/iv/$(DEPDIR)/iv_gen_seq.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/prfs/$(DEPDIR)/mac_prf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/prfs/$(DEPDIR)/prf.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@crypto/proposal/$(DEPDIR)/proposal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/proposal/$(DEPDIR)/proposal_keywords.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/proposal/$(DEPDIR)/proposal_keywords_static.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@crypto/rngs/$(DEPDIR)/rng.Plo@am__quote@
