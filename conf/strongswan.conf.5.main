@@ -51,7 +51,7 @@ Maximum number of half\-open IKE_SAs for a single peer IP.
 
 .TP
 .BR charon.cache_crls " [no]"
-Whether Certicate Revocation Lists (CRLs) fetched via HTTP or LDAP should be
+Whether Certificate Revocation Lists (CRLs) fetched via HTTP or LDAP should be
 saved under a unique file name derived from the public key of the Certification
 Authority (CA) to
 .RB "" "/etc/ipsec.d/crls" ""
@@ -404,6 +404,14 @@ WINS servers assigned to peer via configuration payload (CP).
 .TP
 .BR charon.nbns2 " []"
 WINS servers assigned to peer via configuration payload (CP).
+
+.TP
+.BR charon.plugin.ha.buflen " [2048]"
+Buffer size for received HA messages. For IKEv1 the public DH factors are also
+transmitted so depending on the DH group the HA messages can get quite big (the
+default should be fine up to
+.RI "" "modp4096" ")."
+
 
 .TP
 .BR charon.plugins.addrblock.strict " [yes]"
@@ -973,7 +981,7 @@ If the maximum Netlink socket receive buffer in bytes set by
 .RI "" "receive_buffer_size" ""
 exceeds the system\-wide maximum from
 /proc/sys/net/core/rmem_max, this option can be used to override the limit.
-Enabling this option requires special priviliges (CAP_NET_ADMIN).
+Enabling this option requires special privileges (CAP_NET_ADMIN).
 
 .TP
 .BR charon.plugins.kernel-netlink.fwmark " []"
@@ -1014,6 +1022,12 @@ Whether to use port or socket based IKE XFRM bypass policies. IKE bypass
 policies are used to exempt IKE traffic from XFRM processing. The default socket
 based policies are directly tied to the IKE UDP sockets, port based policies use
 global XFRM bypass policies for the used IKE UDP ports.
+
+.TP
+.BR charon.plugins.kernel-netlink.process_rules " [no]"
+Whether to process changes in routing rules to trigger roam events. This is
+currently only useful if the kernel based route lookup is used (i.e. if route
+installation is disabled or an inverted fwmark match is configured).
 
 .TP
 .BR charon.plugins.kernel-netlink.receive_buffer_size " [0]"
@@ -1415,6 +1429,30 @@ Whether CRL validation should be enabled.
 .TP
 .BR charon.plugins.revocation.enable_ocsp " [yes]"
 Whether OCSP validation should be enabled.
+
+.TP
+.BR charon.plugins.save-keys.esp " [no]"
+Whether to save ESP keys.
+
+.TP
+.BR charon.plugins.save-keys.ike " [no]"
+Whether to save IKE keys.
+
+.TP
+.BR charon.plugins.save-keys.load " [no]"
+Whether to load the plugin.
+
+.TP
+.BR charon.plugins.save-keys.wireshark_keys " []"
+Directory where the keys are stored in the format supported by Wireshark. IKEv1
+keys are stored in the
+.RI "" "ikev1_decryption_table" ""
+file. IKEv2 keys are stored in
+the
+.RI "" "ikev2_decryption_table" ""
+file. Keys for ESP CHILD_SAs are stored in the
+.RI "" "esp_sa" ""
+file.
 
 .TP
 .BR charon.plugins.socket-default.fwmark " []"
@@ -2119,6 +2157,11 @@ manufacturer of the hardcopy device.
 .BR libimcv.plugins.imc-os.device_cert " []"
 Manually set the path to the client device certificate (e.g.
 /etc/pts/aikCert.der)
+
+.TP
+.BR libimcv.plugins.imc-os.device_handle " []"
+Manually set handle to a private key bound to a smartcard or TPM (e.g.
+0x81010004)
 
 .TP
 .BR libimcv.plugins.imc-os.device_id " []"

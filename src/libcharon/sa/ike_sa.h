@@ -646,20 +646,6 @@ struct ike_sa_t {
 	 */
 	bool (*has_condition) (ike_sa_t *this, ike_condition_t condition);
 
-	/**
-	 * Get the number of queued MOBIKE address updates.
-	 *
-	 * @return				number of pending updates
-	 */
-	uint32_t (*get_pending_updates)(ike_sa_t *this);
-
-	/**
-	 * Set the number of queued MOBIKE address updates.
-	 *
-	 * @param updates		number of pending updates
-	 */
-	void (*set_pending_updates)(ike_sa_t *this, uint32_t updates);
-
 #ifdef ME
 	/**
 	 * Activate mediation server functionality for this IKE_SA.
@@ -869,7 +855,7 @@ struct ike_sa_t {
 	 * @param message_id	ID of the request to retransmit
 	 * @return
 	 *						- SUCCESS
-	 *						- NOT_FOUND if request doesn't have to be retransmited
+	 *						- NOT_FOUND if request doesn't have to be retransmitted
 	 */
 	status_t (*retransmit) (ike_sa_t *this, uint32_t message_id);
 
@@ -1169,7 +1155,7 @@ struct ike_sa_t {
 	void (*inherit_post) (ike_sa_t *this, ike_sa_t *other);
 
 	/**
-	 * Reset the IKE_SA, useable when initiating fails.
+	 * Reset the IKE_SA, usable when initiating fails.
 	 *
 	 * @param new_spi		TRUE to allocate a new initiator SPI
 	 */
