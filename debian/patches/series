@@ -2,3 +2,4 @@
 02_disable-bypass-lan.patch
 03_systemd-service.patch
 04_disable-libtls-tests.patch
+05_charon-nm-Fix-building-list-of-DNS-MDNS-servers-with.patch

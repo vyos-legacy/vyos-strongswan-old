@@ -1,0 +1,33 @@
+From ee8c25516a97a2c880a8033e1663628b6b05646a Mon Sep 17 00:00:00 2001
+From: Tobias Brunner <tobias@strongswan.org>
+Date: Wed, 21 Feb 2018 11:53:55 +0100
+Subject: [PATCH] charon-nm: Fix building list of DNS/MDNS servers with libnm
+
+g_variant_builder_add() creates a new GVariant using g_variant_new() and
+then adds it to the builder.  Passing a GVariant probably adds the
+pointer to the array, not the value.  I think an alternative fix would
+be to use "@u" as type string for the g_variant_builder_add() call, then
+the already allocated GVariant is adopted.
+
+Fixes: 9a71b7219ca3 ("charon-nm: Port to libnm")
+---
+ src/charon-nm/nm/nm_service.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/charon-nm/nm/nm_service.c b/src/charon-nm/nm/nm_service.c
+index 9beac392a..c42733181 100644
+--- a/src/charon-nm/nm/nm_service.c
++++ b/src/charon-nm/nm/nm_service.c
+@@ -65,8 +65,7 @@ static GVariant* handler_to_variant(nm_handler_t *handler,
+ 	enumerator = handler->create_enumerator(handler, type);
+ 	while (enumerator->enumerate(enumerator, &chunk))
+ 	{
+-		g_variant_builder_add (&builder, "u",
+-							   g_variant_new_uint32 (*(uint32_t*)chunk.ptr));
++		g_variant_builder_add (&builder, "u", *(uint32_t*)chunk.ptr);
+ 	}
+ 	enumerator->destroy(enumerator);
+ 
+-- 
+2.16.1
+
