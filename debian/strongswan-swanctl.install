@@ -1,6 +1,7 @@
 etc/strongswan.d/swanctl.conf
-etc/swanctl/swanctl.conf
+etc/swanctl
 usr/share/strongswan/templates/config/strongswan.d/swanctl.conf
 usr/share/man/man5/swanctl.conf.5
 usr/share/man/man8/swanctl.8
 usr/sbin/swanctl
+debian/usr.sbin.swanctl /etc/apparmor.d/

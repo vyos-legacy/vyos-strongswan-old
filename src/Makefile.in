@@ -119,8 +119,9 @@ host_triplet = @host@
 @USE_CMD_TRUE@am__append_30 = charon-cmd
 @USE_SVC_TRUE@am__append_31 = charon-svc
 @USE_LIBPTTLS_TRUE@am__append_32 = pt-tls-client
-@USE_INTEGRITY_TEST_TRUE@am__append_33 = checksum
-@USE_AIKGEN_TRUE@am__append_34 = aikgen
+@USE_IMC_SWIMA_TRUE@am__append_33 = sw-collector
+@USE_INTEGRITY_TEST_TRUE@am__append_34 = checksum
+@USE_AIKGEN_TRUE@am__append_35 = aikgen
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -199,7 +200,7 @@ DIST_SUBDIRS = . include libstrongswan libipsec libsimaka libtls \
 	libcharon starter ipsec _copyright charon charon-systemd \
 	charon-nm stroke _updown scepclient pki swanctl conftest dumm \
 	libfast manager medsrv pool charon-tkm charon-cmd charon-svc \
-	pt-tls-client checksum aikgen
+	pt-tls-client sw-collector checksum aikgen
 am__DIST_COMMON = $(srcdir)/Makefile.in
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -326,8 +327,6 @@ RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
-RUBYINCLUDE = @RUBYINCLUDE@
-RUBYLIB = @RUBYLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -428,6 +427,8 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
+ruby_CFLAGS = @ruby_CFLAGS@
+ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -456,6 +457,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
+tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
+tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -470,7 +475,7 @@ SUBDIRS = . include $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_25) $(am__append_26) $(am__append_27) \
 	$(am__append_28) $(am__append_29) $(am__append_30) \
 	$(am__append_31) $(am__append_32) $(am__append_33) \
-	$(am__append_34)
+	$(am__append_34) $(am__append_35)
 all: all-recursive
 
 .SUFFIXES:

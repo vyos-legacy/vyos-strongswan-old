@@ -103,8 +103,10 @@ ipsec_PROGRAMS = imv_policy_manager$(EXEEXT)
 @USE_IMV_ATTESTATION_TRUE@am__append_9 = plugins/imv_attestation
 @USE_IMC_SWID_TRUE@am__append_10 = plugins/imc_swid
 @USE_IMV_SWID_TRUE@am__append_11 = plugins/imv_swid
-@USE_IMC_HCD_TRUE@am__append_12 = plugins/imc_hcd
-@USE_IMV_HCD_TRUE@am__append_13 = plugins/imv_hcd
+@USE_IMC_SWIMA_TRUE@am__append_12 = plugins/imc_swima
+@USE_IMV_SWIMA_TRUE@am__append_13 = plugins/imv_swima
+@USE_IMC_HCD_TRUE@am__append_14 = plugins/imc_hcd
+@USE_IMV_HCD_TRUE@am__append_15 = plugins/imv_hcd
 TESTS = imcv_tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libimcv
@@ -162,7 +164,7 @@ libimcv_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libtncif/libtncif.la \
 	$(top_builddir)/src/libtpmtss/libtpmtss.la \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	imc/imc_os_info.lo imv/imv_agent.lo imv/imv_database.lo \
@@ -178,7 +180,10 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	ietf/ietf_attr_pa_tnc_error.lo ietf/ietf_attr_port_filter.lo \
 	ietf/ietf_attr_product_info.lo \
 	ietf/ietf_attr_remediation_instr.lo \
-	ietf/ietf_attr_string_version.lo ita/ita_attr.lo \
+	ietf/ietf_attr_string_version.lo \
+	ietf/swima/ietf_swima_attr_req.lo \
+	ietf/swima/ietf_swima_attr_sw_inv.lo \
+	ietf/swima/ietf_swima_attr_sw_ev.lo ita/ita_attr.lo \
 	ita/ita_attr_command.lo ita/ita_attr_dummy.lo \
 	ita/ita_attr_get_settings.lo ita/ita_attr_settings.lo \
 	ita/ita_attr_angel.lo os_info/os_info.lo pa_tnc/pa_tnc_msg.lo \
@@ -195,10 +200,15 @@ am_libimcv_la_OBJECTS = imcv.lo imc/imc_agent.lo imc/imc_msg.lo \
 	pts/components/ita/ita_comp_tboot.lo \
 	pts/components/ita/ita_comp_tgrub.lo \
 	pts/components/tcg/tcg_comp_func_name.lo pwg/pwg_attr.lo \
-	pwg/pwg_attr_vendor_smi_code.lo seg/seg_contract.lo \
-	seg/seg_contract_manager.lo seg/seg_env.lo swid/swid_error.lo \
-	swid/swid_inventory.lo swid/swid_tag.lo swid/swid_tag_id.lo \
-	tcg/tcg_attr.lo tcg/pts/tcg_pts_attr_proto_caps.lo \
+	pwg/pwg_attr_vendor_smi_code.lo rest/rest.lo \
+	seg/seg_contract.lo seg/seg_contract_manager.lo seg/seg_env.lo \
+	swid/swid_error.lo swid/swid_inventory.lo swid/swid_tag.lo \
+	swid/swid_tag_id.lo swid_gen/swid_gen.lo \
+	swid_gen/swid_gen_info.lo swima/swima_data_model.lo \
+	swima/swima_record.lo swima/swima_event.lo \
+	swima/swima_events.lo swima/swima_inventory.lo \
+	swima/swima_collector.lo swima/swima_error.lo tcg/tcg_attr.lo \
+	tcg/pts/tcg_pts_attr_proto_caps.lo \
 	tcg/pts/tcg_pts_attr_dh_nonce_params_req.lo \
 	tcg/pts/tcg_pts_attr_dh_nonce_params_resp.lo \
 	tcg/pts/tcg_pts_attr_dh_nonce_finish.lo \
@@ -234,8 +244,19 @@ am_imcv_tests_OBJECTS = ita/imcv_tests-ita_attr_command.$(OBJEXT) \
 	seg/imcv_tests-seg_env.$(OBJEXT) \
 	seg/imcv_tests-seg_contract.$(OBJEXT) \
 	seg/imcv_tests-seg_contract_manager.$(OBJEXT) \
+	swid_gen/imcv_tests-swid_gen.$(OBJEXT) \
+	swima/imcv_tests-swima_data_model.$(OBJEXT) \
+	swima/imcv_tests-swima_event.$(OBJEXT) \
+	swima/imcv_tests-swima_events.$(OBJEXT) \
+	swima/imcv_tests-swima_record.$(OBJEXT) \
+	swima/imcv_tests-swima_inventory.$(OBJEXT) \
+	swima/imcv_tests-swima_collector.$(OBJEXT) \
 	suites/imcv_tests-test_imcv_seg.$(OBJEXT) \
+	suites/imcv_tests-test_imcv_swima.$(OBJEXT) \
 	ietf/imcv_tests-ietf_attr_pa_tnc_error.$(OBJEXT) \
+	ietf/swima/imcv_tests-ietf_swima_attr_req.$(OBJEXT) \
+	ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.$(OBJEXT) \
+	ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.$(OBJEXT) \
 	tcg/seg/imcv_tests-tcg_seg_attr_seg_env.$(OBJEXT) \
 	imcv_tests-imcv.$(OBJEXT) imcv_tests-imcv_tests.$(OBJEXT)
 imcv_tests_OBJECTS = $(am_imcv_tests_OBJECTS)
@@ -357,8 +378,8 @@ am__tty_colors = { \
 DIST_SUBDIRS = . plugins/imc_test plugins/imv_test plugins/imc_scanner \
 	plugins/imv_scanner plugins/imc_os plugins/imv_os \
 	plugins/imc_attestation plugins/imv_attestation \
-	plugins/imc_swid plugins/imv_swid plugins/imc_hcd \
-	plugins/imv_hcd
+	plugins/imc_swid plugins/imv_swid plugins/imc_swima \
+	plugins/imv_swima plugins/imc_hcd plugins/imv_hcd
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -485,8 +506,6 @@ RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
-RUBYINCLUDE = @RUBYINCLUDE@
-RUBYLIB = @RUBYLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -587,6 +606,8 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
+ruby_CFLAGS = @ruby_CFLAGS@
+ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -615,6 +636,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
+tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
+tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -622,7 +647,11 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libtncif \
 	-I$(top_srcdir)/src/libtpmtss \
-	-DIPSEC_SCRIPT=\"${ipsec_script}\"
+	-DIPSEC_SCRIPT=\"${ipsec_script}\" \
+	-DSWID_DIRECTORY=\"${prefix}/share\"
+
+AM_CFLAGS = \
+	$(json_CFLAGS)
 
 ipseclib_LTLIBRARIES = libimcv.la
 libimcv_la_LDFLAGS = \
@@ -631,7 +660,8 @@ libimcv_la_LDFLAGS = \
 libimcv_la_LIBADD =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libtncif/libtncif.la \
-	$(top_builddir)/src/libtpmtss/libtpmtss.la $(am__append_1)
+	$(top_builddir)/src/libtpmtss/libtpmtss.la $(json_LIBS) \
+	$(am__append_1)
 libimcv_la_SOURCES = \
 	imcv.h imcv.c \
 	imc/imc_agent.h imc/imc_agent.c imc/imc_state.h \
@@ -663,6 +693,9 @@ libimcv_la_SOURCES = \
 	ietf/ietf_attr_product_info.h ietf/ietf_attr_product_info.c \
 	ietf/ietf_attr_remediation_instr.h ietf/ietf_attr_remediation_instr.c \
 	ietf/ietf_attr_string_version.h ietf/ietf_attr_string_version.c \
+	ietf/swima/ietf_swima_attr_req.h ietf/swima/ietf_swima_attr_req.c \
+	ietf/swima/ietf_swima_attr_sw_inv.h ietf/swima/ietf_swima_attr_sw_inv.c \
+	ietf/swima/ietf_swima_attr_sw_ev.h ietf/swima/ietf_swima_attr_sw_ev.c \
 	ita/ita_attr.h ita/ita_attr.c \
 	ita/ita_attr_command.h ita/ita_attr_command.c \
 	ita/ita_attr_dummy.h ita/ita_attr_dummy.c \
@@ -698,6 +731,7 @@ libimcv_la_SOURCES = \
 	pts/components/tcg/tcg_comp_func_name.h pts/components/tcg/tcg_comp_func_name.c \
 	pwg/pwg_attr.h pwg/pwg_attr.c \
 	pwg/pwg_attr_vendor_smi_code.h pwg/pwg_attr_vendor_smi_code.c \
+	rest/rest.h rest/rest.c \
 	seg/seg_contract.h seg/seg_contract.c \
 	seg/seg_contract_manager.h seg/seg_contract_manager.c \
 	seg/seg_env.h seg/seg_env.c \
@@ -705,6 +739,15 @@ libimcv_la_SOURCES = \
 	swid/swid_inventory.h swid/swid_inventory.c \
 	swid/swid_tag.h swid/swid_tag.c \
 	swid/swid_tag_id.h swid/swid_tag_id.c \
+	swid_gen/swid_gen.h swid_gen/swid_gen.c \
+	swid_gen/swid_gen_info.h swid_gen/swid_gen_info.c \
+	swima/swima_data_model.h swima/swima_data_model.c \
+	swima/swima_record.h swima/swima_record.c \
+	swima/swima_event.h swima/swima_event.c \
+	swima/swima_events.h swima/swima_events.c \
+	swima/swima_inventory.h swima/swima_inventory.c \
+	swima/swima_collector.h swima/swima_collector.c \
+	swima/swima_error.h swima/swima_error.c \
 	tcg/tcg_attr.h tcg/tcg_attr.c \
 	tcg/pts/tcg_pts_attr_proto_caps.h tcg/pts/tcg_pts_attr_proto_caps.c \
 	tcg/pts/tcg_pts_attr_dh_nonce_params_req.h tcg/pts/tcg_pts_attr_dh_nonce_params_req.c \
@@ -746,14 +789,26 @@ imv_policy_manager_LDADD = \
 SUBDIRS = . $(am__append_2) $(am__append_3) $(am__append_4) \
 	$(am__append_5) $(am__append_6) $(am__append_7) \
 	$(am__append_8) $(am__append_9) $(am__append_10) \
-	$(am__append_11) $(am__append_12) $(am__append_13)
+	$(am__append_11) $(am__append_12) $(am__append_13) \
+	$(am__append_14) $(am__append_15)
 imcv_tests_SOURCES = \
 	ita/ita_attr_command.c \
 	pa_tnc/pa_tnc_attr_manager.c \
 	seg/seg_env.c seg/seg_contract.c \
 	seg/seg_contract_manager.c \
+	swid_gen/swid_gen.c \
+	swima/swima_data_model.c \
+	swima/swima_event.c \
+	swima/swima_events.c \
+	swima/swima_record.c \
+	swima/swima_inventory.c \
+	swima/swima_collector.c \
 	suites/test_imcv_seg.c \
+	suites/test_imcv_swima.c \
 	ietf/ietf_attr_pa_tnc_error.c \
+	ietf/swima/ietf_swima_attr_req.c \
+	ietf/swima/ietf_swima_attr_sw_inv.c \
+	ietf/swima/ietf_swima_attr_sw_ev.c \
 	tcg/seg/tcg_seg_attr_seg_env.c \
 	imcv.c imcv_tests.h imcv_tests.c
 
@@ -908,6 +963,18 @@ ietf/ietf_attr_remediation_instr.lo: ietf/$(am__dirstamp) \
 	ietf/$(DEPDIR)/$(am__dirstamp)
 ietf/ietf_attr_string_version.lo: ietf/$(am__dirstamp) \
 	ietf/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/$(am__dirstamp):
+	@$(MKDIR_P) ietf/swima
+	@: > ietf/swima/$(am__dirstamp)
+ietf/swima/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ietf/swima/$(DEPDIR)
+	@: > ietf/swima/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/ietf_swima_attr_req.lo: ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/ietf_swima_attr_sw_inv.lo: ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/ietf_swima_attr_sw_ev.lo: ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
 ita/$(am__dirstamp):
 	@$(MKDIR_P) ita
 	@: > ita/$(am__dirstamp)
@@ -1016,6 +1083,13 @@ pwg/$(DEPDIR)/$(am__dirstamp):
 pwg/pwg_attr.lo: pwg/$(am__dirstamp) pwg/$(DEPDIR)/$(am__dirstamp)
 pwg/pwg_attr_vendor_smi_code.lo: pwg/$(am__dirstamp) \
 	pwg/$(DEPDIR)/$(am__dirstamp)
+rest/$(am__dirstamp):
+	@$(MKDIR_P) rest
+	@: > rest/$(am__dirstamp)
+rest/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) rest/$(DEPDIR)
+	@: > rest/$(DEPDIR)/$(am__dirstamp)
+rest/rest.lo: rest/$(am__dirstamp) rest/$(DEPDIR)/$(am__dirstamp)
 seg/$(am__dirstamp):
 	@$(MKDIR_P) seg
 	@: > seg/$(am__dirstamp)
@@ -1039,6 +1113,36 @@ swid/swid_inventory.lo: swid/$(am__dirstamp) \
 swid/swid_tag.lo: swid/$(am__dirstamp) swid/$(DEPDIR)/$(am__dirstamp)
 swid/swid_tag_id.lo: swid/$(am__dirstamp) \
 	swid/$(DEPDIR)/$(am__dirstamp)
+swid_gen/$(am__dirstamp):
+	@$(MKDIR_P) swid_gen
+	@: > swid_gen/$(am__dirstamp)
+swid_gen/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) swid_gen/$(DEPDIR)
+	@: > swid_gen/$(DEPDIR)/$(am__dirstamp)
+swid_gen/swid_gen.lo: swid_gen/$(am__dirstamp) \
+	swid_gen/$(DEPDIR)/$(am__dirstamp)
+swid_gen/swid_gen_info.lo: swid_gen/$(am__dirstamp) \
+	swid_gen/$(DEPDIR)/$(am__dirstamp)
+swima/$(am__dirstamp):
+	@$(MKDIR_P) swima
+	@: > swima/$(am__dirstamp)
+swima/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) swima/$(DEPDIR)
+	@: > swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_data_model.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_record.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_event.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_events.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_inventory.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_collector.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/swima_error.lo: swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
 tcg/$(am__dirstamp):
 	@$(MKDIR_P) tcg
 	@: > tcg/$(am__dirstamp)
@@ -1181,6 +1285,20 @@ seg/imcv_tests-seg_contract.$(OBJEXT): seg/$(am__dirstamp) \
 	seg/$(DEPDIR)/$(am__dirstamp)
 seg/imcv_tests-seg_contract_manager.$(OBJEXT): seg/$(am__dirstamp) \
 	seg/$(DEPDIR)/$(am__dirstamp)
+swid_gen/imcv_tests-swid_gen.$(OBJEXT): swid_gen/$(am__dirstamp) \
+	swid_gen/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_data_model.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_event.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_events.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_record.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_inventory.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
+swima/imcv_tests-swima_collector.$(OBJEXT): swima/$(am__dirstamp) \
+	swima/$(DEPDIR)/$(am__dirstamp)
 suites/$(am__dirstamp):
 	@$(MKDIR_P) suites
 	@: > suites/$(am__dirstamp)
@@ -1189,8 +1307,19 @@ suites/$(DEPDIR)/$(am__dirstamp):
 	@: > suites/$(DEPDIR)/$(am__dirstamp)
 suites/imcv_tests-test_imcv_seg.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
+suites/imcv_tests-test_imcv_swima.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 ietf/imcv_tests-ietf_attr_pa_tnc_error.$(OBJEXT):  \
 	ietf/$(am__dirstamp) ietf/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/imcv_tests-ietf_swima_attr_req.$(OBJEXT):  \
+	ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.$(OBJEXT):  \
+	ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
+ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.$(OBJEXT):  \
+	ietf/swima/$(am__dirstamp) \
+	ietf/swima/$(DEPDIR)/$(am__dirstamp)
 tcg/seg/imcv_tests-tcg_seg_attr_seg_env.$(OBJEXT):  \
 	tcg/seg/$(am__dirstamp) tcg/seg/$(DEPDIR)/$(am__dirstamp)
 
@@ -1247,6 +1376,8 @@ mostlyclean-compile:
 	-rm -f generic/*.lo
 	-rm -f ietf/*.$(OBJEXT)
 	-rm -f ietf/*.lo
+	-rm -f ietf/swima/*.$(OBJEXT)
+	-rm -f ietf/swima/*.lo
 	-rm -f imc/*.$(OBJEXT)
 	-rm -f imc/*.lo
 	-rm -f imv/*.$(OBJEXT)
@@ -1267,11 +1398,17 @@ mostlyclean-compile:
 	-rm -f pts/components/tcg/*.lo
 	-rm -f pwg/*.$(OBJEXT)
 	-rm -f pwg/*.lo
+	-rm -f rest/*.$(OBJEXT)
+	-rm -f rest/*.lo
 	-rm -f seg/*.$(OBJEXT)
 	-rm -f seg/*.lo
 	-rm -f suites/*.$(OBJEXT)
 	-rm -f swid/*.$(OBJEXT)
 	-rm -f swid/*.lo
+	-rm -f swid_gen/*.$(OBJEXT)
+	-rm -f swid_gen/*.lo
+	-rm -f swima/*.$(OBJEXT)
+	-rm -f swima/*.lo
 	-rm -f tcg/*.$(OBJEXT)
 	-rm -f tcg/*.lo
 	-rm -f tcg/pts/*.$(OBJEXT)
@@ -1303,6 +1440,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_remediation_instr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/ietf_attr_string_version.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/ietf_swima_attr_req.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/ietf_swima_attr_sw_ev.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/ietf_swima_attr_sw_inv.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_agent.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_msg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@imc/$(DEPDIR)/imc_os_info.Plo@am__quote@
@@ -1351,6 +1494,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@pts/components/tcg/$(DEPDIR)/tcg_comp_func_name.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pwg/$(DEPDIR)/pwg_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@pwg/$(DEPDIR)/pwg_attr_vendor_smi_code.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@rest/$(DEPDIR)/rest.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_contract_manager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/imcv_tests-seg_env.Po@am__quote@
@@ -1358,10 +1502,27 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/seg_contract_manager.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@seg/$(DEPDIR)/seg_env.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_error.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_inventory.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_tag.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@swid/$(DEPDIR)/swid_tag_id.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid_gen/$(DEPDIR)/swid_gen.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swid_gen/$(DEPDIR)/swid_gen_info.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_collector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_data_model.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_event.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_events.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_inventory.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/imcv_tests-swima_record.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_collector.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_data_model.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_error.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_event.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_events.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_inventory.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@swima/$(DEPDIR)/swima_record.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tcg/$(DEPDIR)/tcg_attr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_aik.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tcg/pts/$(DEPDIR)/tcg_pts_attr_dh_nonce_finish.Plo@am__quote@
@@ -1482,6 +1643,104 @@ seg/imcv_tests-seg_contract_manager.obj: seg/seg_contract_manager.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o seg/imcv_tests-seg_contract_manager.obj `if test -f 'seg/seg_contract_manager.c'; then $(CYGPATH_W) 'seg/seg_contract_manager.c'; else $(CYGPATH_W) '$(srcdir)/seg/seg_contract_manager.c'; fi`
 
+swid_gen/imcv_tests-swid_gen.o: swid_gen/swid_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swid_gen/imcv_tests-swid_gen.o -MD -MP -MF swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Tpo -c -o swid_gen/imcv_tests-swid_gen.o `test -f 'swid_gen/swid_gen.c' || echo '$(srcdir)/'`swid_gen/swid_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Tpo swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swid_gen/swid_gen.c' object='swid_gen/imcv_tests-swid_gen.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swid_gen/imcv_tests-swid_gen.o `test -f 'swid_gen/swid_gen.c' || echo '$(srcdir)/'`swid_gen/swid_gen.c
+
+swid_gen/imcv_tests-swid_gen.obj: swid_gen/swid_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swid_gen/imcv_tests-swid_gen.obj -MD -MP -MF swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Tpo -c -o swid_gen/imcv_tests-swid_gen.obj `if test -f 'swid_gen/swid_gen.c'; then $(CYGPATH_W) 'swid_gen/swid_gen.c'; else $(CYGPATH_W) '$(srcdir)/swid_gen/swid_gen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Tpo swid_gen/$(DEPDIR)/imcv_tests-swid_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swid_gen/swid_gen.c' object='swid_gen/imcv_tests-swid_gen.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swid_gen/imcv_tests-swid_gen.obj `if test -f 'swid_gen/swid_gen.c'; then $(CYGPATH_W) 'swid_gen/swid_gen.c'; else $(CYGPATH_W) '$(srcdir)/swid_gen/swid_gen.c'; fi`
+
+swima/imcv_tests-swima_data_model.o: swima/swima_data_model.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_data_model.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_data_model.Tpo -c -o swima/imcv_tests-swima_data_model.o `test -f 'swima/swima_data_model.c' || echo '$(srcdir)/'`swima/swima_data_model.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_data_model.Tpo swima/$(DEPDIR)/imcv_tests-swima_data_model.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_data_model.c' object='swima/imcv_tests-swima_data_model.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_data_model.o `test -f 'swima/swima_data_model.c' || echo '$(srcdir)/'`swima/swima_data_model.c
+
+swima/imcv_tests-swima_data_model.obj: swima/swima_data_model.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_data_model.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_data_model.Tpo -c -o swima/imcv_tests-swima_data_model.obj `if test -f 'swima/swima_data_model.c'; then $(CYGPATH_W) 'swima/swima_data_model.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_data_model.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_data_model.Tpo swima/$(DEPDIR)/imcv_tests-swima_data_model.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_data_model.c' object='swima/imcv_tests-swima_data_model.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_data_model.obj `if test -f 'swima/swima_data_model.c'; then $(CYGPATH_W) 'swima/swima_data_model.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_data_model.c'; fi`
+
+swima/imcv_tests-swima_event.o: swima/swima_event.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_event.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_event.Tpo -c -o swima/imcv_tests-swima_event.o `test -f 'swima/swima_event.c' || echo '$(srcdir)/'`swima/swima_event.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_event.Tpo swima/$(DEPDIR)/imcv_tests-swima_event.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_event.c' object='swima/imcv_tests-swima_event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_event.o `test -f 'swima/swima_event.c' || echo '$(srcdir)/'`swima/swima_event.c
+
+swima/imcv_tests-swima_event.obj: swima/swima_event.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_event.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_event.Tpo -c -o swima/imcv_tests-swima_event.obj `if test -f 'swima/swima_event.c'; then $(CYGPATH_W) 'swima/swima_event.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_event.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_event.Tpo swima/$(DEPDIR)/imcv_tests-swima_event.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_event.c' object='swima/imcv_tests-swima_event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_event.obj `if test -f 'swima/swima_event.c'; then $(CYGPATH_W) 'swima/swima_event.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_event.c'; fi`
+
+swima/imcv_tests-swima_events.o: swima/swima_events.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_events.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_events.Tpo -c -o swima/imcv_tests-swima_events.o `test -f 'swima/swima_events.c' || echo '$(srcdir)/'`swima/swima_events.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_events.Tpo swima/$(DEPDIR)/imcv_tests-swima_events.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_events.c' object='swima/imcv_tests-swima_events.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_events.o `test -f 'swima/swima_events.c' || echo '$(srcdir)/'`swima/swima_events.c
+
+swima/imcv_tests-swima_events.obj: swima/swima_events.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_events.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_events.Tpo -c -o swima/imcv_tests-swima_events.obj `if test -f 'swima/swima_events.c'; then $(CYGPATH_W) 'swima/swima_events.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_events.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_events.Tpo swima/$(DEPDIR)/imcv_tests-swima_events.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_events.c' object='swima/imcv_tests-swima_events.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_events.obj `if test -f 'swima/swima_events.c'; then $(CYGPATH_W) 'swima/swima_events.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_events.c'; fi`
+
+swima/imcv_tests-swima_record.o: swima/swima_record.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_record.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_record.Tpo -c -o swima/imcv_tests-swima_record.o `test -f 'swima/swima_record.c' || echo '$(srcdir)/'`swima/swima_record.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_record.Tpo swima/$(DEPDIR)/imcv_tests-swima_record.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_record.c' object='swima/imcv_tests-swima_record.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_record.o `test -f 'swima/swima_record.c' || echo '$(srcdir)/'`swima/swima_record.c
+
+swima/imcv_tests-swima_record.obj: swima/swima_record.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_record.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_record.Tpo -c -o swima/imcv_tests-swima_record.obj `if test -f 'swima/swima_record.c'; then $(CYGPATH_W) 'swima/swima_record.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_record.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_record.Tpo swima/$(DEPDIR)/imcv_tests-swima_record.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_record.c' object='swima/imcv_tests-swima_record.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_record.obj `if test -f 'swima/swima_record.c'; then $(CYGPATH_W) 'swima/swima_record.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_record.c'; fi`
+
+swima/imcv_tests-swima_inventory.o: swima/swima_inventory.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_inventory.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_inventory.Tpo -c -o swima/imcv_tests-swima_inventory.o `test -f 'swima/swima_inventory.c' || echo '$(srcdir)/'`swima/swima_inventory.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_inventory.Tpo swima/$(DEPDIR)/imcv_tests-swima_inventory.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_inventory.c' object='swima/imcv_tests-swima_inventory.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_inventory.o `test -f 'swima/swima_inventory.c' || echo '$(srcdir)/'`swima/swima_inventory.c
+
+swima/imcv_tests-swima_inventory.obj: swima/swima_inventory.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_inventory.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_inventory.Tpo -c -o swima/imcv_tests-swima_inventory.obj `if test -f 'swima/swima_inventory.c'; then $(CYGPATH_W) 'swima/swima_inventory.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_inventory.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_inventory.Tpo swima/$(DEPDIR)/imcv_tests-swima_inventory.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_inventory.c' object='swima/imcv_tests-swima_inventory.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_inventory.obj `if test -f 'swima/swima_inventory.c'; then $(CYGPATH_W) 'swima/swima_inventory.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_inventory.c'; fi`
+
+swima/imcv_tests-swima_collector.o: swima/swima_collector.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_collector.o -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_collector.Tpo -c -o swima/imcv_tests-swima_collector.o `test -f 'swima/swima_collector.c' || echo '$(srcdir)/'`swima/swima_collector.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_collector.Tpo swima/$(DEPDIR)/imcv_tests-swima_collector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_collector.c' object='swima/imcv_tests-swima_collector.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_collector.o `test -f 'swima/swima_collector.c' || echo '$(srcdir)/'`swima/swima_collector.c
+
+swima/imcv_tests-swima_collector.obj: swima/swima_collector.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT swima/imcv_tests-swima_collector.obj -MD -MP -MF swima/$(DEPDIR)/imcv_tests-swima_collector.Tpo -c -o swima/imcv_tests-swima_collector.obj `if test -f 'swima/swima_collector.c'; then $(CYGPATH_W) 'swima/swima_collector.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_collector.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) swima/$(DEPDIR)/imcv_tests-swima_collector.Tpo swima/$(DEPDIR)/imcv_tests-swima_collector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='swima/swima_collector.c' object='swima/imcv_tests-swima_collector.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o swima/imcv_tests-swima_collector.obj `if test -f 'swima/swima_collector.c'; then $(CYGPATH_W) 'swima/swima_collector.c'; else $(CYGPATH_W) '$(srcdir)/swima/swima_collector.c'; fi`
+
 suites/imcv_tests-test_imcv_seg.o: suites/test_imcv_seg.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT suites/imcv_tests-test_imcv_seg.o -MD -MP -MF suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo -c -o suites/imcv_tests-test_imcv_seg.o `test -f 'suites/test_imcv_seg.c' || echo '$(srcdir)/'`suites/test_imcv_seg.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Tpo suites/$(DEPDIR)/imcv_tests-test_imcv_seg.Po
@@ -1496,6 +1755,20 @@ suites/imcv_tests-test_imcv_seg.obj: suites/test_imcv_seg.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o suites/imcv_tests-test_imcv_seg.obj `if test -f 'suites/test_imcv_seg.c'; then $(CYGPATH_W) 'suites/test_imcv_seg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_imcv_seg.c'; fi`
 
+suites/imcv_tests-test_imcv_swima.o: suites/test_imcv_swima.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT suites/imcv_tests-test_imcv_swima.o -MD -MP -MF suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Tpo -c -o suites/imcv_tests-test_imcv_swima.o `test -f 'suites/test_imcv_swima.c' || echo '$(srcdir)/'`suites/test_imcv_swima.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Tpo suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_imcv_swima.c' object='suites/imcv_tests-test_imcv_swima.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o suites/imcv_tests-test_imcv_swima.o `test -f 'suites/test_imcv_swima.c' || echo '$(srcdir)/'`suites/test_imcv_swima.c
+
+suites/imcv_tests-test_imcv_swima.obj: suites/test_imcv_swima.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT suites/imcv_tests-test_imcv_swima.obj -MD -MP -MF suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Tpo -c -o suites/imcv_tests-test_imcv_swima.obj `if test -f 'suites/test_imcv_swima.c'; then $(CYGPATH_W) 'suites/test_imcv_swima.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_imcv_swima.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Tpo suites/$(DEPDIR)/imcv_tests-test_imcv_swima.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_imcv_swima.c' object='suites/imcv_tests-test_imcv_swima.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o suites/imcv_tests-test_imcv_swima.obj `if test -f 'suites/test_imcv_swima.c'; then $(CYGPATH_W) 'suites/test_imcv_swima.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_imcv_swima.c'; fi`
+
 ietf/imcv_tests-ietf_attr_pa_tnc_error.o: ietf/ietf_attr_pa_tnc_error.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/imcv_tests-ietf_attr_pa_tnc_error.o -MD -MP -MF ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.o `test -f 'ietf/ietf_attr_pa_tnc_error.c' || echo '$(srcdir)/'`ietf/ietf_attr_pa_tnc_error.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Tpo ietf/$(DEPDIR)/imcv_tests-ietf_attr_pa_tnc_error.Po
@@ -1509,6 +1782,48 @@ ietf/imcv_tests-ietf_attr_pa_tnc_error.obj: ietf/ietf_attr_pa_tnc_error.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/ietf_attr_pa_tnc_error.c' object='ietf/imcv_tests-ietf_attr_pa_tnc_error.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/imcv_tests-ietf_attr_pa_tnc_error.obj `if test -f 'ietf/ietf_attr_pa_tnc_error.c'; then $(CYGPATH_W) 'ietf/ietf_attr_pa_tnc_error.c'; else $(CYGPATH_W) '$(srcdir)/ietf/ietf_attr_pa_tnc_error.c'; fi`
+
+ietf/swima/imcv_tests-ietf_swima_attr_req.o: ietf/swima/ietf_swima_attr_req.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_req.o -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_req.o `test -f 'ietf/swima/ietf_swima_attr_req.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_req.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_req.c' object='ietf/swima/imcv_tests-ietf_swima_attr_req.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_req.o `test -f 'ietf/swima/ietf_swima_attr_req.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_req.c
+
+ietf/swima/imcv_tests-ietf_swima_attr_req.obj: ietf/swima/ietf_swima_attr_req.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_req.obj -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_req.obj `if test -f 'ietf/swima/ietf_swima_attr_req.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_req.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_req.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_req.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_req.c' object='ietf/swima/imcv_tests-ietf_swima_attr_req.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_req.obj `if test -f 'ietf/swima/ietf_swima_attr_req.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_req.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_req.c'; fi`
+
+ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.o: ietf/swima/ietf_swima_attr_sw_inv.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.o -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.o `test -f 'ietf/swima/ietf_swima_attr_sw_inv.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_sw_inv.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_sw_inv.c' object='ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.o `test -f 'ietf/swima/ietf_swima_attr_sw_inv.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_sw_inv.c
+
+ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.obj: ietf/swima/ietf_swima_attr_sw_inv.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.obj -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.obj `if test -f 'ietf/swima/ietf_swima_attr_sw_inv.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_sw_inv.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_sw_inv.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_inv.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_sw_inv.c' object='ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_inv.obj `if test -f 'ietf/swima/ietf_swima_attr_sw_inv.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_sw_inv.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_sw_inv.c'; fi`
+
+ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.o: ietf/swima/ietf_swima_attr_sw_ev.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.o -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.o `test -f 'ietf/swima/ietf_swima_attr_sw_ev.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_sw_ev.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_sw_ev.c' object='ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.o `test -f 'ietf/swima/ietf_swima_attr_sw_ev.c' || echo '$(srcdir)/'`ietf/swima/ietf_swima_attr_sw_ev.c
+
+ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.obj: ietf/swima/ietf_swima_attr_sw_ev.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.obj -MD -MP -MF ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Tpo -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.obj `if test -f 'ietf/swima/ietf_swima_attr_sw_ev.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_sw_ev.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_sw_ev.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Tpo ietf/swima/$(DEPDIR)/imcv_tests-ietf_swima_attr_sw_ev.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='ietf/swima/ietf_swima_attr_sw_ev.c' object='ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -c -o ietf/swima/imcv_tests-ietf_swima_attr_sw_ev.obj `if test -f 'ietf/swima/ietf_swima_attr_sw_ev.c'; then $(CYGPATH_W) 'ietf/swima/ietf_swima_attr_sw_ev.c'; else $(CYGPATH_W) '$(srcdir)/ietf/swima/ietf_swima_attr_sw_ev.c'; fi`
 
 tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o: tcg/seg/tcg_seg_attr_seg_env.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(imcv_tests_CFLAGS) $(CFLAGS) -MT tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o -MD -MP -MF tcg/seg/$(DEPDIR)/imcv_tests-tcg_seg_attr_seg_env.Tpo -c -o tcg/seg/imcv_tests-tcg_seg_attr_seg_env.o `test -f 'tcg/seg/tcg_seg_attr_seg_env.c' || echo '$(srcdir)/'`tcg/seg/tcg_seg_attr_seg_env.c
@@ -1559,6 +1874,7 @@ clean-libtool:
 	-rm -rf .libs _libs
 	-rm -rf generic/.libs generic/_libs
 	-rm -rf ietf/.libs ietf/_libs
+	-rm -rf ietf/swima/.libs ietf/swima/_libs
 	-rm -rf imc/.libs imc/_libs
 	-rm -rf imv/.libs imv/_libs
 	-rm -rf ita/.libs ita/_libs
@@ -1569,8 +1885,11 @@ clean-libtool:
 	-rm -rf pts/components/ita/.libs pts/components/ita/_libs
 	-rm -rf pts/components/tcg/.libs pts/components/tcg/_libs
 	-rm -rf pwg/.libs pwg/_libs
+	-rm -rf rest/.libs rest/_libs
 	-rm -rf seg/.libs seg/_libs
 	-rm -rf swid/.libs swid/_libs
+	-rm -rf swid_gen/.libs swid_gen/_libs
+	-rm -rf swima/.libs swima/_libs
 	-rm -rf tcg/.libs tcg/_libs
 	-rm -rf tcg/pts/.libs tcg/pts/_libs
 	-rm -rf tcg/seg/.libs tcg/seg/_libs
@@ -1884,6 +2203,8 @@ distclean-generic:
 	-rm -f generic/$(am__dirstamp)
 	-rm -f ietf/$(DEPDIR)/$(am__dirstamp)
 	-rm -f ietf/$(am__dirstamp)
+	-rm -f ietf/swima/$(DEPDIR)/$(am__dirstamp)
+	-rm -f ietf/swima/$(am__dirstamp)
 	-rm -f imc/$(DEPDIR)/$(am__dirstamp)
 	-rm -f imc/$(am__dirstamp)
 	-rm -f imv/$(DEPDIR)/$(am__dirstamp)
@@ -1904,12 +2225,18 @@ distclean-generic:
 	-rm -f pts/components/tcg/$(am__dirstamp)
 	-rm -f pwg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f pwg/$(am__dirstamp)
+	-rm -f rest/$(DEPDIR)/$(am__dirstamp)
+	-rm -f rest/$(am__dirstamp)
 	-rm -f seg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f seg/$(am__dirstamp)
 	-rm -f suites/$(DEPDIR)/$(am__dirstamp)
 	-rm -f suites/$(am__dirstamp)
 	-rm -f swid/$(DEPDIR)/$(am__dirstamp)
 	-rm -f swid/$(am__dirstamp)
+	-rm -f swid_gen/$(DEPDIR)/$(am__dirstamp)
+	-rm -f swid_gen/$(am__dirstamp)
+	-rm -f swima/$(DEPDIR)/$(am__dirstamp)
+	-rm -f swima/$(am__dirstamp)
 	-rm -f tcg/$(DEPDIR)/$(am__dirstamp)
 	-rm -f tcg/$(am__dirstamp)
 	-rm -f tcg/pts/$(DEPDIR)/$(am__dirstamp)
@@ -1928,7 +2255,7 @@ clean-am: clean-checkPROGRAMS clean-generic clean-ipsecPROGRAMS \
 	clean-ipseclibLTLIBRARIES clean-libtool mostlyclean-am
 
 distclean: distclean-recursive
-	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) ietf/swima/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) rest/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) swid_gen/$(DEPDIR) swima/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1975,7 +2302,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
-	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) generic/$(DEPDIR) ietf/$(DEPDIR) ietf/swima/$(DEPDIR) imc/$(DEPDIR) imv/$(DEPDIR) ita/$(DEPDIR) os_info/$(DEPDIR) pa_tnc/$(DEPDIR) pts/$(DEPDIR) pts/components/$(DEPDIR) pts/components/ita/$(DEPDIR) pts/components/tcg/$(DEPDIR) pwg/$(DEPDIR) rest/$(DEPDIR) seg/$(DEPDIR) suites/$(DEPDIR) swid/$(DEPDIR) swid_gen/$(DEPDIR) swima/$(DEPDIR) tcg/$(DEPDIR) tcg/pts/$(DEPDIR) tcg/seg/$(DEPDIR) tcg/swid/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

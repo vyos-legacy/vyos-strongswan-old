@@ -148,15 +148,21 @@ am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
 PROGRAMS = $(ipsec_PROGRAMS)
-am_dumm_OBJECTS = main.$(OBJEXT)
+am_dumm_OBJECTS = dumm-main.$(OBJEXT)
 dumm_OBJECTS = $(am_dumm_OBJECTS)
 am__DEPENDENCIES_1 =
 dumm_DEPENDENCIES = libdumm.la $(am__DEPENDENCIES_1) \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
-am_irdumm_OBJECTS = irdumm.$(OBJEXT)
+dumm_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(dumm_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+am_irdumm_OBJECTS = irdumm-irdumm.$(OBJEXT)
 irdumm_OBJECTS = $(am_irdumm_OBJECTS)
 irdumm_DEPENDENCIES = libdumm.la $(am__DEPENDENCIES_1) \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
+irdumm_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(irdumm_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -318,8 +324,6 @@ RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
-RUBYINCLUDE = @RUBYINCLUDE@
-RUBYLIB = @RUBYLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -420,6 +424,8 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
+ruby_CFLAGS = @ruby_CFLAGS@
+ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -448,6 +454,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
+tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
+tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -462,15 +472,13 @@ dumm_SOURCES = main.c
 irdumm_SOURCES = irdumm.c
 libdumm_la_LIBADD = -lbridge -lfuse -lutil $(top_builddir)/src/libstrongswan/libstrongswan.la
 dumm_LDADD = libdumm.la ${gtk_LIBS} $(top_builddir)/src/libstrongswan/libstrongswan.la
-irdumm_LDADD = libdumm.la ${RUBYLIB} $(top_builddir)/src/libstrongswan/libstrongswan.la
+irdumm_LDADD = libdumm.la ${ruby_LIBS} $(top_builddir)/src/libstrongswan/libstrongswan.la
 AM_CPPFLAGS = \
 	-D_FILE_OFFSET_BITS=64 \
-	-I$(top_srcdir)/src/libstrongswan \
-	${RUBYINCLUDE}
+	-I$(top_srcdir)/src/libstrongswan
 
-AM_CFLAGS = \
-	${gtk_CFLAGS}
-
+dumm_CFLAGS = ${gtk_CFLAGS}
+irdumm_CFLAGS = ${ruby_CFLAGS}
 all: all-am
 
 .SUFFIXES:
@@ -594,11 +602,11 @@ clean-ipsecPROGRAMS:
 
 dumm$(EXEEXT): $(dumm_OBJECTS) $(dumm_DEPENDENCIES) $(EXTRA_dumm_DEPENDENCIES) 
 	@rm -f dumm$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(dumm_OBJECTS) $(dumm_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(dumm_LINK) $(dumm_OBJECTS) $(dumm_LDADD) $(LIBS)
 
 irdumm$(EXEEXT): $(irdumm_OBJECTS) $(irdumm_DEPENDENCIES) $(EXTRA_irdumm_DEPENDENCIES) 
 	@rm -f irdumm$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(irdumm_OBJECTS) $(irdumm_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(irdumm_LINK) $(irdumm_OBJECTS) $(irdumm_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -608,11 +616,11 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bridge.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cowfs.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dumm-main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dumm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/guest.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iface.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/irdumm.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/irdumm-irdumm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mconsole.Plo@am__quote@
 
 .c.o:
@@ -638,6 +646,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+dumm-main.o: main.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dumm_CFLAGS) $(CFLAGS) -MT dumm-main.o -MD -MP -MF $(DEPDIR)/dumm-main.Tpo -c -o dumm-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/dumm-main.Tpo $(DEPDIR)/dumm-main.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='main.c' object='dumm-main.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dumm_CFLAGS) $(CFLAGS) -c -o dumm-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+
+dumm-main.obj: main.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dumm_CFLAGS) $(CFLAGS) -MT dumm-main.obj -MD -MP -MF $(DEPDIR)/dumm-main.Tpo -c -o dumm-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/dumm-main.Tpo $(DEPDIR)/dumm-main.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='main.c' object='dumm-main.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dumm_CFLAGS) $(CFLAGS) -c -o dumm-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+
+irdumm-irdumm.o: irdumm.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(irdumm_CFLAGS) $(CFLAGS) -MT irdumm-irdumm.o -MD -MP -MF $(DEPDIR)/irdumm-irdumm.Tpo -c -o irdumm-irdumm.o `test -f 'irdumm.c' || echo '$(srcdir)/'`irdumm.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/irdumm-irdumm.Tpo $(DEPDIR)/irdumm-irdumm.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='irdumm.c' object='irdumm-irdumm.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(irdumm_CFLAGS) $(CFLAGS) -c -o irdumm-irdumm.o `test -f 'irdumm.c' || echo '$(srcdir)/'`irdumm.c
+
+irdumm-irdumm.obj: irdumm.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(irdumm_CFLAGS) $(CFLAGS) -MT irdumm-irdumm.obj -MD -MP -MF $(DEPDIR)/irdumm-irdumm.Tpo -c -o irdumm-irdumm.obj `if test -f 'irdumm.c'; then $(CYGPATH_W) 'irdumm.c'; else $(CYGPATH_W) '$(srcdir)/irdumm.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/irdumm-irdumm.Tpo $(DEPDIR)/irdumm-irdumm.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='irdumm.c' object='irdumm-irdumm.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(irdumm_CFLAGS) $(CFLAGS) -c -o irdumm-irdumm.obj `if test -f 'irdumm.c'; then $(CYGPATH_W) 'irdumm.c'; else $(CYGPATH_W) '$(srcdir)/irdumm.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

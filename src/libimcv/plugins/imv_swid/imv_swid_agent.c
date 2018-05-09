@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Andreas Steffen
+ * Copyright (C) 2013-2017 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -18,12 +18,12 @@
 
 #include "imv_swid_agent.h"
 #include "imv_swid_state.h"
-#include "imv_swid_rest.h"
 
 #include <imcv.h>
 #include <imv/imv_agent.h>
 #include <imv/imv_msg.h>
 #include <ietf/ietf_attr_pa_tnc_error.h>
+#include "rest/rest.h"
 #include "tcg/seg/tcg_seg_attr_max_size.h"
 #include "tcg/seg/tcg_seg_attr_seg_env.h"
 #include "tcg/swid/tcg_swid_attr_req.h"
@@ -72,7 +72,7 @@ struct private_imv_swid_agent_t {
 	/**
 	 * REST API to strongTNC manager
 	 */
-	imv_swid_rest_t *rest_api;
+	rest_t *rest_api;
 
 };
 
@@ -590,7 +590,7 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 					DBG1(DBG_IMV, "  %s", target);
 
 					/* Separate target into tag_creator and unique_sw_id */
-					separator = strchr(target, '_');
+					separator = strstr(target, "__");
 					if (!separator)
 					{
 						error_str = "separation of regid from "
@@ -598,9 +598,9 @@ METHOD(imv_agent_if_t, batch_ending, TNC_Result,
 						break;
 					}
 					tag_creator = chunk_create(target, separator - target);
-					separator++;
+					separator += 2;
 					unique_sw_id = chunk_create(separator, strlen(target) -
-												tag_creator.len - 1);
+												tag_creator.len - 2);
 					tag_id = swid_tag_id_create(tag_creator, unique_sw_id,
 												chunk_empty);
 					cast_attr = (tcg_swid_attr_req_t*)attr;
@@ -719,7 +719,7 @@ imv_agent_if_t *imv_swid_agent_create(const char *name, TNC_IMVID id,
 						"%s.plugins.imv-swid.rest_api_timeout", 120, lib->ns);
 	if (rest_api_uri)
 	{
-		this->rest_api = imv_swid_rest_create(rest_api_uri, rest_api_timeout);
+		this->rest_api = rest_create(rest_api_uri, rest_api_timeout);
 	}
 
 	return &this->public;

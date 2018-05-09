@@ -103,7 +103,8 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
+DIST_COMMON = $(srcdir)/Makefile.am $(dist_swid_DATA) \
+	$(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
@@ -135,8 +136,7 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(imcvdir)" "$(DESTDIR)$(ipsecdir)" \
-	"$(DESTDIR)$(swiddir)"
+am__installdirs = "$(DESTDIR)$(imcvdir)" "$(DESTDIR)$(swiddir)"
 LTLIBRARIES = $(imcv_LTLIBRARIES)
 imc_swid_la_DEPENDENCIES = $(top_builddir)/src/libimcv/libimcv.la \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -190,7 +190,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-DATA = $(ipsec_DATA) $(swid_DATA)
+DATA = $(dist_swid_DATA)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -311,8 +311,6 @@ RANLIB = @RANLIB@
 RTLIB = @RTLIB@
 RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
-RUBYINCLUDE = @RUBYINCLUDE@
-RUBYLIB = @RUBYLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -413,6 +411,8 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
+ruby_CFLAGS = @ruby_CFLAGS@
+ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -441,17 +441,20 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
+tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
+tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
-regid = regid.2004-03.org.strongswan
+regid = strongswan.org
 unique_sw_id = strongSwan-$(PACKAGE_VERSION_MAJOR)-$(PACKAGE_VERSION_MINOR)-$(PACKAGE_VERSION_BUILD)$(PACKAGE_VERSION_REVIEW)
-swid_tag = $(regid)_$(unique_sw_id).swidtag
-swiddir = $(prefix)/share/$(regid)
-swid_DATA = $(swid_tag)
-ipsec_DATA = $(swid_tag)
-EXTRA_DIST = $(regid)_strongSwan.swidtag.in
-CLEANFILES = $(regid)_strongSwan*.swidtag
+swid_tag = $(regid)__$(unique_sw_id).swidtag
+swiddir = $(pkgdatadir)/swidtag
+dist_swid_DATA = $(swid_tag)
+EXTRA_DIST = $(regid)__strongSwan.swidtag.in
+CLEANFILES = $(regid)__strongSwan*.swidtag
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libtncif \
@@ -578,30 +581,9 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-ipsecDATA: $(ipsec_DATA)
+install-dist_swidDATA: $(dist_swid_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(ipsec_DATA)'; test -n "$(ipsecdir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(ipsecdir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(ipsecdir)" || exit 1; \
-	fi; \
-	for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; \
-	done | $(am__base_list) | \
-	while read files; do \
-	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(ipsecdir)'"; \
-	  $(INSTALL_DATA) $$files "$(DESTDIR)$(ipsecdir)" || exit $$?; \
-	done
-
-uninstall-ipsecDATA:
-	@$(NORMAL_UNINSTALL)
-	@list='$(ipsec_DATA)'; test -n "$(ipsecdir)" || list=; \
-	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	dir='$(DESTDIR)$(ipsecdir)'; $(am__uninstall_files_from_dir)
-install-swidDATA: $(swid_DATA)
-	@$(NORMAL_INSTALL)
-	@list='$(swid_DATA)'; test -n "$(swiddir)" || list=; \
+	@list='$(dist_swid_DATA)'; test -n "$(swiddir)" || list=; \
 	if test -n "$$list"; then \
 	  echo " $(MKDIR_P) '$(DESTDIR)$(swiddir)'"; \
 	  $(MKDIR_P) "$(DESTDIR)$(swiddir)" || exit 1; \
@@ -615,9 +597,9 @@ install-swidDATA: $(swid_DATA)
 	  $(INSTALL_DATA) $$files "$(DESTDIR)$(swiddir)" || exit $$?; \
 	done
 
-uninstall-swidDATA:
+uninstall-dist_swidDATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(swid_DATA)'; test -n "$(swiddir)" || list=; \
+	@list='$(dist_swid_DATA)'; test -n "$(swiddir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	dir='$(DESTDIR)$(swiddir)'; $(am__uninstall_files_from_dir)
 
@@ -707,7 +689,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(LTLIBRARIES) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(imcvdir)" "$(DESTDIR)$(ipsecdir)" "$(DESTDIR)$(swiddir)"; do \
+	for dir in "$(DESTDIR)$(imcvdir)" "$(DESTDIR)$(swiddir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -764,8 +746,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-imcvLTLIBRARIES install-ipsecDATA \
-	install-swidDATA
+install-data-am: install-dist_swidDATA install-imcvLTLIBRARIES
 
 install-dvi: install-dvi-am
 
@@ -811,8 +792,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-imcvLTLIBRARIES uninstall-ipsecDATA \
-	uninstall-swidDATA
+uninstall-am: uninstall-dist_swidDATA uninstall-imcvLTLIBRARIES
 
 .MAKE: install-am install-strip
 
@@ -821,28 +801,28 @@ uninstall-am: uninstall-imcvLTLIBRARIES uninstall-ipsecDATA \
 	ctags-am distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am \
-	install-imcvLTLIBRARIES install-info install-info-am \
-	install-ipsecDATA install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip install-swidDATA \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-data-am install-dist_swidDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-imcvLTLIBRARIES install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am uninstall-imcvLTLIBRARIES \
-	uninstall-ipsecDATA uninstall-swidDATA
+	tags tags-am uninstall uninstall-am uninstall-dist_swidDATA \
+	uninstall-imcvLTLIBRARIES
 
 .PRECIOUS: Makefile
 
 
-$(swid_tag) : regid.2004-03.org.strongswan_strongSwan.swidtag.in
+$(swid_tag) : $(regid)__strongSwan.swidtag.in
 	$(AM_V_GEN) \
 	sed \
 	-e "s:@VERSION_MAJOR@:$(PACKAGE_VERSION_MAJOR):" \
 	-e "s:@VERSION_MINOR@:$(PACKAGE_VERSION_MINOR):" \
 	-e "s:@VERSION_BUILD@:$(PACKAGE_VERSION_BUILD):" \
 	-e "s:@VERSION_REVIEW@:$(PACKAGE_VERSION_REVIEW):" \
-	$(srcdir)/$(regid)_strongSwan.swidtag.in > $@
+	$(srcdir)/$(regid)__strongSwan.swidtag.in > $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

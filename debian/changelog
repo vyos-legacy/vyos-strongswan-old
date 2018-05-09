@@ -1,3 +1,39 @@
+strongswan (5.6.0-2) unstable; urgency=medium
+
+  * debian/rules:
+    - only use dh_missing --fail-missing when doing an architecture dependent
+    packages.                                                   closes: #874152
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 03 Sep 2017 19:24:55 +0200
+
+strongswan (5.6.0-1) unstable; urgency=medium
+
+  * New upstream release.
+    - fix insufficient input validation in gmp plugin, which can cause a
+    denial of service vulnerability (CVE-2017-11185)            closes: #872155
+  * debian/rules:
+    - remove .la files before install
+    - don't call dh_install with --fail-missing
+    - override dh_missing with --fail-missing to catch uninstalled files
+    - apply patch from Gerald Turner to restrict permissions on swanctl folder
+      containing private material.
+    - replace DEB_BUILD_* by DEB_HOST_* when needed, fix FTCBFS, for example
+      when building for ppc64el on x86. Thanks Helmut Grohne.   closes: #866669
+  * debian/strongswan-swanctl.install:
+    - install the whole /etc/swanctl folder, including (empty) subfolders.
+                                                                closes: #866324
+  * debian/charon-systemd.install:
+    - install charon-systemd.conf files, thanks Gerald Turner.  closes: #866325
+  * Add AppArmor profiles for swanctl and charon-system, thanks Gerald Turner.
+                                                                closes: #866327
+  * debian/libcharon-extra-plugins.install:
+    - install pt-tls-client in /u/b and also install its manpage.
+  * debian/strongswan-swanctl.lintian-overrides:
+    - add lintian overrides for private keys directories using 700
+    permissions.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 03 Sep 2017 14:38:09 +0200
+
 strongswan (5.5.3-2) unstable; urgency=medium
 
   * debian/control:
