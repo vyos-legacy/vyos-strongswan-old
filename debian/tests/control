@@ -1,0 +1,3 @@
+Tests: daemon admin-strongswan-charon admin-strongswan-starter plugins
+Depends: strongswan, libstrongswan-standard-plugins, libstrongswan-extra-plugins, libcharon-extra-plugins, strongswan-pki, strongswan-scepclient
+Restrictions: needs-root isolation-container allow-stderr

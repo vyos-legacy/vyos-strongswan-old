@@ -1,0 +1,28 @@
+#!/bin/bash
+# find the set of plugins from default installed libraries
+# and compare that with what ipsec has loaded.
+
+# restart strongswan to get current list of loaded modules
+invoke-rc.d strongswan restart
+invoke-rc.d strongswan status
+
+STRONGSWAN_PKGS="$(dpkg --list | awk '/(strongswan|charon)/ {print $2}')"
+PLUGIN_PATH="/usr/lib/ipsec/plugins/"
+EXPECTED_MODULES="charon"
+for pkg in $STRONGSWAN_PKGS; do
+    P=$(dpkg -L $pkg | grep "^${PLUGIN_PATH}" |
+        sed -e "s,${PLUGIN_PATH}libstrongswan-,,g" -e 's,.so$,,')
+    EXPECTED_MODULES="${EXPECTED_MODULES} ${P}"
+done
+# expected to not load; they require configuration
+# NB: keep leading/trailing space for regex generation
+NOLOAD=" attr-sql coupling eap-simaka-sql eap-sim-file kernel-libipsec load-tester medcli medsrv sql systime-fix "
+# rdrand is dynamically detected
+MAYBELOAD="rdrand "
+NOLOADR="(`echo "${NOLOAD}${MAYBELOAD}" | sed 's, ,$|^,g'`)"
+MAYBELOADR="(`echo " ${MAYBELOAD}" | sed 's, ,$|^,g'`)"
+EXPECTED=( `echo $EXPECTED_MODULES | fmt -w1 | egrep -v "$NOLOADR"` )
+LOADED=( `ipsec listplugins | grep :$ | grep -v "Plugin" | egrep -v "$MAYBELOADR" | sed 's,:,,g'` )
+
+diff <(printf "%s\n" "${EXPECTED[@]}"|sort) <(printf "%s\n" "${LOADED[@]}"|sort)
+exit $?

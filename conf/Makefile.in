@@ -305,7 +305,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -339,8 +338,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -394,6 +391,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -408,9 +407,11 @@ optionstemplatedir = $(templatesdir)/strongswan.d
 pluginstemplatedir = $(templatesdir)/plugins
 options = \
 	options/aikgen.opt \
+	options/aikpub2.opt \
 	options/attest.opt \
 	options/charon.opt \
 	options/charon-logging.opt \
+	options/charon-nm.opt \
 	options/charon-systemd.opt \
 	options/imcv.opt \
 	options/imv_policy_manager.opt \

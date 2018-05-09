@@ -4,23 +4,39 @@ export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed -Wl,-O1
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
-		--enable-ldap --enable-curl \
-		--enable-pkcs11 \
-		--enable-openssl --enable-agent \
-		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
-		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
-		--enable-eap-gtc --enable-eap-aka --enable-eap-mschapv2 \
-		--enable-eap-tls --enable-eap-ttls --enable-eap-tnc \
-		--enable-ha \
-		--enable-led --enable-gcrypt \
-		--enable-test-vectors \
-		--enable-xauth-eap --enable-xauth-pam --enable-xauth-noauth \
-		--enable-cmd \
+		--enable-addrblock \
+		--enable-agent \
+		--enable-ccm \
 		--enable-certexpire \
-		--enable-lookip \
+		--enable-cmd \
+		--enable-ctr \
+		--enable-curl \
+		--enable-eap-aka \
+		--enable-eap-gtc \
+		--enable-eap-identity \
+		--enable-eap-md5 \
+		--enable-eap-mschapv2 \
+		--enable-eap-radius \
+		--enable-eap-tls \
+		--enable-eap-tnc \
+		--enable-eap-ttls \
 		--enable-error-notify \
+		--enable-gcm \
+		--enable-gcrypt \
+		--enable-ha \
+		--enable-ldap \
+		--enable-led \
+		--enable-lookip \
+		--enable-mediation \
+		--enable-openssl \
+		--enable-pkcs11 \
+		--enable-test-vectors \
 		--enable-unity \
-		--disable-blowfish --disable-des # BSD-Young license
+		--enable-xauth-eap \
+		--enable-xauth-noauth \
+		--enable-xauth-pam \
+		--disable-blowfish \
+		--disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
 	# And for --enable-eap-sim we would need the library, which we don't
@@ -28,8 +44,8 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# Don't --enable-cisco-quirks, because some other IPsec implementations
 	# (most notably the Phion one) have problems connecting when pluto 
 	# sends these Cisco options.
-	# don't enable mediation right now (20160523) since clearsilver FTBFS
-	#--enable-mediation --enable-medsrv --enable-medcli \
+	# don't enable medsrv/medcli right now (20160523) since clearsilver FTBFS
+	#--enable-medsrv --enable-medcli \
 
 # get the various DEB_BUILD/DEB_HOST variables
 include /usr/share/dpkg/architecture.mk
@@ -162,6 +178,11 @@ endif
 		-Xlibstrongswan-aesni.so -X aesni.conf \
 		-Xlibstrongswan-af-alg.so -X af-alg.conf \
 		-Xstrongswan.service
+
+	# AppArmor.
+	dh_apparmor --profile-name=usr.lib.ipsec.charon -p strongswan-charon
+	dh_apparmor --profile-name=usr.lib.ipsec.lookip -p libcharon-extra-plugins
+	dh_apparmor --profile-name=usr.lib.ipsec.stroke -p strongswan-starter
 
 	# add additional files not covered by upstream makefile...
 	install --mode=0600 $(CURDIR)/debian/ipsec.secrets.proto $(CURDIR)/debian/strongswan-starter/etc/ipsec.secrets

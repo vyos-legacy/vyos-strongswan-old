@@ -11,6 +11,7 @@ Vcs-Git: git://anonscm.debian.org/pkg-swan/strongswan.git
 Build-Depends: bison,
                bzip2,
                debhelper (>= 9.20151219),
+               dh-apparmor,
                dh-autoreconf,
                dh-systemd (>= 1.5),
                dpkg-dev (>= 1.16.2),
@@ -34,9 +35,10 @@ Build-Depends: bison,
                network-manager-dev (>= 0.7) [linux-any],
                pkg-config,
                po-debconf,
-               systemd,
+               systemd [linux-any],
                tzdata
 Homepage: http://www.strongswan.org
+XS-Testsuite: autopkgtest
 
 Package: strongswan
 Architecture: all
@@ -190,6 +192,7 @@ Package: strongswan-starter
 Architecture: any
 Depends: adduser,
          libstrongswan (= ${binary:Version}),
+         lsb-base (>= 3.0-6),
          ${misc:Depends},
          ${shlibs:Depends}
 Recommends: strongswan-charon
@@ -270,6 +273,7 @@ Package: strongswan-nm
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: network-manager-strongswan
+Replaces: network-manager-strongswan (<= 1.4.1-1~)
 Description: strongSwan plugin to interact with NetworkManager
  The strongSwan VPN suite uses the native IPsec stack in the standard
  Linux kernel. It supports both the IKEv1 and IKEv2 protocols.

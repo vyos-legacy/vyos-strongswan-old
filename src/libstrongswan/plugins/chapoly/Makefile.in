@@ -152,7 +152,7 @@ libchapoly_drv_ssse3_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(LDFLAGS) -o $@
 libstrongswan_chapoly_la_DEPENDENCIES = libchapoly-drv-ssse3.la
 am_libstrongswan_chapoly_la_OBJECTS = chapoly_plugin.lo chapoly_drv.lo \
-	chapoly_drv_portable.lo chapoly_aead.lo
+	chapoly_drv_portable.lo chapoly_aead.lo chapoly_xof.lo
 libstrongswan_chapoly_la_OBJECTS =  \
 	$(am_libstrongswan_chapoly_la_OBJECTS)
 libstrongswan_chapoly_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
@@ -365,7 +365,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -399,8 +398,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -454,6 +451,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
@@ -469,7 +468,8 @@ libstrongswan_chapoly_la_SOURCES = \
 	chapoly_plugin.h chapoly_plugin.c \
 	chapoly_drv.h chapoly_drv.c \
 	chapoly_drv_portable.h chapoly_drv_portable.c \
-	chapoly_aead.h chapoly_aead.c
+	chapoly_aead.h chapoly_aead.c \
+	chapoly_xof.h chapoly_xof.c
 
 libchapoly_drv_ssse3_la_SOURCES = chapoly_drv_ssse3.h chapoly_drv_ssse3.c
 @USE_X86X64_TRUE@libchapoly_drv_ssse3_la_CFLAGS = $(PLUGIN_CFLAGS) -mssse3
@@ -573,6 +573,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chapoly_drv.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chapoly_drv_portable.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chapoly_plugin.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chapoly_xof.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libchapoly_drv_ssse3_la-chapoly_drv_ssse3.Plo@am__quote@
 
 .c.o:

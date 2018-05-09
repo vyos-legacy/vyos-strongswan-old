@@ -22,8 +22,8 @@
 #include <asn1/oid.h>
 #include <bio/bio_reader.h>
 
-#include <tss2/tpm20.h>
-#include <tcti/tcti_socket.h>
+#include <tpm20.h>
+#include <tcti_socket.h>
 
 #define LABEL	"TPM 2.0 -"
 
@@ -276,7 +276,8 @@ static void finalize_context(private_tpm_tss_tss2_t *this)
 {
 	if (this->tcti_context)
 	{
-		TeardownSocketTcti(this->tcti_context);
+		tss2_tcti_finalize(this->tcti_context);
+		free(this->tcti_context);
 	}
 	if (this->sys_context)
 	{

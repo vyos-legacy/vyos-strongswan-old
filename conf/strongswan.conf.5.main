@@ -3,6 +3,10 @@
 Plugins to load in ipsec aikgen tool.
 
 .TP
+.BR aikpub2.load " []"
+Plugins to load in aikpub2 tool.
+
+.TP
 .BR attest.database " []"
 File measurement information database URI. If it contains a password, make sure
 to adjust the permissions of the config file accordingly.
@@ -48,6 +52,16 @@ SonicWall boxes).
 .TP
 .BR charon.block_threshold " [5]"
 Maximum number of half\-open IKE_SAs for a single peer IP.
+
+.TP
+.BR charon.cache_crls " [no]"
+Whether Certicate Revocation Lists (CRLs) fetched via HTTP or LDAP should be
+saved under a unique file name derived from the public key of the Certification
+Authority (CA) to
+.RB "" "/etc/ipsec.d/crls" ""
+(stroke) or
+.RB "" "/etc/swanctl/x509crl" ""
+(vici), respectively.
 
 .TP
 .BR charon.cert_cache " [yes]"
@@ -188,11 +202,11 @@ conflict with plugins that later need access to e.g. the used certificates.
 Whether to follow IKEv2 redirects (RFC 5685).
 
 .TP
-.BR charon.fragment_size " [0]"
+.BR charon.fragment_size " [1280]"
 Maximum size (complete IP datagram size in bytes) of a sent IKE fragment when
-using proprietary IKEv1 or standardized IKEv2 fragmentation (0 for address
-family specific        default values). If specified this limit is used for both
-IPv4 and IPv6.
+using proprietary IKEv1 or standardized IKEv2 fragmentation, defaults to 1280
+(use 0 for address family specific default values, which uses a lower value for
+IPv4).  If specified this limit is used for both IPv4 and IPv6.
 
 .TP
 .BR charon.group " []"
@@ -962,14 +976,51 @@ IPsec SAs in the kernel. While doing so enforces policies for inbound traffic,
 it also prevents the use of a single IPsec SA by more than one traffic selector.
 
 .TP
+.B charon.plugins.kernel-netlink.spdh_thresh
+.br
+XFRM policy hashing threshold configuration for IPv4 and IPv6.
+
+The section defines hashing thresholds to configure in the kernel during daemon
+startup. Each address family takes a threshold for the local subnet of an IPsec
+policy (src in out\-policies, dst in in\- and forward\-policies) and the remote
+subnet (dst in out\-policies, src in in\- and forward\-policies).
+
+If the subnet has more or equal net bits than the threshold, the first threshold
+bits are used to calculate a hash to lookup the policy.
+
+Policy hashing thresholds are not supported before Linux 3.18 and might conflict
+with socket policies before Linux 4.8.
+
+.TP
+.BR charon.plugins.kernel-netlink.spdh_thresh.ipv4.lbits " [32]"
+Local subnet XFRM policy hashing threshold for IPv4.
+
+.TP
+.BR charon.plugins.kernel-netlink.spdh_thresh.ipv4.rbits " [32]"
+Remote subnet XFRM policy hashing threshold for IPv4.
+
+.TP
+.BR charon.plugins.kernel-netlink.spdh_thresh.ipv6.lbits " [128]"
+Local subnet XFRM policy hashing threshold for IPv6.
+
+.TP
+.BR charon.plugins.kernel-netlink.spdh_thresh.ipv6.rbits " [128]"
+Remote subnet XFRM policy hashing threshold for IPv6.
+
+.TP
 .BR charon.plugins.kernel-netlink.timeout " [0]"
 Netlink message retransmission timeout, 0 to disable retransmissions.
 
 .TP
 .BR charon.plugins.kernel-netlink.xfrm_acq_expires " [165]"
-Lifetime of XFRM acquire state in kernel. The value gets written to
-/proc/sys/net/core/xfrm_acq_expires. Indirectly controls the delay of XFRM
-acquire messages sent.
+Lifetime of XFRM acquire state created by the kernel when traffic matches a trap
+policy. The value gets written to /proc/sys/net/core/xfrm_acq_expires.
+Indirectly controls the delay between XFRM acquire messages triggered by the
+kernel for a trap policy. The same value is used as timeout for SPIs allocated
+by the kernel. The default value equals the default total retransmission timeout
+for IKE messages, see IKEv2 RETRANSMISSION in
+.RB "" "strongswan.conf" "(5)."
+
 
 .TP
 .BR charon.plugins.kernel-pfkey.events_buffer_size " [0]"
@@ -1729,6 +1780,10 @@ Name of the user the daemon changes to after startup.
 .TP
 .BR charon.x509.enforce_critical " [yes]"
 Discard certificates with unsupported or unknown critical extensions.
+
+.TP
+.BR charon-nm.ca_dir " [<default>]"
+Directory from which to load CA certificates if no certificate is configured.
 
 .TP
 .B charon-systemd.journal

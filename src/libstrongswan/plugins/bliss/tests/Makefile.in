@@ -110,7 +110,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__EXEEXT_1 = bliss_tests$(EXEEXT)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_bliss_tests_OBJECTS = suites/bliss_tests-test_bliss_fft.$(OBJEXT) \
+am_bliss_tests_OBJECTS =  \
 	suites/bliss_tests-test_bliss_bitpacker.$(OBJEXT) \
 	suites/bliss_tests-test_bliss_huffman.$(OBJEXT) \
 	suites/bliss_tests-test_bliss_keys.$(OBJEXT) \
@@ -122,6 +122,7 @@ bliss_tests_OBJECTS = $(am_bliss_tests_OBJECTS)
 bliss_tests_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
 	../libbliss.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -353,7 +354,6 @@ clearsilver_LIBS = @clearsilver_LIBS@
 cmd_plugins = @cmd_plugins@
 datadir = @datadir@
 datarootdir = @datarootdir@
-dbusservicedir = @dbusservicedir@
 dev_headers = @dev_headers@
 docdir = @docdir@
 dvidir = @dvidir@
@@ -387,8 +387,6 @@ libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
 localedir = @localedir@
 localstatedir = @localstatedir@
-maemo_CFLAGS = @maemo_CFLAGS@
-maemo_LIBS = @maemo_LIBS@
 manager_plugins = @manager_plugins@
 mandir = @mandir@
 medsrv_plugins = @medsrv_plugins@
@@ -442,11 +440,12 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+tss2_CFLAGS = @tss2_CFLAGS@
+tss2_LIBS = @tss2_LIBS@
 urandom_device = @urandom_device@
 xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 bliss_tests_SOURCES = \
-	suites/test_bliss_fft.c \
 	suites/test_bliss_bitpacker.c \
 	suites/test_bliss_huffman.c \
 	suites/test_bliss_keys.c \
@@ -458,6 +457,7 @@ bliss_tests_SOURCES = \
 bliss_tests_CFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libstrongswan/tests \
+	-I$(top_srcdir)/src/libstrongswan/math/libnttfft \
 	-I$(top_srcdir)/src/libstrongswan/plugins/bliss \
 	-DPLUGINDIR=\""$(abs_top_builddir)/src/libstrongswan/plugins\"" \
 	-DPLUGINS=\""${s_plugins}\"" \
@@ -467,6 +467,7 @@ bliss_tests_LDFLAGS = @COVERAGE_LDFLAGS@
 bliss_tests_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la \
+	$(top_builddir)/src/libstrongswan/math/libnttfft/libnttfft.la \
 	../libbliss.la
 
 all: all-am
@@ -517,8 +518,6 @@ suites/$(am__dirstamp):
 suites/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) suites/$(DEPDIR)
 	@: > suites/$(DEPDIR)/$(am__dirstamp)
-suites/bliss_tests-test_bliss_fft.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
 suites/bliss_tests-test_bliss_bitpacker.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/bliss_tests-test_bliss_huffman.$(OBJEXT):  \
@@ -545,7 +544,6 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bliss_tests-bliss_tests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/bliss_tests-test_bliss_bitpacker.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/bliss_tests-test_bliss_huffman.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/bliss_tests-test_bliss_keys.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/bliss_tests-test_bliss_sampler.Po@am__quote@
@@ -575,20 +573,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
-
-suites/bliss_tests-test_bliss_fft.o: suites/test_bliss_fft.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bliss_tests_CFLAGS) $(CFLAGS) -MT suites/bliss_tests-test_bliss_fft.o -MD -MP -MF suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Tpo -c -o suites/bliss_tests-test_bliss_fft.o `test -f 'suites/test_bliss_fft.c' || echo '$(srcdir)/'`suites/test_bliss_fft.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Tpo suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bliss_fft.c' object='suites/bliss_tests-test_bliss_fft.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bliss_tests_CFLAGS) $(CFLAGS) -c -o suites/bliss_tests-test_bliss_fft.o `test -f 'suites/test_bliss_fft.c' || echo '$(srcdir)/'`suites/test_bliss_fft.c
-
-suites/bliss_tests-test_bliss_fft.obj: suites/test_bliss_fft.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bliss_tests_CFLAGS) $(CFLAGS) -MT suites/bliss_tests-test_bliss_fft.obj -MD -MP -MF suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Tpo -c -o suites/bliss_tests-test_bliss_fft.obj `if test -f 'suites/test_bliss_fft.c'; then $(CYGPATH_W) 'suites/test_bliss_fft.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bliss_fft.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Tpo suites/$(DEPDIR)/bliss_tests-test_bliss_fft.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bliss_fft.c' object='suites/bliss_tests-test_bliss_fft.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bliss_tests_CFLAGS) $(CFLAGS) -c -o suites/bliss_tests-test_bliss_fft.obj `if test -f 'suites/test_bliss_fft.c'; then $(CYGPATH_W) 'suites/test_bliss_fft.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bliss_fft.c'; fi`
 
 suites/bliss_tests-test_bliss_bitpacker.o: suites/test_bliss_bitpacker.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bliss_tests_CFLAGS) $(CFLAGS) -MT suites/bliss_tests-test_bliss_bitpacker.o -MD -MP -MF suites/$(DEPDIR)/bliss_tests-test_bliss_bitpacker.Tpo -c -o suites/bliss_tests-test_bliss_bitpacker.o `test -f 'suites/test_bliss_bitpacker.c' || echo '$(srcdir)/'`suites/test_bliss_bitpacker.c

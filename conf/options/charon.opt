@@ -30,6 +30,12 @@ charon.cert_cache = yes
 	Whether relations in validated certificate chains should be cached in
 	memory.
 
+charon.cache_crls = no
+	Whether Certicate Revocation Lists (CRLs) fetched via HTTP or LDAP should
+	be saved under a unique file name derived from the public key of the
+	Certification Authority (CA) to **/etc/ipsec.d/crls** (stroke) or
+	**/etc/swanctl/x509crl** (vici), respectively.
+
 charon.cisco_unity = no
 	Send Cisco Unity vendor ID payload (IKEv1 only).
 
@@ -100,11 +106,12 @@ charon.flush_auth_cfg = no
 charon.follow_redirects = yes
 	Whether to follow IKEv2 redirects (RFC 5685).
 
-charon.fragment_size = 0
+charon.fragment_size = 1280
 	Maximum size (complete IP datagram size in bytes) of a sent IKE fragment
-	when using proprietary IKEv1 or standardized IKEv2 fragmentation (0 for
-	address family specific	default values). If specified this limit is used
-	for both IPv4 and IPv6.
+	when using proprietary IKEv1 or standardized IKEv2 fragmentation, defaults
+	to 1280 (use 0 for address family specific default values, which uses a
+	lower value for IPv4).  If specified this limit is used for both IPv4 and
+	IPv6.
 
 charon.group
 	Name of the group the daemon changes to after startup.
