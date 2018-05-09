@@ -6,6 +6,7 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-addrblock \
 		--enable-agent \
+		--enable-bypass-lan \
 		--enable-ccm \
 		--enable-certexpire \
 		--enable-cmd \
@@ -257,4 +258,4 @@ override_dh_missing-indep:
 	dh_missing --list-missing
 
 %:
-	dh $@ --parallel --with autoreconf,systemd
+	dh $@ --with systemd

@@ -1,3 +1,27 @@
+strongswan (5.6.2-2) unstable; urgency=medium
+
+  * charon-nm: Fix building list of DNS/MDNS servers with libnm
+  * d/control: drop b-d on n-m-dev and make libnm-dev linux-any
+    (closes: #895434)
+  * d/compat bumped to 10
+  * d/rules: drop parallel and autoreconf from dh, done with compat 10
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Fri, 13 Apr 2018 13:46:04 +0200
+
+strongswan (5.6.2-1) unstable; urgency=medium
+
+  * d/NEWS: add information about disabled algorithms (closes: #883072)
+  * d/control: remove Romain Françoise from uploaders
+  * strongswan-libcharon: add bypass-lan plugin
+  * New upstream version 5.6.2
+    - Fix denial of service vulnerability in the parser for PKCS#1 RSASSA-PSS
+    signatures (CVE-2018-6459)
+  * d/control: move Vcs to salsa
+  * d/control: update build-deps for libnm port (closes: #862885)
+  * install tpm_extendpcr binary in libstrongswan-extra-plugins
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 20 Feb 2018 12:26:54 +0100
+
 strongswan (5.6.1-3) unstable; urgency=medium
 
   * move updown plugin from -starter to -libcharon.             closes: #884578

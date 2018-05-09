@@ -138,8 +138,8 @@ am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
 @MONOLITHIC_FALSE@libstrongswan_tpm_la_DEPENDENCIES =  \
 @MONOLITHIC_FALSE@	$(top_builddir)/src/libtpmtss/libtpmtss.la
-am_libstrongswan_tpm_la_OBJECTS = tpm_plugin.lo tpm_private_key.lo \
-	tpm_rng.lo
+am_libstrongswan_tpm_la_OBJECTS = tpm_plugin.lo tpm_cert.lo \
+	tpm_private_key.lo tpm_rng.lo
 libstrongswan_tpm_la_OBJECTS = $(am_libstrongswan_tpm_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -465,6 +465,7 @@ AM_CFLAGS = \
 
 libstrongswan_tpm_la_SOURCES = \
 	tpm_plugin.h tpm_plugin.c \
+	tpm_cert.h tpm_cert.c \
 	tpm_private_key.h tpm_private_key.c \
 	tpm_rng.h tpm_rng.c
 
@@ -558,6 +559,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tpm_cert.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tpm_plugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tpm_private_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tpm_rng.Plo@am__quote@

@@ -152,6 +152,7 @@ am_libstrongswan_tests_OBJECTS = libstrongswan_tests-tests.$(OBJEXT) \
 	suites/libstrongswan_tests-test_auth_cfg.$(OBJEXT) \
 	suites/libstrongswan_tests-test_hasher.$(OBJEXT) \
 	suites/libstrongswan_tests-test_crypter.$(OBJEXT) \
+	suites/libstrongswan_tests-test_proposal.$(OBJEXT) \
 	suites/libstrongswan_tests-test_crypto_factory.$(OBJEXT) \
 	suites/libstrongswan_tests-test_iv_gen.$(OBJEXT) \
 	suites/libstrongswan_tests-test_pen.$(OBJEXT) \
@@ -535,6 +536,7 @@ libstrongswan_tests_SOURCES = tests.h tests.c \
   suites/test_auth_cfg.c \
   suites/test_hasher.c \
   suites/test_crypter.c \
+  suites/test_proposal.c \
   suites/test_crypto_factory.c \
   suites/test_iv_gen.c \
   suites/test_pen.c \
@@ -683,6 +685,8 @@ suites/libstrongswan_tests-test_hasher.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/libstrongswan_tests-test_crypter.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_proposal.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/libstrongswan_tests-test_crypto_factory.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/libstrongswan_tests-test_iv_gen.$(OBJEXT):  \
@@ -750,6 +754,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_pen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_printf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_process.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_settings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Po@am__quote@
@@ -1198,6 +1203,20 @@ suites/libstrongswan_tests-test_crypter.obj: suites/test_crypter.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/libstrongswan_tests-test_crypter.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
+
+suites/libstrongswan_tests-test_proposal.o: suites/test_proposal.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_proposal.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Tpo -c -o suites/libstrongswan_tests-test_proposal.o `test -f 'suites/test_proposal.c' || echo '$(srcdir)/'`suites/test_proposal.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_proposal.c' object='suites/libstrongswan_tests-test_proposal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_proposal.o `test -f 'suites/test_proposal.c' || echo '$(srcdir)/'`suites/test_proposal.c
+
+suites/libstrongswan_tests-test_proposal.obj: suites/test_proposal.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_proposal.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Tpo -c -o suites/libstrongswan_tests-test_proposal.obj `if test -f 'suites/test_proposal.c'; then $(CYGPATH_W) 'suites/test_proposal.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_proposal.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_proposal.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_proposal.c' object='suites/libstrongswan_tests-test_proposal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_proposal.obj `if test -f 'suites/test_proposal.c'; then $(CYGPATH_W) 'suites/test_proposal.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_proposal.c'; fi`
 
 suites/libstrongswan_tests-test_crypto_factory.o: suites/test_crypto_factory.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_crypto_factory.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Tpo -c -o suites/libstrongswan_tests-test_crypto_factory.o `test -f 'suites/test_crypto_factory.c' || echo '$(srcdir)/'`suites/test_crypto_factory.c

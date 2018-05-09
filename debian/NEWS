@@ -1,3 +1,25 @@
+strongswan (5.6.2-1) unstable; urgency=medium
+
+  Starting 5.6.1, several algorithms were removed from the default ESP/AH and
+  IKEv2 proposals in compliance with RFC 8221[1] and RFC 8247[2],
+  respectively.
+  .
+  Removed from the default ESP/AH proposal were the 3DES and Blowfish
+  encryption algorithms and the HMAC-MD5 integrity algorithm.
+  .
+  From the IKEv2 default proposal the HMAC-MD5 integrity algorithm and the
+  MODP-1024 Diffie-Hellman group were removed (the latter is significant for
+  Windows clients in their default configuration).
+  .
+  These algorithms may still be used in custom proposals and MODP-2048 can be
+  enabled manually on Windows 7 clients [3].
+  .
+  [1] https://tools.ietf.org/html/rfc8221
+  [2] https://tools.ietf.org/html/rfc8247
+  [3] https://wiki.strongswan.org/projects/strongswan/wiki/Windows7#AES-256-CBC-and-MODP2048
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Tue, 20 Feb 2018 12:27:00 +0100
+
 strongswan (5.1.2-1) unstable; urgency=medium
 
   Starting 5.1.2, strongSwan natively support a configuration directory (in
