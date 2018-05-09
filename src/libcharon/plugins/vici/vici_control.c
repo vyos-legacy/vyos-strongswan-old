@@ -187,7 +187,7 @@ CALLBACK(initiate, vici_message_t*,
 	host_t *my_host = NULL, *other_host = NULL;
 	char *child, *my_host_str, *other_host_str;
 	u_int timeout;
-	bool limits, async;
+	bool limits;
 	log_info_t log = {
 		.dispatcher = this->dispatcher,
 		.id = id,
@@ -196,7 +196,6 @@ CALLBACK(initiate, vici_message_t*,
 	child = request->get_str(request, NULL, "child");
 	timeout = request->get_int(request, 0, "timeout");
 	limits = request->get_bool(request, FALSE, "init-limits");
-	async = request->get_bool(request, FALSE, "async");
 	log.level = request->get_int(request, 1, "loglevel");
 	my_host_str = request->get_str(request, NULL, "my-host");
 	other_host_str = request->get_str(request, NULL, "other-host");
@@ -225,8 +224,7 @@ CALLBACK(initiate, vici_message_t*,
 	}
 	switch (charon->controller->initiate(charon->controller,
 				peer_cfg, child_cfg, my_host, other_host,
-				async ? NULL : (controller_cb_t)log_vici,
-				&log, timeout, limits))
+				(controller_cb_t)log_vici, &log, timeout, limits))
 	{
 		case SUCCESS:
 			msg = send_reply(this, NULL);
