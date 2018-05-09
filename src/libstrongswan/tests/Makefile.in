@@ -140,6 +140,7 @@ am_tests_OBJECTS = tests-tests.$(OBJEXT) \
 	suites/tests-test_certpolicy.$(OBJEXT) \
 	suites/tests-test_certnames.$(OBJEXT) \
 	suites/tests-test_host.$(OBJEXT) \
+	suites/tests-test_auth_cfg.$(OBJEXT) \
 	suites/tests-test_hasher.$(OBJEXT) \
 	suites/tests-test_crypter.$(OBJEXT) \
 	suites/tests-test_crypto_factory.$(OBJEXT) \
@@ -452,6 +453,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -505,6 +508,7 @@ tests_SOURCES = tests.h tests.c \
   suites/test_certpolicy.c \
   suites/test_certnames.c \
   suites/test_host.c \
+  suites/test_auth_cfg.c \
   suites/test_hasher.c \
   suites/test_crypter.c \
   suites/test_crypto_factory.c \
@@ -648,6 +652,8 @@ suites/tests-test_certnames.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_host.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
+suites/tests-test_auth_cfg.$(OBJEXT): suites/$(am__dirstamp) \
+	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_hasher.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
 suites/tests-test_crypter.$(OBJEXT): suites/$(am__dirstamp) \
@@ -690,6 +696,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_array.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1_parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_auth_cfg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_reader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_writer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_certnames.Po@am__quote@
@@ -1118,6 +1125,20 @@ suites/tests-test_host.obj: suites/test_host.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/tests-test_host.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
+
+suites/tests-test_auth_cfg.o: suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_auth_cfg.o -MD -MP -MF suites/$(DEPDIR)/tests-test_auth_cfg.Tpo -c -o suites/tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_auth_cfg.Tpo suites/$(DEPDIR)/tests-test_auth_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/tests-test_auth_cfg.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
+
+suites/tests-test_auth_cfg.obj: suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_auth_cfg.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_auth_cfg.Tpo -c -o suites/tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_auth_cfg.Tpo suites/$(DEPDIR)/tests-test_auth_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/tests-test_auth_cfg.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
 
 suites/tests-test_hasher.o: suites/test_hasher.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hasher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_hasher.Tpo -c -o suites/tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c

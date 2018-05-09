@@ -279,7 +279,7 @@ static int list_flags[] = {
 	LIST_ALL
 };
 
-static int list(stroke_keyword_t kw, int utc)
+static int list(stroke_keyword_t kw, bool utc)
 {
 	stroke_msg_t *msg;
 
@@ -433,9 +433,9 @@ static int usage(char *error)
 	fprintf(out, "  Show extended status information without blocking:\n");
 	fprintf(out, "    stroke statusall-nb\n");
 	fprintf(out, "  Show list of authority and attribute certificates:\n");
-	fprintf(out, "    stroke listcacerts|listocspcerts|listaacerts|listacerts\n");
+	fprintf(out, "    stroke listcacerts|listocspcerts|listaacerts|listacerts [--utc]\n");
 	fprintf(out, "  Show list of end entity certificates, ca info records  and crls:\n");
-	fprintf(out, "    stroke listcerts|listcainfos|listcrls|listall\n");
+	fprintf(out, "    stroke listcerts|listcainfos|listcrls|listall [--utc]\n");
 	fprintf(out, "  Show list of supported algorithms:\n");
 	fprintf(out, "    stroke listalgs\n");
 	fprintf(out, "  Reload authority and attribute certificates:\n");
@@ -478,6 +478,7 @@ int main(int argc, char *argv[])
 {
 	const stroke_token_t *token;
 	char *cmd;
+	bool utc = FALSE;
 	int res = 0;
 
 	library_init(NULL, "stroke");
@@ -487,6 +488,7 @@ int main(int argc, char *argv[])
 	{
 		struct option long_opts[] = {
 			{"help",		no_argument,		NULL,	'h' },
+			{"utc",			no_argument,		NULL,	'u' },
 			{"daemon",		required_argument,	NULL,	'd' },
 			{0,0,0,0},
 		};
@@ -498,6 +500,9 @@ int main(int argc, char *argv[])
 				return usage(NULL);
 			case 'd':
 				daemon_name = optarg;
+				continue;
+			case 'u':
+				utc = TRUE;
 				continue;
 			default:
 				return usage("invalid option");
@@ -611,7 +616,7 @@ int main(int argc, char *argv[])
 		case STROKE_LIST_ALGS:
 		case STROKE_LIST_PLUGINS:
 		case STROKE_LIST_ALL:
-			res = list(token->kw, argc && streq(argv[0], "--utc"));
+			res = list(token->kw, utc);
 			break;
 		case STROKE_REREAD_SECRETS:
 		case STROKE_REREAD_CACERTS:

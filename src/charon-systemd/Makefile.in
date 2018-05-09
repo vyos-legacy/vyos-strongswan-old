@@ -106,10 +106,10 @@ charon_systemd_OBJECTS = $(am_charon_systemd_OBJECTS)
 am__DEPENDENCIES_1 =
 charon_systemd_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -387,6 +387,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -405,16 +407,14 @@ charon-systemd.c
 
 charon_systemd_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra \
 	-I$(top_srcdir)/src/libcharon \
-	$(systemd_daemon_CFLAGS) $(systemd_journal_CFLAGS) \
+	$(systemd_CFLAGS) $(systemd_daemon_CFLAGS) $(systemd_journal_CFLAGS) \
 	-DPLUGINS=\""${charon_plugins}\""
 
 charon_systemd_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
-	$(systemd_daemon_LIBS) $(systemd_journal_LIBS) -lm $(PTHREADLIB) $(DLLIB)
+	$(systemd_LIBS) $(systemd_daemon_LIBS) $(systemd_journal_LIBS) -lm $(PTHREADLIB) $(DLLIB)
 
 all: all-am
 

@@ -105,7 +105,6 @@ am_charon_svc_OBJECTS = charon-svc.$(OBJEXT)
 charon_svc_OBJECTS = $(am_charon_svc_OBJECTS)
 charon_svc_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -384,6 +383,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -400,13 +401,11 @@ xml_LIBS = @xml_LIBS@
 charon_svc_SOURCES = charon-svc.c
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra \
 	-I$(top_srcdir)/src/libcharon \
 	-DPLUGINS=\""${charon_plugins}\""
 
 charon_svc_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la
 
 all: all-am

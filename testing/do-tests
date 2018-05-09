@@ -520,6 +520,14 @@ do
 	    IPTABLES_DSP="iptables -L ; ip6tables -L"
 	fi
 
+	for host in $DBHOSTS
+	do
+	    eval HOSTLOGIN=root@\$ipv4_${host}
+
+		scp $SSHCONF $HOSTLOGIN:/etc/db.d/ipsec.sql \
+		    $TESTRESULTDIR/${host}.ipsec.sql  > /dev/null 2>&1
+	done
+
 	for host in $IPSECHOSTS
 	do
 	    eval HOSTLOGIN=root@\$ipv4_${host}
@@ -531,15 +539,20 @@ do
 			scp $SSHCONF $HOSTLOGIN:/etc/swanctl/swanctl.conf \
 			$TESTRESULTDIR/${host}.swanctl.conf  > /dev/null 2>&1
 
-			for subsys in conns certs pools authorities sas pols
+			for subsys in conns algs certs pools authorities sas pols
 			do
 				ssh $SSHCONF $HOSTLOGIN swanctl --list-$subsys \
 					> $TESTRESULTDIR/${host}.swanctl.$subsys 2>/dev/null
 			done
 
-			# this is quite slow due to allocation stats via leak-detective
 			ssh $SSHCONF $HOSTLOGIN swanctl --stats \
 				> $TESTRESULTDIR/${host}.swanctl.stats 2>/dev/null
+
+			echo "" >> $TESTRESULTDIR/${host}.swanctl.sas
+			cat $TESTRESULTDIR/${host}.swanctl.pols >> \
+				$TESTRESULTDIR/${host}.swanctl.sas
+			cat $TESTRESULTDIR/${host}.swanctl.algs >> \
+				$TESTRESULTDIR/${host}.swanctl.stats
 		else
 		    for file in ipsec.conf ipsec.secrets
 		    do
@@ -552,9 +565,11 @@ do
 				ssh $SSHCONF $HOSTLOGIN ipsec $command \
 			    > $TESTRESULTDIR/${host}.$command 2>/dev/null
 		    done
+		fi
 
-		    scp $SSHCONF $HOSTLOGIN:/etc/ipsec.d/ipsec.sql \
-			$TESTRESULTDIR/${host}.ipsec.sql  > /dev/null 2>&1
+		if (! [ -f $TESTRESULTDIR/${host}.ipsec.sql ] ) then
+			scp $SSHCONF $HOSTLOGIN:/etc/ipsec.d/ipsec.sql \
+				$TESTRESULTDIR/${host}.ipsec.sql  > /dev/null 2>&1
 		fi
 
 	    ssh $SSHCONF $HOSTLOGIN ip -s xfrm policy \
@@ -578,16 +593,16 @@ do
 	    <li><a href="$host.swanctl.conf">swanctl.conf</a></li>
 	    <li><a href="$host.swanctl.conns">swanctl --list-conns</a></li>
 	    <li><a href="$host.swanctl.certs">swanctl --list-certs</a></li>
-	    <li><a href="$host.swanctl.pools">swanctl --list-pools</a></li>
 	    <li><a href="$host.strongswan.conf">strongswan.conf</a></li>
+	    <li><a href="$host.ipsec.sql">ipsec.sql</a></li>
 	  </ul>
 	</td>
 	<td valign="top">
 	  <ul>
-	    <li><a href="$host.swanctl.sas">swanctl --list-sas</a></li>
-	    <li><a href="$host.swanctl.pols">swanctl --list-pols</a></li>
+	    <li><a href="$host.swanctl.sas">swanctl --list-sas|--list-pols</a></li>
+	    <li><a href="$host.swanctl.pools">swanctl --list-pools</a></li>
 	    <li><a href="$host.swanctl.authorities">swanctl --list-authorities</a></li>
-	    <li><a href="$host.swanctl.stats">swanctl --stats</a></li>
+	    <li><a href="$host.swanctl.stats">swanctl --stats|--list-algs</a></li>
 	    <li><a href="$host.daemon.log">daemon.log</a></li>
 	  </ul>
       </td>

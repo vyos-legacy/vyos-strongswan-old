@@ -6,7 +6,6 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-ldap --enable-curl \
 		--enable-pkcs11 \
-		--enable-mediation --enable-medsrv --enable-medcli \
 		--enable-openssl --enable-agent \
 		--enable-ctr --enable-ccm --enable-gcm --enable-addrblock \
 		--enable-eap-radius --enable-eap-identity --enable-eap-md5 \
@@ -21,7 +20,6 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-lookip \
 		--enable-error-notify \
 		--enable-unity \
-		--enable-connmark \
 		--disable-blowfish --disable-des # BSD-Young license
 	#--with-user=strongswan --with-group=nogroup
 	#	--enable-kernel-pfkey --enable-kernel-klips \
@@ -30,6 +28,8 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# Don't --enable-cisco-quirks, because some other IPsec implementations
 	# (most notably the Phion one) have problems connecting when pluto 
 	# sends these Cisco options.
+	# don't enable mediation right now (20160523) since clearsilver FTBFS
+	#--enable-mediation --enable-medsrv --enable-medcli \
 
 # get the various DEB_BUILD/DEB_HOST variables
 include /usr/share/dpkg/architecture.mk
@@ -52,6 +52,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--enable-farp \
 		--enable-dhcp \
 		--enable-af-alg \
+		--enable-connmark \
 		--enable-vici \
 		--enable-systemd --enable-swanctl
 endif
@@ -89,6 +90,9 @@ override_dh_install-arch:
 	# first special cases
 ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	# handle Linux-only plugins
+	dh_install -p libstrongswan-standard-plugins usr/lib/ipsec/plugins/libstrongswan-connmark.so
+	dh_install -p libstrongswan-standard-plugins usr/share/strongswan/templates/config/plugins/connmark.conf
+	dh_install -p libstrongswan-standard-plugins etc/strongswan.d/charon/connmark.conf
 	dh_install -p libcharon-extra-plugins usr/lib/ipsec/plugins/libstrongswan-dhcp.so
 	dh_install -p libcharon-extra-plugins usr/share/strongswan/templates/config/plugins/dhcp.conf
 	dh_install -p libcharon-extra-plugins etc/strongswan.d/charon/dhcp.conf
@@ -148,6 +152,7 @@ endif
 	dh_install --fail-missing \
 		-X\.la -X\.a \
 		-Xmedsrv -Xman3 \
+		-Xlibstrongswan-connmark.so -X connmark.conf \
 		-Xlibstrongswan-kernel- -X kernel- \
 		-Xlibstrongswan-dhcp.so -X dhcp.conf \
 		-Xlibstrongswan-farp.so -X farp.conf \

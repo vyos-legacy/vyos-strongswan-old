@@ -44,6 +44,36 @@
 #define BITFIELD5(t, a, b, c, d, e,...)	struct { t e; t d; t c; t b; t a; __VA_ARGS__}
 #endif
 
+#ifndef le32toh
+# if BYTE_ORDER == BIG_ENDIAN
+#  define le32toh(x) __builtin_bswap32(x)
+#  define htole32(x) __builtin_bswap32(x)
+# else
+#  define le32toh(x) (x)
+#  define htole32(x) (x)
+# endif
+#endif
+
+#ifndef le64toh
+# if BYTE_ORDER == BIG_ENDIAN
+#  define le64toh(x) __builtin_bswap64(x)
+#  define htole64(x) __builtin_bswap64(x)
+# else
+#  define le64toh(x) (x)
+#  define htole64(x) (x)
+# endif
+#endif
+
+#ifndef be64toh
+# if BYTE_ORDER == BIG_ENDIAN
+#  define be64toh(x) (x)
+#  define htobe64(x) (x)
+# else
+#  define be64toh(x) __builtin_bswap64(x)
+#  define htobe64(x) __builtin_bswap64(x)
+# endif
+#endif
+
 /**
  * Write a 16-bit host order value in network order to an unaligned address.
  *
@@ -82,21 +112,8 @@ static inline void htoun64(void *network, u_int64_t host)
 {
 	char *unaligned = (char*)network;
 
-#ifdef be64toh
 	host = htobe64(host);
 	memcpy((char*)unaligned, &host, sizeof(host));
-#else
-	u_int32_t high_part, low_part;
-
-	high_part = host >> 32;
-	high_part = htonl(high_part);
-	low_part  = host & 0xFFFFFFFFLL;
-	low_part  = htonl(low_part);
-
-	memcpy(unaligned, &high_part, sizeof(high_part));
-	unaligned += sizeof(high_part);
-	memcpy(unaligned, &low_part, sizeof(low_part));
-#endif
 }
 
 /**
@@ -138,24 +155,37 @@ static inline u_int32_t untoh32(void *network)
 static inline u_int64_t untoh64(void *network)
 {
 	char *unaligned = (char*)network;
-
-#ifdef be64toh
 	u_int64_t tmp;
 
 	memcpy(&tmp, unaligned, sizeof(tmp));
 	return be64toh(tmp);
-#else
-	u_int32_t high_part, low_part;
+}
 
-	memcpy(&high_part, unaligned, sizeof(high_part));
-	unaligned += sizeof(high_part);
-	memcpy(&low_part, unaligned, sizeof(low_part));
+/**
+ * Read a 32-bit value in little-endian order from unaligned address.
+ *
+ * @param p			unaligned address to read little endian value from
+ * @return			host order value
+ */
+static inline u_int32_t uletoh32(void *p)
+{
+	u_int32_t ret;
 
-	high_part = ntohl(high_part);
-	low_part  = ntohl(low_part);
+	memcpy(&ret, p, sizeof(ret));
+	ret = le32toh(ret);
+	return ret;
+}
 
-	return (((u_int64_t)high_part) << 32) + low_part;
-#endif
+/**
+ * Write a 32-bit value in little-endian to an unaligned address.
+ *
+ * @param p			host order 32-bit value
+ * @param v			unaligned address to write little endian value to
+ */
+static inline void htoule32(void *p, u_int32_t v)
+{
+	v = htole32(v);
+	memcpy(p, &v, sizeof(v));
 }
 
 #endif /** BYTEORDER_H_ @} */

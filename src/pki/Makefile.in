@@ -111,7 +111,9 @@ am_pki_OBJECTS = pki.$(OBJEXT) command.$(OBJEXT) \
 	commands/self.$(OBJEXT) commands/signcrl.$(OBJEXT) \
 	commands/verify.$(OBJEXT)
 pki_OBJECTS = $(am_pki_OBJECTS)
-pki_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la
+am__DEPENDENCIES_1 =
+pki_DEPENDENCIES = $(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -431,6 +433,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -460,7 +464,10 @@ pki_SOURCES = pki.c pki.h command.c command.h \
 	commands/signcrl.c \
 	commands/verify.c
 
-pki_LDADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
+pki_LDADD = \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	$(PTHREADLIB) $(DLLIB)
+
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-DPLUGINS=\""${pki_plugins}\""
@@ -918,6 +925,7 @@ uninstall-am: uninstall-binPROGRAMS
 	mostlyclean mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
 	uninstall-am uninstall-binPROGRAMS
+
 
 pki.o :	$(top_builddir)/config.status
 

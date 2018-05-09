@@ -5,7 +5,7 @@ strongswan (5.1.2-1) unstable; urgency=medium
   directly which was added in 5.1.1-1.
   .
   More information can be found on the strongswan.d configuration mechanism on
-  the upstream commit [1] and user documenation [2].
+  the upstream commit [1] and user documentation [2].
   .
   In Debian, these configurations directories are especially use to easily
   toggle the loading of the various plugins shipped with the Debian packages.

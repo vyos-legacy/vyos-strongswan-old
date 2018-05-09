@@ -80,34 +80,31 @@ build_triplet = @build@
 host_triplet = @host@
 EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @MONOLITHIC_FALSE@am__append_1 = -DS_PLUGINS=\""${s_plugins}\""
-@USE_LIBHYDRA_TRUE@am__append_2 = $(top_builddir)/src/libhydra/libhydra.la
-@USE_LIBHYDRA_TRUE@am__append_3 = $(DESTDIR)$(ipseclibdir)/libhydra.so
-@MONOLITHIC_FALSE@@USE_LIBHYDRA_TRUE@am__append_4 = -DH_PLUGINS=\""${h_plugins}\""
-@USE_LIBIPSEC_TRUE@am__append_5 = $(top_builddir)/src/libipsec/libipsec.la
-@USE_LIBIPSEC_TRUE@am__append_6 = $(DESTDIR)$(ipseclibdir)/libipsec.so
-@USE_TLS_TRUE@am__append_7 = $(top_builddir)/src/libtls/libtls.la
-@USE_TLS_TRUE@am__append_8 = $(DESTDIR)$(ipseclibdir)/libtls.so
-@USE_RADIUS_TRUE@am__append_9 = $(top_builddir)/src/libradius/libradius.la
-@USE_RADIUS_TRUE@am__append_10 = $(DESTDIR)$(ipseclibdir)/libradius.so
-@USE_LIBPTTLS_TRUE@am__append_11 = $(top_builddir)/src/libpttls/libpttls.la
-@USE_LIBPTTLS_TRUE@am__append_12 = $(DESTDIR)$(ipseclibdir)/libpttls.so
-@USE_LIBTNCCS_TRUE@am__append_13 = $(top_builddir)/src/libtnccs/libtnccs.la
-@USE_LIBTNCCS_TRUE@am__append_14 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
-@MONOLITHIC_FALSE@@USE_LIBTNCCS_TRUE@am__append_15 = -DT_PLUGINS=\""${t_plugins}\""
-@USE_SIMAKA_TRUE@am__append_16 = $(top_builddir)/src/libsimaka/libsimaka.la
-@USE_SIMAKA_TRUE@am__append_17 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
-@USE_IMCV_TRUE@am__append_18 = $(top_builddir)/src/libimcv/libimcv.la
-@USE_IMCV_TRUE@am__append_19 = $(DESTDIR)$(ipseclibdir)/libimcv.so
-@USE_CHARON_TRUE@am__append_20 = $(top_builddir)/src/libcharon/libcharon.la
-@USE_CHARON_TRUE@am__append_21 = $(DESTDIR)$(ipseclibdir)/libcharon.so
-@USE_CHARON_TRUE@am__append_22 = $(DESTDIR)$(ipsecdir)/charon
-@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_23 = -DC_PLUGINS=\""${c_plugins}\""
-@USE_CMD_TRUE@am__append_24 = $(DESTDIR)$(sbindir)/charon-cmd
-@USE_SCEPCLIENT_TRUE@am__append_25 = $(DESTDIR)$(ipsecdir)/scepclient
-@USE_PKI_TRUE@am__append_26 = $(DESTDIR)$(bindir)/pki
-@USE_SWANCTL_TRUE@am__append_27 = $(DESTDIR)$(sbindir)/swanctl
-@USE_ATTR_SQL_TRUE@am__append_28 = $(DESTDIR)$(ipsecdir)/pool
-@USE_IMV_ATTESTATION_TRUE@am__append_29 = $(DESTDIR)$(ipsecdir)/attest
+@USE_LIBIPSEC_TRUE@am__append_2 = $(top_builddir)/src/libipsec/libipsec.la
+@USE_LIBIPSEC_TRUE@am__append_3 = $(DESTDIR)$(ipseclibdir)/libipsec.so
+@USE_TLS_TRUE@am__append_4 = $(top_builddir)/src/libtls/libtls.la
+@USE_TLS_TRUE@am__append_5 = $(DESTDIR)$(ipseclibdir)/libtls.so
+@USE_RADIUS_TRUE@am__append_6 = $(top_builddir)/src/libradius/libradius.la
+@USE_RADIUS_TRUE@am__append_7 = $(DESTDIR)$(ipseclibdir)/libradius.so
+@USE_LIBPTTLS_TRUE@am__append_8 = $(top_builddir)/src/libpttls/libpttls.la
+@USE_LIBPTTLS_TRUE@am__append_9 = $(DESTDIR)$(ipseclibdir)/libpttls.so
+@USE_LIBTNCCS_TRUE@am__append_10 = $(top_builddir)/src/libtnccs/libtnccs.la
+@USE_LIBTNCCS_TRUE@am__append_11 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
+@MONOLITHIC_FALSE@@USE_LIBTNCCS_TRUE@am__append_12 = -DT_PLUGINS=\""${t_plugins}\""
+@USE_SIMAKA_TRUE@am__append_13 = $(top_builddir)/src/libsimaka/libsimaka.la
+@USE_SIMAKA_TRUE@am__append_14 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
+@USE_IMCV_TRUE@am__append_15 = $(top_builddir)/src/libimcv/libimcv.la
+@USE_IMCV_TRUE@am__append_16 = $(DESTDIR)$(ipseclibdir)/libimcv.so
+@USE_CHARON_TRUE@am__append_17 = $(top_builddir)/src/libcharon/libcharon.la
+@USE_CHARON_TRUE@am__append_18 = $(DESTDIR)$(ipseclibdir)/libcharon.so
+@USE_CHARON_TRUE@am__append_19 = $(DESTDIR)$(ipsecdir)/charon
+@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_20 = -DC_PLUGINS=\""${c_plugins}\""
+@USE_CMD_TRUE@am__append_21 = $(DESTDIR)$(sbindir)/charon-cmd
+@USE_SCEPCLIENT_TRUE@am__append_22 = $(DESTDIR)$(ipsecdir)/scepclient
+@USE_PKI_TRUE@am__append_23 = $(DESTDIR)$(bindir)/pki
+@USE_SWANCTL_TRUE@am__append_24 = $(DESTDIR)$(sbindir)/swanctl
+@USE_ATTR_SQL_TRUE@am__append_25 = $(DESTDIR)$(ipsecdir)/pool
+@USE_IMV_ATTESTATION_TRUE@am__append_26 = $(DESTDIR)$(ipsecdir)/attest
 subdir = src/checksum
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -173,7 +170,6 @@ checksum_builder_OBJECTS = $(am_checksum_builder_OBJECTS)
 am__DEPENDENCIES_1 =
 checksum_builder_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(am__DEPENDENCIES_1)
 checksum_builder_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
@@ -453,6 +449,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -475,16 +473,15 @@ libchecksum_la_LDFLAGS = -module -avoid-version -rpath '$(ipseclibdir)'
 checksum_builder_SOURCES = checksum_builder.c
 checksum_builder_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(top_builddir)/src/libhydra/libhydra.la \
 	$(top_builddir)/src/libcharon/libcharon.la \
 	$(DLLIB)
 
 checksum_builder_LDFLAGS = -rpath '$(DESTDIR)$(ipseclibdir)'
 CLEANFILES = checksum.c $(EXTRA_PROGRAMS)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra -I$(top_srcdir)/src/libcharon \
+	-I$(top_srcdir)/src/libcharon \
 	-DPLUGINDIR=\"${DESTDIR}${plugindir}\" $(am__append_1) \
-	$(am__append_4) $(am__append_15) $(am__append_23)
+	$(am__append_12) $(am__append_20)
 AM_CFLAGS = \
 	$(PLUGIN_CFLAGS)
 
@@ -493,16 +490,16 @@ AM_CFLAGS = \
 # to the installed libraries. for executables we use the built files directly
 # as these are not relinked during installation.
 deps = $(top_builddir)/src/libstrongswan/libstrongswan.la \
-	$(am__append_2) $(am__append_5) $(am__append_7) \
-	$(am__append_9) $(am__append_11) $(am__append_13) \
-	$(am__append_16) $(am__append_18) $(am__append_20)
+	$(am__append_2) $(am__append_4) $(am__append_6) \
+	$(am__append_8) $(am__append_10) $(am__append_13) \
+	$(am__append_15) $(am__append_17)
 libs = $(DESTDIR)$(ipseclibdir)/libstrongswan.so $(am__append_3) \
-	$(am__append_6) $(am__append_8) $(am__append_10) \
-	$(am__append_12) $(am__append_14) $(am__append_17) \
-	$(am__append_19) $(am__append_21)
-exes = $(am__append_22) $(am__append_24) $(am__append_25) \
-	$(am__append_26) $(am__append_27) $(am__append_28) \
-	$(am__append_29)
+	$(am__append_5) $(am__append_7) $(am__append_9) \
+	$(am__append_11) $(am__append_14) $(am__append_16) \
+	$(am__append_18)
+exes = $(am__append_19) $(am__append_21) $(am__append_22) \
+	$(am__append_23) $(am__append_24) $(am__append_25) \
+	$(am__append_26)
 all: all-am
 
 .SUFFIXES:

@@ -82,6 +82,7 @@ TESTS = vici_tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 @USE_RUBY_GEMS_TRUE@am__append_1 = ruby
 @USE_PYTHON_EGGS_TRUE@am__append_2 = python
+@USE_PERL_CPAN_TRUE@am__append_3 = perl
 subdir = src/libcharon/plugins/vici
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -134,9 +135,10 @@ LTLIBRARIES = $(ipseclib_LTLIBRARIES) $(noinst_LTLIBRARIES) \
 	$(plugin_LTLIBRARIES)
 libstrongswan_vici_la_LIBADD =
 am_libstrongswan_vici_la_OBJECTS = vici_socket.lo vici_message.lo \
-	vici_builder.lo vici_dispatcher.lo vici_query.lo \
-	vici_control.lo vici_config.lo vici_cred.lo vici_attribute.lo \
-	vici_authority.lo vici_logger.lo vici_plugin.lo
+	vici_builder.lo vici_dispatcher.lo vici_cert_info.lo \
+	vici_query.lo vici_control.lo vici_config.lo vici_cred.lo \
+	vici_attribute.lo vici_authority.lo vici_logger.lo \
+	vici_plugin.lo
 libstrongswan_vici_la_OBJECTS = $(am_libstrongswan_vici_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -150,7 +152,8 @@ libstrongswan_vici_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 @MONOLITHIC_TRUE@am_libstrongswan_vici_la_rpath =
 libvici_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
-am_libvici_la_OBJECTS = vici_message.lo vici_builder.lo libvici.lo
+am_libvici_la_OBJECTS = vici_message.lo vici_builder.lo \
+	vici_cert_info.lo libvici.lo
 libvici_la_OBJECTS = $(am_libvici_la_OBJECTS)
 am__EXEEXT_1 = vici_tests$(EXEEXT)
 am__dirstamp = $(am__leading_dot)dirstamp
@@ -270,7 +273,7 @@ am__tty_colors = { \
     std='[m'; \
   fi; \
 }
-DIST_SUBDIRS = ruby python
+DIST_SUBDIRS = ruby python perl
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -509,6 +512,8 @@ strongswan_conf = @strongswan_conf@
 strongswan_options = @strongswan_options@
 swanctldir = @swanctldir@
 sysconfdir = @sysconfdir@
+systemd_CFLAGS = @systemd_CFLAGS@
+systemd_LIBS = @systemd_LIBS@
 systemd_daemon_CFLAGS = @systemd_daemon_CFLAGS@
 systemd_daemon_LIBS = @systemd_daemon_LIBS@
 systemd_journal_CFLAGS = @systemd_journal_CFLAGS@
@@ -524,7 +529,7 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
-	-I$(top_srcdir)/src/libhydra \
+	-I$(top_srcdir)/src/libstrongswan/plugins/pubkey \
 	-I$(top_srcdir)/src/libcharon \
 	-DIPSEC_PIDDIR=\"${piddir}\"
 
@@ -538,6 +543,7 @@ libstrongswan_vici_la_SOURCES = \
 	vici_message.h vici_message.c \
 	vici_builder.h vici_builder.c \
 	vici_dispatcher.h vici_dispatcher.c \
+	vici_cert_info.h vici_cert_info.c \
 	vici_query.h vici_query.c \
 	vici_control.h vici_control.c \
 	vici_config.h vici_config.c \
@@ -553,6 +559,7 @@ ipseclib_LTLIBRARIES = libvici.la
 libvici_la_SOURCES = \
 	vici_message.c vici_message.h \
 	vici_builder.c vici_builder.h \
+	vici_cert_info.h vici_cert_info.c \
 	libvici.c libvici.h
 
 libvici_la_LIBADD = $(top_builddir)/src/libstrongswan/libstrongswan.la
@@ -578,7 +585,7 @@ vici_tests_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la
 
-SUBDIRS = $(am__append_1) $(am__append_2)
+SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3)
 all: all-recursive
 
 .SUFFIXES:
@@ -739,6 +746,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_attribute.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_authority.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_builder.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_cert_info.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_control.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vici_cred.Plo@am__quote@

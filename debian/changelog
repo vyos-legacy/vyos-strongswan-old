@@ -1,3 +1,43 @@
+strongswan (5.4.0-3) unstable; urgency=medium
+
+  * debian/patches:
+    - 05_port-openssl-1.1.0 added, port to OpenSSL 1.1.0.       closes: #828561
+  * debian/control:
+    - update standards version to 3.9.8.
+  * debian/NEWS: fix spelling error.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Thu, 07 Jul 2016 10:23:59 +0200
+
+strongswan (5.4.0-2) unstable; urgency=medium
+
+  * debian/rules:
+    - stop building web interface for now since clearsilver is not building
+      right now.
+    - enable connmark only on Linux
+    - install connmark plugins files only on Linux
+  * debian/control:
+    - drop build-dep on clearsilver-dev and libfcgi-dev
+    - make iptables-dev build-dep Linux-only.
+  * debian/libcharon-extra-plugins:
+    - stop shipping medsrv and medcli plugin.
+  * debian/libstrongswan-standard-plugins.install:
+    - stop installing connmark plugins files inconditionnaly.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 29 May 2016 21:02:06 +0200
+
+strongswan (5.4.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/patches
+    - 0001-configure-Support-systemd-209 dropped, included upstream.
+    - 0001-charon-systemd-Inherit-all-settings-from-the-charon- dropped as
+      well, a different version was included upstream.
+  * debian/libstrongswan.install:
+    - drop libhydra lines, it's been removed.
+  * debian/copyright: remove hydra lines as well.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Apr 2016 11:35:16 +0200
+
 strongswan (5.3.5-2) unstable; urgency=medium
 
   * debian/rules:

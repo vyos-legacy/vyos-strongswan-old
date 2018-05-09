@@ -6,8 +6,8 @@ usr/lib/ipsec/plugins/libstrongswan-error-notify.so
 usr/lib/ipsec/plugins/libstrongswan-ha.so
 usr/lib/ipsec/plugins/libstrongswan-led.so
 usr/lib/ipsec/plugins/libstrongswan-lookip.so
-usr/lib/ipsec/plugins/libstrongswan-medsrv.so
-usr/lib/ipsec/plugins/libstrongswan-medcli.so
+#usr/lib/ipsec/plugins/libstrongswan-medsrv.so
+#usr/lib/ipsec/plugins/libstrongswan-medcli.so
 usr/lib/ipsec/plugins/libstrongswan-tnc-tnccs.so
 usr/lib/ipsec/plugins/libstrongswan-unity.so
 usr/lib/ipsec/plugins/libstrongswan-xauth-*.so
@@ -19,8 +19,8 @@ usr/share/strongswan/templates/config/plugins/error-notify.conf
 usr/share/strongswan/templates/config/plugins/ha.conf
 usr/share/strongswan/templates/config/plugins/led.conf
 usr/share/strongswan/templates/config/plugins/lookip.conf
-usr/share/strongswan/templates/config/plugins/medsrv.conf
-usr/share/strongswan/templates/config/plugins/medcli.conf
+#usr/share/strongswan/templates/config/plugins/medsrv.conf
+#usr/share/strongswan/templates/config/plugins/medcli.conf
 usr/share/strongswan/templates/config/plugins/tnc-tnccs.conf
 usr/share/strongswan/templates/config/plugins/unity.conf
 usr/share/strongswan/templates/config/plugins/xauth-*.conf
@@ -33,13 +33,13 @@ etc/strongswan.d/charon/error-notify.conf
 etc/strongswan.d/charon/ha.conf
 etc/strongswan.d/charon/led.conf
 etc/strongswan.d/charon/lookip.conf
-etc/strongswan.d/charon/medsrv.conf
-etc/strongswan.d/charon/medcli.conf
+#etc/strongswan.d/charon/medsrv.conf
+#etc/strongswan.d/charon/medcli.conf
 etc/strongswan.d/charon/tnc-tnccs.conf
 etc/strongswan.d/charon/unity.conf
 etc/strongswan.d/charon/xauth-*.conf
 # support libs
-usr/lib/ipsec/libfast.so*
+#usr/lib/ipsec/libfast.so*
 usr/lib/ipsec/libpttls.so*
 usr/lib/ipsec/libradius.so*
 usr/lib/ipsec/libsimaka.so*

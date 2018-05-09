@@ -49,7 +49,7 @@ specified.
 
 .TP
 .BR connections.<conn>.local_port " [500]"
-Local UPD port for IKE communication. By default the port of the socket backend
+Local UDP port for IKE communication. By default the port of the socket backend
 is used, which is usually
 .RI "" "500" "."
 If port
@@ -62,7 +62,7 @@ use (socket\-dynamic).
 
 .TP
 .BR connections.<conn>.remote_port " [500]"
-Remote UPD port for IKE communication. If the default of port
+Remote UDP port for IKE communication. If the default of port
 .RI "" "500" ""
 is used,
 automatic IKE port floating to port 4500 is used to work around NAT issues.
@@ -152,17 +152,21 @@ option has no effect on connections using IKE2.
 
 .TP
 .BR connections.<conn>.fragmentation " [no]"
-The default of
-.RI "" "no" ""
-disables IKEv1 fragmentation mechanism,
-.RI "" "yes" ""
-enables it if
-support has been indicated by the peer.
+Use IKE fragmentation (proprietary IKEv1 extension or RFC 7383 IKEv2
+fragmentation).  Acceptable  values  are
+.RI "" "yes" ","
 .RI "" "force" ""
-enforces fragmentation if
-required even before the peer had a chance to indicate support for it.
-
-IKE fragmentation is currently not supported with IKEv2.
+and
+.RI "" "no" ""
+(the default).
+Fragmented IKE messages sent by a peer are always accepted irrespective of  the
+value  of  this option. If set to
+.RI "" "yes" ","
+and the peer supports it, oversized IKE
+messages will be sent in fragments.  If set  to
+.RI "" "force" ""
+(only  supported  for
+IKEv1) the initial IKE message will already be fragmented if required.
 
 .TP
 .BR connections.<conn>.send_certreq " [yes]"
@@ -311,17 +315,34 @@ unique suffix. To define a single authentication round, the suffix may be
 omitted.
 
 .TP
+.BR connections.<conn>.local<suffix>.round " [0]"
+Optional numeric identifier by which authentication rounds are sorted.  If not
+specified rounds are ordered by their position in the config file/VICI message.
+
+.TP
 .BR connections.<conn>.local<suffix>.certs " []"
 Comma separated list of certificate candidates to use for authentication. The
 certificates may use a relative path from the
 .RB "" "swanctl" ""
 .RI "" "x509" ""
-directory, or
-an absolute path.
+directory or an
+absolute path.
 
 The certificate used for authentication is selected based on the received
 certificate request payloads. If no appropriate CA can be located, the first
 certificate is used.
+
+.TP
+.BR connections.<conn>.local<suffix>.pubkeys " []"
+Comma separated list of raw public key candidates to use for authentication. The
+public keys may use a relative path from the
+.RB "" "swanctl" ""
+.RI "" "pubkey" ""
+directory or
+an absolute path.
+
+Even though multiple local public keys could be defined in principle, only the
+first public key in the list is used for authentication.
 
 .TP
 .BR connections.<conn>.local<suffix>.auth " [pubkey]"
@@ -361,6 +382,31 @@ For
 a specific EAP method name may be appended, separated by a dash. An
 EAP module implementing the appropriate method is selected to perform the EAP
 conversation.
+
+If both peers support RFC 7427 ("Signature Authentication in IKEv2") specific
+hash algorithms to be used during IKEv2 authentication may be configured. To do
+so use
+.RI "" "ike:" ""
+followed by a trust chain signature scheme constraint (see
+description of the
+.RB "" "remote" ""
+section's
+.RB "" "auth" ""
+keyword). For example, with
+.RI "" "ike:pubkey\-sha384\-sha256" ""
+a public key signature scheme with either SHA\-384 or
+SHA\-256 would get used for authentication, in that order and depending on the
+hash algorithms supported by the peer. If no specific hash algorithms are
+configured, the default is to prefer an algorithm that matches or exceeds the
+strength of the signature key. If no constraints with
+.RI "" "ike:" ""
+prefix are
+configured any signature scheme constraint (without
+.RI "" "ike:" ""
+prefix) will also
+apply to IKEv2 authentication, unless this is disabled in
+.RB "" "strongswan.conf" "(5)."
+
 
 .TP
 .BR connections.<conn>.local<suffix>.id " []"
@@ -432,6 +478,11 @@ unique suffix. To define a single authentication round, the suffix may be
 omitted.
 
 .TP
+.BR connections.<conn>.remote<suffix>.round " [0]"
+Optional numeric identifier by which authentication rounds are sorted.  If not
+specified rounds are ordered by their position in the config file/VICI message.
+
+.TP
 .BR connections.<conn>.remote<suffix>.id " [%any]"
 IKE identity to expect for authentication round. Refer to the
 .RI "" "local" ""
@@ -451,8 +502,8 @@ Comma separated list of certificates to accept for authentication. The
 certificates may use a relative path from the
 .RB "" "swanctl" ""
 .RI "" "x509" ""
-directory, or
-an absolute path.
+directory or an
+absolute path.
 
 .TP
 .BR connections.<conn>.remote<suffix>.cacerts " []"
@@ -460,8 +511,17 @@ Comma separated list of CA certificates to accept for authentication. The
 certificates may use a relative path from the
 .RB "" "swanctl" ""
 .RI "" "x509ca" ""
-directory, or
+directory or
 an absolute path.
+
+.TP
+.BR connections.<conn>.remote<suffix>.pubkeys " []"
+Comma separated list of raw public keys to accept for authentication. The public
+keys may use a relative path from the
+.RB "" "swanctl" ""
+.RI "" "x509" ""
+directory or an
+absolute path.
 
 .TP
 .BR connections.<conn>.remote<suffix>.revocation " [relaxed]"
@@ -486,9 +546,39 @@ i.e. it is explicitly known that it is bad.
 .BR connections.<conn>.remote<suffix>.auth " [pubkey]"
 Authentication to expect from remote. See the
 .RB "" "local" ""
-sections
+section's
 .RB "" "auth" ""
 keyword description about the details of supported mechanisms.
+
+To require a trustchain public key strength for the remote side, specify the key
+type followed by the minimum strength in bits (for example
+.RI "" "ecdsa\-384" ""
+or
+.RI "" "rsa\-2048\-ecdsa\-256" ")."
+To limit the acceptable set of hashing algorithms for
+trustchain validation, append hash algorithms to
+.RI "" "pubkey" ""
+or a key strength
+definition (for example
+.RI "" "pubkey\-sha1\-sha256" ""
+or
+.RI "" "rsa\-2048\-ecdsa\-256\-sha256\-sha384\-sha512" ")."
+Unless disabled in
+.RB "" "strongswan.conf" "(5),"
+or explicit IKEv2 signature constraints are configured
+(refer to the description of the
+.RB "" "local" ""
+section's
+.RB "" "auth" ""
+keyword for
+details), such key types and hash algorithms are also applied as constraints
+against IKEv2 signature authentication schemes used by the remote side.
+
+To specify trust chain constraints for EAP\-(T)TLS, append a colon to the EAP
+method, followed by the key type/size and hash algorithm as discussed above
+(e.g.
+.RI "" "eap\-tls:ecdsa\-384\-sha384" ")."
+
 
 .TP
 .B connections.<conn>.children.<child>
@@ -722,8 +812,8 @@ is negotiated if the preferred mode is not available.
 .RI "" "pass" ""
 and
 .RI "" "drop" ""
-are used to install shunt policies, which explicitly bypass
-the defined traffic from IPsec processing, or drop it, respectively.
+are used to install shunt policies which explicitly bypass the
+defined traffic from IPsec processing or drop it, respectively.
 
 .TP
 .BR connections.<conn>.children.<child>.policies " [yes]"
@@ -856,7 +946,7 @@ which defines the secret type.
 
 It is not recommended to define any private key decryption passphrases, as then
 there is no real security benefit in having encrypted keys. Either store the key
-unencrypted, or enter the keys manually when loading credentials.
+unencrypted or enter the keys manually when loading credentials.
 
 .TP
 .B secrets.eap<suffix>
@@ -872,7 +962,7 @@ as well.
 Value of the EAP/XAuth secret. It may either be an ASCII string, a hex encoded
 string if it has a
 .RI "" "0x" ""
-prefix, or a Base64 encoded string if it has a
+prefix or a Base64 encoded string if it has a
 .RI "" "0s" ""
 prefix in its value.
 
@@ -907,7 +997,7 @@ prefix.
 Value of the IKE preshared secret. It may either be an ASCII string, a hex
 encoded string if it has a
 .RI "" "0x" ""
-prefix, or a Base64 encoded string if it has a
+prefix or a Base64 encoded string if it has a
 .RI "" "0s" ""
 prefix in its value.
 
@@ -1003,7 +1093,7 @@ Section defining a single pool with a unique name.
 .TP
 .BR pools.<name>.addrs " []"
 Subnet or range defining addresses allocated in pool. Accepts a single CIDR
-subnet defining the pool to allocate addresses from, or an address range
+subnet defining the pool to allocate addresses from or an address range
 (<from>\-<to>).  Pools must be unique and non\-overlapping.
 
 .TP
@@ -1042,7 +1132,8 @@ Section defining a certification authority with a unique name.
 The certificates may use a relative path from the
 .RB "" "swanctl" ""
 .RI "" "x509ca" ""
-directory, or an absolute path.
+directory
+or an absolute path.
 
 .TP
 .BR authorities.<name>.crl_uris " []"
