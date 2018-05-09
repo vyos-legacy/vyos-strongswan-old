@@ -1,0 +1,73 @@
+From b15f987ddd668d785c2f96805e02a0cd9c5f5965 Mon Sep 17 00:00:00 2001
+From: Chris Patterson <pattersonc@ainfosec.com>
+Date: Fri, 18 Dec 2015 08:27:57 -0500
+Subject: [PATCH] configure: Support systemd >= 209
+
+libsystemd-journal and libsystemd-daemon are now just
+part of libsystemd.
+
+Keep original systemd checks as a fallback.
+
+Updates charon-systemd/Makefile.am accordingly.
+
+Tested on:
+- debian wheezy (systemd v44)
+- ubuntu 15.10 (systemd v255).
+
+Signed-off-by: Chris Patterson <pattersonc@ainfosec.com>
+
+Closes strongswan/strongswan#24.
+---
+ configure.ac                   | 17 ++++++++++-------
+ src/charon-systemd/Makefile.am |  4 ++--
+ 2 files changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 8af5367..db35409 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -941,13 +941,16 @@ if test x$systemd = xtrue; then
+ 		AC_MSG_ERROR([not found (try --with-systemdsystemunitdir)])
+ 	fi
+ 
+-	PKG_CHECK_MODULES(systemd_daemon, [libsystemd-daemon])
+-	AC_SUBST(systemd_daemon_CFLAGS)
+-	AC_SUBST(systemd_daemon_LIBS)
+-
+-	PKG_CHECK_MODULES(systemd_journal, [libsystemd-journal])
+-	AC_SUBST(systemd_journal_CFLAGS)
+-	AC_SUBST(systemd_journal_LIBS)
++	PKG_CHECK_MODULES(systemd, [libsystemd >= 209],
++		[AC_SUBST(systemd_CFLAGS)
++		 AC_SUBST(systemd_LIBS)],
++		[PKG_CHECK_MODULES(systemd_daemon, [libsystemd-daemon])
++		 AC_SUBST(systemd_daemon_CFLAGS)
++		 AC_SUBST(systemd_daemon_LIBS)
++		 PKG_CHECK_MODULES(systemd_journal, [libsystemd-journal])
++		 AC_SUBST(systemd_journal_CFLAGS)
++		 AC_SUBST(systemd_journal_LIBS)]
++	)
+ fi
+ 
+ if test x$tss = xtrousers; then
+diff --git a/src/charon-systemd/Makefile.am b/src/charon-systemd/Makefile.am
+index 1b9ac15..ee85d43 100644
+--- a/src/charon-systemd/Makefile.am
++++ b/src/charon-systemd/Makefile.am
+@@ -9,11 +9,11 @@ charon_systemd_CPPFLAGS = \
+ 	-I$(top_srcdir)/src/libstrongswan \
+ 	-I$(top_srcdir)/src/libhydra \
+ 	-I$(top_srcdir)/src/libcharon \
+-	$(systemd_daemon_CFLAGS) $(systemd_journal_CFLAGS) \
++	$(systemd_CFLAGS) $(systemd_daemon_CFLAGS) $(systemd_journal_CFLAGS) \
+ 	-DPLUGINS=\""${charon_plugins}\""
+ 
+ charon_systemd_LDADD = \
+ 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+ 	$(top_builddir)/src/libhydra/libhydra.la \
+ 	$(top_builddir)/src/libcharon/libcharon.la \
+-	$(systemd_daemon_LIBS) $(systemd_journal_LIBS) -lm $(PTHREADLIB) $(DLLIB)
++	$(systemd_LIBS) $(systemd_daemon_LIBS) $(systemd_journal_LIBS) -lm $(PTHREADLIB) $(DLLIB)
+-- 
+2.7.0
+

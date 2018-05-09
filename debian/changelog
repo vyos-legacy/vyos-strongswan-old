@@ -1,3 +1,31 @@
+strongswan (5.3.5-2) unstable; urgency=medium
+
+  * debian/rules:
+    - migrate debug package to ddeb.
+    - enable systemd and swanctl.                               closes: #813788
+    - enable aesni plugin on i386 and amd64.
+  * debian/control:
+    - drop strongswan-dbg package.
+    - add strongswan-swanctl and charon-systemd packages.
+    - replace sytemd build-dep by libsystemd-dev.
+    - create new strongswan-pki and strongswan-scepclient packages
+    - drop old Conflicts/Breaks/Replaces against versions older than stable.
+    - update standards version to 3.9.7.
+  * debian/strongswan-swanctl.install:
+    - install vici plugin and swanctl files
+  * debian/charon-systemd.install:
+    - install charon-systemd binary and strongswan-swanctl service file.
+  * debian/strongswan-pki.install:
+    - install pki files
+  * debian/strongswan-scepclient.install:
+    - install scepclient files
+  * move strongswan.conf manpage to libstrongswan package
+  * debian/patches
+    - 0001-charon-systemd-Inherit-all-settings-from-the-charon added, inherit
+      charon configuration settings for charon-systemd.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 14 Mar 2016 23:53:34 +0100
+
 strongswan (5.3.5-1) unstable; urgency=medium
 
   * New upstream bugfix release.

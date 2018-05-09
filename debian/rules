@@ -35,7 +35,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 include /usr/share/dpkg/architecture.mk
 
 # the padlock plugin only makes sense on i386
-# RdRand only makes sense on i386 and amd64
+# AESNI and RdRand only make sense on i386 and amd64
 ifeq ($(DEB_BUILD_ARCH_CPU),i386)
   CONFIGUREARGS += --enable-padlock --enable-rdrand --enable-aesni
 endif
@@ -52,7 +52,8 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 		--enable-farp \
 		--enable-dhcp \
 		--enable-af-alg \
-		--enable-vici --enable-swanctl
+		--enable-vici \
+		--enable-systemd --enable-swanctl
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS),kfreebsd)
@@ -103,7 +104,6 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	dh_install -p libstrongswan-extra-plugins usr/lib/ipsec/plugins/libstrongswan-af-alg.so
 	dh_install -p libstrongswan-extra-plugins usr/share/strongswan/templates/config/plugins/af-alg.conf
 	dh_install -p libstrongswan-extra-plugins etc/strongswan.d/charon/af-alg.conf
-
 	# the systemd service file only gets generated on Linux
 	dh_install -p strongswan-starter lib/systemd/system/strongswan.service
 endif
@@ -189,7 +189,7 @@ override_dh_installchangelogs:
 	dh_installchangelogs NEWS
 
 override_dh_strip:
-	dh_strip --dbg-package=strongswan-dbg
+	dh_strip --ddeb-migration='strongswan-dbg (<< 5.3.5-2~)'
 
 override_dh_fixperms:
 	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan

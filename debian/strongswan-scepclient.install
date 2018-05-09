@@ -1,0 +1,4 @@
+usr/lib/ipsec/scepclient
+usr/share/man/man8/scepclient.8
+usr/share/strongswan/templates/config/strongswan.d/scepclient.conf
+etc/strongswan.d/scepclient.conf
