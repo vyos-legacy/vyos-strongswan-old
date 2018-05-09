@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2014-2015 Tobias Brunner
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2014-2016 Tobias Brunner
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * Copyright (C) 2014 Martin Willi
  * Copyright (C) 2014 revosec AG
@@ -184,16 +184,22 @@ METHOD(attribute_provider_t, release_address, bool,
 	return found;
 }
 
-/**
- * Filter mapping attribute_t to enumerated type/value arguments
- */
-static bool attr_filter(void *data, attribute_t **attr,
-						configuration_attribute_type_t *type,
-						void *in, chunk_t *value)
+CALLBACK(attr_filter, bool,
+	void *data, enumerator_t *orig, va_list args)
 {
-	*type = (*attr)->type;
-	*value = (*attr)->value;
-	return TRUE;
+	attribute_t *attr;
+	configuration_attribute_type_t *type;
+	chunk_t *value;
+
+	VA_ARGS_VGET(args, type, value);
+
+	if (orig->enumerate(orig, &attr))
+	{
+		*type = attr->type;
+		*value = attr->value;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
@@ -203,7 +209,7 @@ CALLBACK(create_nested, enumerator_t*,
 	pool_t *pool, void *this)
 {
 	return enumerator_create_filter(array_create_enumerator(pool->attrs),
-									(void*)attr_filter, NULL, NULL);
+									attr_filter, NULL, NULL);
 }
 
 /**
@@ -668,10 +674,11 @@ CALLBACK(get_pools, vici_message_t*,
 	identification_t *uid;
 	host_t *lease;
 	bool list_leases, on;
-	char buf[32];
+	char buf[32], *filter;
 	int i;
 
 	list_leases = message->get_bool(message, FALSE, "leases");
+	filter = message->get_str(message, NULL, "name");
 
 	builder = vici_builder_create();
 
@@ -679,6 +686,11 @@ CALLBACK(get_pools, vici_message_t*,
 	enumerator = this->pools->create_enumerator(this->pools);
 	while (enumerator->enumerate(enumerator, &name, &pool))
 	{
+		if (filter && !streq(name, filter))
+		{
+			continue;
+		}
+
 		vips = pool->vips;
 
 		builder->begin_section(builder, name);

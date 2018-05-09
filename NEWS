@@ -1,3 +1,102 @@
+strongswan-5.5.3
+----------------
+
+- Fixed a DoS vulnerability in the gmp plugin that was caused by insufficient
+  input validation when verifying RSA signatures.  More specifically,
+  mpz_powm_sec() has two requirements regarding the passed exponent and modulus
+  that the plugin did not enforce, if these are not met the calculation will
+  result in a floating point exception that crashes the whole process.
+  This vulnerability has been registered as CVE-2017-9022.
+
+- Fixed a DoS vulnerability in the x509 plugin that was caused because the ASN.1
+  parser didn't handle ASN.1 CHOICE types properly, which could result in an
+  infinite loop when parsing X.509 extensions that use such types.
+  This vulnerability has been registered as CVE-2017-9023.
+
+- The behavior during IKEv2 CHILD_SA rekeying has been changed in order to avoid
+  traffic loss. The responder now only installs the new inbound SA and delays
+  installing the outbound SA until it receives the DELETE for the replaced
+  CHILD_SA.  Similarly, the inbound SA of the replaced CHILD_SA is not removed
+  for a configurable amount of seconds (charon.delete_rekeyed_delay) after the
+  DELETE has been processed to reduce the chance of dropping delayed packets.
+
+- The code base has been ported to Apple's ARM64 iOS platform, whose calling
+  conventions for variadic and regular functions are different.  This means
+  assigning non-variadic functions to variadic function pointers does not work.
+  To avoid this issue the enumerator_t interface has been changed and the
+  signatures of the callback functions for enumerator_create_filter(), and the
+  invoke_function() and find_first() methods on linked_list_t have been changed.
+  The return type of find_first() also changed from status_t to bool.
+
+- Added support for fuzzing the certificate parser provided by the default
+  plugins (x509, pem, gmp etc.) on Google's OSS-Fuzz infrastructure. Several
+  issues found while fuzzing these plugins were fixed.
+
+- Two new options have been added to charon's retransmission settings:
+  retransmit_limit and retransmit_jitter.  The former adds an upper limit to the
+  calculated retransmission timeout, the latter randomly reduces it.
+
+- A bug in swanctl's --load-creds command was fixed that caused unencrypted
+  private keys to get unloaded if the command was called multiple times. The
+  load-key VICI command now returns the key ID of the loaded key on success.
+
+- The credential manager now enumerates local credential sets before global
+  ones. This means certificates supplied by the peer will now be preferred over
+  certificates with the same identity that may be locally stored (e.g. in the
+  certificate cache).
+
+- Added support for hardware offload of IPsec SAs as introduced by Linux 4.11
+  for hardware that supports this.
+
+- When building the libraries monolithically and statically the plugin
+  constructors are now hard-coded in each library so the plugin code is not
+  removed by the linker because it thinks none of their symbols are ever
+  referenced.
+
+- The pki tool loads the curve25519 plugin by default.
+
+
+strongswan-5.5.2
+----------------
+
+- Support of Diffie-Hellman group 31 using Curve25519 for IKE as defined
+  by RFC 8031.
+
+- Support of Ed25519 digital signature algorithm for IKEv2 as defined by
+  draft-ietf-ipsecme-eddsa. Ed25519-based public key pairs, X.509 certificates
+  and CRLs can be generated and printed by the pki tool.
+
+- The new "tpm" libtpmtss plugin allows to use persistent private RSA and ECDSA
+  keys bound to a TPM 2.0 for both IKE and TLS authentication. Using the
+  TPM 2.0 object handle as keyid parameter, the pki --pub tool can extract
+  the public key from the TPM thereby replacing the aikpub2 tool. In a similar
+  fashion pki --req can generate a PKCS#10 certificate request signed with
+  the TPM private key.
+
+- The pki tool gained support for generating certificates with the RFC 3779
+  addrblock extension. The charon addrblock plugin now dynamically narrows
+  traffic selectors based on the certificate addrblocks instead of rejecting
+  non-matching selectors completely. This allows generic connections, where
+  the allowed selectors are defined by the used certificates only.
+
+- In-place update of cached base and delta CRLs does not leave dozens
+  of stale copies in cache memory.
+
+- Several new features for the VICI interface and the swanctl utility: Querying
+  specific pools, enumerating and unloading keys and shared secrets, loading
+  keys and certificates from PKCS#11 tokens, the ability to initiate, install
+  and uninstall connections and policies by their exact name (if multiple child
+  sections in different connections share the same name), a command to initiate
+  the rekeying of IKE and IPsec SAs, support for settings previously only
+  supported by the old config files (plain pubkeys, dscp, certificate policies,
+  IPv6 Transport Proxy Mode, NT Hash secrets, mediation extension).
+
+  Important:  Due to issues with VICI bindings that map sub-sections to
+  dictionaries the CHILD_SA sections returned via list-sas now have a unique
+  name, the original name of a CHILD_SA is returned in the "name" key of its
+  section.
+
+
 strongswan-5.5.1
 ----------------
 
@@ -1356,7 +1455,7 @@ strongswan-4.3.5
   correctly if the system time changes (e.g. when using NTP).
 
 - In addition to time based rekeying, charon supports IPsec SA lifetimes based
-  on processed volume or number of packets. They new ipsec.conf paramaters
+  on processed volume or number of packets. They new ipsec.conf parameters
   'lifetime' (an alias to 'keylife'), 'lifebytes' and 'lifepackets' handle
   SA timeouts, while the parameters 'margintime' (an alias to rekeymargin),
   'marginbytes' and 'marginpackets' trigger the rekeying before a SA expires.
@@ -1584,7 +1683,7 @@ strongswan-4.2.10
   counterparts with better lookup times.
 
 - Better parallelization to run charon on multiple cores. Due to improved
-  ressource locking and other optimizations the daemon can take full
+  resource locking and other optimizations the daemon can take full
   advantage of 16 or even more cores.
 
 - The load-tester plugin can use a NULL Diffie-Hellman group and simulate

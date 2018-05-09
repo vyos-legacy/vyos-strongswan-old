@@ -192,11 +192,11 @@ int main(int argc, char *argv[])
 	lib->settings->set_int(lib->settings, "charon-nm.syslog.daemon.default",
 		lib->settings->get_int(lib->settings,
 							   "charon-nm.syslog.daemon.default", 1));
-	charon->load_loggers(charon, NULL, FALSE);
+	charon->load_loggers(charon);
 
 	/* use random ports to avoid conflicts with regular charon */
 	lib->settings->set_int(lib->settings, "charon-nm.port", 0);
-	lib->settings->set_int(lib->settings, "charon-nm.port_natt_t", 0);
+	lib->settings->set_int(lib->settings, "charon-nm.port_nat_t", 0);
 
 	DBG1(DBG_DMN, "Starting charon NetworkManager backend (strongSwan "VERSION")");
 	if (lib->integrity)

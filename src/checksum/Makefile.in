@@ -102,24 +102,25 @@ EXTRA_PROGRAMS = checksum_builder$(EXEEXT)
 @USE_LIBPTTLS_TRUE@am__append_11 = $(DESTDIR)$(ipseclibdir)/libpttls.so
 @USE_LIBTPMTSS_TRUE@am__append_12 = $(top_builddir)/src/libtpmtss/libtpmtss.la
 @USE_LIBTPMTSS_TRUE@am__append_13 = $(DESTDIR)$(ipseclibdir)/libtpmtss.so
-@USE_LIBTNCCS_TRUE@am__append_14 = $(top_builddir)/src/libtnccs/libtnccs.la
-@USE_LIBTNCCS_TRUE@am__append_15 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
-@MONOLITHIC_FALSE@@USE_LIBTNCCS_TRUE@am__append_16 = -DT_PLUGINS=\""${t_plugins}\""
-@USE_SIMAKA_TRUE@am__append_17 = $(top_builddir)/src/libsimaka/libsimaka.la
-@USE_SIMAKA_TRUE@am__append_18 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
-@USE_IMCV_TRUE@am__append_19 = $(top_builddir)/src/libimcv/libimcv.la
-@USE_IMCV_TRUE@am__append_20 = $(DESTDIR)$(ipseclibdir)/libimcv.so
-@USE_CHARON_TRUE@am__append_21 = $(top_builddir)/src/libcharon/libcharon.la
-@USE_CHARON_TRUE@am__append_22 = $(DESTDIR)$(ipseclibdir)/libcharon.so
-@USE_CHARON_TRUE@am__append_23 = $(DESTDIR)$(ipsecdir)/charon
-@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_24 = -DC_PLUGINS=\""${c_plugins}\""
-@USE_CMD_TRUE@am__append_25 = $(DESTDIR)$(sbindir)/charon-cmd
-@USE_SYSTEMD_TRUE@am__append_26 = $(DESTDIR)$(sbindir)/charon-systemd
-@USE_SCEPCLIENT_TRUE@am__append_27 = $(DESTDIR)$(ipsecdir)/scepclient
-@USE_PKI_TRUE@am__append_28 = $(DESTDIR)$(bindir)/pki
-@USE_SWANCTL_TRUE@am__append_29 = $(DESTDIR)$(sbindir)/swanctl
-@USE_ATTR_SQL_TRUE@am__append_30 = $(DESTDIR)$(ipsecdir)/pool
-@USE_IMV_ATTESTATION_TRUE@am__append_31 = $(DESTDIR)$(ipsecdir)/attest
+@MONOLITHIC_FALSE@@USE_LIBTPMTSS_TRUE@am__append_14 = -DP_PLUGINS=\""${p_plugins}\""
+@USE_LIBTNCCS_TRUE@am__append_15 = $(top_builddir)/src/libtnccs/libtnccs.la
+@USE_LIBTNCCS_TRUE@am__append_16 = $(DESTDIR)$(ipseclibdir)/libtnccs.so
+@MONOLITHIC_FALSE@@USE_LIBTNCCS_TRUE@am__append_17 = -DT_PLUGINS=\""${t_plugins}\""
+@USE_SIMAKA_TRUE@am__append_18 = $(top_builddir)/src/libsimaka/libsimaka.la
+@USE_SIMAKA_TRUE@am__append_19 = $(DESTDIR)$(ipseclibdir)/libsimaka.so
+@USE_IMCV_TRUE@am__append_20 = $(top_builddir)/src/libimcv/libimcv.la
+@USE_IMCV_TRUE@am__append_21 = $(DESTDIR)$(ipseclibdir)/libimcv.so
+@USE_CHARON_TRUE@am__append_22 = $(top_builddir)/src/libcharon/libcharon.la
+@USE_CHARON_TRUE@am__append_23 = $(DESTDIR)$(ipseclibdir)/libcharon.so
+@USE_CHARON_TRUE@am__append_24 = $(DESTDIR)$(ipsecdir)/charon
+@MONOLITHIC_FALSE@@USE_CHARON_TRUE@am__append_25 = -DC_PLUGINS=\""${c_plugins}\""
+@USE_CMD_TRUE@am__append_26 = $(DESTDIR)$(sbindir)/charon-cmd
+@USE_SYSTEMD_TRUE@am__append_27 = $(DESTDIR)$(sbindir)/charon-systemd
+@USE_SCEPCLIENT_TRUE@am__append_28 = $(DESTDIR)$(ipsecdir)/scepclient
+@USE_PKI_TRUE@am__append_29 = $(DESTDIR)$(bindir)/pki
+@USE_SWANCTL_TRUE@am__append_30 = $(DESTDIR)$(sbindir)/swanctl
+@USE_ATTR_SQL_TRUE@am__append_31 = $(DESTDIR)$(ipsecdir)/pool
+@USE_IMV_ATTESTATION_TRUE@am__append_32 = $(DESTDIR)$(ipsecdir)/attest
 subdir = src/checksum
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -396,9 +397,9 @@ docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
+fuzz_plugins = @fuzz_plugins@
 gtk_CFLAGS = @gtk_CFLAGS@
 gtk_LIBS = @gtk_LIBS@
-h_plugins = @h_plugins@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -419,6 +420,7 @@ json_CFLAGS = @json_CFLAGS@
 json_LIBS = @json_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libfuzzer = @libfuzzer@
 libiptc_CFLAGS = @libiptc_CFLAGS@
 libiptc_LIBS = @libiptc_LIBS@
 linux_headers = @linux_headers@
@@ -433,6 +435,7 @@ nm_LIBS = @nm_LIBS@
 nm_ca_dir = @nm_ca_dir@
 nm_plugins = @nm_plugins@
 oldincludedir = @oldincludedir@
+p_plugins = @p_plugins@
 pcsclite_CFLAGS = @pcsclite_CFLAGS@
 pcsclite_LIBS = @pcsclite_LIBS@
 pdfdir = @pdfdir@
@@ -499,7 +502,7 @@ CLEANFILES = checksum.c $(EXTRA_PROGRAMS)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libcharon \
 	-DPLUGINDIR=\"${DESTDIR}${plugindir}\" $(am__append_1) \
-	$(am__append_16) $(am__append_24)
+	$(am__append_14) $(am__append_17) $(am__append_25)
 AM_CFLAGS = \
 	$(PLUGIN_CFLAGS)
 
@@ -510,15 +513,15 @@ AM_CFLAGS = \
 deps = $(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(am__append_2) $(am__append_4) $(am__append_6) \
 	$(am__append_8) $(am__append_10) $(am__append_12) \
-	$(am__append_14) $(am__append_17) $(am__append_19) \
-	$(am__append_21)
+	$(am__append_15) $(am__append_18) $(am__append_20) \
+	$(am__append_22)
 libs = $(DESTDIR)$(ipseclibdir)/libstrongswan.so $(am__append_3) \
 	$(am__append_5) $(am__append_7) $(am__append_9) \
-	$(am__append_11) $(am__append_13) $(am__append_15) \
-	$(am__append_18) $(am__append_20) $(am__append_22)
-exes = $(am__append_23) $(am__append_25) $(am__append_26) \
-	$(am__append_27) $(am__append_28) $(am__append_29) \
-	$(am__append_30) $(am__append_31)
+	$(am__append_11) $(am__append_13) $(am__append_16) \
+	$(am__append_19) $(am__append_21) $(am__append_23)
+exes = $(am__append_24) $(am__append_26) $(am__append_27) \
+	$(am__append_28) $(am__append_29) $(am__append_30) \
+	$(am__append_31) $(am__append_32)
 all: all-am
 
 .SUFFIXES:

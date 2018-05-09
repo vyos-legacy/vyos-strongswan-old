@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2008-2017 Tobias Brunner
  * Copyright (C) 2016 Andreas Steffen
- * Copyright (C) 2008-2016 Tobias Brunner
  * Copyright (C) 2005-2007 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * HSR Hochschule fuer Technik Rapperswil
@@ -54,6 +54,11 @@ struct private_child_cfg_t {
 	char *name;
 
 	/**
+	 * Options
+	 */
+	child_cfg_option_t options;
+
+	/**
 	 * list for all proposals
 	 */
 	linked_list_t *proposals;
@@ -72,11 +77,6 @@ struct private_child_cfg_t {
 	 * updown script
 	 */
 	char *updown;
-
-	/**
-	 * allow host access
-	 */
-	bool hostaccess;
 
 	/**
 	 * Mode to propose for a initiated CHILD: tunnel/transport
@@ -102,11 +102,6 @@ struct private_child_cfg_t {
 	 * CHILD_SA lifetime config
 	 */
 	lifetime_cfg_t lifetime;
-
-	/**
-	 * enable IPComp
-	 */
-	bool use_ipcomp;
 
 	/**
 	 * Inactivity timeout
@@ -144,21 +139,6 @@ struct private_child_cfg_t {
 	char *interface;
 
 	/**
-	 * set up IPsec transport SA in MIPv6 proxy mode
-	 */
-	bool proxy_mode;
-
-	/**
-	 * enable installation and removal of kernel IPsec policies
-	 */
-	bool install_policy;
-
-	/**
-	 * Install outbound FWD policies
-	 */
-	bool fwd_out_policy;
-
-	/**
 	 * anti-replay window size
 	 */
 	uint32_t replay_window;
@@ -170,6 +150,12 @@ METHOD(child_cfg_t, get_name, char*,
 	return this->name;
 }
 
+METHOD(child_cfg_t, has_option, bool,
+	private_child_cfg_t *this, child_cfg_option_t option)
+{
+	return this->options & option;
+}
+
 METHOD(child_cfg_t, add_proposal, void,
 	private_child_cfg_t *this, proposal_t *proposal)
 {
@@ -179,8 +165,12 @@ METHOD(child_cfg_t, add_proposal, void,
 	}
 }
 
-static bool match_proposal(proposal_t *item, proposal_t *proposal)
+CALLBACK(match_proposal, bool,
+	proposal_t *item, va_list args)
 {
+	proposal_t *proposal;
+
+	VA_ARGS_VGET(args, proposal);
 	return item->equals(item, proposal);
 }
 
@@ -199,8 +189,7 @@ METHOD(child_cfg_t, get_proposals, linked_list_t*,
 		{
 			current->strip_dh(current, MODP_NONE);
 		}
-		if (proposals->find_first(proposals, (linked_list_match_t)match_proposal,
-								  NULL, current) == SUCCESS)
+		if (proposals->find_first(proposals, match_proposal, NULL, current))
 		{
 			current->destroy(current);
 			continue;
@@ -249,7 +238,7 @@ METHOD(child_cfg_t, select_proposal, proposal_t*,
 			{
 				proposal->strip_dh(proposal, MODP_NONE);
 			}
-			selected = proposal->select(proposal, match, private);
+			selected = proposal->select(proposal, match, prefer_self, private);
 			if (selected)
 			{
 				DBG2(DBG_CFG, "received proposals: %#P", proposals);
@@ -306,25 +295,31 @@ METHOD(child_cfg_t, get_traffic_selectors, linked_list_t*,
 	{
 		e1 = this->other_ts->create_enumerator(this->other_ts);
 	}
-	/* In a first step, replace "dynamic" TS with the host list */
+	/* in a first step, replace "dynamic" TS with the host list */
 	while (e1->enumerate(e1, &ts1))
 	{
-		if (hosts && hosts->get_count(hosts) &&
-			ts1->is_dynamic(ts1))
-		{
-			e2 = hosts->create_enumerator(hosts);
-			while (e2->enumerate(e2, &host))
+		if (hosts && hosts->get_count(hosts))
+		{	/* set hosts if TS is dynamic or as initiator in transport mode */
+			bool dynamic = ts1->is_dynamic(ts1),
+				 proxy_mode = has_option(this, OPT_PROXY_MODE);
+			if (dynamic || (this->mode == MODE_TRANSPORT && !proxy_mode &&
+							!supplied))
 			{
-				ts2 = ts1->clone(ts1);
-				ts2->set_address(ts2, host);
-				derived->insert_last(derived, ts2);
+				e2 = hosts->create_enumerator(hosts);
+				while (e2->enumerate(e2, &host))
+				{
+					ts2 = ts1->clone(ts1);
+					if (dynamic || !host->is_anyaddr(host))
+					{	/* don't make regular TS larger than they were */
+						ts2->set_address(ts2, host);
+					}
+					derived->insert_last(derived, ts2);
+				}
+				e2->destroy(e2);
+				continue;
 			}
-			e2->destroy(e2);
 		}
-		else
-		{
-			derived->insert_last(derived, ts1->clone(ts1));
-		}
+		derived->insert_last(derived, ts1->clone(ts1));
 	}
 	e1->destroy(e1);
 
@@ -423,12 +418,6 @@ METHOD(child_cfg_t, get_updown, char*,
 	return this->updown;
 }
 
-METHOD(child_cfg_t, get_hostaccess, bool,
-	private_child_cfg_t *this)
-{
-	return this->hostaccess;
-}
-
 /**
  * Applies jitter to the rekey value. Returns the new rekey value.
  * Note: The distribution of random values is not perfect, but it
@@ -503,12 +492,6 @@ METHOD(child_cfg_t, get_dh_group, diffie_hellman_group_t,
 	return dh_group;
 }
 
-METHOD(child_cfg_t, use_ipcomp, bool,
-	private_child_cfg_t *this)
-{
-	return this->use_ipcomp;
-}
-
 METHOD(child_cfg_t, get_inactivity, uint32_t,
 	private_child_cfg_t *this)
 {
@@ -557,24 +540,6 @@ METHOD(child_cfg_t, set_replay_window, void,
 	this->replay_window = replay_window;
 }
 
-METHOD(child_cfg_t, use_proxy_mode, bool,
-	private_child_cfg_t *this)
-{
-	return this->proxy_mode;
-}
-
-METHOD(child_cfg_t, install_policy, bool,
-	private_child_cfg_t *this)
-{
-	return this->install_policy;
-}
-
-METHOD(child_cfg_t, install_fwd_out_policy, bool,
-	private_child_cfg_t *this)
-{
-	return this->fwd_out_policy;
-}
-
 #define LT_PART_EQUALS(a, b) ({ a.life == b.life && a.rekey == b.rekey && a.jitter == b.jitter; })
 #define LIFETIME_EQUALS(a, b) ({ LT_PART_EQUALS(a.time, b.time) && LT_PART_EQUALS(a.bytes, b.bytes) && LT_PART_EQUALS(a.packets, b.packets); })
 
@@ -606,13 +571,12 @@ METHOD(child_cfg_t, equals, bool,
 	{
 		return FALSE;
 	}
-	return this->hostaccess == other->hostaccess &&
+	return this->options == other->options &&
 		this->mode == other->mode &&
 		this->start_action == other->start_action &&
 		this->dpd_action == other->dpd_action &&
 		this->close_action == other->close_action &&
 		LIFETIME_EQUALS(this->lifetime, other->lifetime) &&
-		this->use_ipcomp == other->use_ipcomp &&
 		this->inactivity == other->inactivity &&
 		this->reqid == other->reqid &&
 		this->mark_in.value == other->mark_in.value &&
@@ -622,9 +586,6 @@ METHOD(child_cfg_t, equals, bool,
 		this->tfc == other->tfc &&
 		this->manual_prio == other->manual_prio &&
 		this->replay_window == other->replay_window &&
-		this->proxy_mode == other->proxy_mode &&
-		this->install_policy == other->install_policy &&
-		this->fwd_out_policy == other->fwd_out_policy &&
 		streq(this->updown, other->updown) &&
 		streq(this->interface, other->interface);
 }
@@ -667,14 +628,12 @@ child_cfg_t *child_cfg_create(char *name, child_cfg_create_t *data)
 			.get_proposals = _get_proposals,
 			.select_proposal = _select_proposal,
 			.get_updown = _get_updown,
-			.get_hostaccess = _get_hostaccess,
 			.get_mode = _get_mode,
 			.get_start_action = _get_start_action,
 			.get_dpd_action = _get_dpd_action,
 			.get_close_action = _get_close_action,
 			.get_lifetime = _get_lifetime,
 			.get_dh_group = _get_dh_group,
-			.use_ipcomp = _use_ipcomp,
 			.get_inactivity = _get_inactivity,
 			.get_reqid = _get_reqid,
 			.get_mark = _get_mark,
@@ -683,19 +642,16 @@ child_cfg_t *child_cfg_create(char *name, child_cfg_create_t *data)
 			.get_interface = _get_interface,
 			.get_replay_window = _get_replay_window,
 			.set_replay_window = _set_replay_window,
-			.use_proxy_mode = _use_proxy_mode,
-			.install_policy = _install_policy,
-			.install_fwd_out_policy = _install_fwd_out_policy,
+			.has_option = _has_option,
 			.equals = _equals,
 			.get_ref = _get_ref,
 			.destroy = _destroy,
 		},
 		.name = strdup(name),
+		.options = data->options,
 		.updown = strdupnull(data->updown),
-		.hostaccess = data->hostaccess,
 		.reqid = data->reqid,
 		.mode = data->mode,
-		.proxy_mode = data->proxy_mode,
 		.start_action = data->start_action,
 		.dpd_action = data->dpd_action,
 		.close_action = data->close_action,
@@ -703,12 +659,9 @@ child_cfg_t *child_cfg_create(char *name, child_cfg_create_t *data)
 		.mark_out = data->mark_out,
 		.lifetime = data->lifetime,
 		.inactivity = data->inactivity,
-		.use_ipcomp = data->ipcomp,
 		.tfc = data->tfc,
 		.manual_prio = data->priority,
 		.interface = strdupnull(data->interface),
-		.install_policy = !data->suppress_policies,
-		.fwd_out_policy = data->fwd_out_policies,
 		.refcount = 1,
 		.proposals = linked_list_create(),
 		.my_ts = linked_list_create(),

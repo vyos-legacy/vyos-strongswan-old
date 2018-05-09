@@ -173,7 +173,8 @@ static child_cfg_t *build_child_cfg(private_sql_config_t *this, enumerator_t *e)
 		child_cfg_create_t child = {
 			.mode = mode,
 			.reqid = reqid,
-			.ipcomp = ipcomp,
+			.options = (ipcomp ? OPT_IPCOMP : 0) |
+					   (hostaccess ? OPT_HOSTACCESS : 0),
 			.lifetime = {
 				.time = {
 					.life = lifetime, .rekey = rekeytime, .jitter = jitter
@@ -183,7 +184,6 @@ static child_cfg_t *build_child_cfg(private_sql_config_t *this, enumerator_t *e)
 			.dpd_action = dpd,
 			.close_action = close,
 			.updown = updown,
-			.hostaccess = hostaccess,
 		};
 		child_cfg = child_cfg_create(name, &child);
 		add_esp_proposals(this, child_cfg, id);
@@ -381,12 +381,14 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 		ike = get_ike_cfg_by_id(this, ike_cfg);
 
 #ifdef ME
-		mediated_cfg = mediated_by ? get_peer_cfg_by_id(this, mediated_by) : NULL;
+		mediated_cfg = mediated_by ? get_peer_cfg_by_id(this, mediated_by)
+								   : NULL;
 		if (p_type)
 		{
 			peer_id = identification_create_from_encoding(p_type, p_data);
 		}
-#endif
+#endif /* ME */
+
 		if (virtual)
 		{
 			vip = host_create_from_string(virtual, 0);
@@ -405,7 +407,8 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 				.dpd = dpd_delay,
 #ifdef ME
 				.mediation = mediation,
-				.mediated_by = mediated_cfg,
+				.mediated_by = mediated_cfg ?
+									mediated_cfg->get_name(mediated_cfg) : NULL,
 				.peer_id = peer_id,
 #endif /* ME */
 			};
@@ -443,6 +446,7 @@ static peer_cfg_t *build_peer_cfg(private_sql_config_t *this, enumerator_t *e,
 			}
 			peer_cfg->add_auth_cfg(peer_cfg, auth, FALSE);
 			add_child_cfgs(this, peer_cfg, id);
+			DESTROY_IF(mediated_cfg);
 			return peer_cfg;
 		}
 		DESTROY_IF(ike);
@@ -500,11 +504,12 @@ typedef struct {
 	ike_cfg_t *current;
 } ike_enumerator_t;
 
-/**
- * Implementation of ike_enumerator_t.public.enumerate
- */
-static bool ike_enumerator_enumerate(ike_enumerator_t *this, ike_cfg_t **cfg)
+METHOD(enumerator_t, ike_enumerator_enumerate, bool,
+	ike_enumerator_t *this, va_list args)
 {
+	ike_cfg_t **cfg;
+
+	VA_ARGS_VGET(args, cfg);
 	DESTROY_IF(this->current);
 	this->current = build_ike_cfg(this->this, this->inner, this->me, this->other);
 	if (this->current)
@@ -515,10 +520,8 @@ static bool ike_enumerator_enumerate(ike_enumerator_t *this, ike_cfg_t **cfg)
 	return FALSE;
 }
 
-/**
- * Implementation of ike_enumerator_t.public.destroy
- */
-static void ike_enumerator_destroy(ike_enumerator_t *this)
+METHOD(enumerator_t, ike_enumerator_destroy, void,
+	ike_enumerator_t *this)
 {
 	DESTROY_IF(this->current);
 	this->inner->destroy(this->inner);
@@ -528,19 +531,22 @@ static void ike_enumerator_destroy(ike_enumerator_t *this)
 METHOD(backend_t, create_ike_cfg_enumerator, enumerator_t*,
 	private_sql_config_t *this, host_t *me, host_t *other)
 {
-	ike_enumerator_t *e = malloc_thing(ike_enumerator_t);
+	ike_enumerator_t *e;
 
-	e->this = this;
-	e->me = me;
-	e->other = other;
-	e->current = NULL;
-	e->public.enumerate = (void*)ike_enumerator_enumerate;
-	e->public.destroy = (void*)ike_enumerator_destroy;
-
+	INIT(e,
+		.public = {
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _ike_enumerator_enumerate,
+			.destroy = _ike_enumerator_destroy,
+		},
+		.this = this,
+		.me = me,
+		.other = other,
+	);
 	e->inner = this->db->query(this->db,
-			"SELECT id, certreq, force_encap, local, remote "
-			"FROM ike_configs",
-			DB_INT, DB_INT, DB_INT, DB_TEXT, DB_TEXT);
+							   "SELECT id, certreq, force_encap, local, remote "
+							   "FROM ike_configs",
+							   DB_INT, DB_INT, DB_INT, DB_TEXT, DB_TEXT);
 	if (!e->inner)
 	{
 		free(e);
@@ -565,11 +571,12 @@ typedef struct {
 	peer_cfg_t *current;
 } peer_enumerator_t;
 
-/**
- * Implementation of peer_enumerator_t.public.enumerate
- */
-static bool peer_enumerator_enumerate(peer_enumerator_t *this, peer_cfg_t **cfg)
+METHOD(enumerator_t, peer_enumerator_enumerate, bool,
+	peer_enumerator_t *this, va_list args)
 {
+	peer_cfg_t **cfg;
+
+	VA_ARGS_VGET(args, cfg);
 	DESTROY_IF(this->current);
 	this->current = build_peer_cfg(this->this, this->inner, this->me, this->other);
 	if (this->current)
@@ -580,10 +587,8 @@ static bool peer_enumerator_enumerate(peer_enumerator_t *this, peer_cfg_t **cfg)
 	return FALSE;
 }
 
-/**
- * Implementation of peer_enumerator_t.public.destroy
- */
-static void peer_enumerator_destroy(peer_enumerator_t *this)
+METHOD(enumerator_t, peer_enumerator_destroy, void,
+	peer_enumerator_t *this)
 {
 	DESTROY_IF(this->current);
 	this->inner->destroy(this->inner);
@@ -593,14 +598,18 @@ static void peer_enumerator_destroy(peer_enumerator_t *this)
 METHOD(backend_t, create_peer_cfg_enumerator, enumerator_t*,
 	private_sql_config_t *this, identification_t *me, identification_t *other)
 {
-	peer_enumerator_t *e = malloc_thing(peer_enumerator_t);
+	peer_enumerator_t *e;
 
-	e->this = this;
-	e->me = me;
-	e->other = other;
-	e->current = NULL;
-	e->public.enumerate = (void*)peer_enumerator_enumerate;
-	e->public.destroy = (void*)peer_enumerator_destroy;
+	INIT(e,
+		.public = {
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _peer_enumerator_enumerate,
+			.destroy = _peer_enumerator_destroy,
+		},
+		.this = this,
+		.me = me,
+		.other = other,
+	);
 
 	/* TODO: only get configs whose IDs match exactly or contain wildcards */
 	e->inner = this->db->query(this->db,

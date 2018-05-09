@@ -212,7 +212,7 @@ static bool manage_pre_esp_in_udp(struct iptc_handle *ipth,
 	ADD_STRUCT(pos, struct xt_udp,
 		.spts = {
 			entry->rhost->get_port(entry->rhost),
-			entry->rhost->get_port(entry->lhost)
+			entry->rhost->get_port(entry->rhost)
 		},
 		.dpts = {
 			entry->lhost->get_port(entry->lhost),
@@ -613,17 +613,23 @@ METHOD(listener_t, ike_update, bool,
 	return TRUE;
 }
 
-/**
- * Filter to map entries to ts/mark
- */
-static bool ts_filter(entry_t *entry, traffic_selector_t **ts,
-					  traffic_selector_t **out, void *dummy, uint32_t *mark,
-					  void *dummy2, bool *reinject)
+CALLBACK(ts_filter, bool,
+	entry_t *entry, enumerator_t *orig, va_list args)
 {
-	*out = *ts;
-	*mark = entry->mark;
-	*reinject = entry->reinject;
-	return TRUE;
+	traffic_selector_t *ts, **out;
+	uint32_t *mark;
+	bool *reinject;
+
+	VA_ARGS_VGET(args, out, mark, reinject);
+
+	if (orig->enumerate(orig, &ts))
+	{
+		*out = ts;
+		*mark = entry->mark;
+		*reinject = entry->reinject;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
@@ -632,7 +638,7 @@ static bool ts_filter(entry_t *entry, traffic_selector_t **ts,
 static enumerator_t* create_inner_local(entry_t *entry, rwlock_t *lock)
 {
 	return enumerator_create_filter(array_create_enumerator(entry->lts),
-									(void*)ts_filter, entry, NULL);
+									ts_filter, entry, NULL);
 }
 
 /**
@@ -641,7 +647,7 @@ static enumerator_t* create_inner_local(entry_t *entry, rwlock_t *lock)
 static enumerator_t* create_inner_remote(entry_t *entry, rwlock_t *lock)
 {
 	return enumerator_create_filter(array_create_enumerator(entry->rts),
-									(void*)ts_filter, entry, NULL);
+									ts_filter, entry, NULL);
 }
 
 METHOD(forecast_listener_t, create_enumerator, enumerator_t*,

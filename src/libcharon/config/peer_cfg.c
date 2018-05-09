@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2016 Tobias Brunner
+ * Copyright (C) 2007-2017 Tobias Brunner
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * HSR Hochschule fuer Technik Rapperswil
@@ -164,7 +164,7 @@ struct private_peer_cfg_t {
 	/**
 	 * Name of the mediation connection to mediate through
 	 */
-	peer_cfg_t *mediated_by;
+	char *mediated_by;
 
 	/**
 	 * ID of our peer at the mediation server (= leftid of the peer's conn with
@@ -209,9 +209,12 @@ typedef struct {
 } child_cfgs_replace_enumerator_t;
 
 METHOD(enumerator_t, child_cfgs_replace_enumerate, bool,
-	child_cfgs_replace_enumerator_t *this, child_cfg_t **chd, bool *added)
+	child_cfgs_replace_enumerator_t *this, va_list args)
 {
-	child_cfg_t *child_cfg;
+	child_cfg_t *child_cfg, **chd;
+	bool *added;
+
+	VA_ARGS_VGET(args, chd, added);
 
 	if (!this->wrapped)
 	{
@@ -235,6 +238,7 @@ METHOD(enumerator_t, child_cfgs_replace_enumerate, bool,
 		{
 			break;
 		}
+		this->wrapped->destroy(this->wrapped);
 		this->wrapped = this->added->create_enumerator(this->added);
 		this->add = TRUE;
 	}
@@ -302,8 +306,9 @@ METHOD(peer_cfg_t, replace_child_cfgs, enumerator_t*,
 
 	INIT(enumerator,
 		.public = {
-			.enumerate = (void*)_child_cfgs_replace_enumerate,
-			.destroy = (void*)_child_cfgs_replace_enumerator_destroy,
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _child_cfgs_replace_enumerate,
+			.destroy = _child_cfgs_replace_enumerator_destroy,
 		},
 		.removed = removed,
 		.added = added,
@@ -335,8 +340,11 @@ METHOD(enumerator_t, child_cfg_enumerator_destroy, void,
 }
 
 METHOD(enumerator_t, child_cfg_enumerate, bool,
-	child_cfg_enumerator_t *this, child_cfg_t **chd)
+	child_cfg_enumerator_t *this, va_list args)
 {
+	child_cfg_t **chd;
+
+	VA_ARGS_VGET(args, chd);
 	return this->wrapped->enumerate(this->wrapped, chd);
 }
 
@@ -347,8 +355,9 @@ METHOD(peer_cfg_t, create_child_cfg_enumerator, enumerator_t*,
 
 	INIT(enumerator,
 		.public = {
-			.enumerate = (void*)_child_cfg_enumerate,
-			.destroy = (void*)_child_cfg_enumerator_destroy,
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _child_cfg_enumerate,
+			.destroy = _child_cfg_enumerator_destroy,
 		},
 		.mutex = this->mutex,
 		.wrapped = this->child_cfgs->create_enumerator(this->child_cfgs),
@@ -579,7 +588,7 @@ METHOD(peer_cfg_t, is_mediation, bool,
 	return this->mediation;
 }
 
-METHOD(peer_cfg_t, get_mediated_by, peer_cfg_t*,
+METHOD(peer_cfg_t, get_mediated_by, char*,
 	private_peer_cfg_t *this)
 {
 	return this->mediated_by;
@@ -682,7 +691,7 @@ METHOD(peer_cfg_t, equals, bool,
 		auth_cfg_equal(this, other)
 #ifdef ME
 		&& this->mediation == other->mediation &&
-		this->mediated_by == other->mediated_by &&
+		streq(this->mediated_by, other->mediated_by) &&
 		(this->peer_id == other->peer_id ||
 		 (this->peer_id && other->peer_id &&
 		  this->peer_id->equals(this->peer_id, other->peer_id)))
@@ -712,8 +721,8 @@ METHOD(peer_cfg_t, destroy, void,
 		this->vips->destroy_offset(this->vips, offsetof(host_t, destroy));
 		this->pools->destroy_function(this->pools, free);
 #ifdef ME
-		DESTROY_IF(this->mediated_by);
 		DESTROY_IF(this->peer_id);
+		free(this->mediated_by);
 #endif /* ME */
 		this->mutex->destroy(this->mutex);
 		free(this->name);
@@ -801,7 +810,7 @@ peer_cfg_t *peer_cfg_create(char *name, ike_cfg_t *ike_cfg,
 		.refcount = 1,
 #ifdef ME
 		.mediation = data->mediation,
-		.mediated_by = data->mediated_by,
+		.mediated_by = strdupnull(data->mediated_by),
 		.peer_id = data->peer_id,
 #endif /* ME */
 	);

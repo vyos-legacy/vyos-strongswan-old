@@ -34,6 +34,7 @@
 #include <sa/ikev2/tasks/ike_delete.h>
 #include <sa/ikev2/tasks/ike_config.h>
 #include <sa/ikev2/tasks/ike_dpd.h>
+#include <sa/ikev2/tasks/ike_mid_sync.h>
 #include <sa/ikev2/tasks/ike_vendor.h>
 #include <sa/ikev2/tasks/ike_verify_peer_cert.h>
 #include <sa/ikev2/tasks/child_create.h>
@@ -158,6 +159,16 @@ struct private_task_manager_t {
 	 * Base to calculate retransmission timeout
 	 */
 	double retransmit_base;
+
+	/**
+	 * Jitter to apply to calculated retransmit timeout (in percent)
+	 */
+	u_int retransmit_jitter;
+
+	/**
+	 * Limit retransmit timeout to this value
+	 */
+	uint32_t retransmit_limit;
 
 	/**
 	 * Use make-before-break instead of break-before-make reauth?
@@ -320,7 +331,7 @@ METHOD(task_manager_t, retransmit, status_t,
 	if (message_id == this->initiating.mid &&
 		array_count(this->initiating.packets))
 	{
-		uint32_t timeout;
+		uint32_t timeout, max_jitter;
 		job_t *job;
 		enumerator_t *enumerator;
 		packet_t *packet;
@@ -350,6 +361,16 @@ METHOD(task_manager_t, retransmit, status_t,
 			{
 				timeout = (uint32_t)(this->retransmit_timeout * 1000.0 *
 					pow(this->retransmit_base, this->initiating.retransmitted));
+
+				if (this->retransmit_limit)
+				{
+					timeout = min(timeout, this->retransmit_limit);
+				}
+				if (this->retransmit_jitter)
+				{
+					max_jitter = (timeout / 100.0) * this->retransmit_jitter;
+					timeout -= max_jitter * (random() / (RAND_MAX + 1.0));
+				}
 			}
 			else
 			{
@@ -817,7 +838,7 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 	task_t *task;
 	message_t *message;
 	host_t *me, *other;
-	bool delete = FALSE, hook = FALSE;
+	bool delete = FALSE, hook = FALSE, mid_sync = FALSE;
 	ike_sa_id_t *id = NULL;
 	uint64_t responder_spi = 0;
 	bool result;
@@ -836,6 +857,10 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 	enumerator = array_create_enumerator(this->passive_tasks);
 	while (enumerator->enumerate(enumerator, (void*)&task))
 	{
+		if (task->get_type(task) == TASK_IKE_MID_SYNC)
+		{
+			mid_sync = TRUE;
+		}
 		switch (task->build(task, message))
 		{
 			case SUCCESS:
@@ -907,6 +932,15 @@ static status_t build_response(private_task_manager_t *this, message_t *request)
 			charon->bus->ike_updown(charon->bus, this->ike_sa, FALSE);
 		}
 		return DESTROY_ME;
+	}
+	else if (mid_sync)
+	{
+		/* we don't want to resend messages to sync MIDs if requests with the
+		 * previous MID arrive */
+		clear_packets(this->responding.packets);
+		/* avoid increasing the expected message ID after handling a message
+		 * to sync MIDs with MID 0 */
+		return NEED_MORE;
 	}
 
 	array_compress(this->passive_tasks);
@@ -1069,6 +1103,10 @@ static status_t process_request(private_task_manager_t *this,
 									task = (task_t*)ike_redirect_create(
 															this->ike_sa, NULL);
 									break;
+								case IKEV2_MESSAGE_ID_SYNC:
+									task = (task_t*)ike_mid_sync_create(
+																 this->ike_sa);
+									break;
 								default:
 									break;
 							}
@@ -1198,6 +1236,12 @@ METHOD(task_manager_t, incr_mid, void,
 	{
 		this->responding.mid++;
 	}
+}
+
+METHOD(task_manager_t, get_mid, uint32_t,
+	private_task_manager_t *this, bool initiate)
+{
+	return initiate ? this->initiating.mid : this->responding.mid;
 }
 
 /**
@@ -1373,6 +1417,64 @@ static status_t parse_message(private_task_manager_t *this, message_t *msg)
 	return status;
 }
 
+/**
+ * Check if a message with message ID 0 looks like it is used to synchronize
+ * the message IDs.
+ */
+static bool looks_like_mid_sync(private_task_manager_t *this, message_t *msg,
+								bool strict)
+{
+	enumerator_t *enumerator;
+	notify_payload_t *notify;
+	payload_t *payload;
+	bool found = FALSE, other = FALSE;
+
+	if (msg->get_exchange_type(msg) == INFORMATIONAL)
+	{
+		enumerator = msg->create_payload_enumerator(msg);
+		while (enumerator->enumerate(enumerator, &payload))
+		{
+			if (payload->get_type(payload) == PLV2_NOTIFY)
+			{
+				notify = (notify_payload_t*)payload;
+				switch (notify->get_notify_type(notify))
+				{
+					case IKEV2_MESSAGE_ID_SYNC:
+					case IPSEC_REPLAY_COUNTER_SYNC:
+						found = TRUE;
+						continue;
+					default:
+						break;
+				}
+			}
+			if (strict)
+			{
+				other = TRUE;
+				break;
+			}
+		}
+		enumerator->destroy(enumerator);
+	}
+	return found && !other;
+}
+
+/**
+ * Check if a message with message ID 0 looks like it is used to synchronize
+ * the message IDs and we are prepared to process it.
+ *
+ * Note: This is not called if the responder never sent a message before (i.e.
+ * we expect MID 0).
+ */
+static bool is_mid_sync(private_task_manager_t *this, message_t *msg)
+{
+	if (this->ike_sa->get_state(this->ike_sa) == IKE_ESTABLISHED &&
+		this->ike_sa->supports_extension(this->ike_sa,
+										 EXT_IKE_MESSAGE_ID_SYNC))
+	{
+		return looks_like_mid_sync(this, msg, TRUE);
+	}
+	return FALSE;
+}
 
 METHOD(task_manager_t, process_message, status_t,
 	private_task_manager_t *this, message_t *msg)
@@ -1421,7 +1523,7 @@ METHOD(task_manager_t, process_message, status_t,
 	mid = msg->get_message_id(msg);
 	if (msg->get_request(msg))
 	{
-		if (mid == this->responding.mid)
+		if (mid == this->responding.mid || (mid == 0 && is_mid_sync(this, msg)))
 		{
 			/* reject initial messages if not received in specific states,
 			 * after rekeying we only expect a DELETE in an INFORMATIONAL */
@@ -1462,7 +1564,8 @@ METHOD(task_manager_t, process_message, status_t,
 			}
 		}
 		else if ((mid == this->responding.mid - 1) &&
-				 array_count(this->responding.packets))
+				 array_count(this->responding.packets) &&
+				 !(mid == 0 && looks_like_mid_sync(this, msg, FALSE)))
 		{
 			status = handle_fragment(this, &this->responding.defrag, msg);
 			if (status != SUCCESS)
@@ -1477,7 +1580,7 @@ METHOD(task_manager_t, process_message, status_t,
 		}
 		else
 		{
-			DBG1(DBG_IKE, "received message ID %d, expected %d. Ignored",
+			DBG1(DBG_IKE, "received message ID %d, expected %d, ignored",
 				 mid, this->responding.mid);
 		}
 	}
@@ -1515,7 +1618,7 @@ METHOD(task_manager_t, process_message, status_t,
 		}
 		else
 		{
-			DBG1(DBG_IKE, "received message ID %d, expected %d. Ignored",
+			DBG1(DBG_IKE, "received message ID %d, expected %d, ignored",
 				 mid, this->initiating.mid);
 			return SUCCESS;
 		}
@@ -1976,13 +2079,20 @@ METHOD(task_manager_t, reset, void,
 	this->reset = TRUE;
 }
 
-/**
- * Filter queued tasks
- */
-static bool filter_queued(void *unused, queued_task_t **queued, task_t **task)
+CALLBACK(filter_queued, bool,
+	void *unused, enumerator_t *orig, va_list args)
 {
-	*task = (*queued)->task;
-	return TRUE;
+	queued_task_t *queued;
+	task_t **task;
+
+	VA_ARGS_VGET(args, task);
+
+	if (orig->enumerate(orig, &queued))
+	{
+		*task = queued->task;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 METHOD(task_manager_t, create_task_enumerator, enumerator_t*,
@@ -1997,7 +2107,7 @@ METHOD(task_manager_t, create_task_enumerator, enumerator_t*,
 		case TASK_QUEUE_QUEUED:
 			return enumerator_create_filter(
 									array_create_enumerator(this->queued_tasks),
-									(void*)filter_queued, NULL, NULL);
+									filter_queued, NULL, NULL);
 		default:
 			return enumerator_create_empty();
 	}
@@ -2046,6 +2156,7 @@ task_manager_v2_t *task_manager_v2_create(ike_sa_t *ike_sa)
 				.initiate = _initiate,
 				.retransmit = _retransmit,
 				.incr_mid = _incr_mid,
+				.get_mid = _get_mid,
 				.reset = _reset,
 				.adopt_tasks = _adopt_tasks,
 				.adopt_child_tasks = _adopt_child_tasks,
@@ -2067,6 +2178,10 @@ task_manager_v2_t *task_manager_v2_create(ike_sa_t *ike_sa)
 					"%s.retransmit_timeout", RETRANSMIT_TIMEOUT, lib->ns),
 		.retransmit_base = lib->settings->get_double(lib->settings,
 					"%s.retransmit_base", RETRANSMIT_BASE, lib->ns),
+		.retransmit_jitter = min(lib->settings->get_int(lib->settings,
+					"%s.retransmit_jitter", 0, lib->ns), RETRANSMIT_JITTER_MAX),
+		.retransmit_limit = lib->settings->get_int(lib->settings,
+					"%s.retransmit_limit", 0, lib->ns) * 1000,
 		.make_before_break = lib->settings->get_bool(lib->settings,
 					"%s.make_before_break", FALSE, lib->ns),
 	);

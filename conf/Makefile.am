@@ -9,7 +9,6 @@ pluginstemplatedir = $(templatesdir)/plugins
 
 options = \
 	options/aikgen.opt \
-	options/aikpub2.opt \
 	options/attest.opt \
 	options/charon.opt \
 	options/charon-logging.opt \
@@ -28,10 +27,12 @@ options = \
 	options/tnc.opt
 
 plugins = \
+	plugins/addrblock.opt \
 	plugins/android_log.opt \
 	plugins/attr.opt \
 	plugins/attr-sql.opt \
 	plugins/bliss.opt \
+	plugins/bypass-lan.opt \
 	plugins/certexpire.opt \
 	plugins/coupling.opt \
 	plugins/dhcp.opt \
@@ -80,6 +81,7 @@ plugins = \
 	plugins/radattr.opt \
 	plugins/random.opt \
 	plugins/resolve.opt \
+	plugins/revocation.opt \
 	plugins/socket-default.opt \
 	plugins/sql.opt \
 	plugins/stroke.opt \
@@ -90,6 +92,7 @@ plugins = \
 	plugins/tnc-pdp.opt \
 	plugins/tnccs-11.opt \
 	plugins/tnccs-20.opt \
+	plugins/tpm.opt \
 	plugins/unbound.opt \
 	plugins/updown.opt \
 	plugins/vici.opt \

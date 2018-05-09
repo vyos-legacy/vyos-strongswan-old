@@ -1,9 +1,8 @@
 /*
  * Copyright (C) 2002 Ueli Galizzi, Ariane Seiler
  * Copyright (C) 2003 Martin Berner, Lukas Suter
- * Copyright (C) 2002-2014 Andreas Steffen
+ * Copyright (C) 2002-2017 Andreas Steffen
  * Copyright (C) 2009 Martin Willi
- *
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -177,7 +176,7 @@ static chunk_t ASN1_noRevAvail_ext = chunk_from_chars(
 /**
  * declaration of function implemented in x509_cert.c
  */
-extern void x509_parse_generalNames(chunk_t blob, int level0, bool implicit,
+extern bool x509_parse_generalNames(chunk_t blob, int level0, bool implicit,
 									linked_list_t *list);
 /**
  * parses a directoryName
@@ -191,7 +190,11 @@ static bool parse_directoryName(chunk_t blob, int level, bool implicit,
 	linked_list_t *list;
 
 	list = linked_list_create();
-	x509_parse_generalNames(blob, level, implicit, list);
+	if (!x509_parse_generalNames(blob, level, implicit, list))
+	{
+		list->destroy(list);
+		return FALSE;
+	}
 
 	enumerator = list->create_enumerator(list);
 	while (enumerator->enumerate(enumerator, &directoryName))
@@ -801,20 +804,27 @@ METHOD(ac_t, get_authKeyIdentifier, chunk_t,
 	return this->authKeyIdentifier;
 }
 
-/**
- * Filter function for attribute enumeration
- */
-static bool attr_filter(void *null, group_t **in, ac_group_type_t *type,
-						void *in2, chunk_t *out)
+CALLBACK(attr_filter, bool,
+	void *null, enumerator_t *orig, va_list args)
 {
-	if ((*in)->type == AC_GROUP_TYPE_STRING &&
-		!chunk_printable((*in)->value, NULL, 0))
-	{	/* skip non-printable strings */
-		return FALSE;
+	group_t *group;
+	ac_group_type_t *type;
+	chunk_t *out;
+
+	VA_ARGS_VGET(args, type, out);
+
+	while (orig->enumerate(orig, &group))
+	{
+		if (group->type == AC_GROUP_TYPE_STRING &&
+			!chunk_printable(group->value, NULL, 0))
+		{	/* skip non-printable strings */
+			continue;
+		}
+		*type = group->type;
+		*out = group->value;
+		return TRUE;
 	}
-	*type = (*in)->type;
-	*out = (*in)->value;
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(ac_t, create_group_enumerator, enumerator_t*,
@@ -822,7 +832,7 @@ METHOD(ac_t, create_group_enumerator, enumerator_t*,
 {
 	return enumerator_create_filter(
 							this->groups->create_enumerator(this->groups),
-							(void*)attr_filter, NULL, NULL);
+							attr_filter, NULL, NULL);
 }
 
 METHOD(certificate_t, get_type, certificate_type_t,

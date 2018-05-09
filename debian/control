@@ -5,7 +5,7 @@ Maintainer: strongSwan Maintainers <pkg-swan-devel@lists.alioth.debian.org>
 Uploaders: Rene Mayrhofer <rmayr@debian.org>,
            Yves-Alexis Perez <corsac@debian.org>,
            Romain Francoise <rfrancoise@debian.org>
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-swan/strongswan.git;a=summary
 Vcs-Git: git://anonscm.debian.org/pkg-swan/strongswan.git
 Build-Depends: bison,
@@ -97,6 +97,9 @@ Description: strongSwan utility and crypto library
   - kernel-pfroute [kfreebsd] (Networking kernel interface using PF_ROUTE)
   - resolve (Writes name servers received via IKE to a resolv.conf file or
     installs them via resolvconf(8))
+  .
+  Also included is the libtpmtss library adding support for TPM plugin
+  (https://wiki.strongswan.org/projects/strongswan/wiki/TpmPlugin)
 
 Package: libstrongswan-standard-plugins
 Architecture: any
@@ -123,14 +126,14 @@ Architecture: any
 Depends: libstrongswan (= ${binary:Version}),
          ${misc:Depends},
          ${shlibs:Depends}
-Breaks: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1)
-Replaces: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1)
+Breaks: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1), libcharon-extra-plugins (<= 5.5.3-1)
+Replaces: libstrongswan (<= 5.1.1-1), strongswan-ike (<= 5.1.1-1), libcharon-extra-plugins (<= 5.5.3-1)
 Description: strongSwan utility and crypto library (extra plugins)
  The strongSwan VPN suite uses the native IPsec stack in the standard
  Linux kernel. It supports both the IKEv1 and IKEv2 protocols.
  .
  This package provides extra plugins for the strongSwan utility and
- cryptograhic library.
+ cryptographic library.
  .
  Included plugins are:
   - af-alg [linux] (AF_ALG Linux crypto API interface, provides
@@ -139,6 +142,8 @@ Description: strongSwan utility and crypto library (extra plugins)
   - cmac (CMAC cipher mode wrapper)
   - ctr (CTR cipher mode wrapper)
   - curl (libcurl based HTTP/FTP fetcher)
+  - curve25519 (support for Diffie-Hellman group 31 using Curve25519 and
+    support for the Ed25519 digital signature algorithm for IKEv2)
   - gcrypt (Crypto backend based on libgcrypt, provides
     RSA/DH/ciphers/hashers/rng)
   - ldap (LDAP fetching plugin based on libldap)

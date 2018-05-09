@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2008 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * Copyright (C) 2016 Andreas Steffen
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -99,6 +100,8 @@ enum builder_part_t {
 	BUILD_OCSP_ACCESS_LOCATIONS,
 	/** certificate path length constraint */
 	BUILD_PATHLEN,
+	/** RFC3779 addressBlock, linked_list_t* of traffic_selector_t* */
+	BUILD_ADDRBLOCKS,
 	/** permitted X509 name constraints, linked_list_t* of identification_t* */
 	BUILD_PERMITTED_NAME_CONSTRAINTS,
 	/** excluded X509 name constraints, linked_list_t* of identification_t* */
@@ -151,6 +154,8 @@ enum builder_part_t {
 	BUILD_SHARES,
 	/** minimum number of participating private key shares */
 	BUILD_THRESHOLD,
+	/** DER encoded ASN.1 EdDSA private key */
+	BUILD_EDDSA_PRIV_ASN1_DER,
 	/** end of variable argument builder list */
 	BUILD_END,
 };

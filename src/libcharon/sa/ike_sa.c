@@ -617,6 +617,12 @@ METHOD(ike_sa_t, set_message_id, void,
 	}
 }
 
+METHOD(ike_sa_t, get_message_id, uint32_t,
+	private_ike_sa_t *this, bool initiate)
+{
+	return this->task_manager->get_mid(this->task_manager, initiate);
+}
+
 METHOD(ike_sa_t, send_keepalive, void,
 	private_ike_sa_t *this, bool scheduled)
 {
@@ -755,6 +761,10 @@ METHOD(ike_sa_t, send_dpd, status_t,
 	if (this->state == IKE_PASSIVE)
 	{
 		return INVALID_STATE;
+	}
+	if (this->version == IKEV1 && this->state == IKE_REKEYING)
+	{	/* don't send DPDs for rekeyed IKEv1 SAs */
+		return SUCCESS;
 	}
 	delay = this->peer_cfg->get_dpd(this->peer_cfg);
 	if (this->task_manager->busy(this->task_manager))
@@ -1190,12 +1200,20 @@ METHOD(ike_sa_t, generate_message, status_t,
 	return status;
 }
 
-static bool filter_fragments(private_ike_sa_t *this, packet_t **fragment,
-							 packet_t **packet)
+CALLBACK(filter_fragments, bool,
+	private_ike_sa_t *this, enumerator_t *orig, va_list args)
 {
-	*packet = (*fragment)->clone(*fragment);
-	set_dscp(this, *packet);
-	return TRUE;
+	packet_t *fragment, **packet;
+
+	VA_ARGS_VGET(args, packet);
+
+	if (orig->enumerate(orig, &fragment))
+	{
+		*packet = fragment->clone(fragment);
+		set_dscp(this, *packet);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 METHOD(ike_sa_t, generate_message_fragmented, status_t,
@@ -1255,7 +1273,7 @@ METHOD(ike_sa_t, generate_message_fragmented, status_t,
 		{
 			charon->bus->message(charon->bus, message, FALSE, FALSE);
 		}
-		*packets = enumerator_create_filter(fragments, (void*)filter_fragments,
+		*packets = enumerator_create_filter(fragments, filter_fragments,
 											this, NULL);
 	}
 	return status;
@@ -1689,8 +1707,11 @@ typedef struct {
 } child_enumerator_t;
 
 METHOD(enumerator_t, child_enumerate, bool,
-	child_enumerator_t *this, child_sa_t **child_sa)
+	child_enumerator_t *this, va_list args)
 {
+	child_sa_t **child_sa;
+
+	VA_ARGS_VGET(args, child_sa);
 	if (this->inner->enumerate(this->inner, &this->current))
 	{
 		*child_sa = this->current;
@@ -1713,7 +1734,8 @@ METHOD(ike_sa_t, create_child_sa_enumerator, enumerator_t*,
 
 	INIT(enumerator,
 		.public = {
-			.enumerate = (void*)_child_enumerate,
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _child_enumerate,
 			.destroy = _child_enumerator_destroy,
 		},
 		.inner = array_create_enumerator(this->child_sas),
@@ -2436,6 +2458,25 @@ static bool is_current_path_valid(private_ike_sa_t *this)
 {
 	bool valid = FALSE;
 	host_t *src;
+
+	if (supports_extension(this, EXT_MOBIKE) &&
+		lib->settings->get_bool(lib->settings,
+								"%s.prefer_best_path", FALSE, lib->ns))
+	{
+		/* check if the current path is the best path; migrate otherwise */
+		src = charon->kernel->get_source_addr(charon->kernel, this->other_host,
+											  NULL);
+		if (src)
+		{
+			valid = src->ip_equals(src, this->my_host);
+			src->destroy(src);
+		}
+		if (!valid)
+		{
+			DBG1(DBG_IKE, "old path is not preferred anymore");
+		}
+		return valid;
+	}
 	src = charon->kernel->get_source_addr(charon->kernel, this->other_host,
 										  this->my_host);
 	if (src)
@@ -2445,6 +2486,10 @@ static bool is_current_path_valid(private_ike_sa_t *this)
 			valid = TRUE;
 		}
 		src->destroy(src);
+	}
+	if (!valid)
+	{
+		DBG1(DBG_IKE, "old path is not available anymore, try to find another");
 	}
 	return valid;
 }
@@ -2472,7 +2517,6 @@ static bool is_any_path_valid(private_ike_sa_t *this)
 			break;
 	}
 
-	DBG1(DBG_IKE, "old path is not available anymore, try to find another");
 	enumerator = create_peer_address_enumerator(this);
 	while (enumerator->enumerate(enumerator, &addr))
 	{
@@ -2509,6 +2553,16 @@ METHOD(ike_sa_t, roam, status_t,
 			return SUCCESS;
 		default:
 			break;
+	}
+
+	/* ignore roam events if MOBIKE is not supported/enabled and the local
+	 * address is statically configured */
+	if (this->version == IKEV2 && !supports_extension(this, EXT_MOBIKE) &&
+		ike_cfg_has_address(this->ike_cfg, this->my_host, TRUE))
+	{
+		DBG2(DBG_IKE, "keeping statically configured path %H - %H",
+			 this->my_host, this->other_host);
+		return SUCCESS;
 	}
 
 	/* keep existing path if possible */
@@ -2577,24 +2631,31 @@ METHOD(ike_sa_t, add_configuration_attribute, void,
 	array_insert(this->attributes, ARRAY_TAIL, &entry);
 }
 
-/**
- * Enumerator filter for attributes
- */
-static bool filter_attribute(void *null, attribute_entry_t **in,
-							 configuration_attribute_type_t *type, void *in2,
-							 chunk_t *data, void *in3, bool *handled)
+CALLBACK(filter_attribute, bool,
+	void *null, enumerator_t *orig, va_list args)
 {
-	*type = (*in)->type;
-	*data = (*in)->data;
-	*handled = (*in)->handler != NULL;
-	return TRUE;
+	attribute_entry_t *entry;
+	configuration_attribute_type_t *type;
+	chunk_t *data;
+	bool *handled;
+
+	VA_ARGS_VGET(args, type, data, handled);
+
+	if (orig->enumerate(orig, &entry))
+	{
+		*type = entry->type;
+		*data = entry->data;
+		*handled = entry->handler != NULL;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 METHOD(ike_sa_t, create_attribute_enumerator, enumerator_t*,
 	private_ike_sa_t *this)
 {
 	return enumerator_create_filter(array_create_enumerator(this->attributes),
-									(void*)filter_attribute, NULL, NULL);
+									filter_attribute, NULL, NULL);
 }
 
 METHOD(ike_sa_t, create_task_enumerator, enumerator_t*,
@@ -2885,6 +2946,7 @@ ike_sa_t * ike_sa_create(ike_sa_id_t *ike_sa_id, bool initiator,
 			.get_other_host = _get_other_host,
 			.set_other_host = _set_other_host,
 			.set_message_id = _set_message_id,
+			.get_message_id = _get_message_id,
 			.float_ports = _float_ports,
 			.update_hosts = _update_hosts,
 			.get_my_id = _get_my_id,

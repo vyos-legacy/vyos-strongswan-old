@@ -210,6 +210,16 @@ struct private_task_manager_t {
 	double retransmit_base;
 
 	/**
+	 * Jitter to apply to calculated retransmit timeout (in percent)
+	 */
+	u_int retransmit_jitter;
+
+	/**
+	 * Limit retransmit timeout to this value
+	 */
+	uint32_t retransmit_limit;
+
+	/**
 	 * Sequence number for sending DPD requests
 	 */
 	uint32_t dpd_send;
@@ -345,7 +355,7 @@ static status_t retransmit_packet(private_task_manager_t *this, uint32_t seqnr,
 							u_int mid, u_int retransmitted, array_t *packets)
 {
 	packet_t *packet;
-	uint32_t t;
+	uint32_t t, max_jitter;
 
 	array_get(packets, 0, &packet);
 	if (retransmitted > this->retransmit_tries)
@@ -356,6 +366,15 @@ static status_t retransmit_packet(private_task_manager_t *this, uint32_t seqnr,
 	}
 	t = (uint32_t)(this->retransmit_timeout * 1000.0 *
 					pow(this->retransmit_base, retransmitted));
+	if (this->retransmit_limit)
+	{
+		t = min(t, this->retransmit_limit);
+	}
+	if (this->retransmit_jitter)
+	{
+		max_jitter = (t / 100.0) * this->retransmit_jitter;
+		t -= max_jitter * (random() / (RAND_MAX + 1.0));
+	}
 	if (retransmitted)
 	{
 		DBG1(DBG_IKE, "sending retransmit %u of %s message ID %u, seq %u",
@@ -367,7 +386,7 @@ static status_t retransmit_packet(private_task_manager_t *this, uint32_t seqnr,
 	send_packets(this, packets);
 	lib->scheduler->schedule_job_ms(lib->scheduler, (job_t*)
 			retransmit_job_create(seqnr, this->ike_sa->get_id(this->ike_sa)), t);
-	return NEED_MORE;
+	return SUCCESS;
 }
 
 METHOD(task_manager_t, retransmit, status_t,
@@ -380,10 +399,9 @@ METHOD(task_manager_t, retransmit, status_t,
 	{
 		status = retransmit_packet(this, seqnr, this->initiating.mid,
 					this->initiating.retransmitted, this->initiating.packets);
-		if (status == NEED_MORE)
+		if (status == SUCCESS)
 		{
 			this->initiating.retransmitted++;
-			status = SUCCESS;
 		}
 	}
 	if (seqnr == this->responding.seqnr &&
@@ -391,10 +409,9 @@ METHOD(task_manager_t, retransmit, status_t,
 	{
 		status = retransmit_packet(this, seqnr, this->responding.mid,
 					this->responding.retransmitted, this->responding.packets);
-		if (status == NEED_MORE)
+		if (status == SUCCESS)
 		{
 			this->responding.retransmitted++;
-			status = SUCCESS;
 		}
 	}
 	return status;
@@ -554,6 +571,12 @@ METHOD(task_manager_t, initiate, status_t,
 					new_mid = TRUE;
 					break;
 				}
+				if (activate_task(this, TASK_ISAKMP_DPD))
+				{
+					exchange = INFORMATIONAL_V1;
+					new_mid = TRUE;
+					break;
+				}
 				break;
 			default:
 				break;
@@ -685,13 +708,9 @@ METHOD(task_manager_t, initiate, status_t,
 		message->destroy(message);
 		return retransmit(this, this->initiating.seqnr);
 	}
-	if (keep)
-	{	/* keep the packet for retransmission, the responder might request it */
-		send_packets(this, this->initiating.packets);
-	}
-	else
+	send_packets(this, this->initiating.packets);
+	if (!keep)
 	{
-		send_packets(this, this->initiating.packets);
 		clear_packets(this->initiating.packets);
 	}
 	message->destroy(message);
@@ -1902,6 +1921,12 @@ METHOD(task_manager_t, incr_mid, void,
 {
 }
 
+METHOD(task_manager_t, get_mid, uint32_t,
+	private_task_manager_t *this, bool initiate)
+{
+	return initiate ? this->initiating.mid : this->responding.mid;
+}
+
 METHOD(task_manager_t, reset, void,
 	private_task_manager_t *this, uint32_t initiate, uint32_t respond)
 {
@@ -2005,6 +2030,7 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 				.initiate = _initiate,
 				.retransmit = _retransmit,
 				.incr_mid = _incr_mid,
+				.get_mid = _get_mid,
 				.reset = _reset,
 				.adopt_tasks = _adopt_tasks,
 				.adopt_child_tasks = _adopt_child_tasks,
@@ -2027,11 +2053,15 @@ task_manager_v1_t *task_manager_v1_create(ike_sa_t *ike_sa)
 		.active_tasks = linked_list_create(),
 		.passive_tasks = linked_list_create(),
 		.retransmit_tries = lib->settings->get_int(lib->settings,
-						"%s.retransmit_tries", RETRANSMIT_TRIES, lib->ns),
+					"%s.retransmit_tries", RETRANSMIT_TRIES, lib->ns),
 		.retransmit_timeout = lib->settings->get_double(lib->settings,
-						"%s.retransmit_timeout", RETRANSMIT_TIMEOUT, lib->ns),
+					"%s.retransmit_timeout", RETRANSMIT_TIMEOUT, lib->ns),
 		.retransmit_base = lib->settings->get_double(lib->settings,
-						"%s.retransmit_base", RETRANSMIT_BASE, lib->ns),
+					"%s.retransmit_base", RETRANSMIT_BASE, lib->ns),
+		.retransmit_jitter = min(lib->settings->get_int(lib->settings,
+					"%s.retransmit_jitter", 0, lib->ns), RETRANSMIT_JITTER_MAX),
+		.retransmit_limit = lib->settings->get_int(lib->settings,
+					"%s.retransmit_limit", 0, lib->ns) * 1000,
 	);
 
 	if (!this->rng)

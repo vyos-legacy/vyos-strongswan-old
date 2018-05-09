@@ -74,25 +74,27 @@ typedef struct {
 	identification_t *id;
 } cert_data_t;
 
-/**
- * destroy cert_data
- */
-static void cert_data_destroy(cert_data_t *data)
+CALLBACK(cert_data_destroy, void,
+	cert_data_t *data)
 {
 	data->lock->unlock(data->lock);
 	free(data);
 }
 
-/**
- * filter function for certs enumerator
- */
-static bool certs_filter(cert_data_t *data, certificate_t **in, certificate_t **out)
+CALLBACK(certs_filter, bool,
+	cert_data_t *data, enumerator_t *orig, va_list args)
 {
 	public_key_t *public;
-	certificate_t *cert = *in;
+	certificate_t *cert, **out;
 
-	if (data->cert == CERT_ANY || data->cert == cert->get_type(cert))
+	VA_ARGS_VGET(args, out);
+
+	while (orig->enumerate(orig, &cert))
 	{
+		if (data->cert != CERT_ANY && data->cert != cert->get_type(cert))
+		{
+			continue;
+		}
 		public = cert->get_public_key(cert);
 		if (public)
 		{
@@ -102,7 +104,7 @@ static bool certs_filter(cert_data_t *data, certificate_t **in, certificate_t **
 											data->id->get_encoding(data->id)))
 				{
 					public->destroy(public);
-					*out = *in;
+					*out = cert;
 					return TRUE;
 				}
 			}
@@ -110,11 +112,11 @@ static bool certs_filter(cert_data_t *data, certificate_t **in, certificate_t **
 		}
 		else if (data->key != KEY_ANY)
 		{
-			return FALSE;
+			continue;
 		}
-		if (data->id == NULL || cert->has_subject(cert, data->id))
+		if (!data->id || cert->has_subject(cert, data->id))
 		{
-			*out = *in;
+			*out = cert;
 			return TRUE;
 		}
 	}
@@ -143,12 +145,16 @@ METHOD(credential_set_t, create_cert_enumerator, enumerator_t*,
 	{
 		enumerator = this->untrusted->create_enumerator(this->untrusted);
 	}
-	return enumerator_create_filter(enumerator, (void*)certs_filter, data,
-									(void*)cert_data_destroy);
+	return enumerator_create_filter(enumerator, certs_filter, data,
+									cert_data_destroy);
 }
 
-static bool certificate_equals(certificate_t *item, certificate_t *cert)
+CALLBACK(certificate_equals, bool,
+	certificate_t *item, va_list args)
 {
+	certificate_t *cert;
+
+	VA_ARGS_VGET(args, cert);
 	return item->equals(item, cert);
 }
 
@@ -161,9 +167,8 @@ static certificate_t *add_cert_internal(private_mem_cred_t *this, bool trusted,
 {
 	certificate_t *cached;
 	this->lock->write_lock(this->lock);
-	if (this->untrusted->find_first(this->untrusted,
-									(linked_list_match_t)certificate_equals,
-									(void**)&cached, cert) == SUCCESS)
+	if (this->untrusted->find_first(this->untrusted, certificate_equals,
+									(void**)&cached, cert))
 	{
 		cert->destroy(cert);
 		cert = cached->get_ref(cached);
@@ -199,9 +204,8 @@ METHOD(mem_cred_t, get_cert_ref, certificate_t*,
 	certificate_t *cached;
 
 	this->lock->read_lock(this->lock);
-	if (this->untrusted->find_first(this->untrusted,
-									(linked_list_match_t)certificate_equals,
-									(void**)&cached, cert) == SUCCESS)
+	if (this->untrusted->find_first(this->untrusted, certificate_equals,
+									(void**)&cached, cert))
 	{
 		cert->destroy(cert);
 		cert = cached->get_ref(cached);
@@ -301,30 +305,30 @@ typedef struct {
 	identification_t *id;
 } key_data_t;
 
-/**
- * Destroy key enumerator data
- */
-static void key_data_destroy(key_data_t *data)
+CALLBACK(key_data_destroy, void,
+	key_data_t *data)
 {
 	data->lock->unlock(data->lock);
 	free(data);
 }
 
-/**
- * filter function for private key enumerator
- */
-static bool key_filter(key_data_t *data, private_key_t **in, private_key_t **out)
+CALLBACK(key_filter, bool,
+	key_data_t *data, enumerator_t *orig, va_list args)
 {
-	private_key_t *key;
+	private_key_t *key, **out;
 
-	key = *in;
-	if (data->type == KEY_ANY || data->type == key->get_type(key))
+	VA_ARGS_VGET(args, out);
+
+	while (orig->enumerate(orig, &key))
 	{
-		if (data->id == NULL ||
-			key->has_fingerprint(key, data->id->get_encoding(data->id)))
+		if (data->type == KEY_ANY || data->type == key->get_type(key))
 		{
-			*out = key;
-			return TRUE;
+			if (data->id == NULL ||
+				key->has_fingerprint(key, data->id->get_encoding(data->id)))
+			{
+				*out = key;
+				return TRUE;
+			}
 		}
 	}
 	return FALSE;
@@ -342,7 +346,7 @@ METHOD(credential_set_t, create_private_enumerator, enumerator_t*,
 	);
 	this->lock->read_lock(this->lock);
 	return enumerator_create_filter(this->keys->create_enumerator(this->keys),
-							(void*)key_filter, data, (void*)key_data_destroy);
+									key_filter, data, key_data_destroy);
 }
 
 METHOD(mem_cred_t, add_key, void,
@@ -370,14 +374,42 @@ METHOD(mem_cred_t, add_key, void,
 	this->lock->unlock(this->lock);
 }
 
+METHOD(mem_cred_t, remove_key, bool,
+	private_mem_cred_t *this, chunk_t fp)
+{
+	enumerator_t *enumerator;
+	private_key_t *current;
+	bool found = FALSE;
+
+	this->lock->write_lock(this->lock);
+
+	enumerator = this->keys->create_enumerator(this->keys);
+	while (enumerator->enumerate(enumerator, &current))
+	{
+		if (current->has_fingerprint(current, fp))
+		{
+			this->keys->remove_at(this->keys, enumerator);
+			current->destroy(current);
+			found = TRUE;
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	this->lock->unlock(this->lock);
+	return found;
+}
+
 /**
  * Shared key entry
  */
 typedef struct {
-	/* shared key */
+	/** shared key */
 	shared_key_t *shared;
-	/* list of owners, identification_t */
+	/** list of owners, identification_t */
 	linked_list_t *owners;
+	/** optional unique identifier */
+	char *id;
 } shared_entry_t;
 
 /**
@@ -388,11 +420,12 @@ static void shared_entry_destroy(shared_entry_t *entry)
 	entry->owners->destroy_offset(entry->owners,
 								  offsetof(identification_t, destroy));
 	entry->shared->destroy(entry->shared);
+	free(entry->id);
 	free(entry);
 }
 
 /**
- * Check if two shared key entries equal
+ * Check if two shared key entries are equal (ignoring the unique identifier)
  */
 static bool shared_entry_equals(shared_entry_t *a, shared_entry_t *b)
 {
@@ -439,10 +472,8 @@ typedef struct {
 	shared_key_type_t type;
 } shared_data_t;
 
-/**
- * free shared key enumerator data and unlock list
- */
-static void shared_data_destroy(shared_data_t *data)
+CALLBACK(shared_data_destroy, void,
+	shared_data_t *data)
 {
 	data->lock->unlock(data->lock);
 	free(data);
@@ -470,44 +501,47 @@ static id_match_t has_owner(shared_entry_t *entry, identification_t *owner)
 	return best;
 }
 
-/**
- * enumerator filter function for shared entries
- */
-static bool shared_filter(shared_data_t *data,
-						  shared_entry_t **in, shared_key_t **out,
-						  void **unused1, id_match_t *me,
-						  void **unused2, id_match_t *other)
+CALLBACK(shared_filter, bool,
+	shared_data_t *data, enumerator_t *orig, va_list args)
 {
 	id_match_t my_match = ID_MATCH_NONE, other_match = ID_MATCH_NONE;
-	shared_entry_t *entry = *in;
+	shared_entry_t *entry;
+	shared_key_t **out;
+	id_match_t *me, *other;
 
-	if (data->type != SHARED_ANY &&
-		entry->shared->get_type(entry->shared) != data->type)
+	VA_ARGS_VGET(args, out, me, other);
+
+	while (orig->enumerate(orig, &entry))
 	{
-		return FALSE;
+		if (data->type != SHARED_ANY &&
+			entry->shared->get_type(entry->shared) != data->type)
+		{
+			continue;
+		}
+		if (data->me)
+		{
+			my_match = has_owner(entry, data->me);
+		}
+		if (data->other)
+		{
+			other_match = has_owner(entry, data->other);
+		}
+		if ((data->me || data->other) && (!my_match && !other_match))
+		{
+			continue;
+		}
+		*out = entry->shared;
+		if (me)
+		{
+			*me = my_match;
+		}
+		if (other)
+		{
+			*other = other_match;
+		}
+		return TRUE;
 	}
-	if (data->me)
-	{
-		my_match = has_owner(entry, data->me);
-	}
-	if (data->other)
-	{
-		other_match = has_owner(entry, data->other);
-	}
-	if ((data->me || data->other) && (!my_match && !other_match))
-	{
-		return FALSE;
-	}
-	*out = entry->shared;
-	if (me)
-	{
-		*me = my_match;
-	}
-	if (other)
-	{
-		*other = other_match;
-	}
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(credential_set_t, create_shared_enumerator, enumerator_t*,
@@ -525,11 +559,12 @@ METHOD(credential_set_t, create_shared_enumerator, enumerator_t*,
 	data->lock->read_lock(data->lock);
 	return enumerator_create_filter(
 						this->shared->create_enumerator(this->shared),
-						(void*)shared_filter, data, (void*)shared_data_destroy);
+						shared_filter, data, shared_data_destroy);
 }
 
-METHOD(mem_cred_t, add_shared_list, void,
-	private_mem_cred_t *this, shared_key_t *shared, linked_list_t* owners)
+METHOD(mem_cred_t, add_shared_unique, void,
+	private_mem_cred_t *this, char *id, shared_key_t *shared,
+	linked_list_t* owners)
 {
 	shared_entry_t *current, *new;
 	enumerator_t *enumerator;
@@ -537,6 +572,7 @@ METHOD(mem_cred_t, add_shared_list, void,
 	INIT(new,
 		.shared = shared,
 		.owners = owners,
+		.id = strdupnull(id),
 	);
 
 	this->lock->write_lock(this->lock);
@@ -544,7 +580,10 @@ METHOD(mem_cred_t, add_shared_list, void,
 	enumerator = this->shared->create_enumerator(this->shared);
 	while (enumerator->enumerate(enumerator, &current))
 	{
-		if (shared_entry_equals(current, new))
+		/* always replace keys with the same unique identifier, only compare
+		 * them if both have no unique id assigned */
+		if ((id && streq(id, current->id)) ||
+			(!id && !current->id && shared_entry_equals(current, new)))
 		{
 			this->shared->remove_at(this->shared, enumerator);
 			shared_entry_destroy(current);
@@ -556,6 +595,12 @@ METHOD(mem_cred_t, add_shared_list, void,
 	this->shared->insert_first(this->shared, new);
 
 	this->lock->unlock(this->lock);
+}
+
+METHOD(mem_cred_t, add_shared_list, void,
+	private_mem_cred_t *this, shared_key_t *shared, linked_list_t* owners)
+{
+	add_shared_unique(this, NULL, shared, owners);
 }
 
 METHOD(mem_cred_t, add_shared, void,
@@ -578,6 +623,67 @@ METHOD(mem_cred_t, add_shared, void,
 	va_end(args);
 
 	add_shared_list(this, shared, owners);
+}
+
+METHOD(mem_cred_t, remove_shared_unique, void,
+	private_mem_cred_t *this, char *id)
+{
+	enumerator_t *enumerator;
+	shared_entry_t *current;
+
+	if (!id)
+	{
+		return;
+	}
+
+	this->lock->write_lock(this->lock);
+
+	enumerator = this->shared->create_enumerator(this->shared);
+	while (enumerator->enumerate(enumerator, &current))
+	{
+		if (streq(id, current->id))
+		{
+			this->shared->remove_at(this->shared, enumerator);
+			shared_entry_destroy(current);
+			break;
+		}
+	}
+	enumerator->destroy(enumerator);
+
+	this->lock->unlock(this->lock);
+}
+
+CALLBACK(unique_filter, bool,
+	void *unused, enumerator_t *orig, va_list args)
+{
+	shared_entry_t *entry;
+	char **id;
+
+	VA_ARGS_VGET(args, id);
+
+	while (orig->enumerate(orig, &entry))
+	{
+		if (!entry->id)
+		{
+			continue;
+		}
+		if (id)
+		{
+			*id = entry->id;
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
+METHOD(mem_cred_t, create_unique_shared_enumerator, enumerator_t*,
+	private_mem_cred_t *this)
+{
+	this->lock->read_lock(this->lock);
+	return enumerator_create_filter(
+								this->shared->create_enumerator(this->shared),
+								unique_filter, this->lock,
+								(void*)this->lock->unlock);
 }
 
 /**
@@ -624,30 +730,35 @@ typedef struct {
 	rwlock_t *lock;
 } cdp_data_t;
 
-/**
- * Clean up CDP enumerator data
- */
-static void cdp_data_destroy(cdp_data_t *data)
+CALLBACK(cdp_data_destroy, void,
+	cdp_data_t *data)
 {
 	data->lock->unlock(data->lock);
 	free(data);
 }
 
-/**
- * CDP enumerator filter
- */
-static bool cdp_filter(cdp_data_t *data, cdp_t **cdp, char **uri)
+CALLBACK(cdp_filter, bool,
+	cdp_data_t *data, enumerator_t *orig, va_list args)
 {
-	if (data->type != CERT_ANY && data->type != (*cdp)->type)
+	cdp_t *cdp;
+	char **uri;
+
+	VA_ARGS_VGET(args, uri);
+
+	while (orig->enumerate(orig, &cdp))
 	{
-		return FALSE;
+		if (data->type != CERT_ANY && data->type != cdp->type)
+		{
+			continue;
+		}
+		if (data->id && !cdp->id->matches(cdp->id, data->id))
+		{
+			continue;
+		}
+		*uri = cdp->uri;
+		return TRUE;
 	}
-	if (data->id && !(*cdp)->id->matches((*cdp)->id, data->id))
-	{
-		return FALSE;
-	}
-	*uri = (*cdp)->uri;
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(credential_set_t, create_cdp_enumerator, enumerator_t*,
@@ -662,7 +773,7 @@ METHOD(credential_set_t, create_cdp_enumerator, enumerator_t*,
 	);
 	this->lock->read_lock(this->lock);
 	return enumerator_create_filter(this->cdps->create_enumerator(this->cdps),
-							(void*)cdp_filter, data, (void*)cdp_data_destroy);
+									cdp_filter, data, cdp_data_destroy);
 
 }
 
@@ -817,8 +928,12 @@ mem_cred_t *mem_cred_create()
 			.get_cert_ref = _get_cert_ref,
 			.add_crl = _add_crl,
 			.add_key = _add_key,
+			.remove_key = _remove_key,
 			.add_shared = _add_shared,
 			.add_shared_list = _add_shared_list,
+			.add_shared_unique = _add_shared_unique,
+			.remove_shared_unique = _remove_shared_unique,
+			.create_unique_shared_enumerator = _create_unique_shared_enumerator,
 			.add_cdp = _add_cdp,
 			.replace_certs = _replace_certs,
 			.replace_secrets = _replace_secrets,

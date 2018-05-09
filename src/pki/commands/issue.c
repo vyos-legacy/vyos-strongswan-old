@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Martin Willi
- * Copyright (C) 2015 Andreas Steffen
+ * Copyright (C) 2015-2017 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -71,6 +71,7 @@ static int issue()
 	char *error = NULL, *keyid = NULL;
 	identification_t *id = NULL;
 	linked_list_t *san, *cdps, *ocsp, *permitted, *excluded, *policies, *mappings;
+	linked_list_t *addrblocks;
 	int pathlen = X509_NO_CONSTRAINT, inhibit_any = X509_NO_CONSTRAINT;
 	int inhibit_mapping = X509_NO_CONSTRAINT, require_explicit = X509_NO_CONSTRAINT;
 	chunk_t serial = chunk_empty;
@@ -81,6 +82,7 @@ static int issue()
 	x509_t *x509;
 	x509_cdp_t *cdp = NULL;
 	x509_cert_policy_t *policy = NULL;
+	traffic_selector_t *ts;
 	char *arg;
 
 	san = linked_list_create();
@@ -90,6 +92,7 @@ static int issue()
 	excluded = linked_list_create();
 	policies = linked_list_create();
 	mappings = linked_list_create();
+	addrblocks = linked_list_create();
 
 	while (TRUE)
 	{
@@ -111,6 +114,11 @@ static int issue()
 				{
 					type = CRED_PRIVATE_KEY;
 					subtype = KEY_ECDSA;
+				}
+				else if (streq(arg, "ed25519"))
+				{
+					type = CRED_PRIVATE_KEY;
+					subtype = KEY_ED25519;
 				}
 				else if (streq(arg, "bliss"))
 				{
@@ -178,6 +186,15 @@ static int issue()
 				continue;
 			case 'p':
 				pathlen = atoi(arg);
+				continue;
+			case 'B':
+				ts = parse_ts(arg);
+				if (!ts)
+				{
+					error = "invalid addressBlock";
+					goto usage;
+				}
+				addrblocks->insert_last(addrblocks, ts);
 				continue;
 			case 'n':
 				permitted->insert_last(permitted,
@@ -389,6 +406,7 @@ static int issue()
 		goto end;
 	}
 	public->destroy(public);
+	public = NULL;
 
 	if (hex)
 	{
@@ -514,7 +532,7 @@ static int issue()
 					BUILD_NOT_BEFORE_TIME, not_before, BUILD_DIGEST_ALG, digest,
 					BUILD_NOT_AFTER_TIME, not_after, BUILD_SERIAL, serial,
 					BUILD_SUBJECT_ALTNAMES, san, BUILD_X509_FLAG, flags,
-					BUILD_PATHLEN, pathlen,
+					BUILD_PATHLEN, pathlen, BUILD_ADDRBLOCKS, addrblocks,
 					BUILD_CRL_DISTRIBUTION_POINTS, cdps,
 					BUILD_OCSP_ACCESS_LOCATIONS, ocsp,
 					BUILD_PERMITTED_NAME_CONSTRAINTS, permitted,
@@ -552,6 +570,7 @@ end:
 	san->destroy_offset(san, offsetof(identification_t, destroy));
 	permitted->destroy_offset(permitted, offsetof(identification_t, destroy));
 	excluded->destroy_offset(excluded, offsetof(identification_t, destroy));
+	addrblocks->destroy_offset(addrblocks, offsetof(traffic_selector_t, destroy));
 	policies->destroy_function(policies, (void*)destroy_cert_policy);
 	mappings->destroy_function(mappings, (void*)destroy_policy_mapping);
 	cdps->destroy_function(cdps, (void*)destroy_cdp);
@@ -570,6 +589,7 @@ usage:
 	san->destroy_offset(san, offsetof(identification_t, destroy));
 	permitted->destroy_offset(permitted, offsetof(identification_t, destroy));
 	excluded->destroy_offset(excluded, offsetof(identification_t, destroy));
+	addrblocks->destroy_offset(addrblocks, offsetof(traffic_selector_t, destroy));
 	policies->destroy_function(policies, (void*)destroy_cert_policy);
 	mappings->destroy_function(mappings, (void*)destroy_policy_mapping);
 	cdps->destroy_function(cdps, (void*)destroy_cdp);
@@ -585,7 +605,7 @@ static void __attribute__ ((constructor))reg()
 	command_register((command_t) {
 		issue, 'i', "issue",
 		"issue a certificate using a CA certificate and key",
-		{"[--in file] [--type pub|pkcs10|priv|rsa|ecdsa|bliss] --cakey file|--cakeyid hex",
+		{"[--in file] [--type pub|pkcs10|priv|rsa|ecdsa|ed25519|bliss] --cakey file|--cakeyid hex",
 		 " --cacert file [--dn subject-dn] [--san subjectAltName]+",
 		 "[--lifetime days] [--serial hex] [--ca] [--pathlen len]",
 		 "[--flag serverAuth|clientAuth|crlSign|ocspSigning|msSmartcardLogon]+",
@@ -601,7 +621,7 @@ static void __attribute__ ((constructor))reg()
 			{"type",			't', 1, "type of input, default: pub"},
 			{"cacert",			'c', 1, "CA certificate file"},
 			{"cakey",			'k', 1, "CA private key file"},
-			{"cakeyid",			'x', 1, "keyid on smartcard of CA private key"},
+			{"cakeyid",			'x', 1, "smartcard or TPM CA private key object handle"},
 			{"dn",				'd', 1, "distinguished name to include as subject"},
 			{"san",				'a', 1, "subjectAltName to include in certificate"},
 			{"lifetime",		'l', 1, "days the certificate is valid, default: 1095"},
@@ -611,6 +631,7 @@ static void __attribute__ ((constructor))reg()
 			{"serial",			's', 1, "serial number in hex, default: random"},
 			{"ca",				'b', 0, "include CA basicConstraint, default: no"},
 			{"pathlen",			'p', 1, "set path length constraint"},
+			{"addrblock",		'B', 1, "RFC 3779 addrBlock to include"},
 			{"nc-permitted",	'n', 1, "add permitted NameConstraint"},
 			{"nc-excluded",		'N', 1, "add excluded NameConstraint"},
 			{"cert-policy",		'P', 1, "certificatePolicy OID to include"},

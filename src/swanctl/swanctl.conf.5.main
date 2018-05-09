@@ -35,6 +35,9 @@ As initiator, the first non\-range/non\-subnet is used to initiate the connectio
 from. As responder, the local destination address must match at least to one of
 the specified addresses, subnets or ranges.
 
+If FQDNs are assigned they are resolved every time a configuration lookup is
+done. If DNS resolution times out, the lookup is delayed for that time.
+
 .TP
 .BR connections.<conn>.remote_addrs " [%any]"
 Remote address(es) to use for IKE communication, comma separated. Takes single
@@ -43,6 +46,9 @@ IPv4/IPv6 addresses, DNS names, CIDR subnets or IP address ranges.
 As initiator, the first non\-range/non\-subnet is used to initiate the connection
 to. As responder, the initiator source address must match at least to one of the
 specified addresses, subnets or ranges.
+
+If FQDNs are assigned they are resolved every time a configuration lookup is
+done. If DNS resolution times out, the lookup is delayed for that time.
 
 To initiate a connection, at least one specific address or DNS name must be
 specified.
@@ -118,6 +124,12 @@ Push mode is currently supported for IKEv1, but not in IKEv2. It is used by a
 few implementations only, pull mode is recommended.
 
 .TP
+.BR connections.<conn>.dscp " [000000]"
+Differentiated Services Field Codepoint to set on outgoing IKE packets for this
+connection. The value is a six digit binary encoded string specifying the
+Codepoint to set, as defined in RFC 2474.
+
+.TP
 .BR connections.<conn>.encap " [no]"
 To enforce UDP encapsulation of ESP packets, the IKE daemon can fake the NAT
 detection payloads. This makes the peer believe that NAT takes place on the
@@ -156,18 +168,29 @@ Use IKE fragmentation (proprietary IKEv1 extension or RFC 7383 IKEv2
 fragmentation).  Acceptable  values  are
 .RI "" "yes" ""
 (the        default),
+.RI "" "accept" ","
 .RI "" "force" ""
 and
 .RI "" "no" "."
-Fragmented IKE messages sent by a peer are always accepted irrespective of
-the  value  of  this option. If set to
+If set to
 .RI "" "yes" ","
-and the peer supports it,
-oversized IKE messages will be sent in fragments.  If set  to
+and the peer     supports it, oversized IKE
+messages will be sent in fragments. If set to
+.RI "" "accept" ","
+support for
+fragmentation is announced to the peer but the daemon does not send its own
+messages in fragments.  If set to
 .RI "" "force" ""
-(only
-supported  for IKEv1) the initial IKE message will already be fragmented if
-required.
+(only supported for IKEv1) the initial
+IKE message will already be fragmented if required. Finally, setting the option
+to
+.RI "" "no" ""
+will disable announcing support for this feature.
+
+Note that fragmented IKE messages sent by a peer are always accepted
+irrespective of the value of this option (even when set to
+.RI "" "no" ")."
+
 
 .TP
 .BR connections.<conn>.send_certreq " [yes]"
@@ -303,6 +326,30 @@ either the
 section or an external pool.
 
 .TP
+.BR connections.<conn>.mediation " [no]"
+Whether this connection is a mediation connection, that is, whether this
+connection is used to mediate other connections using the IKEv2 Mediation
+Extension.  Mediation connections create no CHILD_SA.
+
+.TP
+.BR connections.<conn>.mediated_by " []"
+The name of the connection to mediate this connection through. If given, the
+connection will be mediated through the named mediation connection. The
+mediation connection must have
+.RB "" "mediation" ""
+enabled.
+
+.TP
+.BR connections.<conn>.mediation_peer " []"
+Identity under which the peer is registered at the mediation server, that is,
+the IKE identity the other end of this connection uses as its local identity on
+its connection to the mediation server. This is the identity we request the
+mediation server to mediate us with. Only relevant on connections that set
+.RB "" "mediated_by" "."
+If it is not given, the remote IKE identity of the first
+authentication round of this connection will be used.
+
+.TP
 .B connections.<conn>.local<suffix>
 .br
 Section for a local authentication round. A local authentication round defines
@@ -332,6 +379,37 @@ absolute path.
 The certificate used for authentication is selected based on the received
 certificate request payloads. If no appropriate CA can be located, the first
 certificate is used.
+
+.TP
+.BR connections.<conn>.local<suffix>.cert<suffix> " []"
+Section for a certificate candidate to use for authentication. Certificates in
+.RI "" "certs" ""
+are transmitted as binary blobs, these sections offer more flexibility.
+
+.TP
+.BR connections.<conn>.local<suffix>.cert<suffix>.file " []"
+Absolute path to the certificate to load. Passed as\-is to the daemon, so it must
+be readable by it.
+
+Configure either this or
+.RI "" "handle" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.local<suffix>.cert<suffix>.handle " []"
+Hex\-encoded CKA_ID of the certificate on a token.
+
+Configure either this or
+.RI "" "file" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.local<suffix>.cert<suffix>.slot " []"
+Optional slot number of the token that stores the certificate.
+
+.TP
+.BR connections.<conn>.local<suffix>.cert<suffix>.module " []"
+Optional PKCS#11 module name.
 
 .TP
 .BR connections.<conn>.local<suffix>.pubkeys " []"
@@ -498,6 +576,11 @@ certified by different means, for example by appropriate Attribute Certificates
 or by an AAA backend involved in the authentication.
 
 .TP
+.BR connections.<conn>.remote<suffix>.cert_policy " []"
+Comma separated list of certificate policy OIDs the peer's certificate must
+have. OIDs are specified using the numerical dotted representation.
+
+.TP
 .BR connections.<conn>.remote<suffix>.certs " []"
 Comma separated list of certificates to accept for authentication. The
 certificates may use a relative path from the
@@ -507,6 +590,37 @@ directory or an
 absolute path.
 
 .TP
+.BR connections.<conn>.remote<suffix>.cert<suffix> " []"
+Section for a certificate to accept for authentication. Certificates in
+.RI "" "certs" ""
+are transmitted as binary blobs, these sections offer more flexibility.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cert<suffix>.file " []"
+Absolute path to the certificate to load. Passed as\-is to the daemon, so it must
+be readable by it.
+
+Configure either this or
+.RI "" "handle" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cert<suffix>.handle " []"
+Hex\-encoded CKA_ID of the certificate on a token.
+
+Configure either this or
+.RI "" "file" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cert<suffix>.slot " []"
+Optional slot number of the token that stores the certificate.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cert<suffix>.module " []"
+Optional PKCS#11 module name.
+
+.TP
 .BR connections.<conn>.remote<suffix>.cacerts " []"
 Comma separated list of CA certificates to accept for authentication. The
 certificates may use a relative path from the
@@ -514,6 +628,38 @@ certificates may use a relative path from the
 .RI "" "x509ca" ""
 directory or
 an absolute path.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cacert<suffix> " []"
+Section for a CA certificate to accept for authentication. Certificates in
+.RI "" "cacerts" ""
+are transmitted as binary blobs, these sections offer more
+flexibility.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cacert<suffix>.file " []"
+Absolute path to the certificate to load. Passed as\-is to the daemon, so it must
+be readable by it.
+
+Configure either this or
+.RI "" "handle" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cacert<suffix>.handle " []"
+Hex\-encoded CKA_ID of the CA certificate on a token.
+
+Configure either this or
+.RI "" "file" ","
+but not both, in one section.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cacert<suffix>.slot " []"
+Optional slot number of the token that stores the CA certificate.
+
+.TP
+.BR connections.<conn>.remote<suffix>.cacert<suffix>.module " []"
+Optional PKCS#11 module name.
 
 .TP
 .BR connections.<conn>.remote<suffix>.pubkeys " []"
@@ -651,6 +797,14 @@ interoperability. If no algorithms are specified for AH nor ESP, the
 set of algorithms for ESP is included.
 
 .TP
+.BR connections.<conn>.children.<child>.sha256_96 " [no]"
+HMAC\-SHA\-256 is used with 128\-bit truncation with IPsec. For compatibility with
+implementations that incorrectly use 96\-bit truncation this option may be
+enabled to configure the shorter truncation length in the kernel.  This is not
+negotiated, so this only works with peers that use the incorrect truncation
+length (or have this option enabled).
+
+.TP
 .BR connections.<conn>.children.<child>.local_ts " [dynamic]"
 Comma separated list of local traffic selectors to include in CHILD_SA. Each
 selector is a CIDR subnet definition, followed by an optional proto/port
@@ -673,9 +827,16 @@ for RFC 4301
 OPAQUE selectors. Port ranges may be specified as well, none of the kernel
 backends currently support port ranges, though.
 
-Unless the Unity extension is used, IKEv1 supports the first specified selector
-only. IKEv1 uses very similar traffic selector narrowing as it is supported in
-the IKEv2 protocol.
+When IKEv1 is used only the first selector is interpreted, except if the Cisco
+Unity extension plugin is used. This is due to a limitation of the IKEv1
+protocol, which only allows a single pair of selectors per CHILD_SA. So to
+tunnel traffic matched by several pairs of selectors when using IKEv1 several
+children (CHILD_SAs) have to be defined that cover the selectors.
+
+The IKE daemon uses traffic selector narrowing for IKEv1, the same way it is
+standardized and implemented for IKEv2. However, this may lead to problems with
+other implementations. To avoid that, configure identical selectors in such
+scenarios.
 
 .TP
 .BR connections.<conn>.children.<child>.remote_ts " [dynamic]"
@@ -803,10 +964,12 @@ negotiates the CHILD_SA in IPsec
 Tunnel Mode, whereas
 .RI "" "transport" ""
 uses IPsec Transport Mode.
+.RI "" "transport_proxy" ""
+signifying the special Mobile IPv6 Transport Proxy Mode.
 .RI "" "beet" ""
-is the Bound
-End to End Tunnel mixture mode, working with fixed inner addresses without the
-need to include them in each packet.
+is the Bound End
+to End Tunnel mixture mode, working with fixed inner addresses without the need
+to include them in each packet.
 
 Both
 .RI "" "transport" ""
@@ -921,6 +1084,11 @@ default of 32 are supported using the Netlink backend only, a value of 0
 disables IPsec replay protection.
 
 .TP
+.BR connections.<conn>.children.<child>.hw_offload " [no]"
+Enable hardware offload for this CHILD_SA, if supported by the IPsec
+implementation.
+
+.TP
 .BR connections.<conn>.children.<child>.start_action " [none]"
 Action to perform after loading the configuration. The default of
 .RI "" "none" ""
@@ -1009,6 +1177,33 @@ is just an alias for
 .RB "" "eap" ","
 secrets under both section prefixes are used for both EAP and XAuth
 authentication.
+
+.TP
+.B secrets.ntlm<suffix>
+.br
+NTLM secret section for a specific secret. Each NTLM secret is defined in a
+unique section having the
+.RI "" "ntlm" ""
+prefix. NTLM secrets may only be used for
+EAP\-MSCHAPv2 authentication.
+
+.TP
+.BR secrets.ntlm<suffix>.secret " []"
+Value of the NTLM secret, which is the NT Hash of the actual secret, that is,
+MD4(UTF\-16LE(secret)). The resulting 16\-byte value may either be given as a hex
+encoded string with a
+.RI "" "0x" ""
+prefix or as a Base64 encoded string with a
+.RI "" "0s" ""
+prefix.
+
+.TP
+.BR secrets.ntlm<suffix>.id<suffix> " []"
+Identity the NTLM secret belongs to. Multiple unique identities may be
+specified, each having an
+.RI "" "id" ""
+prefix, if a secret is shared between multiple
+users.
 
 .TP
 .B secrets.ike<suffix>
@@ -1121,6 +1316,28 @@ folder for which this passphrase should be used.
 Value of decryption passphrase for PKCS#12 container.
 
 .TP
+.B secrets.token<suffix>
+.br
+Definition for a private key that's stored on a token/smartcard.
+
+.TP
+.BR secrets.token<suffix>.handle " []"
+Hex\-encoded CKA_ID of the private key on the token.
+
+.TP
+.BR secrets.token<suffix>.slot " []"
+Optional slot number to access the token.
+
+.TP
+.BR secrets.token<suffix>.module " []"
+Optional PKCS#11 module name to access the token.
+
+.TP
+.BR secrets.token<suffix>.pin " []"
+Optional PIN required to access the key on the token. If none is provided the
+user is prompted during an interactive \-\-load\-creds call.
+
+.TP
 .B pools
 .br
 Section defining named pools. Named pools may be referenced by connections with
@@ -1172,19 +1389,57 @@ Section defining a certification authority with a unique name.
 
 .TP
 .BR authorities.<name>.cacert " []"
-The certificates may use a relative path from the
+CA certificate belonging to the certification authority. The certificates may
+use a relative path from the
 .RB "" "swanctl" ""
 .RI "" "x509ca" ""
-directory
-or an absolute path.
+directory or an absolute path.
+
+Configure one of
+.RI "" "cacert" ","
+.RI "" "file" ","
+or
+.RI "" "handle" ""
+per section.
+
+.TP
+.BR authorities.<name>.file " []"
+Absolute path to the certificate to load. Passed as\-is to the daemon, so it must
+be readable by it.
+
+Configure one of
+.RI "" "cacert" ","
+.RI "" "file" ","
+or
+.RI "" "handle" ""
+per section.
+
+.TP
+.BR authorities.<name>.handle " []"
+Hex\-encoded CKA_ID of the CA certificate on a token.
+
+Configure one of
+.RI "" "cacert" ","
+.RI "" "file" ","
+or
+.RI "" "handle" ""
+per section.
+
+.TP
+.BR authorities.<name>.slot " []"
+Optional slot number of the token that stores the CA certificate.
+
+.TP
+.BR authorities.<name>.module " []"
+Optional PKCS#11 module name.
 
 .TP
 .BR authorities.<name>.crl_uris " []"
-Comma\-separated list of CRL distribution points (ldap, http, or file URI)
+Comma\-separated list of CRL distribution points (ldap, http, or file URI).
 
 .TP
 .BR authorities.<name>.ocsp_uris " []"
-Comma\-separated list of OCSP URIs
+Comma\-separated list of OCSP URIs.
 
 .TP
 .BR authorities.<name>.cert_uri_base " []"

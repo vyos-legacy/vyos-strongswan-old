@@ -21,7 +21,16 @@
 #include <utils/debug.h>
 #include <threading/thread.h>
 
-#if !defined(__APPLE__) && !defined(__linux__) && !defined(HAVE_NET_IF_TUN_H)
+#if defined(__APPLE__)
+#include "TargetConditionals.h"
+#if !TARGET_OS_OSX
+#define TUN_DEVICE_NOT_SUPPORTED
+#endif
+#elif !defined(__linux__) && !defined(HAVE_NET_IF_TUN_H)
+#define TUN_DEVICE_NOT_SUPPORTED
+#endif
+
+#ifdef TUN_DEVICE_NOT_SUPPORTED
 
 tun_device_t *tun_device_create(const char *name_tmpl)
 {
@@ -481,10 +490,25 @@ static bool init_tun(private_tun_device_t *this, const char *name_tmpl)
 	strncpy(this->if_name, ifr.ifr_name, IFNAMSIZ);
 	return TRUE;
 
-#else /* !IFF_TUN */
+#elif defined(__FreeBSD__)
 
-	/* this works on FreeBSD and might also work on Linux with older TUN
-	 * driver versions (no IFF_TUN) */
+	if (name_tmpl)
+	{
+		DBG1(DBG_LIB, "arbitrary naming of TUN devices is not supported");
+	}
+
+	this->tunfd = open("/dev/tun", O_RDWR);
+	if (this->tunfd < 0)
+	{
+		DBG1(DBG_LIB, "failed to open /dev/tun: %s", strerror(errno));
+		return FALSE;
+	}
+	fdevname_r(this->tunfd, this->if_name, IFNAMSIZ);
+	return TRUE;
+
+#else /* !__FreeBSD__ */
+
+	/* this might work on Linux with older TUN driver versions (no IFF_TUN) */
 	char devname[IFNAMSIZ];
 	/* the same process is allowed to open a device again, but that's not what
 	 * we want (unless we previously closed a device, which we don't know at

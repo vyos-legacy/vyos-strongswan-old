@@ -445,22 +445,31 @@ force UDP encapsulation for ESP packets even if no NAT situation is detected.
 This may help to surmount restrictive firewalls. In order to force the peer to
 encapsulate packets, NAT detection payloads are faked.
 .TP
-.BR fragmentation " = " yes "  | force | no"
+.BR fragmentation " = " yes "  | accept | force | no"
 whether to use IKE fragmentation (proprietary IKEv1 extension or IKEv2
 fragmentation as per RFC 7383).  Acceptable values are
 .B yes
 (the default),
+.BR accept ,
 .B force
 and
 .BR no .
-Fragmented IKE messages sent by a peer are always accepted
-irrespective of the value of this option. If set to
-.BR yes ,
-and the peer supports it, larger IKE messages will be sent in fragments.
 If set to
+.BR yes ,
+and the peer supports it, oversized IKE messages will be sent in fragments. If
+set to
+.BR accept ,
+support for fragmentation is announced to the peer but the daemon does not send
+its own messages in fragments. If set to
 .B force
 (only supported for IKEv1) the initial IKE message will already be fragmented
-if required.
+if required. Finally, setting the option to
+.B no
+will disable announcing support for this feature.
+
+Note that fragmented IKE messages sent by a peer are always accepted
+irrespective of the value of this option (even when set to
+.BR no ).
 .TP
 .BR ike " = <cipher suites>"
 comma-separated list of IKE/ISAKMP SA encryption/authentication algorithms
@@ -553,6 +562,11 @@ in front of a fully-qualified domain name or an IP address will implicitly set
 If
 .B %any
 is used for the remote endpoint it literally means any IP address.
+
+If an
+.B FQDN
+is assigned it is resolved every time a configuration lookup is done. If DNS
+resolution times out, the lookup is delayed for that time.
 
 To limit the connection to a  specific range of hosts, a range (
 .BR 10.1.0.0-10.2.255.255
@@ -908,7 +922,9 @@ the greatest common subnet. In IKEv1, this may lead to problems with other
 implementations, make sure to configure identical subnets in such
 configurations. IKEv2 supports multiple subnets separated by commas. IKEv1 only
 interprets the first subnet of such a definition, unless the Cisco Unity
-extension plugin is enabled.
+extension plugin is enabled. This is due to a limitation of the IKEv1 protocol,
+which only allows a single pair of subnets per CHILD_SA. So to tunnel several
+subnets a conn entry has to be defined and brought up for each pair of subnets.
 
 The optional part after each subnet enclosed in square brackets specifies a
 protocol/port to restrict the selector for that subnet.
@@ -1053,6 +1069,7 @@ and
 .B pull
 (the default).
 Push mode is currently not supported with IKEv2.
+The setting must be the same on both sides.
 .TP
 .BR reauth " = " yes " | no"
 whether rekeying of an IKE_SA should also reauthenticate the peer. In IKEv1,
@@ -1123,6 +1140,13 @@ a value of 0 disables IPsec replay protection.
 .TP
 .BR reqid " = <number>"
 sets the reqid for a given connection to a pre-configured fixed value.
+.TP
+.BR sha256_96 " = " no " | yes"
+HMAC-SHA-256 is used with 128-bit truncation with IPsec. For compatibility
+with implementations that incorrectly use 96-bit truncation this option may be
+enabled to configure the shorter truncation length in the kernel.  This is not
+negotiated, so this only works with peers that use the incorrect truncation
+length (or have this option enabled).
 .TP
 .BR tfc " = <value>"
 number of bytes to pad ESP payload data to. Traffic Flow Confidentiality

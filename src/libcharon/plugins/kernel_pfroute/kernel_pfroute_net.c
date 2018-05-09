@@ -15,6 +15,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <ifaddrs.h>
@@ -600,9 +601,12 @@ typedef struct {
 } rt_enumerator_t;
 
 METHOD(enumerator_t, rt_enumerate, bool,
-	rt_enumerator_t *this, int *xtype, struct sockaddr **addr)
+	rt_enumerator_t *this, va_list args)
 {
-	int i, type;
+	struct sockaddr **addr;
+	int i, type, *xtype;
+
+	VA_ARGS_VGET(args, xtype, addr);
 
 	if (this->remaining < sizeof(this->addr->sa_len) ||
 		this->remaining < this->addr->sa_len)
@@ -636,7 +640,8 @@ static enumerator_t *create_rt_enumerator(int types, int remaining,
 
 	INIT(this,
 		.public = {
-			.enumerate = (void*)_rt_enumerate,
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _rt_enumerate,
 			.destroy = (void*)free,
 		},
 		.types = types,
@@ -1049,41 +1054,45 @@ typedef struct {
 	kernel_address_type_t which;
 } address_enumerator_t;
 
-/**
- * cleanup function for address enumerator
- */
-static void address_enumerator_destroy(address_enumerator_t *data)
+CALLBACK(address_enumerator_destroy, void,
+	address_enumerator_t *data)
 {
 	data->this->lock->unlock(data->this->lock);
 	free(data);
 }
 
-/**
- * filter for addresses
- */
-static bool filter_addresses(address_enumerator_t *data,
-							 addr_entry_t** in, host_t** out)
+CALLBACK(filter_addresses, bool,
+	address_enumerator_t *data, enumerator_t *orig, va_list args)
 {
-	host_t *ip;
-	if (!(data->which & ADDR_TYPE_VIRTUAL) && (*in)->virtual)
-	{   /* skip virtual interfaces added by us */
-		return FALSE;
-	}
-	if (!(data->which & ADDR_TYPE_REGULAR) && !(*in)->virtual)
-	{	/* address is regular, but not requested */
-		return FALSE;
-	}
-	ip = (*in)->ip;
-	if (ip->get_family(ip) == AF_INET6)
+	addr_entry_t *addr;
+	host_t *ip, **out;
+	struct sockaddr_in6 *sin6;
+
+	VA_ARGS_VGET(args, out);
+
+	while (orig->enumerate(orig, &addr))
 	{
-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ip->get_sockaddr(ip);
-		if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
-		{   /* skip addresses with a unusable scope */
-			return FALSE;
+		if (!(data->which & ADDR_TYPE_VIRTUAL) && addr->virtual)
+		{   /* skip virtual interfaces added by us */
+			continue;
 		}
+		if (!(data->which & ADDR_TYPE_REGULAR) && !addr->virtual)
+		{	/* address is regular, but not requested */
+			continue;
+		}
+		ip = addr->ip;
+		if (ip->get_family(ip) == AF_INET6)
+		{
+			sin6 = (struct sockaddr_in6 *)ip->get_sockaddr(ip);
+			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
+			{   /* skip addresses with a unusable scope */
+				continue;
+			}
+		}
+		*out = ip;
+		return TRUE;
 	}
-	*out = ip;
-	return TRUE;
+	return FALSE;
 }
 
 /**
@@ -1093,29 +1102,34 @@ static enumerator_t *create_iface_enumerator(iface_entry_t *iface,
 											 address_enumerator_t *data)
 {
 	return enumerator_create_filter(iface->addrs->create_enumerator(iface->addrs),
-									(void*)filter_addresses, data, NULL);
+									filter_addresses, data, NULL);
 }
 
-/**
- * filter for interfaces
- */
-static bool filter_interfaces(address_enumerator_t *data, iface_entry_t** in,
-							  iface_entry_t** out)
+CALLBACK(filter_interfaces, bool,
+	address_enumerator_t *data, enumerator_t *orig, va_list args)
 {
-	if (!(data->which & ADDR_TYPE_IGNORED) && !(*in)->usable)
-	{	/* skip interfaces excluded by config */
-		return FALSE;
+	iface_entry_t *iface, **out;
+
+	VA_ARGS_VGET(args, out);
+
+	while (orig->enumerate(orig, &iface))
+	{
+		if (!(data->which & ADDR_TYPE_IGNORED) && !iface->usable)
+		{	/* skip interfaces excluded by config */
+			continue;
+		}
+		if (!(data->which & ADDR_TYPE_LOOPBACK) && (iface->flags & IFF_LOOPBACK))
+		{	/* ignore loopback devices */
+			continue;
+		}
+		if (!(data->which & ADDR_TYPE_DOWN) && !(iface->flags & IFF_UP))
+		{	/* skip interfaces not up */
+			continue;
+		}
+		*out = iface;
+		return TRUE;
 	}
-	if (!(data->which & ADDR_TYPE_LOOPBACK) && ((*in)->flags & IFF_LOOPBACK))
-	{	/* ignore loopback devices */
-		return FALSE;
-	}
-	if (!(data->which & ADDR_TYPE_DOWN) && !((*in)->flags & IFF_UP))
-	{	/* skip interfaces not up */
-		return FALSE;
-	}
-	*out = *in;
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(kernel_net_t, create_address_enumerator, enumerator_t*,
@@ -1132,9 +1146,9 @@ METHOD(kernel_net_t, create_address_enumerator, enumerator_t*,
 	return enumerator_create_nested(
 				enumerator_create_filter(
 					this->ifaces->create_enumerator(this->ifaces),
-					(void*)filter_interfaces, data, NULL),
+					filter_interfaces, data, NULL),
 				(void*)create_iface_enumerator, data,
-				(void*)address_enumerator_destroy);
+				address_enumerator_destroy);
 }
 
 METHOD(kernel_net_t, get_features, kernel_feature_t,
@@ -1448,7 +1462,8 @@ static status_t manage_route(private_kernel_pfroute_net_t *this, int op,
 				}
 				break;
 			case RTAX_GATEWAY:
-				if (gateway)
+				if (gateway &&
+					gateway->get_family(gateway) == dst->get_family(dst))
 				{
 					add_rt_addr(&msg.hdr, RTA_GATEWAY, gateway);
 				}
@@ -1704,6 +1719,204 @@ METHOD(kernel_net_t, get_nexthop, host_t*,
 }
 
 /**
+ * Get the number of set bits in the given netmask
+ */
+static uint8_t sockaddr_to_netmask(sockaddr_t *sockaddr, host_t *dst)
+{
+	uint8_t len = 0, i, byte, mask = 0;
+	struct sockaddr_storage ss;
+	char *addr;
+
+	/* at least some older FreeBSD versions send us shorter sockaddrs
+	 * with the family set to -1 (255) */
+	if (sockaddr->sa_family == 255)
+	{
+		memset(&ss, 0, sizeof(ss));
+		memcpy(&ss, sockaddr, sockaddr->sa_len);
+		/* use the address family and length of the destination as hint */
+		ss.ss_len = *dst->get_sockaddr_len(dst);
+		ss.ss_family = dst->get_family(dst);
+		sockaddr = (sockaddr_t*)&ss;
+	}
+
+	switch (sockaddr->sa_family)
+	{
+		case AF_INET:
+			len = 4;
+			addr = (char*)&((struct sockaddr_in*)sockaddr)->sin_addr;
+			break;
+		case AF_INET6:
+			len = 16;
+			addr = (char*)&((struct sockaddr_in6*)sockaddr)->sin6_addr;
+			break;
+		default:
+			break;
+	}
+
+	for (i = 0; i < len; i++)
+	{
+		byte = addr[i];
+
+		if (byte == 0x00)
+		{
+			break;
+		}
+		if (byte == 0xff)
+		{
+			mask += 8;
+		}
+		else
+		{
+			while (byte & 0x80)
+			{
+				mask++;
+				byte <<= 1;
+			}
+		}
+	}
+	return mask;
+}
+
+/** enumerator over subnets */
+typedef struct {
+	enumerator_t public;
+	/** sysctl result */
+	char *buf;
+	/** length of the complete result */
+	size_t len;
+	/** start of the current route entry */
+	char *current;
+	/** last subnet enumerated */
+	host_t *net;
+	/** interface of current net */
+	char *ifname;
+} subnet_enumerator_t;
+
+METHOD(enumerator_t, destroy_subnet_enumerator, void,
+	subnet_enumerator_t *this)
+{
+	DESTROY_IF(this->net);
+	free(this->ifname);
+	free(this->buf);
+	free(this);
+}
+
+METHOD(enumerator_t, enumerate_subnets, bool,
+	subnet_enumerator_t *this, va_list args)
+{
+	enumerator_t *enumerator;
+	host_t **net;
+	struct rt_msghdr *rtm;
+	struct sockaddr *addr;
+	uint8_t *mask;
+	char **ifname;
+	int type;
+
+	VA_ARGS_VGET(args, net, mask, ifname);
+
+	if (!this->current)
+	{
+		this->current = this->buf;
+	}
+	else
+	{
+		rtm = (struct rt_msghdr*)this->current;
+		this->current += rtm->rtm_msglen;
+		DESTROY_IF(this->net);
+		this->net = NULL;
+		free(this->ifname);
+		this->ifname = NULL;
+	}
+
+	for (; this->current < this->buf + this->len;
+		 this->current += rtm->rtm_msglen)
+	{
+		struct sockaddr *netmask;
+		uint8_t netbits = 0;
+
+		rtm = (struct rt_msghdr*)this->current;
+
+		if (rtm->rtm_version != RTM_VERSION)
+		{
+			continue;
+		}
+		if (rtm->rtm_flags & RTF_GATEWAY ||
+			rtm->rtm_flags & RTF_HOST ||
+			rtm->rtm_flags & RTF_REJECT)
+		{
+			continue;
+		}
+		enumerator = create_rtmsg_enumerator(rtm);
+		while (enumerator->enumerate(enumerator, &type, &addr))
+		{
+			if (type == RTAX_DST)
+			{
+				this->net = this->net ?: host_create_from_sockaddr(addr);
+			}
+			if (type == RTAX_NETMASK)
+			{
+				netmask = addr;
+			}
+			if (type == RTAX_IFP && addr->sa_family == AF_LINK)
+			{
+				struct sockaddr_dl *sdl = (struct sockaddr_dl*)addr;
+				free(this->ifname);
+				this->ifname = strndup(sdl->sdl_data, sdl->sdl_nlen);
+			}
+		}
+		if (this->net)
+		{
+			netbits = sockaddr_to_netmask(netmask, this->net);
+		}
+		enumerator->destroy(enumerator);
+
+		if (this->net && this->ifname)
+		{
+			*net = this->net;
+			*mask = netbits ?: this->net->get_address(this->net).len * 8;
+			*ifname = this->ifname;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+METHOD(kernel_net_t, create_local_subnet_enumerator, enumerator_t*,
+	private_kernel_pfroute_net_t *this)
+{
+	subnet_enumerator_t *enumerator;
+	char *buf;
+	size_t len;
+	int mib[7] = {
+		CTL_NET, PF_ROUTE, 0, AF_UNSPEC, NET_RT_DUMP, 0, 0
+	};
+
+	if (sysctl(mib, countof(mib), NULL, &len, NULL, 0) < 0)
+	{
+		DBG2(DBG_KNL, "enumerating local subnets failed");
+		return enumerator_create_empty();
+	}
+	buf = malloc(len);
+	if (sysctl(mib, countof(mib), buf, &len, NULL, 0) < 0)
+	{
+		DBG2(DBG_KNL, "enumerating local subnets failed");
+		free(buf);
+		return enumerator_create_empty();
+	}
+
+	INIT(enumerator,
+		.public = {
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _enumerate_subnets,
+			.destroy = _destroy_subnet_enumerator,
+		},
+		.buf = buf,
+		.len = len,
+	);
+	return &enumerator->public;
+}
+
+/**
  * Initialize a list of local addresses.
  */
 static status_t init_address_list(private_kernel_pfroute_net_t *this)
@@ -1848,6 +2061,7 @@ kernel_pfroute_net_t *kernel_pfroute_net_create()
 				.get_features = _get_features,
 				.get_interface = _get_interface_name,
 				.create_address_enumerator = _create_address_enumerator,
+				.create_local_subnet_enumerator = _create_local_subnet_enumerator,
 				.get_source_addr = _get_source_addr,
 				.get_nexthop = _get_nexthop,
 				.add_ip = _add_ip,

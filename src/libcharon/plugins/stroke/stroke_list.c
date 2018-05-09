@@ -218,7 +218,7 @@ static void log_child_sa(FILE *out, child_sa_t *child_sa, bool all)
 			child_sa->get_name(child_sa), child_sa->get_unique_id(child_sa),
 			child_sa_state_names, child_sa->get_state(child_sa),
 			ipsec_mode_names, child_sa->get_mode(child_sa),
-			config->use_proxy_mode(config) ? "_PROXY" : "",
+			config->has_option(config, OPT_PROXY_MODE) ? "_PROXY" : "",
 			child_sa->get_reqid(child_sa));
 
 	if (child_sa->get_state(child_sa) == CHILD_INSTALLED)
@@ -603,7 +603,7 @@ METHOD(stroke_list_t, status, void,
 	/* Enumerate shunt policies */
 	first = TRUE;
 	enumerator = charon->shunts->create_enumerator(charon->shunts);
-	while (enumerator->enumerate(enumerator, &child_cfg))
+	while (enumerator->enumerate(enumerator, NULL, &child_cfg))
 	{
 		if (name && !streq(name, child_cfg->get_name(child_cfg)))
 		{
@@ -958,8 +958,7 @@ static void list_plugins(FILE *out)
 				{
 					case FEATURE_PROVIDE:
 						fp = &features[i];
-						loaded = list->find_first(list, NULL,
-												  (void**)&fp) == SUCCESS;
+						loaded = list->find_first(list, NULL, (void**)&fp);
 						fprintf(out, "    %s%s\n",
 								str, loaded ? "" : " (not loaded)");
 						break;

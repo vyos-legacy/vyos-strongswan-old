@@ -235,7 +235,7 @@ static job_requeue_t add_exclude_async(entry_t *entry)
 		enumerator->destroy(enumerator);
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 
-		charon->shunts->install(charon->shunts, child_cfg);
+		charon->shunts->install(charon->shunts, "unity", child_cfg);
 		child_cfg->destroy(child_cfg);
 
 		DBG1(DBG_IKE, "installed %N bypass policy for %R",
@@ -310,7 +310,8 @@ static bool remove_exclude(private_unity_handler_t *this, chunk_t data)
 		DBG1(DBG_IKE, "uninstalling %N bypass policy for %R",
 			 configuration_attribute_type_names, UNITY_LOCAL_LAN, ts);
 		ts->destroy(ts);
-		success = charon->shunts->uninstall(charon->shunts, name) && success;
+		success = charon->shunts->uninstall(charon->shunts, "unity",
+											name) && success;
 	}
 	list->destroy(list);
 	return success;
@@ -367,9 +368,12 @@ typedef struct {
 } attribute_enumerator_t;
 
 METHOD(enumerator_t, enumerate_attributes, bool,
-	attribute_enumerator_t *this, configuration_attribute_type_t *type,
-	chunk_t *data)
+	attribute_enumerator_t *this, va_list args)
 {
+	configuration_attribute_type_t *type;
+	chunk_t *data;
+
+	VA_ARGS_VGET(args, type, data);
 	if (this->i < countof(attributes))
 	{
 		*type = attributes[this->i++];
@@ -392,7 +396,8 @@ METHOD(attribute_handler_t, create_attribute_enumerator, enumerator_t *,
 	}
 	INIT(enumerator,
 		.public = {
-			.enumerate = (void*)_enumerate_attributes,
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _enumerate_attributes,
 			.destroy = (void*)free,
 		},
 	);
@@ -406,24 +411,27 @@ typedef struct {
 	ike_sa_id_t *id;
 } include_filter_t;
 
-/**
- * Include enumerator filter function
- */
-static bool include_filter(include_filter_t *data,
-						   entry_t **entry, traffic_selector_t **ts)
+CALLBACK(include_filter, bool,
+	include_filter_t *data, enumerator_t *orig, va_list args)
 {
-	if (data->id->equals(data->id, (*entry)->id))
+	entry_t *entry;
+	traffic_selector_t **ts;
+
+	VA_ARGS_VGET(args, ts);
+
+	while (orig->enumerate(orig, &entry))
 	{
-		*ts = (*entry)->ts;
-		return TRUE;
+		if (data->id->equals(data->id, entry->id))
+		{
+			*ts = entry->ts;
+			return TRUE;
+		}
 	}
 	return FALSE;
 }
 
-/**
- * Destroy include filter data, unlock mutex
- */
-static void destroy_filter(include_filter_t *data)
+CALLBACK(destroy_filter, void,
+	include_filter_t *data)
 {
 	data->mutex->unlock(data->mutex);
 	free(data);
@@ -441,7 +449,7 @@ METHOD(unity_handler_t, create_include_enumerator, enumerator_t*,
 	data->mutex->lock(data->mutex);
 	return enumerator_create_filter(
 					this->include->create_enumerator(this->include),
-					(void*)include_filter, data, (void*)destroy_filter);
+					include_filter, data, destroy_filter);
 }
 
 METHOD(unity_handler_t, destroy, void,

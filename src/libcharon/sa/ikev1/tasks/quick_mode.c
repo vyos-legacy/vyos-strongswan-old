@@ -325,6 +325,17 @@ static bool install(private_quick_mode_t *this)
 		return FALSE;
 	}
 
+	if (this->initiator)
+	{
+		this->child_sa->set_policies(this->child_sa, tsi, tsr);
+	}
+	else
+	{
+		this->child_sa->set_policies(this->child_sa, tsr, tsi);
+	}
+	tsi->destroy_offset(tsi, offsetof(traffic_selector_t, destroy));
+	tsr->destroy_offset(tsr, offsetof(traffic_selector_t, destroy));
+
 	if (this->keymat->derive_child_keys(this->keymat, this->proposal, this->dh,
 						this->spi_i, this->spi_r, this->nonce_i, this->nonce_r,
 						&encr_i, &integ_i, &encr_r, &integ_r))
@@ -333,19 +344,19 @@ static bool install(private_quick_mode_t *this)
 		{
 			status_i = this->child_sa->install(this->child_sa,
 									encr_r, integ_r, this->spi_i, this->cpi_i,
-									this->initiator, TRUE, FALSE, tsi, tsr);
+									this->initiator, TRUE, FALSE);
 			status_o = this->child_sa->install(this->child_sa,
 									encr_i, integ_i, this->spi_r, this->cpi_r,
-									this->initiator, FALSE, FALSE, tsi, tsr);
+									this->initiator, FALSE, FALSE);
 		}
 		else
 		{
 			status_i = this->child_sa->install(this->child_sa,
 									encr_i, integ_i, this->spi_r, this->cpi_r,
-									this->initiator, TRUE, FALSE, tsr, tsi);
+									this->initiator, TRUE, FALSE);
 			status_o = this->child_sa->install(this->child_sa,
 									encr_r, integ_r, this->spi_i, this->cpi_i,
-									this->initiator, FALSE, FALSE, tsr, tsi);
+									this->initiator, FALSE, FALSE);
 		}
 	}
 
@@ -355,22 +366,12 @@ static bool install(private_quick_mode_t *this)
 			(status_i != SUCCESS) ? "inbound " : "",
 			(status_i != SUCCESS && status_o != SUCCESS) ? "and ": "",
 			(status_o != SUCCESS) ? "outbound " : "");
-		tsi->destroy_offset(tsi, offsetof(traffic_selector_t, destroy));
-		tsr->destroy_offset(tsr, offsetof(traffic_selector_t, destroy));
 		status = FAILED;
 	}
 	else
 	{
-		if (this->initiator)
-		{
-			status = this->child_sa->add_policies(this->child_sa, tsi, tsr);
-		}
-		else
-		{
-			status = this->child_sa->add_policies(this->child_sa, tsr, tsi);
-		}
-		tsi->destroy_offset(tsi, offsetof(traffic_selector_t, destroy));
-		tsr->destroy_offset(tsr, offsetof(traffic_selector_t, destroy));
+		status = this->child_sa->install_policies(this->child_sa);
+
 		if (status != SUCCESS)
 		{
 			DBG1(DBG_IKE, "unable to install IPsec policies (SPD) in kernel");
@@ -703,25 +704,30 @@ static void add_nat_oa_payloads(private_quick_mode_t *this, message_t *message)
 {
 	identification_t *id;
 	id_payload_t *nat_oa;
-	host_t *src, *dst;
+	host_t *init, *resp;
 	payload_type_t nat_oa_payload_type;
 
-	src = message->get_source(message);
-	dst = message->get_destination(message);
-
-	src = this->initiator ? src : dst;
-	dst = this->initiator ? dst : src;
+	if (this->initiator)
+	{
+		init = message->get_source(message);
+		resp = message->get_destination(message);
+	}
+	else
+	{
+		init = message->get_destination(message);
+		resp = message->get_source(message);
+	}
 
 	nat_oa_payload_type = get_nat_oa_payload_type(this->ike_sa);
 
 	/* first NAT-OA is the initiator's address */
-	id = identification_create_from_sockaddr(src->get_sockaddr(src));
+	id = identification_create_from_sockaddr(init->get_sockaddr(init));
 	nat_oa = id_payload_create_from_identification(nat_oa_payload_type, id);
 	message->add_payload(message, (payload_t*)nat_oa);
 	id->destroy(id);
 
 	/* second NAT-OA is that of the responder */
-	id = identification_create_from_sockaddr(dst->get_sockaddr(dst));
+	id = identification_create_from_sockaddr(resp->get_sockaddr(resp));
 	nat_oa = id_payload_create_from_identification(nat_oa_payload_type, id);
 	message->add_payload(message, (payload_t*)nat_oa);
 	id->destroy(id);
@@ -848,7 +854,7 @@ METHOD(task_t, build_i, status_t,
 				add_nat_oa_payloads(this, message);
 			}
 
-			if (this->config->use_ipcomp(this->config))
+			if (this->config->has_option(this->config, OPT_IPCOMP))
 			{
 				this->cpi_i = this->child_sa->alloc_cpi(this->child_sa);
 				if (!this->cpi_i)
@@ -1103,7 +1109,7 @@ METHOD(task_t, process_r, status_t,
 				return send_notify(this, INVALID_ID_INFORMATION);
 			}
 
-			if (this->config->use_ipcomp(this->config))
+			if (this->config->has_option(this->config, OPT_IPCOMP))
 			{
 				list = sa_payload->get_ipcomp_proposals(sa_payload,
 														&this->cpi_i);

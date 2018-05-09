@@ -69,6 +69,15 @@ static bool entry_matches(eap_vendor_type_t *item, eap_vendor_type_t *other)
 	return item->type == other->type && item->vendor == other->vendor;
 }
 
+CALLBACK(entry_matches_cb, bool,
+	eap_vendor_type_t *item, va_list args)
+{
+	eap_vendor_type_t *other;
+
+	VA_ARGS_VGET(args, other);
+	return entry_matches(item, other);
+}
+
 /**
  * Load the given EAP method
  */
@@ -94,6 +103,13 @@ static eap_method_t *load_method(private_eap_dynamic_t *this,
 	return method;
 }
 
+METHOD(eap_method_t, get_auth, auth_cfg_t*,
+	private_eap_dynamic_t *this)
+{
+	/* get_auth() is only registered if the EAP method supports it */
+	return this->method->get_auth(this->method);
+}
+
 /**
  * Select the first method we can instantiate and is supported by both peers.
  */
@@ -114,8 +130,7 @@ static void select_method(private_eap_dynamic_t *this)
 	{
 		if (inner)
 		{
-			if (inner->find_first(inner, (void*)entry_matches,
-								  NULL, entry) != SUCCESS)
+			if (!inner->find_first(inner, entry_matches_cb, NULL, entry))
 			{
 				if (entry->vendor)
 				{
@@ -135,6 +150,10 @@ static void select_method(private_eap_dynamic_t *this)
 		this->method = load_method(this, entry->type, entry->vendor);
 		if (this->method)
 		{
+			if (this->method->get_auth)
+			{
+				this->public.interface.get_auth = _get_auth;
+			}
 			if (entry->vendor)
 			{
 				DBG1(DBG_IKE, "vendor specific EAP method %d-%d selected",
@@ -211,6 +230,7 @@ METHOD(eap_method_t, process, status_t,
 		/* restart with a different method */
 		this->method->destroy(this->method);
 		this->method = NULL;
+		this->public.interface.get_auth = NULL;
 		return initiate(this, out);
 	}
 	if (!this->other_types)

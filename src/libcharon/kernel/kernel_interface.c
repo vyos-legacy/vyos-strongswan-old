@@ -554,6 +554,16 @@ METHOD(kernel_interface_t, create_address_enumerator, enumerator_t*,
 	return this->net->create_address_enumerator(this->net, which);
 }
 
+METHOD(kernel_interface_t, create_local_subnet_enumerator, enumerator_t*,
+	private_kernel_interface_t *this)
+{
+	if (!this->net || !this->net->create_local_subnet_enumerator)
+	{
+		return enumerator_create_empty();
+	}
+	return this->net->create_local_subnet_enumerator(this->net);
+}
+
 METHOD(kernel_interface_t, add_ip, status_t,
 	private_kernel_interface_t *this, host_t *virtual_ip, int prefix,
 	char *iface)
@@ -622,21 +632,18 @@ METHOD(kernel_interface_t, enable_udp_decap, bool,
 METHOD(kernel_interface_t, is_interface_usable, bool,
 	private_kernel_interface_t *this, const char *iface)
 {
-	status_t expected;
-
 	if (!this->ifaces_filter)
 	{
 		return TRUE;
 	}
-	expected = this->ifaces_exclude ? NOT_FOUND : SUCCESS;
-	return this->ifaces_filter->find_first(this->ifaces_filter, (void*)streq,
-										   NULL, iface) == expected;
+	return this->ifaces_filter->find_first(this->ifaces_filter,
+					linked_list_match_str, NULL, iface) != this->ifaces_exclude;
 }
 
 METHOD(kernel_interface_t, all_interfaces_usable, bool,
 	private_kernel_interface_t *this)
 {
-	return this->ifaces_filter == NULL;
+	return !this->ifaces_filter;
 }
 
 METHOD(kernel_interface_t, get_address_by_ts, status_t,
@@ -1005,6 +1012,7 @@ kernel_interface_t *kernel_interface_create()
 			.get_nexthop = _get_nexthop,
 			.get_interface = _get_interface,
 			.create_address_enumerator = _create_address_enumerator,
+			.create_local_subnet_enumerator = _create_local_subnet_enumerator,
 			.add_ip = _add_ip,
 			.del_ip = _del_ip,
 			.add_route = _add_route,

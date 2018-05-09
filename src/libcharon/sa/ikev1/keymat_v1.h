@@ -102,11 +102,14 @@ struct keymat_v1_t {
 	 * @param sa_i			encoded SA payload of initiator
 	 * @param id			encoded IDii payload for HASH_I (IDir for HASH_R)
 	 * @param hash			chunk receiving allocated HASH data
+	 * @param scheme		pointer to signature scheme in case it needs to be
+	 * 						modified by the keymat implementation
 	 * @return				TRUE if hash allocated successfully
 	 */
 	bool (*get_hash)(keymat_v1_t *this, bool initiator,
 						chunk_t dh, chunk_t dh_other, ike_sa_id_t *ike_sa_id,
-						chunk_t sa_i, chunk_t id, chunk_t *hash);
+						chunk_t sa_i, chunk_t id, chunk_t *hash,
+						signature_scheme_t *scheme);
 
 	/**
 	 * Get HASH data for integrity/authentication in Phase 2 exchanges.
@@ -118,39 +121,17 @@ struct keymat_v1_t {
 	bool (*get_hash_phase2)(keymat_v1_t *this, message_t *message, chunk_t *hash);
 
 	/**
-	 * Returns the IV for a message with the given message ID.
-	 *
-	 * The return chunk contains internal data and is valid until the next
-	 * get_iv/udpate_iv/confirm_iv call.
-	 *
-	 * @param mid			message ID
-	 * @param iv			chunk receiving IV, internal data
-	 * @return				TRUE if IV allocated successfully
+	 * @see iv_manager_t.get_iv
 	 */
 	bool (*get_iv)(keymat_v1_t *this, uint32_t mid, chunk_t *iv);
 
 	/**
-	 * Updates the IV for the next message with the given message ID.
-	 *
-	 * A call of confirm_iv() is required in order to actually make the IV
-	 * available.  This is needed for the inbound case where we store the last
-	 * block of the encrypted message but want to update the IV only after
-	 * verification of the decrypted message.
-	 *
-	 * @param mid			message ID
-	 * @param last_block	last block of encrypted message (gets cloned)
-	 * @return				TRUE if IV updated successfully
+	 * @see iv_manager_t.update_iv
 	 */
 	bool (*update_iv)(keymat_v1_t *this, uint32_t mid, chunk_t last_block);
 
 	/**
-	 * Confirms the updated IV for the given message ID.
-	 *
-	 * To actually make the new IV available via get_iv this method has to
-	 * be called after update_iv.
-	 *
-	 * @param mid			message ID
-	 * @return				TRUE if IV confirmed successfully
+	 * @see iv_manager_t.confirm_iv
 	 */
 	bool (*confirm_iv)(keymat_v1_t *this, uint32_t mid);
 };

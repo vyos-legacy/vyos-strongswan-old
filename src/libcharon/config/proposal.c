@@ -94,27 +94,31 @@ METHOD(proposal_t, add_algorithm, void,
 	array_insert(this->transforms, ARRAY_TAIL, &entry);
 }
 
-/**
- * filter function for peer configs
- */
-static bool alg_filter(uintptr_t type, entry_t **in, uint16_t *alg,
-					   void **unused, uint16_t *key_size)
+CALLBACK(alg_filter, bool,
+	uintptr_t type, enumerator_t *orig, va_list args)
 {
-	entry_t *entry = *in;
+	entry_t *entry;
+	uint16_t *alg, *key_size;
 
-	if (entry->type != type)
+	VA_ARGS_VGET(args, alg, key_size);
+
+	while (orig->enumerate(orig, &entry))
 	{
-		return FALSE;
+		if (entry->type != type)
+		{
+			continue;
+		}
+		if (alg)
+		{
+			*alg = entry->alg;
+		}
+		if (key_size)
+		{
+			*key_size = entry->key_size;
+		}
+		return TRUE;
 	}
-	if (alg)
-	{
-		*alg = entry->alg;
-	}
-	if (key_size)
-	{
-		*key_size = entry->key_size;
-	}
-	return TRUE;
+	return FALSE;
 }
 
 METHOD(proposal_t, create_enumerator, enumerator_t*,
@@ -122,7 +126,7 @@ METHOD(proposal_t, create_enumerator, enumerator_t*,
 {
 	return enumerator_create_filter(
 						array_create_enumerator(this->transforms),
-						(void*)alg_filter, (void*)(uintptr_t)type, NULL);
+						alg_filter, (void*)(uintptr_t)type, NULL);
 }
 
 METHOD(proposal_t, get_algorithm, bool,
@@ -273,7 +277,8 @@ static bool select_algo(private_proposal_t *this, proposal_t *other,
 }
 
 METHOD(proposal_t, select_proposal, proposal_t*,
-	private_proposal_t *this, proposal_t *other, bool private)
+	private_proposal_t *this, proposal_t *other, bool other_remote,
+	bool private)
 {
 	proposal_t *selected;
 
@@ -285,7 +290,17 @@ METHOD(proposal_t, select_proposal, proposal_t*,
 		return NULL;
 	}
 
-	selected = proposal_create(this->protocol, other->get_number(other));
+	if (other_remote)
+	{
+		selected = proposal_create(this->protocol, other->get_number(other));
+		selected->set_spi(selected, other->get_spi(other));
+	}
+	else
+	{
+		selected = proposal_create(this->protocol, this->number);
+		selected->set_spi(selected, this->spi);
+
+	}
 
 	if (!select_algo(this, other, selected, ENCRYPTION_ALGORITHM, private) ||
 		!select_algo(this, other, selected, PSEUDO_RANDOM_FUNCTION, private) ||
@@ -298,7 +313,6 @@ METHOD(proposal_t, select_proposal, proposal_t*,
 	}
 
 	DBG2(DBG_CFG, "  proposal matches");
-	selected->set_spi(selected, other->get_spi(other));
 	return selected;
 }
 
@@ -915,6 +929,8 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 			case ECP_256_BP:
 			case ECP_384_BP:
 			case ECP_512_BP:
+			case CURVE_25519:
+			case CURVE_448:
 			case NTRU_128_BIT:
 			case NTRU_192_BIT:
 			case NTRU_256_BIT:
@@ -956,9 +972,12 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 			case MODP_768_BIT:
 				/* weak */
 				break;
-			case MODP_2048_224:
-			case MODP_1536_BIT:
 			case MODP_1024_160:
+			case MODP_2048_224:
+			case MODP_2048_256:
+				/* RFC 5114 primes are of questionable source */
+				break;
+			case MODP_1536_BIT:
 			case ECP_224_BIT:
 			case ECP_224_BP:
 			case ECP_192_BIT:
@@ -966,7 +985,6 @@ static bool proposal_add_supported_ike(private_proposal_t *this, bool aead)
 				/* rarely used */
 				break;
 			case MODP_2048_BIT:
-			case MODP_2048_256:
 			case MODP_1024_BIT:
 				add_algorithm(this, DIFFIE_HELLMAN_GROUP, group, 0);
 				break;

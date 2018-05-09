@@ -48,6 +48,11 @@ typedef enum task_queue_t task_queue_t;
 #define RETRANSMIT_TRIES 5
 
 /**
+ * Maximum jitter in percent.
+ */
+#define RETRANSMIT_JITTER_MAX 20
+
+/**
  * Interval for mobike routability checks in ms.
  */
 #define ROUTEABILITY_CHECK_INTERVAL 2500
@@ -240,6 +245,14 @@ struct task_manager_t {
 	void (*incr_mid)(task_manager_t *this, bool initiate);
 
 	/**
+	 * Get the current message ID counter, in- or outbound.
+	 *
+	 * @param initiate		TRUE to get the initiating ID
+	 * @return				current message ID
+	 */
+	uint32_t (*get_mid)(task_manager_t *this, bool initiate);
+
+	/**
 	 * Reset message ID counters of the task manager.
 	 *
 	 * The IKEv2 protocol requires to restart exchanges with message IDs
@@ -253,7 +266,7 @@ struct task_manager_t {
 	 * @param initiate		message ID / DPD seq to initiate exchanges (send)
 	 * @param respond		message ID / DPD seq to respond to exchanges (expect)
 	 */
-	void (*reset) (task_manager_t *this, uint32_t initiate, uint32_t respond);
+	void (*reset)(task_manager_t *this, uint32_t initiate, uint32_t respond);
 
 	/**
 	 * Check if we are currently waiting for a reply.
@@ -288,6 +301,17 @@ struct task_manager_t {
 	 */
 	void (*destroy) (task_manager_t *this);
 };
+
+/**
+ * Calculate total timeout of the retransmission mechanism.
+ *
+ * This is affected by modifications of retransmit_base, retransmit_timeout,
+ * retransmit_limit or retransmit_tries. The resulting value can then be used
+ * e.g. in kernel plugins to set the system's acquire timeout properly.
+ *
+ * @return					calculated total retransmission timeout in seconds
+ */
+u_int task_manager_total_retransmit_timeout();
 
 /**
  * Create a task manager instance for the correct IKE version.
