@@ -272,8 +272,7 @@
 /* username to run daemon with */
 #undef IPSEC_USER
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
 
 /* mediation extension support */
@@ -317,8 +316,11 @@
 /* Define to 1 if strerror_r returns char *. */
 #undef STRERROR_R_CHAR_P
 
-/* use TrouSerS library libtspi as TSS implementation */
+/* use TrouSerS library libtspi */
 #undef TSS_TROUSERS
+
+/* use TSS 2.0 library libtss2 */
+#undef TSS_TSS2
 
 /* using builtin printf for printf hooks */
 #undef USE_BUILTIN_PRINTF

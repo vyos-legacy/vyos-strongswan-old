@@ -62,7 +62,7 @@ struct simaka_provider_t {
 	 * @param id		permanent identity of peer to create challenge for
 	 * @param rand		buffer receiving random value rand
 	 * @param xres		buffer receiving expected authentication result xres
-	 * @param xres_len	nubmer of bytes written to xres buffer
+	 * @param xres_len	number of bytes written to xres buffer
 	 * @param ck		buffer receiving encryption key ck
 	 * @param ik		buffer receiving integrity key ik
 	 * @param autn		authentication token autn
@@ -112,7 +112,7 @@ struct simaka_provider_t {
 	 * @return			permanent identity, NULL if id not a reauth identity
 	 */
 	identification_t* (*is_reauth)(simaka_provider_t *this, identification_t *id,
-								   char mk[HASH_SIZE_SHA1], u_int16_t *counter);
+								   char mk[HASH_SIZE_SHA1], uint16_t *counter);
 
 	/**
 	 * Generate a fast reauthentication identity, associated to a master key.

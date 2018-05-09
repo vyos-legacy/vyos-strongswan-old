@@ -48,6 +48,7 @@ ifeq ($(DEB_BUILD_ARCH_OS),linux)
 	# only enable network-manager and capabilities dropping on linux hosts
 	# some plugins are linux-only too
 	CONFIGUREARGS += --enable-nm \
+		--with-nm-ca-dir=/etc/ssl/certs \
 		--with-capabilities=libcap \
 		--enable-farp \
 		--enable-dhcp \
@@ -194,7 +195,7 @@ override_dh_installchangelogs:
 	dh_installchangelogs NEWS
 
 override_dh_strip:
-	dh_strip --ddeb-migration='strongswan-dbg (<< 5.3.5-2~)'
+	dh_strip --dbgsym-migration='strongswan-dbg (<< 5.3.5-2~)'
 
 override_dh_fixperms:
 	dh_fixperms -X etc/ipsec.secrets -X etc/ipsec.d -X var/lib/strongswan

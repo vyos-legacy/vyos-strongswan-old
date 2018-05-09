@@ -43,19 +43,6 @@
 # define TRUE  true
 #endif /* TRUE */
 
-/**
- * define some missing fixed width int types on OpenSolaris.
- * TODO: since the uintXX_t types are defined by the C99 standard we should
- * probably use those anyway
- */
-#if defined __sun || defined WIN32
-#include <stdint.h>
-typedef uint8_t  u_int8_t;
-typedef uint16_t u_int16_t;
-typedef uint32_t u_int32_t;
-typedef uint64_t u_int64_t;
-#endif
-
 #ifdef HAVE_INT128
 /**
  * 128 bit wide signed integer, if supported
@@ -70,7 +57,7 @@ typedef unsigned __int128 u_int128_t;
 # define MAX_UINT_TYPE u_int128_t
 #else
 # define MAX_INT_TYPE int64_t
-# define MAX_UINT_TYPE u_int64_t
+# define MAX_UINT_TYPE uint64_t
 #endif
 
 /**

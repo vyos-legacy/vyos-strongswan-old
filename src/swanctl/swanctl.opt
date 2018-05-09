@@ -416,7 +416,7 @@ connections.<conn>.remote<suffix>.pubkeys =
 	Comma separated list of raw public keys to accept for authentication.
 
 	Comma separated list of raw public keys to accept for authentication.
-	The public keys may use a relative path from the **swanctl** _x509_
+	The public keys may use a relative path from the **swanctl** _pubkey_
 	directory or an absolute path.
 
 connections.<conn>.remote<suffix>.revocation = relaxed
@@ -683,6 +683,16 @@ connections.<conn>.children.<child>.reqid = 0
 	scenarios, but works only if each CHILD_SA configuration is instantiated
 	not more than once. The default of _0_ uses dynamic reqids, allocated
 	incrementally.
+
+connections.<conn>.children.<child>.priority = 0
+	Optional fixed priority for IPsec policies.
+
+	Optional fixed priority for IPsec policies. This could be useful to install
+	high-priority drop policies.  The default of _0_ uses dynamically calculated
+	priorities based on the size of the traffic selectors.
+
+connections.<conn>.children.<child>.interface =
+	Optional interface name to restrict IPsec policies.
 
 connections.<conn>.children.<child>.mark_in = 0/0x00000000
 	Netfilter mark and mask for input traffic.

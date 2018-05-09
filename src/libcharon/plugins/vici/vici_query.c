@@ -86,8 +86,8 @@ static void list_child(private_vici_query_t *this, vici_builder_t *b,
 					   child_sa_t *child, time_t now)
 {
 	time_t t;
-	u_int64_t bytes, packets;
-	u_int16_t alg, ks;
+	uint64_t bytes, packets;
+	uint16_t alg, ks;
 	proposal_t *proposal;
 	enumerator_t *enumerator;
 	traffic_selector_t *ts;
@@ -152,7 +152,7 @@ static void list_child(private_vici_query_t *this, vici_builder_t *b,
 		b->add_kv(b, "packets-in", "%" PRIu64, packets);
 		if (t)
 		{
-			b->add_kv(b, "use-in", "%"PRIu64, (u_int64_t)(now - t));
+			b->add_kv(b, "use-in", "%"PRIu64, (uint64_t)(now - t));
 		}
 
 		child->get_usestats(child, FALSE, &t, &bytes, &packets);
@@ -160,7 +160,7 @@ static void list_child(private_vici_query_t *this, vici_builder_t *b,
 		b->add_kv(b, "packets-out", "%"PRIu64, packets);
 		if (t)
 		{
-			b->add_kv(b, "use-out", "%"PRIu64, (u_int64_t)(now - t));
+			b->add_kv(b, "use-out", "%"PRIu64, (uint64_t)(now - t));
 		}
 
 		t = child->get_lifetime(child, FALSE);
@@ -272,7 +272,7 @@ static void list_ike(private_vici_query_t *this, vici_builder_t *b,
 	ike_sa_id_t *id;
 	identification_t *eap;
 	proposal_t *proposal;
-	u_int16_t alg, ks;
+	uint16_t alg, ks;
 	host_t *host;
 
 	b->add_kv(b, "uniqueid", "%u", ike_sa->get_unique_id(ike_sa));
@@ -682,9 +682,11 @@ CALLBACK(list_conns, vici_message_t*,
 	peer_cfg_t *peer_cfg;
 	ike_cfg_t *ike_cfg;
 	child_cfg_t *child_cfg;
-	char *ike, *str;
+	char *ike, *str, *interface;
+	uint32_t manual_prio;
 	linked_list_t *list;
 	traffic_selector_t *ts;
+	lifetime_cfg_t *lft;
 	vici_builder_t *b;
 
 	ike = request->get_str(request, NULL, "ike");
@@ -725,6 +727,10 @@ CALLBACK(list_conns, vici_message_t*,
 
 		b->add_kv(b, "version", "%N", ike_version_names,
 			peer_cfg->get_ike_version(peer_cfg));
+		b->add_kv(b, "reauth_time", "%u",
+			peer_cfg->get_reauth_time(peer_cfg, FALSE));
+		b->add_kv(b, "rekey_time", "%u",
+			peer_cfg->get_rekey_time(peer_cfg, FALSE));
 
 		build_auth_cfgs(peer_cfg, TRUE, b);
 		build_auth_cfgs(peer_cfg, FALSE, b);
@@ -738,6 +744,12 @@ CALLBACK(list_conns, vici_message_t*,
 
 			b->add_kv(b, "mode", "%N", ipsec_mode_names,
 				child_cfg->get_mode(child_cfg));
+
+			lft = child_cfg->get_lifetime(child_cfg, FALSE);
+			b->add_kv(b, "rekey_time",    "%"PRIu64, lft->time.rekey);
+			b->add_kv(b, "rekey_bytes",   "%"PRIu64, lft->bytes.rekey);
+			b->add_kv(b, "rekey_packets", "%"PRIu64, lft->packets.rekey);
+			free(lft);
 
 			b->begin_list(b, "local-ts");
 			list = child_cfg->get_traffic_selectors(child_cfg, TRUE, NULL, NULL);
@@ -760,6 +772,18 @@ CALLBACK(list_conns, vici_message_t*,
 			selectors->destroy(selectors);
 			list->destroy_offset(list, offsetof(traffic_selector_t, destroy));
 			b->end_list(b /* remote-ts */);
+
+			interface = child_cfg->get_interface(child_cfg);
+			if (interface)
+			{
+				b->add_kv(b, "interface", "%s", interface);
+			}
+
+			manual_prio = child_cfg->get_manual_prio(child_cfg);
+			if (manual_prio)
+			{
+				b->add_kv(b, "priority", "%u", manual_prio);
+			}
 
 			b->end_section(b);
 		}

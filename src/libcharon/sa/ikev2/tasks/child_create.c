@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2008 Tobias Brunner
+ * Copyright (C) 2008-2016 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2005 Jan Hutter
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,7 +29,7 @@
 #include <encoding/payloads/delete_payload.h>
 #include <processing/jobs/delete_ike_sa_job.h>
 #include <processing/jobs/inactivity_job.h>
-
+#include <processing/jobs/initiate_tasks_job.h>
 
 typedef struct private_child_create_t private_child_create_t;
 
@@ -151,27 +151,27 @@ struct private_child_create_t {
 	/**
 	 * Own allocated SPI
 	 */
-	u_int32_t my_spi;
+	uint32_t my_spi;
 
 	/**
 	 * SPI received in proposal
 	 */
-	u_int32_t other_spi;
+	uint32_t other_spi;
 
 	/**
 	 * Own allocated Compression Parameter Index (CPI)
 	 */
-	u_int16_t my_cpi;
+	uint16_t my_cpi;
 
 	/**
 	 * Other Compression Parameter Index (CPI), received via IPCOMP_SUPPORTED
 	 */
-	u_int16_t other_cpi;
+	uint16_t other_cpi;
 
 	/**
 	 * reqid to use if we are rekeying
 	 */
-	u_int32_t reqid;
+	uint32_t reqid;
 
 	/**
 	 * Explicit inbound mark value
@@ -203,6 +203,25 @@ struct private_child_create_t {
 	 */
 	bool retry;
 };
+
+/**
+ * Schedule a retry if creating the CHILD_SA temporary failed
+ */
+static void schedule_delayed_retry(private_child_create_t *this)
+{
+	child_create_t *task;
+	uint32_t retry;
+
+	retry = RETRY_INTERVAL - (random() % RETRY_JITTER);
+
+	task = child_create_create(this->ike_sa,
+							   this->config->get_ref(this->config), FALSE,
+							   this->packet_tsi, this->packet_tsr);
+	task->use_reqid(task, this->reqid);
+	DBG1(DBG_IKE, "creating CHILD_SA failed, trying again in %d seconds",
+		 retry);
+	this->ike_sa->queue_task_delayed(this->ike_sa, (task_t*)task, retry);
+}
 
 /**
  * get the nonce from a message
@@ -306,7 +325,7 @@ static bool allocate_spi(private_child_create_t *this)
  */
 static void schedule_inactivity_timeout(private_child_create_t *this)
 {
-	u_int32_t timeout, id;
+	uint32_t timeout, id;
 	bool close_ike;
 
 	timeout = this->config->get_inactivity(this->config);
@@ -386,7 +405,7 @@ static linked_list_t* get_transport_nat_ts(private_child_create_t *this,
 	linked_list_t *out;
 	traffic_selector_t *ts;
 	host_t *ike, *first = NULL;
-	u_int8_t mask;
+	uint8_t mask;
 
 	if (local)
 	{
@@ -464,7 +483,7 @@ static status_t select_and_install(private_child_create_t *this,
 	chunk_t integ_i = chunk_empty, integ_r = chunk_empty;
 	linked_list_t *my_ts, *other_ts;
 	host_t *me, *other;
-	bool private;
+	bool private, prefer_configured;
 
 	if (this->proposals == NULL)
 	{
@@ -481,8 +500,10 @@ static status_t select_and_install(private_child_create_t *this,
 	other = this->ike_sa->get_other_host(this->ike_sa);
 
 	private = this->ike_sa->supports_extension(this->ike_sa, EXT_STRONGSWAN);
+	prefer_configured = lib->settings->get_bool(lib->settings,
+							"%s.prefer_configured_proposals", TRUE, lib->ns);
 	this->proposal = this->config->select_proposal(this->config,
-											this->proposals, no_dh, private);
+							this->proposals, no_dh, private, prefer_configured);
 	if (this->proposal == NULL)
 	{
 		DBG1(DBG_IKE, "no acceptable proposal found");
@@ -501,7 +522,7 @@ static status_t select_and_install(private_child_create_t *this,
 
 	if (!this->proposal->has_dh_group(this->proposal, this->dh_group))
 	{
-		u_int16_t group;
+		uint16_t group;
 
 		if (this->proposal->get_algorithm(this->proposal, DIFFIE_HELLMAN_GROUP,
 										  &group, NULL))
@@ -798,7 +819,7 @@ static bool build_payloads(private_child_create_t *this, message_t *message)
  * Adds an IPCOMP_SUPPORTED notify to the message, allocating a CPI
  */
 static void add_ipcomp_notify(private_child_create_t *this,
-								  message_t *message, u_int8_t ipcomp)
+								  message_t *message, uint8_t ipcomp)
 {
 	this->my_cpi = this->child_sa->alloc_cpi(this->child_sa);
 	if (this->my_cpi)
@@ -838,11 +859,11 @@ static void handle_notify(private_child_create_t *this, notify_payload_t *notify
 		case IPCOMP_SUPPORTED:
 		{
 			ipcomp_transform_t ipcomp;
-			u_int16_t cpi;
+			uint16_t cpi;
 			chunk_t data;
 
 			data = notify->get_notification_data(notify);
-			cpi = *(u_int16_t*)data.ptr;
+			cpi = *(uint16_t*)data.ptr;
 			ipcomp = (ipcomp_transform_t)(*(data.ptr + 2));
 			switch (ipcomp)
 			{
@@ -1232,13 +1253,13 @@ METHOD(task_t, build_r, status_t,
 	if (this->ike_sa->get_state(this->ike_sa) == IKE_REKEYING)
 	{
 		DBG1(DBG_IKE, "unable to create CHILD_SA while rekeying IKE_SA");
-		message->add_notify(message, TRUE, NO_ADDITIONAL_SAS, chunk_empty);
+		message->add_notify(message, TRUE, TEMPORARY_FAILURE, chunk_empty);
 		return SUCCESS;
 	}
 	if (this->ike_sa->get_state(this->ike_sa) == IKE_DELETING)
 	{
 		DBG1(DBG_IKE, "unable to create CHILD_SA while deleting IKE_SA");
-		message->add_notify(message, TRUE, NO_ADDITIONAL_SAS, chunk_empty);
+		message->add_notify(message, TRUE, TEMPORARY_FAILURE, chunk_empty);
 		return SUCCESS;
 	}
 
@@ -1310,7 +1331,7 @@ METHOD(task_t, build_r, status_t,
 			return SUCCESS;
 		case INVALID_ARG:
 		{
-			u_int16_t group = htons(this->dh_group);
+			uint16_t group = htons(this->dh_group);
 			message->add_notify(message, FALSE, INVALID_KE_PAYLOAD,
 								chunk_from_thing(group));
 			handle_child_sa_failure(this, message);
@@ -1441,10 +1462,21 @@ METHOD(task_t, process_i, status_t,
 					/* an error in CHILD_SA creation is not critical */
 					return SUCCESS;
 				}
+				case TEMPORARY_FAILURE:
+				{
+					DBG1(DBG_IKE, "received %N notify, will retry later",
+						 notify_type_names, type);
+					enumerator->destroy(enumerator);
+					if (!this->rekey)
+					{	/* the rekey task will retry itself if necessary */
+						schedule_delayed_retry(this);
+					}
+					return SUCCESS;
+				}
 				case INVALID_KE_PAYLOAD:
 				{
 					chunk_t data;
-					u_int16_t group = MODP_NONE;
+					uint16_t group = MODP_NONE;
 
 					data = notify->get_notification_data(notify);
 					if (data.len == sizeof(group))
@@ -1529,7 +1561,7 @@ METHOD(task_t, process_i, status_t,
 }
 
 METHOD(child_create_t, use_reqid, void,
-	private_child_create_t *this, u_int32_t reqid)
+	private_child_create_t *this, uint32_t reqid)
 {
 	this->reqid = reqid;
 }

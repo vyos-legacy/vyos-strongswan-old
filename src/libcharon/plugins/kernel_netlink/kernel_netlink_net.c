@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2008-2014 Tobias Brunner
+ * Copyright (C) 2008-2016 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -278,7 +278,7 @@ struct route_entry_t {
 	chunk_t dst_net;
 
 	/** Destination net prefixlen */
-	u_int8_t prefixlen;
+	uint8_t prefixlen;
 };
 
 /**
@@ -513,12 +513,12 @@ struct private_kernel_netlink_net_t {
 	/**
 	 * MTU to set on installed routes
 	 */
-	u_int32_t mtu;
+	uint32_t mtu;
 
 	/**
 	 * MSS to set on installed routes
 	 */
-	u_int32_t mss;
+	uint32_t mss;
 };
 
 /**
@@ -526,7 +526,7 @@ struct private_kernel_netlink_net_t {
  */
 static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 								int nlmsg_type, int flags, chunk_t dst_net,
-								u_int8_t prefixlen, host_t *gateway,
+								uint8_t prefixlen, host_t *gateway,
 								host_t *src_ip, char *if_name);
 
 /**
@@ -1217,7 +1217,7 @@ static void process_route(private_kernel_netlink_net_t *this, struct nlmsghdr *h
 	struct rtmsg* msg = NLMSG_DATA(hdr);
 	struct rtattr *rta = RTM_RTA(msg);
 	size_t rtasize = RTM_PAYLOAD(hdr);
-	u_int32_t rta_oif = 0;
+	uint32_t rta_oif = 0;
 	host_t *host = NULL;
 
 	/* ignore routes added by us or in the local routing table (local addrs) */
@@ -1243,7 +1243,7 @@ static void process_route(private_kernel_netlink_net_t *this, struct nlmsghdr *h
 			case RTA_OIF:
 				if (RTA_PAYLOAD(rta) == sizeof(rta_oif))
 				{
-					rta_oif = *(u_int32_t*)RTA_DATA(rta);
+					rta_oif = *(uint32_t*)RTA_DATA(rta);
 				}
 				break;
 		}
@@ -1297,7 +1297,8 @@ static bool receive_events(private_kernel_netlink_net_t *this, int fd,
 				/* no data ready, select again */
 				return TRUE;
 			default:
-				DBG1(DBG_KNL, "unable to receive from rt event socket");
+				DBG1(DBG_KNL, "unable to receive from RT event socket %s (%d)",
+					 strerror(errno), errno);
 				sleep(1);
 				return TRUE;
 		}
@@ -1501,6 +1502,32 @@ static int get_interface_index(private_kernel_netlink_net_t *this, char* name)
 }
 
 /**
+ * get the name of an interface by index (allocated)
+ */
+static char *get_interface_name_by_index(private_kernel_netlink_net_t *this,
+										 int index)
+{
+	iface_entry_t *iface;
+	char *name = NULL;
+
+	DBG2(DBG_KNL, "getting iface name for index %d", index);
+
+	this->lock->read_lock(this->lock);
+	if (this->ifaces->find_first(this->ifaces, (void*)iface_entry_by_index,
+								(void**)&iface, &index) == SUCCESS)
+	{
+		name = strdup(iface->ifname);
+	}
+	this->lock->unlock(this->lock);
+
+	if (!name)
+	{
+		DBG1(DBG_KNL, "unable to get interface name for %d", index);
+	}
+	return name;
+}
+
+/**
  * check if an address or net (addr with prefix net bits) is in
  * subnet (net with net_len net bits)
  */
@@ -1545,10 +1572,10 @@ typedef struct {
 	chunk_t src;
 	chunk_t dst;
 	host_t *src_host;
-	u_int8_t dst_len;
-	u_int32_t table;
-	u_int32_t oif;
-	u_int32_t priority;
+	uint8_t dst_len;
+	uint32_t table;
+	uint32_t oif;
+	uint32_t priority;
 } rt_entry_t;
 
 /**
@@ -1630,20 +1657,20 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
 			case RTA_OIF:
 				if (RTA_PAYLOAD(rta) == sizeof(route->oif))
 				{
-					route->oif = *(u_int32_t*)RTA_DATA(rta);
+					route->oif = *(uint32_t*)RTA_DATA(rta);
 				}
 				break;
 			case RTA_PRIORITY:
 				if (RTA_PAYLOAD(rta) == sizeof(route->priority))
 				{
-					route->priority = *(u_int32_t*)RTA_DATA(rta);
+					route->priority = *(uint32_t*)RTA_DATA(rta);
 				}
 				break;
 #ifdef HAVE_RTA_TABLE
 			case RTA_TABLE:
 				if (RTA_PAYLOAD(rta) == sizeof(route->table))
 				{
-					route->table = *(u_int32_t*)RTA_DATA(rta);
+					route->table = *(uint32_t*)RTA_DATA(rta);
 				}
 				break;
 #endif /* HAVE_RTA_TABLE*/
@@ -1658,7 +1685,7 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
  */
 static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 						 int prefix, bool nexthop, host_t *candidate,
-						 u_int recursion)
+						 char **iface, u_int recursion)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *hdr, *out, *current;
@@ -1774,16 +1801,16 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 					}
 					route->src_host = src;
 				}
-				/* insert route, sorted by priority and network prefix */
+				/* insert route, sorted by network prefix and priority */
 				enumerator = routes->create_enumerator(routes);
 				while (enumerator->enumerate(enumerator, &other))
 				{
-					if (route->priority < other->priority)
+					if (route->dst_len > other->dst_len)
 					{
 						break;
 					}
-					if (route->priority == other->priority &&
-						route->dst_len > other->dst_len)
+					if (route->dst_len == other->dst_len &&
+						route->priority < other->priority)
 					{
 						break;
 					}
@@ -1860,7 +1887,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 			if (gtw && !gtw->ip_equals(gtw, dest))
 			{
 				route->src_host = get_route(this, gtw, -1, FALSE, candidate,
-											recursion + 1);
+											iface, recursion + 1);
 			}
 			DESTROY_IF(gtw);
 			if (route->src_host)
@@ -1878,10 +1905,18 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 	enumerator->destroy(enumerator);
 
 	if (nexthop)
-	{	/* nexthop lookup, return gateway if any */
+	{	/* nexthop lookup, return gateway and oif if any */
+		if (iface)
+		{
+			*iface = NULL;
+		}
 		if (best || routes->get_first(routes, (void**)&best) == SUCCESS)
 		{
 			addr = host_create_from_chunk(msg->rtm_family, best->gtw, 0);
+			if (iface && route->oif)
+			{
+				*iface = get_interface_name_by_index(this, route->oif);
+			}
 		}
 		if (!addr && !match_net)
 		{	/* fallback to destination address */
@@ -1901,8 +1936,16 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 
 	if (addr)
 	{
-		DBG2(DBG_KNL, "using %H as %s to reach %H/%d", addr,
-			 nexthop ? "nexthop" : "address", dest, prefix);
+		if (nexthop && iface && *iface)
+		{
+			DBG2(DBG_KNL, "using %H as nexthop and %s as dev to reach %H/%d",
+				 addr, *iface, dest, prefix);
+		}
+		else
+		{
+			DBG2(DBG_KNL, "using %H as %s to reach %H/%d", addr,
+				 nexthop ? "nexthop" : "address", dest, prefix);
+		}
 	}
 	else if (!recursion)
 	{
@@ -1915,13 +1958,14 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 METHOD(kernel_net_t, get_source_addr, host_t*,
 	private_kernel_netlink_net_t *this, host_t *dest, host_t *src)
 {
-	return get_route(this, dest, -1, FALSE, src, 0);
+	return get_route(this, dest, -1, FALSE, src, NULL, 0);
 }
 
 METHOD(kernel_net_t, get_nexthop, host_t*,
-	private_kernel_netlink_net_t *this, host_t *dest, int prefix, host_t *src)
+	private_kernel_netlink_net_t *this, host_t *dest, int prefix, host_t *src,
+	char **iface)
 {
-	return get_route(this, dest, prefix, TRUE, src, 0);
+	return get_route(this, dest, prefix, TRUE, src, iface, 0);
 }
 
 /**
@@ -2144,7 +2188,7 @@ METHOD(kernel_net_t, del_ip, status_t,
  */
 static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 								int nlmsg_type, int flags, chunk_t dst_net,
-								u_int8_t prefixlen, host_t *gateway,
+								uint8_t prefixlen, host_t *gateway,
 								host_t *src_ip, char *if_name)
 {
 	netlink_buf_t request;
@@ -2160,7 +2204,7 @@ static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 	if (this->routing_table == 0 && prefixlen == 0)
 	{
 		chunk_t half_net;
-		u_int8_t half_prefixlen;
+		uint8_t half_prefixlen;
 		status_t status;
 
 		half_net = chunk_alloca(dst_net.len);
@@ -2206,22 +2250,22 @@ static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 	if (this->mtu || this->mss)
 	{
 		chunk = chunk_alloca(RTA_LENGTH((sizeof(struct rtattr) +
-										 sizeof(u_int32_t)) * 2));
+										 sizeof(uint32_t)) * 2));
 		chunk.len = 0;
 		rta = (struct rtattr*)chunk.ptr;
 		if (this->mtu)
 		{
 			rta->rta_type = RTAX_MTU;
-			rta->rta_len = RTA_LENGTH(sizeof(u_int32_t));
-			memcpy(RTA_DATA(rta), &this->mtu, sizeof(u_int32_t));
+			rta->rta_len = RTA_LENGTH(sizeof(uint32_t));
+			memcpy(RTA_DATA(rta), &this->mtu, sizeof(uint32_t));
 			chunk.len = rta->rta_len;
 		}
 		if (this->mss)
 		{
 			rta = (struct rtattr*)(chunk.ptr + RTA_ALIGN(chunk.len));
 			rta->rta_type = RTAX_ADVMSS;
-			rta->rta_len = RTA_LENGTH(sizeof(u_int32_t));
-			memcpy(RTA_DATA(rta), &this->mss, sizeof(u_int32_t));
+			rta->rta_len = RTA_LENGTH(sizeof(uint32_t));
+			memcpy(RTA_DATA(rta), &this->mss, sizeof(uint32_t));
 			chunk.len = RTA_ALIGN(chunk.len) + rta->rta_len;
 		}
 		netlink_add_attribute(hdr, RTA_METRICS, chunk, sizeof(request));
@@ -2231,7 +2275,7 @@ static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 }
 
 METHOD(kernel_net_t, add_route, status_t,
-	private_kernel_netlink_net_t *this, chunk_t dst_net, u_int8_t prefixlen,
+	private_kernel_netlink_net_t *this, chunk_t dst_net, uint8_t prefixlen,
 	host_t *gateway, host_t *src_ip, char *if_name)
 {
 	status_t status;
@@ -2262,7 +2306,7 @@ METHOD(kernel_net_t, add_route, status_t,
 }
 
 METHOD(kernel_net_t, del_route, status_t,
-	private_kernel_netlink_net_t *this, chunk_t dst_net, u_int8_t prefixlen,
+	private_kernel_netlink_net_t *this, chunk_t dst_net, uint8_t prefixlen,
 	host_t *gateway, host_t *src_ip, char *if_name)
 {
 	status_t status;
@@ -2384,7 +2428,7 @@ static status_t init_address_list(private_kernel_netlink_net_t *this)
  * create or delete a rule to use our routing table
  */
 static status_t manage_rule(private_kernel_netlink_net_t *this, int nlmsg_type,
-							int family, u_int32_t table, u_int32_t prio)
+							int family, uint32_t table, uint32_t prio)
 {
 	netlink_buf_t request;
 	struct nlmsghdr *hdr;
@@ -2644,7 +2688,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 		this->socket_events = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 		if (this->socket_events < 0)
 		{
-			DBG1(DBG_KNL, "unable to create RT event socket");
+			DBG1(DBG_KNL, "unable to create RT event socket: %s (%d)",
+				 strerror(errno), errno);
 			destroy(this);
 			return NULL;
 		}
@@ -2652,7 +2697,8 @@ kernel_netlink_net_t *kernel_netlink_net_create()
 						 RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE | RTMGRP_LINK;
 		if (bind(this->socket_events, (struct sockaddr*)&addr, sizeof(addr)))
 		{
-			DBG1(DBG_KNL, "unable to bind RT event socket");
+			DBG1(DBG_KNL, "unable to bind RT event socket: %s (%d)",
+				 strerror(errno), errno);
 			destroy(this);
 			return NULL;
 		}

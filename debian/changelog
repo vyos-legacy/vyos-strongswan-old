@@ -1,3 +1,35 @@
+strongswan (5.5.0-3) unstable; urgency=medium
+
+  * debian/control:
+    - add build-dep on tzdata, fix FTBFS when absent.           closes: #839459
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 02 Oct 2016 15:22:54 +0200
+
+strongswan (5.5.0-2) unstable; urgency=medium
+
+  * debian/rules:
+    - add patch from Raphaël Geissert to use /etc/ssl/certs instead of
+      /usr/share/ca-certificates for strongswan-nm.             closes: #835095
+    - update argument name for dh_strip dbgsym migration
+  * debian/control:
+    - update debhelper dependency to a version which supports dbgsym
+      migration.
+  * debian/patches:
+    - 05_network-manager-strongswan-1.4 added, backport two upstream patches
+      to support network-manager-strongswan 1.4 in charon-nm.   closes: #838194
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sun, 18 Sep 2016 13:47:41 +0200
+
+strongswan (5.5.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/control:
+    - add build-dep on systemd.                                 closes: #828945
+  * debian/patches:
+    - 05_port-openssl-1.1.0 dropped, included upstream.
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Sat, 16 Jul 2016 15:32:04 +0200
+
 strongswan (5.4.0-3) unstable; urgency=medium
 
   * debian/patches:

@@ -221,7 +221,7 @@ static void handle_supported_hash_algorithms(private_ike_init_t *this,
 											 notify_payload_t *notify)
 {
 	bio_reader_t *reader;
-	u_int16_t algo;
+	uint16_t algo;
 	bool added = FALSE;
 
 	reader = bio_reader_create(notify->get_notification_data(notify));
@@ -373,13 +373,15 @@ static void process_payloads(private_ike_init_t *this, message_t *message)
 			{
 				sa_payload_t *sa_payload = (sa_payload_t*)payload;
 				linked_list_t *proposal_list;
-				bool private;
+				bool private, prefer_configured;
 
 				proposal_list = sa_payload->get_proposals(sa_payload);
 				private = this->ike_sa->supports_extension(this->ike_sa,
 														   EXT_STRONGSWAN);
+				prefer_configured = lib->settings->get_bool(lib->settings,
+							"%s.prefer_configured_proposals", TRUE, lib->ns);
 				this->proposal = this->config->select_proposal(this->config,
-														proposal_list, private);
+									proposal_list, private, prefer_configured);
 				if (!this->proposal)
 				{
 					charon->bus->alert(charon->bus, ALERT_PROPOSAL_MISMATCH_IKE,
@@ -633,7 +635,7 @@ METHOD(task_t, build_r, status_t,
 	if (this->dh == NULL ||
 		!this->proposal->has_dh_group(this->proposal, this->dh_group))
 	{
-		u_int16_t group;
+		uint16_t group;
 
 		if (this->proposal->get_algorithm(this->proposal, DIFFIE_HELLMAN_GROUP,
 										  &group, NULL))
@@ -765,7 +767,7 @@ METHOD(task_t, process_i, status_t,
 
 					bad_group = this->dh_group;
 					data = notify->get_notification_data(notify);
-					this->dh_group = ntohs(*((u_int16_t*)data.ptr));
+					this->dh_group = ntohs(*((uint16_t*)data.ptr));
 					DBG1(DBG_IKE, "peer didn't accept DH group %N, "
 						 "it requested %N", diffie_hellman_group_names,
 						 bad_group, diffie_hellman_group_names, this->dh_group);

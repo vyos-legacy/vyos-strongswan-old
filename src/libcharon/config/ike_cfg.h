@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Tobias Brunner
+ * Copyright (C) 2012-2016 Tobias Brunner
  * Copyright (C) 2005-2007 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
@@ -128,21 +128,21 @@ struct ike_cfg_t {
 	 *
 	 * @return				source address port, host order
 	 */
-	u_int16_t (*get_my_port)(ike_cfg_t *this);
+	uint16_t (*get_my_port)(ike_cfg_t *this);
 
 	/**
 	 * Get the port to use as destination port.
 	 *
 	 * @return				destination address, host order
 	 */
-	u_int16_t (*get_other_port)(ike_cfg_t *this);
+	uint16_t (*get_other_port)(ike_cfg_t *this);
 
 	/**
 	 * Get the DSCP value to use for IKE packets send from connections.
 	 *
 	 * @return				DSCP value
 	 */
-	u_int8_t (*get_dscp)(ike_cfg_t *this);
+	uint8_t (*get_dscp)(ike_cfg_t *this);
 
 	/**
 	 * Adds a proposal to the list.
@@ -165,16 +165,17 @@ struct ike_cfg_t {
 	linked_list_t* (*get_proposals) (ike_cfg_t *this);
 
 	/**
-	 * Select a proposed from suggested proposals.
+	 * Select a proposal from a list of supplied proposals.
 	 *
 	 * Returned proposal must be destroyed after use.
 	 *
 	 * @param proposals		list of proposals to select from
 	 * @param private		accept algorithms from a private range
+	 * @param prefer_self	whether to prefer configured or supplied proposals
 	 * @return				selected proposal, or NULL if none matches.
 	 */
 	proposal_t *(*select_proposal) (ike_cfg_t *this, linked_list_t *proposals,
-									bool private);
+									bool private, bool prefer_self);
 
 	/**
 	 * Should we send a certificate request in IKE_SA_INIT?
@@ -250,9 +251,9 @@ struct ike_cfg_t {
  * @return					ike_cfg_t object.
  */
 ike_cfg_t *ike_cfg_create(ike_version_t version, bool certreq, bool force_encap,
-						  char *me, u_int16_t my_port,
-						  char *other, u_int16_t other_port,
-						  fragmentation_t fragmentation, u_int8_t dscp);
+						  char *me, uint16_t my_port,
+						  char *other, uint16_t other_port,
+						  fragmentation_t fragmentation, uint8_t dscp);
 
 /**
  * Determine the address family of the local or remtoe address(es).  If multiple

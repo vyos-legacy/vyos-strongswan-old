@@ -105,7 +105,7 @@ struct interface_listener_t {
 	/**
 	 * unique ID, used for various methods
 	 */
-	u_int32_t id;
+	uint32_t id;
 
 	/**
 	 * semaphore to implement wait_for_listener()
@@ -272,6 +272,28 @@ METHOD(listener_t, ike_state_change, bool,
 			}
 #endif /* ME */
 			case IKE_DESTROYING:
+				return listener_done(this);
+			default:
+				break;
+		}
+	}
+	return TRUE;
+}
+
+METHOD(listener_t, ike_state_change_terminate, bool,
+	interface_listener_t *this, ike_sa_t *ike_sa, ike_sa_state_t state)
+{
+	ike_sa_t *target;
+
+	this->lock->lock(this->lock);
+	target = this->ike_sa;
+	this->lock->unlock(this->lock);
+
+	if (target == ike_sa)
+	{
+		switch (state)
+		{
+			case IKE_DESTROYING:
 				if (ike_sa->get_state(ike_sa) == IKE_DELETING)
 				{	/* proper termination */
 					this->status = SUCCESS;
@@ -304,10 +326,6 @@ METHOD(listener_t, child_state_change, bool,
 			case CHILD_DESTROYING:
 				switch (child_sa->get_state(child_sa))
 				{
-					case CHILD_DELETING:
-						/* proper delete */
-						this->status = SUCCESS;
-						break;
 					case CHILD_RETRYING:
 						/* retrying with a different DH group; survive another
 						 * initiation round */
@@ -319,6 +337,38 @@ METHOD(listener_t, child_state_change, bool,
 							this->status = FAILED;
 							return TRUE;
 						}
+						break;
+					default:
+						break;
+				}
+				return listener_done(this);
+			default:
+				break;
+		}
+	}
+	return TRUE;
+}
+
+METHOD(listener_t, child_state_change_terminate, bool,
+	interface_listener_t *this, ike_sa_t *ike_sa, child_sa_t *child_sa,
+	child_sa_state_t state)
+{
+	ike_sa_t *target;
+
+	this->lock->lock(this->lock);
+	target = this->ike_sa;
+	this->lock->unlock(this->lock);
+
+	if (target == ike_sa)
+	{
+		switch (state)
+		{
+			case CHILD_DESTROYING:
+				switch (child_sa->get_state(child_sa))
+				{
+					case CHILD_DELETING:
+						/* proper delete */
+						this->status = SUCCESS;
 						break;
 					default:
 						break;
@@ -493,7 +543,7 @@ METHOD(job_t, terminate_ike_execute, job_requeue_t,
 	interface_job_t *job)
 {
 	interface_listener_t *listener = &job->listener;
-	u_int32_t unique_id = listener->id;
+	uint32_t unique_id = listener->id;
 	ike_sa_t *ike_sa;
 
 	ike_sa = charon->ike_sa_manager->checkout_by_id(charon->ike_sa_manager,
@@ -528,7 +578,7 @@ METHOD(job_t, terminate_ike_execute, job_requeue_t,
 }
 
 METHOD(controller_t, terminate_ike, status_t,
-	controller_t *this, u_int32_t unique_id,
+	controller_t *this, uint32_t unique_id,
 	controller_cb_t callback, void *param, u_int timeout)
 {
 	interface_job_t *job;
@@ -537,8 +587,8 @@ METHOD(controller_t, terminate_ike, status_t,
 	INIT(job,
 		.listener = {
 			.public = {
-				.ike_state_change = _ike_state_change,
-				.child_state_change = _child_state_change,
+				.ike_state_change = _ike_state_change_terminate,
+				.child_state_change = _child_state_change_terminate,
 			},
 			.logger = {
 				.public = {
@@ -582,7 +632,7 @@ METHOD(job_t, terminate_child_execute, job_requeue_t,
 	interface_job_t *job)
 {
 	interface_listener_t *listener = &job->listener;
-	u_int32_t id = listener->id;
+	uint32_t id = listener->id;
 	child_sa_t *child_sa;
 	ike_sa_t *ike_sa;
 
@@ -630,7 +680,7 @@ METHOD(job_t, terminate_child_execute, job_requeue_t,
 }
 
 METHOD(controller_t, terminate_child, status_t,
-	controller_t *this, u_int32_t unique_id,
+	controller_t *this, uint32_t unique_id,
 	controller_cb_t callback, void *param, u_int timeout)
 {
 	interface_job_t *job;
@@ -639,8 +689,8 @@ METHOD(controller_t, terminate_child, status_t,
 	INIT(job,
 		.listener = {
 			.public = {
-				.ike_state_change = _ike_state_change,
-				.child_state_change = _child_state_change,
+				.ike_state_change = _ike_state_change_terminate,
+				.child_state_change = _child_state_change_terminate,
 			},
 			.logger = {
 				.public = {

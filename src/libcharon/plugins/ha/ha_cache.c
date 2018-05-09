@@ -186,11 +186,13 @@ METHOD(ha_cache_t, delete_, void,
 {
 	entry_t *entry;
 
+	this->mutex->lock(this->mutex);
 	entry = this->cache->remove(this->cache, ike_sa);
 	if (entry)
 	{
 		entry_destroy(entry);
 	}
+	this->mutex->unlock(this->mutex);
 }
 
 /**
@@ -204,7 +206,7 @@ static status_t rekey_children(ike_sa_t *ike_sa)
 	linked_list_t *children;
 	struct {
 		protocol_id_t protocol;
-		u_int32_t spi;
+		uint32_t spi;
 	} *info;
 
 	children = linked_list_create();

@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.2"
+#define YYBISON_VERSION "3.0.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -182,7 +182,7 @@ extern int conf_parser_debug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
 #line 71 "parser/parser.y" /* yacc.c:355  */
@@ -192,6 +192,8 @@ union YYSTYPE
 
 #line 194 "parser/parser.c" /* yacc.c:355  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
@@ -204,7 +206,7 @@ int conf_parser_parse (parser_helper_t *ctx);
 
 /* Copy the second part of user declarations.  */
 
-#line 208 "parser/parser.c" /* yacc.c:358  */
+#line 210 "parser/parser.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1030,19 +1032,19 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, parser_helper_t *c
           case 3: /* STRING  */
 #line 86 "parser/parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1034 "parser/parser.c" /* yacc.c:1257  */
+#line 1036 "parser/parser.c" /* yacc.c:1257  */
         break;
 
     case 16: /* section_name  */
 #line 86 "parser/parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1040 "parser/parser.c" /* yacc.c:1257  */
+#line 1042 "parser/parser.c" /* yacc.c:1257  */
         break;
 
     case 18: /* value  */
 #line 86 "parser/parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1046 "parser/parser.c" /* yacc.c:1257  */
+#line 1048 "parser/parser.c" /* yacc.c:1257  */
         break;
 
 
@@ -1319,7 +1321,7 @@ yyreduce:
 		conf_parser_t *parser = (conf_parser_t*)ctx->context;
 		parser->add_section(parser, (yyvsp[-1].t), (yyvsp[0].s));
 	}
-#line 1323 "parser/parser.c" /* yacc.c:1646  */
+#line 1325 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 8:
@@ -1327,7 +1329,7 @@ yyreduce:
     {
 		(yyval.t) = CONF_PARSER_CONFIG_SETUP;
 	}
-#line 1331 "parser/parser.c" /* yacc.c:1646  */
+#line 1333 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 9:
@@ -1335,7 +1337,7 @@ yyreduce:
     {
 		(yyval.t) = CONF_PARSER_CONN;
 	}
-#line 1339 "parser/parser.c" /* yacc.c:1646  */
+#line 1341 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 10:
@@ -1343,7 +1345,7 @@ yyreduce:
     {
 		(yyval.t) = CONF_PARSER_CA;
 	}
-#line 1347 "parser/parser.c" /* yacc.c:1646  */
+#line 1349 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 11:
@@ -1351,7 +1353,7 @@ yyreduce:
     {
 		(yyval.s) = NULL;
 	}
-#line 1355 "parser/parser.c" /* yacc.c:1646  */
+#line 1357 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 12:
@@ -1359,7 +1361,7 @@ yyreduce:
     {
 		(yyval.s) = (yyvsp[0].s);
 	}
-#line 1363 "parser/parser.c" /* yacc.c:1646  */
+#line 1365 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 14:
@@ -1375,7 +1377,7 @@ yyreduce:
 		conf_parser_t *parser = (conf_parser_t*)ctx->context;
 		parser->add_setting(parser, (yyvsp[-2].s), (yyvsp[0].s));
 	}
-#line 1379 "parser/parser.c" /* yacc.c:1646  */
+#line 1381 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 15:
@@ -1390,7 +1392,7 @@ yyreduce:
 		conf_parser_t *parser = (conf_parser_t*)ctx->context;
 		parser->add_setting(parser, (yyvsp[-1].s), NULL);
 	}
-#line 1394 "parser/parser.c" /* yacc.c:1646  */
+#line 1396 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 16:
@@ -1400,7 +1402,7 @@ yyreduce:
 		free((yyvsp[0].s));
 		YYERROR;
 	}
-#line 1404 "parser/parser.c" /* yacc.c:1646  */
+#line 1406 "parser/parser.c" /* yacc.c:1646  */
     break;
 
   case 18:
@@ -1415,11 +1417,11 @@ yyreduce:
 		free((yyvsp[-1].s));
 		free((yyvsp[0].s));
 	}
-#line 1419 "parser/parser.c" /* yacc.c:1646  */
+#line 1421 "parser/parser.c" /* yacc.c:1646  */
     break;
 
 
-#line 1423 "parser/parser.c" /* yacc.c:1646  */
+#line 1425 "parser/parser.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
