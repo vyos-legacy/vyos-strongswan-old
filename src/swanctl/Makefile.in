@@ -112,10 +112,11 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man5dir)" \
 	"$(DESTDIR)$(man8dir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_swanctl_OBJECTS = command.$(OBJEXT) commands/initiate.$(OBJEXT) \
-	commands/terminate.$(OBJEXT) commands/rekey.$(OBJEXT) \
-	commands/redirect.$(OBJEXT) commands/install.$(OBJEXT) \
-	commands/list_sas.$(OBJEXT) commands/list_pols.$(OBJEXT) \
+am_swanctl_OBJECTS = command.$(OBJEXT) commands/counters.$(OBJEXT) \
+	commands/initiate.$(OBJEXT) commands/terminate.$(OBJEXT) \
+	commands/rekey.$(OBJEXT) commands/redirect.$(OBJEXT) \
+	commands/install.$(OBJEXT) commands/list_sas.$(OBJEXT) \
+	commands/list_pols.$(OBJEXT) \
 	commands/list_authorities.$(OBJEXT) \
 	commands/list_conns.$(OBJEXT) commands/list_certs.$(OBJEXT) \
 	commands/list_pools.$(OBJEXT) commands/list_algs.$(OBJEXT) \
@@ -264,9 +265,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -469,6 +472,7 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 swanctl_SOURCES = \
 	command.c command.h \
+	commands/counters.c \
 	commands/initiate.c \
 	commands/terminate.c \
 	commands/rekey.c \
@@ -606,6 +610,8 @@ commands/$(am__dirstamp):
 commands/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) commands/$(DEPDIR)
 	@: > commands/$(DEPDIR)/$(am__dirstamp)
+commands/counters.$(OBJEXT): commands/$(am__dirstamp) \
+	commands/$(DEPDIR)/$(am__dirstamp)
 commands/initiate.$(OBJEXT): commands/$(am__dirstamp) \
 	commands/$(DEPDIR)/$(am__dirstamp)
 commands/terminate.$(OBJEXT): commands/$(am__dirstamp) \
@@ -664,6 +670,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/command.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/swanctl.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/counters.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/flush_certs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/initiate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@commands/$(DEPDIR)/install.Po@am__quote@

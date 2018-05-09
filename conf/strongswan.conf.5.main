@@ -632,6 +632,11 @@ If enabled, accounting is disabled unless an IKE_SA has at least one virtual IP.
 Only for IKEv2, for IKEv1 a virtual IP is strictly necessary.
 
 .TP
+.BR charon.plugins.eap-radius.accounting_send_class " [no]"
+If enabled, adds the Class attributes received in Access\-Accept message to the
+RADIUS accounting messages.
+
+.TP
 .BR charon.plugins.eap-radius.class_group " [no]"
 Use the
 .RI "" "class" ""
@@ -1495,6 +1500,11 @@ Threshold date where system time is considered valid. Disabled if not specified.
 format used to parse threshold option.
 
 .TP
+.BR charon.plugins.systime-fix.timeout " [0s]"
+How long to wait for a valid system time if an interval is configured. 0 to
+recheck indefinitely.
+
+.TP
 .BR charon.plugins.tnc-ifmap.client_cert " []"
 Path to X.509 certificate file of IF\-MAP client.
 
@@ -1761,6 +1771,10 @@ Numerical routing table to install routes to.
 .TP
 .BR charon.routing_table_prio " []"
 Priority of the routing table.
+
+.TP
+.BR charon.rsa_pss " [no]"
+Whether to use RSA with PSS padding instead of PKCS#1 padding by default.
 
 .TP
 .BR charon.send_delay " [0]"
@@ -2307,16 +2321,6 @@ Number of thread for mediation service web application.
 Session timeout for mediation service.
 
 .TP
-.BR pacman.database " []"
-Database URI for the database that stores the package information. If it
-contains a password, make sure to adjust the permissions of the config file
-accordingly.
-
-.TP
-.BR pacman.load " []"
-Plugins to load in package manager.
-
-.TP
 .BR pki.load " []"
 Plugins to load in ipsec pki tool.
 
@@ -2333,6 +2337,44 @@ Plugins to load in ipsec pool tool.
 .TP
 .BR scepclient.load " []"
 Plugins to load in ipsec scepclient tool.
+
+.TP
+.B sec-updater
+.br
+Options for the sec\-updater tool.
+
+.TP
+.BR sec-updater.database " []"
+Global IMV policy database URI. If it contains a password, make sure to adjust
+the permissions of the config file accordingly.
+
+.TP
+.BR sec-updater.load " []"
+Plugins to load in sec\-updater tool.
+
+.TP
+.BR sec-updater.swid_gen.command " [/usr/local/bin/swid_generator]"
+SWID generator command to be executed.
+
+.TP
+.BR sec-updater.swid_gen.tag_creator.name " [strongSwan Project]"
+Name of the tagCreator entity.
+
+.TP
+.BR sec-updater.swid_gen.tag_creator.regid " [strongswan.org]"
+regid of the tagCreator entity.
+
+.TP
+.BR sec-updater.tmp.deb_file " [/tmp/sec-updater.deb]"
+Temporary storage for downloaded deb package file.
+
+.TP
+.BR sec-updater.tmp.tag_file " [/tmp/sec-updater.tag]"
+Temporary storage for generated SWID tags.
+
+.TP
+.BR sec-updater.tnc_manage_command " [/var/www/tnc/manage.py]"
+strongTNC manage.py command used to import SWID tags.
 
 .TP
 .BR starter.config_file " [${sysconfdir}/ipsec.conf]"

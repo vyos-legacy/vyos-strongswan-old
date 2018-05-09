@@ -276,9 +276,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -1039,7 +1041,7 @@ cov-reset-common:
 @COVERAGE_TRUE@		lcov -c -o $(top_builddir)/coverage/coverage.info -d $(top_builddir) \
 @COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
 @COVERAGE_TRUE@		lcov -r $(top_builddir)/coverage/coverage.info '*/tests/*' '*/suites/*' '/usr*' \
-@COVERAGE_TRUE@			 -o $(top_builddir)/coverage/coverage.cleaned.info \
+@COVERAGE_TRUE@			 -o $(abs_top_builddir)/coverage/coverage.cleaned.info \
 @COVERAGE_TRUE@			 --rc lcov_branch_coverage=1
 @COVERAGE_TRUE@		genhtml --num-spaces 4 --legend --branch-coverage --ignore-errors source \
 @COVERAGE_TRUE@				-t "$(PACKAGE_STRING)" \

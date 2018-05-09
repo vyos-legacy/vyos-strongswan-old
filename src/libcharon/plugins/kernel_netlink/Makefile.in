@@ -88,7 +88,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-TESTS = tests$(EXEEXT)
+TESTS = kernel_netlink_tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libcharon/plugins/kernel_netlink
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -156,18 +156,20 @@ libstrongswan_kernel_netlink_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 @MONOLITHIC_FALSE@am_libstrongswan_kernel_netlink_la_rpath = -rpath \
 @MONOLITHIC_FALSE@	$(plugindir)
 @MONOLITHIC_TRUE@am_libstrongswan_kernel_netlink_la_rpath =
-am__EXEEXT_1 = tests$(EXEEXT)
+am__EXEEXT_1 = kernel_netlink_tests$(EXEEXT)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_tests_OBJECTS = tests-tests.$(OBJEXT) \
-	suites/tests-test_socket.$(OBJEXT) \
-	tests-kernel_netlink_shared.$(OBJEXT)
-tests_OBJECTS = $(am_tests_OBJECTS)
-tests_DEPENDENCIES =  \
+am_kernel_netlink_tests_OBJECTS =  \
+	kernel_netlink_tests-tests.$(OBJEXT) \
+	suites/kernel_netlink_tests-test_socket.$(OBJEXT) \
+	kernel_netlink_tests-kernel_netlink_shared.$(OBJEXT)
+kernel_netlink_tests_OBJECTS = $(am_kernel_netlink_tests_OBJECTS)
+kernel_netlink_tests_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la
-tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(tests_CFLAGS) $(CFLAGS) \
-	$(tests_LDFLAGS) $(LDFLAGS) -o $@
+kernel_netlink_tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(kernel_netlink_tests_CFLAGS) $(CFLAGS) \
+	$(kernel_netlink_tests_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -202,9 +204,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libstrongswan_kernel_netlink_la_SOURCES) $(tests_SOURCES)
+SOURCES = $(libstrongswan_kernel_netlink_la_SOURCES) \
+	$(kernel_netlink_tests_SOURCES)
 DIST_SOURCES = $(libstrongswan_kernel_netlink_la_SOURCES) \
-	$(tests_SOURCES)
+	$(kernel_netlink_tests_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -286,9 +289,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -509,19 +514,19 @@ libstrongswan_kernel_netlink_la_SOURCES = \
 
 libstrongswan_kernel_netlink_la_LIBADD = $(DLLIB)
 libstrongswan_kernel_netlink_la_LDFLAGS = -module -avoid-version
-tests_SOURCES = \
+kernel_netlink_tests_SOURCES = \
 	tests.h tests.c \
 	suites/test_socket.c \
 	kernel_netlink_shared.c
 
-tests_CFLAGS = \
+kernel_netlink_tests_CFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
 	-I$(top_srcdir)/src/libstrongswan/tests \
 	-DNETLINK_MSG_LOSS_HOOK=netlink_msg_loss \
 	@COVERAGE_CFLAGS@
 
-tests_LDFLAGS = @COVERAGE_LDFLAGS@
-tests_LDADD = \
+kernel_netlink_tests_LDFLAGS = @COVERAGE_LDFLAGS@
+kernel_netlink_tests_LDADD = \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la \
 	$(top_builddir)/src/libstrongswan/tests/libtest.la
 
@@ -622,12 +627,12 @@ suites/$(am__dirstamp):
 suites/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) suites/$(DEPDIR)
 	@: > suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_socket.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
+suites/kernel_netlink_tests-test_socket.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 
-tests$(EXEEXT): $(tests_OBJECTS) $(tests_DEPENDENCIES) $(EXTRA_tests_DEPENDENCIES) 
-	@rm -f tests$(EXEEXT)
-	$(AM_V_CCLD)$(tests_LINK) $(tests_OBJECTS) $(tests_LDADD) $(LIBS)
+kernel_netlink_tests$(EXEEXT): $(kernel_netlink_tests_OBJECTS) $(kernel_netlink_tests_DEPENDENCIES) $(EXTRA_kernel_netlink_tests_DEPENDENCIES) 
+	@rm -f kernel_netlink_tests$(EXEEXT)
+	$(AM_V_CCLD)$(kernel_netlink_tests_LINK) $(kernel_netlink_tests_OBJECTS) $(kernel_netlink_tests_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -640,9 +645,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_netlink_net.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_netlink_plugin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_netlink_shared.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tests-kernel_netlink_shared.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tests-tests.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_socket.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kernel_netlink_tests-tests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -668,47 +673,47 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
-tests-tests.o: tests.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.o -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.o' libtool=no @AMDEPBACKSLASH@
+kernel_netlink_tests-tests.o: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT kernel_netlink_tests-tests.o -MD -MP -MF $(DEPDIR)/kernel_netlink_tests-tests.Tpo -c -o kernel_netlink_tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/kernel_netlink_tests-tests.Tpo $(DEPDIR)/kernel_netlink_tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='kernel_netlink_tests-tests.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o kernel_netlink_tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
 
-tests-tests.obj: tests.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.obj -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.obj' libtool=no @AMDEPBACKSLASH@
+kernel_netlink_tests-tests.obj: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT kernel_netlink_tests-tests.obj -MD -MP -MF $(DEPDIR)/kernel_netlink_tests-tests.Tpo -c -o kernel_netlink_tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/kernel_netlink_tests-tests.Tpo $(DEPDIR)/kernel_netlink_tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='kernel_netlink_tests-tests.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o kernel_netlink_tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
 
-suites/tests-test_socket.o: suites/test_socket.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_socket.o -MD -MP -MF suites/$(DEPDIR)/tests-test_socket.Tpo -c -o suites/tests-test_socket.o `test -f 'suites/test_socket.c' || echo '$(srcdir)/'`suites/test_socket.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_socket.Tpo suites/$(DEPDIR)/tests-test_socket.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_socket.c' object='suites/tests-test_socket.o' libtool=no @AMDEPBACKSLASH@
+suites/kernel_netlink_tests-test_socket.o: suites/test_socket.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT suites/kernel_netlink_tests-test_socket.o -MD -MP -MF suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Tpo -c -o suites/kernel_netlink_tests-test_socket.o `test -f 'suites/test_socket.c' || echo '$(srcdir)/'`suites/test_socket.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Tpo suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_socket.c' object='suites/kernel_netlink_tests-test_socket.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_socket.o `test -f 'suites/test_socket.c' || echo '$(srcdir)/'`suites/test_socket.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o suites/kernel_netlink_tests-test_socket.o `test -f 'suites/test_socket.c' || echo '$(srcdir)/'`suites/test_socket.c
 
-suites/tests-test_socket.obj: suites/test_socket.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_socket.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_socket.Tpo -c -o suites/tests-test_socket.obj `if test -f 'suites/test_socket.c'; then $(CYGPATH_W) 'suites/test_socket.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_socket.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_socket.Tpo suites/$(DEPDIR)/tests-test_socket.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_socket.c' object='suites/tests-test_socket.obj' libtool=no @AMDEPBACKSLASH@
+suites/kernel_netlink_tests-test_socket.obj: suites/test_socket.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT suites/kernel_netlink_tests-test_socket.obj -MD -MP -MF suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Tpo -c -o suites/kernel_netlink_tests-test_socket.obj `if test -f 'suites/test_socket.c'; then $(CYGPATH_W) 'suites/test_socket.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_socket.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Tpo suites/$(DEPDIR)/kernel_netlink_tests-test_socket.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_socket.c' object='suites/kernel_netlink_tests-test_socket.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_socket.obj `if test -f 'suites/test_socket.c'; then $(CYGPATH_W) 'suites/test_socket.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_socket.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o suites/kernel_netlink_tests-test_socket.obj `if test -f 'suites/test_socket.c'; then $(CYGPATH_W) 'suites/test_socket.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_socket.c'; fi`
 
-tests-kernel_netlink_shared.o: kernel_netlink_shared.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-kernel_netlink_shared.o -MD -MP -MF $(DEPDIR)/tests-kernel_netlink_shared.Tpo -c -o tests-kernel_netlink_shared.o `test -f 'kernel_netlink_shared.c' || echo '$(srcdir)/'`kernel_netlink_shared.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-kernel_netlink_shared.Tpo $(DEPDIR)/tests-kernel_netlink_shared.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='kernel_netlink_shared.c' object='tests-kernel_netlink_shared.o' libtool=no @AMDEPBACKSLASH@
+kernel_netlink_tests-kernel_netlink_shared.o: kernel_netlink_shared.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT kernel_netlink_tests-kernel_netlink_shared.o -MD -MP -MF $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Tpo -c -o kernel_netlink_tests-kernel_netlink_shared.o `test -f 'kernel_netlink_shared.c' || echo '$(srcdir)/'`kernel_netlink_shared.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Tpo $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='kernel_netlink_shared.c' object='kernel_netlink_tests-kernel_netlink_shared.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-kernel_netlink_shared.o `test -f 'kernel_netlink_shared.c' || echo '$(srcdir)/'`kernel_netlink_shared.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o kernel_netlink_tests-kernel_netlink_shared.o `test -f 'kernel_netlink_shared.c' || echo '$(srcdir)/'`kernel_netlink_shared.c
 
-tests-kernel_netlink_shared.obj: kernel_netlink_shared.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-kernel_netlink_shared.obj -MD -MP -MF $(DEPDIR)/tests-kernel_netlink_shared.Tpo -c -o tests-kernel_netlink_shared.obj `if test -f 'kernel_netlink_shared.c'; then $(CYGPATH_W) 'kernel_netlink_shared.c'; else $(CYGPATH_W) '$(srcdir)/kernel_netlink_shared.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-kernel_netlink_shared.Tpo $(DEPDIR)/tests-kernel_netlink_shared.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='kernel_netlink_shared.c' object='tests-kernel_netlink_shared.obj' libtool=no @AMDEPBACKSLASH@
+kernel_netlink_tests-kernel_netlink_shared.obj: kernel_netlink_shared.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -MT kernel_netlink_tests-kernel_netlink_shared.obj -MD -MP -MF $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Tpo -c -o kernel_netlink_tests-kernel_netlink_shared.obj `if test -f 'kernel_netlink_shared.c'; then $(CYGPATH_W) 'kernel_netlink_shared.c'; else $(CYGPATH_W) '$(srcdir)/kernel_netlink_shared.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Tpo $(DEPDIR)/kernel_netlink_tests-kernel_netlink_shared.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='kernel_netlink_shared.c' object='kernel_netlink_tests-kernel_netlink_shared.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-kernel_netlink_shared.obj `if test -f 'kernel_netlink_shared.c'; then $(CYGPATH_W) 'kernel_netlink_shared.c'; else $(CYGPATH_W) '$(srcdir)/kernel_netlink_shared.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(kernel_netlink_tests_CFLAGS) $(CFLAGS) -c -o kernel_netlink_tests-kernel_netlink_shared.obj `if test -f 'kernel_netlink_shared.c'; then $(CYGPATH_W) 'kernel_netlink_shared.c'; else $(CYGPATH_W) '$(srcdir)/kernel_netlink_shared.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

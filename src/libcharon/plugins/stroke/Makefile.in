@@ -249,9 +249,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -454,6 +456,7 @@ xml_CFLAGS = @xml_CFLAGS@
 xml_LIBS = @xml_LIBS@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libstrongswan \
+	-I$(top_srcdir)/src/libcharon/plugins/counters \
 	-I$(top_srcdir)/src/libcharon \
 	-I$(top_srcdir)/src/stroke \
 	-DIPSEC_CONFDIR=\"${sysconfdir}\" \

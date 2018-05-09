@@ -158,7 +158,7 @@ static void send_supported_hash_algorithms(private_ike_init_t *this,
 	peer_cfg_t *peer;
 	auth_cfg_t *auth;
 	auth_rule_t rule;
-	uintptr_t config;
+	signature_params_t *config;
 	int written;
 	size_t len = BUF_LEN;
 	char buf[len];
@@ -177,7 +177,8 @@ static void send_supported_hash_algorithms(private_ike_init_t *this,
 			{
 				if (rule == AUTH_RULE_IKE_SIGNATURE_SCHEME)
 				{
-					hash = hasher_from_signature_scheme(config);
+					hash = hasher_from_signature_scheme(config->scheme,
+														config->params);
 					if (hasher_algorithm_for_ikev2(hash))
 					{
 						algos->add(algos, hash);
@@ -502,7 +503,11 @@ static void process_payloads(private_ike_init_t *this, message_t *message)
 			this->dh = this->keymat->keymat.create_dh(
 								&this->keymat->keymat, this->dh_group);
 		}
-		if (this->dh)
+		else if (this->dh)
+		{
+			this->dh_failed = this->dh->get_dh_group(this->dh) != this->dh_group;
+		}
+		if (this->dh && !this->dh_failed)
 		{
 			this->dh_failed = !this->dh->set_other_public_value(this->dh,
 								ke_payload->get_key_exchange_data(ke_payload));
@@ -811,7 +816,7 @@ METHOD(task_t, process_i, status_t,
 
 					if (this->old_sa == NULL)
 					{	/* reset the IKE_SA if we are not rekeying */
-						this->ike_sa->reset(this->ike_sa);
+						this->ike_sa->reset(this->ike_sa, FALSE);
 					}
 
 					enumerator->destroy(enumerator);
@@ -829,7 +834,7 @@ METHOD(task_t, process_i, status_t,
 				{
 					chunk_free(&this->cookie);
 					this->cookie = chunk_clone(notify->get_notification_data(notify));
-					this->ike_sa->reset(this->ike_sa);
+					this->ike_sa->reset(this->ike_sa, FALSE);
 					enumerator->destroy(enumerator);
 					DBG2(DBG_IKE, "received %N notify", notify_type_names, type);
 					this->retry++;

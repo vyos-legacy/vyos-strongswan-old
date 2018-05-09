@@ -87,7 +87,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-TESTS = tests$(EXEEXT)
+TESTS = libstrongswan_tests$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/libstrongswan/tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -123,51 +123,53 @@ am__v_lt_1 =
 libtest_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libtest_la_CFLAGS) \
 	$(CFLAGS) $(libtest_la_LDFLAGS) $(LDFLAGS) -o $@
-am__EXEEXT_1 = tests$(EXEEXT)
-am_tests_OBJECTS = tests-tests.$(OBJEXT) \
-	suites/tests-test_linked_list.$(OBJEXT) \
-	suites/tests-test_enumerator.$(OBJEXT) \
-	suites/tests-test_linked_list_enumerator.$(OBJEXT) \
-	suites/tests-test_bio_reader.$(OBJEXT) \
-	suites/tests-test_bio_writer.$(OBJEXT) \
-	suites/tests-test_chunk.$(OBJEXT) \
-	suites/tests-test_enum.$(OBJEXT) \
-	suites/tests-test_hashtable.$(OBJEXT) \
-	suites/tests-test_identification.$(OBJEXT) \
-	suites/tests-test_traffic_selector.$(OBJEXT) \
-	suites/tests-test_threading.$(OBJEXT) \
-	suites/tests-test_process.$(OBJEXT) \
-	suites/tests-test_watcher.$(OBJEXT) \
-	suites/tests-test_stream.$(OBJEXT) \
-	suites/tests-test_fetch_http.$(OBJEXT) \
-	suites/tests-test_utils.$(OBJEXT) \
-	suites/tests-test_settings.$(OBJEXT) \
-	suites/tests-test_vectors.$(OBJEXT) \
-	suites/tests-test_array.$(OBJEXT) \
-	suites/tests-test_ecdsa.$(OBJEXT) \
-	suites/tests-test_rsa.$(OBJEXT) \
-	suites/tests-test_certpolicy.$(OBJEXT) \
-	suites/tests-test_certnames.$(OBJEXT) \
-	suites/tests-test_host.$(OBJEXT) \
-	suites/tests-test_auth_cfg.$(OBJEXT) \
-	suites/tests-test_hasher.$(OBJEXT) \
-	suites/tests-test_crypter.$(OBJEXT) \
-	suites/tests-test_crypto_factory.$(OBJEXT) \
-	suites/tests-test_iv_gen.$(OBJEXT) \
-	suites/tests-test_pen.$(OBJEXT) \
-	suites/tests-test_asn1.$(OBJEXT) \
-	suites/tests-test_asn1_parser.$(OBJEXT) \
-	suites/tests-test_printf.$(OBJEXT) \
-	suites/tests-test_test_rng.$(OBJEXT) \
-	suites/tests-test_mgf1.$(OBJEXT) \
-	suites/tests-test_ntru.$(OBJEXT) \
-	suites/tests-test_ed25519.$(OBJEXT)
-tests_OBJECTS = $(am_tests_OBJECTS)
-tests_DEPENDENCIES =  \
+am__EXEEXT_1 = libstrongswan_tests$(EXEEXT)
+am_libstrongswan_tests_OBJECTS = libstrongswan_tests-tests.$(OBJEXT) \
+	suites/libstrongswan_tests-test_linked_list.$(OBJEXT) \
+	suites/libstrongswan_tests-test_enumerator.$(OBJEXT) \
+	suites/libstrongswan_tests-test_linked_list_enumerator.$(OBJEXT) \
+	suites/libstrongswan_tests-test_bio_reader.$(OBJEXT) \
+	suites/libstrongswan_tests-test_bio_writer.$(OBJEXT) \
+	suites/libstrongswan_tests-test_chunk.$(OBJEXT) \
+	suites/libstrongswan_tests-test_enum.$(OBJEXT) \
+	suites/libstrongswan_tests-test_hashtable.$(OBJEXT) \
+	suites/libstrongswan_tests-test_identification.$(OBJEXT) \
+	suites/libstrongswan_tests-test_traffic_selector.$(OBJEXT) \
+	suites/libstrongswan_tests-test_threading.$(OBJEXT) \
+	suites/libstrongswan_tests-test_process.$(OBJEXT) \
+	suites/libstrongswan_tests-test_watcher.$(OBJEXT) \
+	suites/libstrongswan_tests-test_stream.$(OBJEXT) \
+	suites/libstrongswan_tests-test_fetch_http.$(OBJEXT) \
+	suites/libstrongswan_tests-test_utils.$(OBJEXT) \
+	suites/libstrongswan_tests-test_settings.$(OBJEXT) \
+	suites/libstrongswan_tests-test_vectors.$(OBJEXT) \
+	suites/libstrongswan_tests-test_array.$(OBJEXT) \
+	suites/libstrongswan_tests-test_ecdsa.$(OBJEXT) \
+	suites/libstrongswan_tests-test_rsa.$(OBJEXT) \
+	suites/libstrongswan_tests-test_certpolicy.$(OBJEXT) \
+	suites/libstrongswan_tests-test_certnames.$(OBJEXT) \
+	suites/libstrongswan_tests-test_host.$(OBJEXT) \
+	suites/libstrongswan_tests-test_auth_cfg.$(OBJEXT) \
+	suites/libstrongswan_tests-test_hasher.$(OBJEXT) \
+	suites/libstrongswan_tests-test_crypter.$(OBJEXT) \
+	suites/libstrongswan_tests-test_crypto_factory.$(OBJEXT) \
+	suites/libstrongswan_tests-test_iv_gen.$(OBJEXT) \
+	suites/libstrongswan_tests-test_pen.$(OBJEXT) \
+	suites/libstrongswan_tests-test_asn1.$(OBJEXT) \
+	suites/libstrongswan_tests-test_asn1_parser.$(OBJEXT) \
+	suites/libstrongswan_tests-test_printf.$(OBJEXT) \
+	suites/libstrongswan_tests-test_test_rng.$(OBJEXT) \
+	suites/libstrongswan_tests-test_mgf1.$(OBJEXT) \
+	suites/libstrongswan_tests-test_ntru.$(OBJEXT) \
+	suites/libstrongswan_tests-test_ed25519.$(OBJEXT) \
+	suites/libstrongswan_tests-test_signature_params.$(OBJEXT)
+libstrongswan_tests_OBJECTS = $(am_libstrongswan_tests_OBJECTS)
+libstrongswan_tests_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la libtest.la
-tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(tests_CFLAGS) $(CFLAGS) \
-	$(tests_LDFLAGS) $(LDFLAGS) -o $@
+libstrongswan_tests_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(libstrongswan_tests_CFLAGS) $(CFLAGS) \
+	$(libstrongswan_tests_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -202,8 +204,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libtest_la_SOURCES) $(tests_SOURCES)
-DIST_SOURCES = $(libtest_la_SOURCES) $(tests_SOURCES)
+SOURCES = $(libtest_la_SOURCES) $(libstrongswan_tests_SOURCES)
+DIST_SOURCES = $(libtest_la_SOURCES) $(libstrongswan_tests_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -285,9 +287,11 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
+FUZZING_LDFLAGS = @FUZZING_LDFLAGS@
 GEM = @GEM@
 GENHTML = @GENHTML@
 GPERF = @GPERF@
+GPERF_LEN_TYPE = @GPERF_LEN_TYPE@
 GPRBUILD = @GPRBUILD@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -503,7 +507,7 @@ libtest_la_LIBADD = \
   $(top_builddir)/src/libstrongswan/libstrongswan.la \
   $(PTHREADLIB) $(ATOMICLIB)
 
-tests_SOURCES = tests.h tests.c \
+libstrongswan_tests_SOURCES = tests.h tests.c \
   suites/test_linked_list.c \
   suites/test_enumerator.c \
   suites/test_linked_list_enumerator.c \
@@ -540,17 +544,18 @@ tests_SOURCES = tests.h tests.c \
   suites/test_test_rng.c \
   suites/test_mgf1.c \
   suites/test_ntru.c \
-  suites/test_ed25519.c
+  suites/test_ed25519.c \
+  suites/test_signature_params.c
 
-tests_CFLAGS = \
+libstrongswan_tests_CFLAGS = \
   -I$(top_srcdir)/src/libstrongswan \
   -I$(top_srcdir)/src/libstrongswan/tests \
   -DPLUGINDIR=\""$(abs_top_builddir)/src/libstrongswan/plugins\"" \
   -DPLUGINS=\""${s_plugins}\"" \
   @COVERAGE_CFLAGS@
 
-tests_LDFLAGS = @COVERAGE_LDFLAGS@
-tests_LDADD = \
+libstrongswan_tests_LDFLAGS = @COVERAGE_LDFLAGS@
+libstrongswan_tests_LDADD = \
   $(top_builddir)/src/libstrongswan/libstrongswan.la \
   libtest.la
 
@@ -624,84 +629,86 @@ suites/$(am__dirstamp):
 suites/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) suites/$(DEPDIR)
 	@: > suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_linked_list.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_enumerator.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_linked_list_enumerator.$(OBJEXT):  \
+suites/libstrongswan_tests-test_linked_list.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_bio_reader.$(OBJEXT): suites/$(am__dirstamp) \
+suites/libstrongswan_tests-test_enumerator.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_linked_list_enumerator.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_bio_reader.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_bio_writer.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_chunk.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_enum.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_hashtable.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_identification.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_traffic_selector.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_threading.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_process.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_watcher.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_stream.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_fetch_http.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_utils.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_settings.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_vectors.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_array.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_ecdsa.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_rsa.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_bio_writer.$(OBJEXT): suites/$(am__dirstamp) \
+suites/libstrongswan_tests-test_certpolicy.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_certnames.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_host.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_auth_cfg.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_hasher.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_crypter.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_crypto_factory.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_iv_gen.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_pen.$(OBJEXT): suites/$(am__dirstamp) \
 	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_chunk.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_enum.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_hashtable.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_identification.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_traffic_selector.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_threading.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_process.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_watcher.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_stream.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_fetch_http.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_utils.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_settings.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_vectors.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_array.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_ecdsa.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_rsa.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_certpolicy.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_certnames.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_host.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_auth_cfg.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_hasher.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_crypter.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_crypto_factory.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_iv_gen.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_pen.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_asn1.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_asn1_parser.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_printf.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_test_rng.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_mgf1.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_ntru.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
-suites/tests-test_ed25519.$(OBJEXT): suites/$(am__dirstamp) \
-	suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_asn1.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_asn1_parser.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_printf.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_test_rng.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_mgf1.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_ntru.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_ed25519.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_signature_params.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 
-tests$(EXEEXT): $(tests_OBJECTS) $(tests_DEPENDENCIES) $(EXTRA_tests_DEPENDENCIES) 
-	@rm -f tests$(EXEEXT)
-	$(AM_V_CCLD)$(tests_LINK) $(tests_OBJECTS) $(tests_LDADD) $(LIBS)
+libstrongswan_tests$(EXEEXT): $(libstrongswan_tests_OBJECTS) $(libstrongswan_tests_DEPENDENCIES) $(EXTRA_libstrongswan_tests_DEPENDENCIES) 
+	@rm -f libstrongswan_tests$(EXEEXT)
+	$(AM_V_CCLD)$(libstrongswan_tests_LINK) $(libstrongswan_tests_OBJECTS) $(libstrongswan_tests_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -712,46 +719,47 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstrongswan_tests-tests.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libtest_la-test_runner.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libtest_la-test_suite.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tests-tests.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_array.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_asn1_parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_auth_cfg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_reader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_bio_writer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_certnames.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_certpolicy.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_chunk.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_crypter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_crypto_factory.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ecdsa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ed25519.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_enum.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_enumerator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_fetch_http.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_hasher.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_hashtable.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_host.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_identification.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_iv_gen.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_mgf1.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_ntru.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_pen.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_printf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_process.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_rsa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_settings.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_stream.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_test_rng.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_threading.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_traffic_selector.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_utils.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_vectors.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/tests-test_watcher.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_enum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_host.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_identification.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_pen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_printf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_process.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_settings.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_stream.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_threading.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@utils/$(DEPDIR)/libtest_la-test_rng.Plo@am__quote@
 
 .c.o:
@@ -799,537 +807,551 @@ utils/libtest_la-test_rng.lo: utils/test_rng.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtest_la_CFLAGS) $(CFLAGS) -c -o utils/libtest_la-test_rng.lo `test -f 'utils/test_rng.c' || echo '$(srcdir)/'`utils/test_rng.c
 
-tests-tests.o: tests.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.o -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.o' libtool=no @AMDEPBACKSLASH@
+libstrongswan_tests-tests.o: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT libstrongswan_tests-tests.o -MD -MP -MF $(DEPDIR)/libstrongswan_tests-tests.Tpo -c -o libstrongswan_tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libstrongswan_tests-tests.Tpo $(DEPDIR)/libstrongswan_tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='libstrongswan_tests-tests.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o libstrongswan_tests-tests.o `test -f 'tests.c' || echo '$(srcdir)/'`tests.c
 
-tests-tests.obj: tests.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT tests-tests.obj -MD -MP -MF $(DEPDIR)/tests-tests.Tpo -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/tests-tests.Tpo $(DEPDIR)/tests-tests.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='tests-tests.obj' libtool=no @AMDEPBACKSLASH@
+libstrongswan_tests-tests.obj: tests.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT libstrongswan_tests-tests.obj -MD -MP -MF $(DEPDIR)/libstrongswan_tests-tests.Tpo -c -o libstrongswan_tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libstrongswan_tests-tests.Tpo $(DEPDIR)/libstrongswan_tests-tests.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests.c' object='libstrongswan_tests-tests.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o libstrongswan_tests-tests.obj `if test -f 'tests.c'; then $(CYGPATH_W) 'tests.c'; else $(CYGPATH_W) '$(srcdir)/tests.c'; fi`
 
-suites/tests-test_linked_list.o: suites/test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list.o -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list.Tpo -c -o suites/tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list.Tpo suites/$(DEPDIR)/tests-test_linked_list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/tests-test_linked_list.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_linked_list.o: suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_linked_list.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Tpo -c -o suites/libstrongswan_tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/libstrongswan_tests-test_linked_list.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_linked_list.o `test -f 'suites/test_linked_list.c' || echo '$(srcdir)/'`suites/test_linked_list.c
 
-suites/tests-test_linked_list.obj: suites/test_linked_list.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list.Tpo -c -o suites/tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list.Tpo suites/$(DEPDIR)/tests-test_linked_list.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/tests-test_linked_list.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_linked_list.obj: suites/test_linked_list.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_linked_list.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Tpo -c -o suites/libstrongswan_tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_linked_list.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list.c' object='suites/libstrongswan_tests-test_linked_list.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_linked_list.obj `if test -f 'suites/test_linked_list.c'; then $(CYGPATH_W) 'suites/test_linked_list.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list.c'; fi`
 
-suites/tests-test_enumerator.o: suites/test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enumerator.o -MD -MP -MF suites/$(DEPDIR)/tests-test_enumerator.Tpo -c -o suites/tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enumerator.Tpo suites/$(DEPDIR)/tests-test_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/tests-test_enumerator.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_enumerator.o: suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_enumerator.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Tpo -c -o suites/libstrongswan_tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/libstrongswan_tests-test_enumerator.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_enumerator.o `test -f 'suites/test_enumerator.c' || echo '$(srcdir)/'`suites/test_enumerator.c
 
-suites/tests-test_enumerator.obj: suites/test_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_enumerator.Tpo -c -o suites/tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enumerator.Tpo suites/$(DEPDIR)/tests-test_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/tests-test_enumerator.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_enumerator.obj: suites/test_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Tpo -c -o suites/libstrongswan_tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enumerator.c' object='suites/libstrongswan_tests-test_enumerator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_enumerator.obj `if test -f 'suites/test_enumerator.c'; then $(CYGPATH_W) 'suites/test_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enumerator.c'; fi`
 
-suites/tests-test_linked_list_enumerator.o: suites/test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list_enumerator.o -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo -c -o suites/tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/tests-test_linked_list_enumerator.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_linked_list_enumerator.o: suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_linked_list_enumerator.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Tpo -c -o suites/libstrongswan_tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/libstrongswan_tests-test_linked_list_enumerator.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_linked_list_enumerator.o `test -f 'suites/test_linked_list_enumerator.c' || echo '$(srcdir)/'`suites/test_linked_list_enumerator.c
 
-suites/tests-test_linked_list_enumerator.obj: suites/test_linked_list_enumerator.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_linked_list_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo -c -o suites/tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/tests-test_linked_list_enumerator.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/tests-test_linked_list_enumerator.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_linked_list_enumerator.obj: suites/test_linked_list_enumerator.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_linked_list_enumerator.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Tpo -c -o suites/libstrongswan_tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_linked_list_enumerator.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_linked_list_enumerator.c' object='suites/libstrongswan_tests-test_linked_list_enumerator.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_linked_list_enumerator.obj `if test -f 'suites/test_linked_list_enumerator.c'; then $(CYGPATH_W) 'suites/test_linked_list_enumerator.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_linked_list_enumerator.c'; fi`
 
-suites/tests-test_bio_reader.o: suites/test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_reader.o -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_reader.Tpo -c -o suites/tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_reader.Tpo suites/$(DEPDIR)/tests-test_bio_reader.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/tests-test_bio_reader.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_bio_reader.o: suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_bio_reader.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Tpo -c -o suites/libstrongswan_tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/libstrongswan_tests-test_bio_reader.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_bio_reader.o `test -f 'suites/test_bio_reader.c' || echo '$(srcdir)/'`suites/test_bio_reader.c
 
-suites/tests-test_bio_reader.obj: suites/test_bio_reader.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_reader.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_reader.Tpo -c -o suites/tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_reader.Tpo suites/$(DEPDIR)/tests-test_bio_reader.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/tests-test_bio_reader.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_bio_reader.obj: suites/test_bio_reader.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_bio_reader.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Tpo -c -o suites/libstrongswan_tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_bio_reader.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_reader.c' object='suites/libstrongswan_tests-test_bio_reader.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_bio_reader.obj `if test -f 'suites/test_bio_reader.c'; then $(CYGPATH_W) 'suites/test_bio_reader.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_reader.c'; fi`
 
-suites/tests-test_bio_writer.o: suites/test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_writer.o -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_writer.Tpo -c -o suites/tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_writer.Tpo suites/$(DEPDIR)/tests-test_bio_writer.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/tests-test_bio_writer.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_bio_writer.o: suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_bio_writer.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Tpo -c -o suites/libstrongswan_tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/libstrongswan_tests-test_bio_writer.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_bio_writer.o `test -f 'suites/test_bio_writer.c' || echo '$(srcdir)/'`suites/test_bio_writer.c
 
-suites/tests-test_bio_writer.obj: suites/test_bio_writer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_bio_writer.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_bio_writer.Tpo -c -o suites/tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_bio_writer.Tpo suites/$(DEPDIR)/tests-test_bio_writer.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/tests-test_bio_writer.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_bio_writer.obj: suites/test_bio_writer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_bio_writer.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Tpo -c -o suites/libstrongswan_tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_bio_writer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_bio_writer.c' object='suites/libstrongswan_tests-test_bio_writer.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_bio_writer.obj `if test -f 'suites/test_bio_writer.c'; then $(CYGPATH_W) 'suites/test_bio_writer.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_bio_writer.c'; fi`
 
-suites/tests-test_chunk.o: suites/test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_chunk.o -MD -MP -MF suites/$(DEPDIR)/tests-test_chunk.Tpo -c -o suites/tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_chunk.Tpo suites/$(DEPDIR)/tests-test_chunk.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/tests-test_chunk.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_chunk.o: suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_chunk.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Tpo -c -o suites/libstrongswan_tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/libstrongswan_tests-test_chunk.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_chunk.o `test -f 'suites/test_chunk.c' || echo '$(srcdir)/'`suites/test_chunk.c
 
-suites/tests-test_chunk.obj: suites/test_chunk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_chunk.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_chunk.Tpo -c -o suites/tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_chunk.Tpo suites/$(DEPDIR)/tests-test_chunk.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/tests-test_chunk.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_chunk.obj: suites/test_chunk.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_chunk.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Tpo -c -o suites/libstrongswan_tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_chunk.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_chunk.c' object='suites/libstrongswan_tests-test_chunk.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_chunk.obj `if test -f 'suites/test_chunk.c'; then $(CYGPATH_W) 'suites/test_chunk.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_chunk.c'; fi`
 
-suites/tests-test_enum.o: suites/test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enum.o -MD -MP -MF suites/$(DEPDIR)/tests-test_enum.Tpo -c -o suites/tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enum.Tpo suites/$(DEPDIR)/tests-test_enum.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/tests-test_enum.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_enum.o: suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_enum.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_enum.Tpo -c -o suites/libstrongswan_tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_enum.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_enum.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/libstrongswan_tests-test_enum.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_enum.o `test -f 'suites/test_enum.c' || echo '$(srcdir)/'`suites/test_enum.c
 
-suites/tests-test_enum.obj: suites/test_enum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_enum.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_enum.Tpo -c -o suites/tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_enum.Tpo suites/$(DEPDIR)/tests-test_enum.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/tests-test_enum.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_enum.obj: suites/test_enum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_enum.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_enum.Tpo -c -o suites/libstrongswan_tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_enum.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_enum.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_enum.c' object='suites/libstrongswan_tests-test_enum.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_enum.obj `if test -f 'suites/test_enum.c'; then $(CYGPATH_W) 'suites/test_enum.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_enum.c'; fi`
 
-suites/tests-test_hashtable.o: suites/test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hashtable.o -MD -MP -MF suites/$(DEPDIR)/tests-test_hashtable.Tpo -c -o suites/tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hashtable.Tpo suites/$(DEPDIR)/tests-test_hashtable.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/tests-test_hashtable.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_hashtable.o: suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_hashtable.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Tpo -c -o suites/libstrongswan_tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/libstrongswan_tests-test_hashtable.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_hashtable.o `test -f 'suites/test_hashtable.c' || echo '$(srcdir)/'`suites/test_hashtable.c
 
-suites/tests-test_hashtable.obj: suites/test_hashtable.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hashtable.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_hashtable.Tpo -c -o suites/tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hashtable.Tpo suites/$(DEPDIR)/tests-test_hashtable.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/tests-test_hashtable.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_hashtable.obj: suites/test_hashtable.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_hashtable.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Tpo -c -o suites/libstrongswan_tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_hashtable.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hashtable.c' object='suites/libstrongswan_tests-test_hashtable.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_hashtable.obj `if test -f 'suites/test_hashtable.c'; then $(CYGPATH_W) 'suites/test_hashtable.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hashtable.c'; fi`
 
-suites/tests-test_identification.o: suites/test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_identification.o -MD -MP -MF suites/$(DEPDIR)/tests-test_identification.Tpo -c -o suites/tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_identification.Tpo suites/$(DEPDIR)/tests-test_identification.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/tests-test_identification.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_identification.o: suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_identification.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_identification.Tpo -c -o suites/libstrongswan_tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_identification.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_identification.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/libstrongswan_tests-test_identification.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_identification.o `test -f 'suites/test_identification.c' || echo '$(srcdir)/'`suites/test_identification.c
 
-suites/tests-test_identification.obj: suites/test_identification.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_identification.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_identification.Tpo -c -o suites/tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_identification.Tpo suites/$(DEPDIR)/tests-test_identification.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/tests-test_identification.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_identification.obj: suites/test_identification.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_identification.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_identification.Tpo -c -o suites/libstrongswan_tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_identification.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_identification.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_identification.c' object='suites/libstrongswan_tests-test_identification.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_identification.obj `if test -f 'suites/test_identification.c'; then $(CYGPATH_W) 'suites/test_identification.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_identification.c'; fi`
 
-suites/tests-test_traffic_selector.o: suites/test_traffic_selector.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_traffic_selector.o -MD -MP -MF suites/$(DEPDIR)/tests-test_traffic_selector.Tpo -c -o suites/tests-test_traffic_selector.o `test -f 'suites/test_traffic_selector.c' || echo '$(srcdir)/'`suites/test_traffic_selector.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_traffic_selector.Tpo suites/$(DEPDIR)/tests-test_traffic_selector.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_traffic_selector.c' object='suites/tests-test_traffic_selector.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_traffic_selector.o: suites/test_traffic_selector.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_traffic_selector.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Tpo -c -o suites/libstrongswan_tests-test_traffic_selector.o `test -f 'suites/test_traffic_selector.c' || echo '$(srcdir)/'`suites/test_traffic_selector.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_traffic_selector.c' object='suites/libstrongswan_tests-test_traffic_selector.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_traffic_selector.o `test -f 'suites/test_traffic_selector.c' || echo '$(srcdir)/'`suites/test_traffic_selector.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_traffic_selector.o `test -f 'suites/test_traffic_selector.c' || echo '$(srcdir)/'`suites/test_traffic_selector.c
 
-suites/tests-test_traffic_selector.obj: suites/test_traffic_selector.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_traffic_selector.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_traffic_selector.Tpo -c -o suites/tests-test_traffic_selector.obj `if test -f 'suites/test_traffic_selector.c'; then $(CYGPATH_W) 'suites/test_traffic_selector.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_traffic_selector.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_traffic_selector.Tpo suites/$(DEPDIR)/tests-test_traffic_selector.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_traffic_selector.c' object='suites/tests-test_traffic_selector.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_traffic_selector.obj: suites/test_traffic_selector.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_traffic_selector.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Tpo -c -o suites/libstrongswan_tests-test_traffic_selector.obj `if test -f 'suites/test_traffic_selector.c'; then $(CYGPATH_W) 'suites/test_traffic_selector.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_traffic_selector.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_traffic_selector.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_traffic_selector.c' object='suites/libstrongswan_tests-test_traffic_selector.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_traffic_selector.obj `if test -f 'suites/test_traffic_selector.c'; then $(CYGPATH_W) 'suites/test_traffic_selector.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_traffic_selector.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_traffic_selector.obj `if test -f 'suites/test_traffic_selector.c'; then $(CYGPATH_W) 'suites/test_traffic_selector.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_traffic_selector.c'; fi`
 
-suites/tests-test_threading.o: suites/test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_threading.o -MD -MP -MF suites/$(DEPDIR)/tests-test_threading.Tpo -c -o suites/tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_threading.Tpo suites/$(DEPDIR)/tests-test_threading.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/tests-test_threading.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_threading.o: suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_threading.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_threading.Tpo -c -o suites/libstrongswan_tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_threading.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_threading.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/libstrongswan_tests-test_threading.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_threading.o `test -f 'suites/test_threading.c' || echo '$(srcdir)/'`suites/test_threading.c
 
-suites/tests-test_threading.obj: suites/test_threading.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_threading.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_threading.Tpo -c -o suites/tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_threading.Tpo suites/$(DEPDIR)/tests-test_threading.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/tests-test_threading.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_threading.obj: suites/test_threading.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_threading.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_threading.Tpo -c -o suites/libstrongswan_tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_threading.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_threading.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_threading.c' object='suites/libstrongswan_tests-test_threading.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_threading.obj `if test -f 'suites/test_threading.c'; then $(CYGPATH_W) 'suites/test_threading.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_threading.c'; fi`
 
-suites/tests-test_process.o: suites/test_process.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_process.o -MD -MP -MF suites/$(DEPDIR)/tests-test_process.Tpo -c -o suites/tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_process.Tpo suites/$(DEPDIR)/tests-test_process.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/tests-test_process.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_process.o: suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_process.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_process.Tpo -c -o suites/libstrongswan_tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_process.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_process.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/libstrongswan_tests-test_process.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_process.o `test -f 'suites/test_process.c' || echo '$(srcdir)/'`suites/test_process.c
 
-suites/tests-test_process.obj: suites/test_process.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_process.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_process.Tpo -c -o suites/tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_process.Tpo suites/$(DEPDIR)/tests-test_process.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/tests-test_process.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_process.obj: suites/test_process.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_process.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_process.Tpo -c -o suites/libstrongswan_tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_process.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_process.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_process.c' object='suites/libstrongswan_tests-test_process.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_process.obj `if test -f 'suites/test_process.c'; then $(CYGPATH_W) 'suites/test_process.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_process.c'; fi`
 
-suites/tests-test_watcher.o: suites/test_watcher.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_watcher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_watcher.Tpo -c -o suites/tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_watcher.Tpo suites/$(DEPDIR)/tests-test_watcher.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/tests-test_watcher.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_watcher.o: suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_watcher.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Tpo -c -o suites/libstrongswan_tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/libstrongswan_tests-test_watcher.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_watcher.o `test -f 'suites/test_watcher.c' || echo '$(srcdir)/'`suites/test_watcher.c
 
-suites/tests-test_watcher.obj: suites/test_watcher.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_watcher.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_watcher.Tpo -c -o suites/tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_watcher.Tpo suites/$(DEPDIR)/tests-test_watcher.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/tests-test_watcher.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_watcher.obj: suites/test_watcher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_watcher.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Tpo -c -o suites/libstrongswan_tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_watcher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_watcher.c' object='suites/libstrongswan_tests-test_watcher.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_watcher.obj `if test -f 'suites/test_watcher.c'; then $(CYGPATH_W) 'suites/test_watcher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_watcher.c'; fi`
 
-suites/tests-test_stream.o: suites/test_stream.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_stream.o -MD -MP -MF suites/$(DEPDIR)/tests-test_stream.Tpo -c -o suites/tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_stream.Tpo suites/$(DEPDIR)/tests-test_stream.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/tests-test_stream.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_stream.o: suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_stream.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_stream.Tpo -c -o suites/libstrongswan_tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_stream.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_stream.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/libstrongswan_tests-test_stream.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_stream.o `test -f 'suites/test_stream.c' || echo '$(srcdir)/'`suites/test_stream.c
 
-suites/tests-test_stream.obj: suites/test_stream.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_stream.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_stream.Tpo -c -o suites/tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_stream.Tpo suites/$(DEPDIR)/tests-test_stream.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/tests-test_stream.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_stream.obj: suites/test_stream.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_stream.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_stream.Tpo -c -o suites/libstrongswan_tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_stream.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_stream.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_stream.c' object='suites/libstrongswan_tests-test_stream.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_stream.obj `if test -f 'suites/test_stream.c'; then $(CYGPATH_W) 'suites/test_stream.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_stream.c'; fi`
 
-suites/tests-test_fetch_http.o: suites/test_fetch_http.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_fetch_http.o -MD -MP -MF suites/$(DEPDIR)/tests-test_fetch_http.Tpo -c -o suites/tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_fetch_http.Tpo suites/$(DEPDIR)/tests-test_fetch_http.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/tests-test_fetch_http.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_fetch_http.o: suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_fetch_http.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Tpo -c -o suites/libstrongswan_tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/libstrongswan_tests-test_fetch_http.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_fetch_http.o `test -f 'suites/test_fetch_http.c' || echo '$(srcdir)/'`suites/test_fetch_http.c
 
-suites/tests-test_fetch_http.obj: suites/test_fetch_http.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_fetch_http.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_fetch_http.Tpo -c -o suites/tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_fetch_http.Tpo suites/$(DEPDIR)/tests-test_fetch_http.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/tests-test_fetch_http.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_fetch_http.obj: suites/test_fetch_http.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_fetch_http.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Tpo -c -o suites/libstrongswan_tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_fetch_http.c' object='suites/libstrongswan_tests-test_fetch_http.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_fetch_http.obj `if test -f 'suites/test_fetch_http.c'; then $(CYGPATH_W) 'suites/test_fetch_http.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_fetch_http.c'; fi`
 
-suites/tests-test_utils.o: suites/test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_utils.o -MD -MP -MF suites/$(DEPDIR)/tests-test_utils.Tpo -c -o suites/tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_utils.Tpo suites/$(DEPDIR)/tests-test_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/tests-test_utils.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_utils.o: suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_utils.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_utils.Tpo -c -o suites/libstrongswan_tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_utils.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/libstrongswan_tests-test_utils.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_utils.o `test -f 'suites/test_utils.c' || echo '$(srcdir)/'`suites/test_utils.c
 
-suites/tests-test_utils.obj: suites/test_utils.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_utils.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_utils.Tpo -c -o suites/tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_utils.Tpo suites/$(DEPDIR)/tests-test_utils.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/tests-test_utils.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_utils.obj: suites/test_utils.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_utils.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_utils.Tpo -c -o suites/libstrongswan_tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_utils.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_utils.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_utils.c' object='suites/libstrongswan_tests-test_utils.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_utils.obj `if test -f 'suites/test_utils.c'; then $(CYGPATH_W) 'suites/test_utils.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_utils.c'; fi`
 
-suites/tests-test_settings.o: suites/test_settings.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_settings.o -MD -MP -MF suites/$(DEPDIR)/tests-test_settings.Tpo -c -o suites/tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_settings.Tpo suites/$(DEPDIR)/tests-test_settings.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/tests-test_settings.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_settings.o: suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_settings.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_settings.Tpo -c -o suites/libstrongswan_tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_settings.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_settings.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/libstrongswan_tests-test_settings.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_settings.o `test -f 'suites/test_settings.c' || echo '$(srcdir)/'`suites/test_settings.c
 
-suites/tests-test_settings.obj: suites/test_settings.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_settings.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_settings.Tpo -c -o suites/tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_settings.Tpo suites/$(DEPDIR)/tests-test_settings.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/tests-test_settings.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_settings.obj: suites/test_settings.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_settings.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_settings.Tpo -c -o suites/libstrongswan_tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_settings.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_settings.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_settings.c' object='suites/libstrongswan_tests-test_settings.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_settings.obj `if test -f 'suites/test_settings.c'; then $(CYGPATH_W) 'suites/test_settings.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_settings.c'; fi`
 
-suites/tests-test_vectors.o: suites/test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_vectors.o -MD -MP -MF suites/$(DEPDIR)/tests-test_vectors.Tpo -c -o suites/tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_vectors.Tpo suites/$(DEPDIR)/tests-test_vectors.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/tests-test_vectors.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_vectors.o: suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_vectors.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Tpo -c -o suites/libstrongswan_tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/libstrongswan_tests-test_vectors.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_vectors.o `test -f 'suites/test_vectors.c' || echo '$(srcdir)/'`suites/test_vectors.c
 
-suites/tests-test_vectors.obj: suites/test_vectors.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_vectors.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_vectors.Tpo -c -o suites/tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_vectors.Tpo suites/$(DEPDIR)/tests-test_vectors.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/tests-test_vectors.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_vectors.obj: suites/test_vectors.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_vectors.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Tpo -c -o suites/libstrongswan_tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_vectors.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_vectors.c' object='suites/libstrongswan_tests-test_vectors.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_vectors.obj `if test -f 'suites/test_vectors.c'; then $(CYGPATH_W) 'suites/test_vectors.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_vectors.c'; fi`
 
-suites/tests-test_array.o: suites/test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_array.o -MD -MP -MF suites/$(DEPDIR)/tests-test_array.Tpo -c -o suites/tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_array.Tpo suites/$(DEPDIR)/tests-test_array.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/tests-test_array.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_array.o: suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_array.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_array.Tpo -c -o suites/libstrongswan_tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_array.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/libstrongswan_tests-test_array.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_array.o `test -f 'suites/test_array.c' || echo '$(srcdir)/'`suites/test_array.c
 
-suites/tests-test_array.obj: suites/test_array.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_array.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_array.Tpo -c -o suites/tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_array.Tpo suites/$(DEPDIR)/tests-test_array.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/tests-test_array.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_array.obj: suites/test_array.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_array.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_array.Tpo -c -o suites/libstrongswan_tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_array.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_array.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_array.c' object='suites/libstrongswan_tests-test_array.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_array.obj `if test -f 'suites/test_array.c'; then $(CYGPATH_W) 'suites/test_array.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_array.c'; fi`
 
-suites/tests-test_ecdsa.o: suites/test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ecdsa.o -MD -MP -MF suites/$(DEPDIR)/tests-test_ecdsa.Tpo -c -o suites/tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ecdsa.Tpo suites/$(DEPDIR)/tests-test_ecdsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/tests-test_ecdsa.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ecdsa.o: suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ecdsa.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Tpo -c -o suites/libstrongswan_tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/libstrongswan_tests-test_ecdsa.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ecdsa.o `test -f 'suites/test_ecdsa.c' || echo '$(srcdir)/'`suites/test_ecdsa.c
 
-suites/tests-test_ecdsa.obj: suites/test_ecdsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ecdsa.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_ecdsa.Tpo -c -o suites/tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ecdsa.Tpo suites/$(DEPDIR)/tests-test_ecdsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/tests-test_ecdsa.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ecdsa.obj: suites/test_ecdsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ecdsa.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Tpo -c -o suites/libstrongswan_tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ecdsa.c' object='suites/libstrongswan_tests-test_ecdsa.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ecdsa.obj `if test -f 'suites/test_ecdsa.c'; then $(CYGPATH_W) 'suites/test_ecdsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ecdsa.c'; fi`
 
-suites/tests-test_rsa.o: suites/test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_rsa.o -MD -MP -MF suites/$(DEPDIR)/tests-test_rsa.Tpo -c -o suites/tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_rsa.Tpo suites/$(DEPDIR)/tests-test_rsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/tests-test_rsa.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_rsa.o: suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_rsa.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Tpo -c -o suites/libstrongswan_tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/libstrongswan_tests-test_rsa.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_rsa.o `test -f 'suites/test_rsa.c' || echo '$(srcdir)/'`suites/test_rsa.c
 
-suites/tests-test_rsa.obj: suites/test_rsa.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_rsa.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_rsa.Tpo -c -o suites/tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_rsa.Tpo suites/$(DEPDIR)/tests-test_rsa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/tests-test_rsa.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_rsa.obj: suites/test_rsa.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_rsa.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Tpo -c -o suites/libstrongswan_tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_rsa.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_rsa.c' object='suites/libstrongswan_tests-test_rsa.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_rsa.obj `if test -f 'suites/test_rsa.c'; then $(CYGPATH_W) 'suites/test_rsa.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_rsa.c'; fi`
 
-suites/tests-test_certpolicy.o: suites/test_certpolicy.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_certpolicy.o -MD -MP -MF suites/$(DEPDIR)/tests-test_certpolicy.Tpo -c -o suites/tests-test_certpolicy.o `test -f 'suites/test_certpolicy.c' || echo '$(srcdir)/'`suites/test_certpolicy.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_certpolicy.Tpo suites/$(DEPDIR)/tests-test_certpolicy.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certpolicy.c' object='suites/tests-test_certpolicy.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_certpolicy.o: suites/test_certpolicy.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_certpolicy.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Tpo -c -o suites/libstrongswan_tests-test_certpolicy.o `test -f 'suites/test_certpolicy.c' || echo '$(srcdir)/'`suites/test_certpolicy.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certpolicy.c' object='suites/libstrongswan_tests-test_certpolicy.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_certpolicy.o `test -f 'suites/test_certpolicy.c' || echo '$(srcdir)/'`suites/test_certpolicy.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_certpolicy.o `test -f 'suites/test_certpolicy.c' || echo '$(srcdir)/'`suites/test_certpolicy.c
 
-suites/tests-test_certpolicy.obj: suites/test_certpolicy.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_certpolicy.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_certpolicy.Tpo -c -o suites/tests-test_certpolicy.obj `if test -f 'suites/test_certpolicy.c'; then $(CYGPATH_W) 'suites/test_certpolicy.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certpolicy.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_certpolicy.Tpo suites/$(DEPDIR)/tests-test_certpolicy.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certpolicy.c' object='suites/tests-test_certpolicy.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_certpolicy.obj: suites/test_certpolicy.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_certpolicy.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Tpo -c -o suites/libstrongswan_tests-test_certpolicy.obj `if test -f 'suites/test_certpolicy.c'; then $(CYGPATH_W) 'suites/test_certpolicy.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certpolicy.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_certpolicy.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certpolicy.c' object='suites/libstrongswan_tests-test_certpolicy.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_certpolicy.obj `if test -f 'suites/test_certpolicy.c'; then $(CYGPATH_W) 'suites/test_certpolicy.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certpolicy.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_certpolicy.obj `if test -f 'suites/test_certpolicy.c'; then $(CYGPATH_W) 'suites/test_certpolicy.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certpolicy.c'; fi`
 
-suites/tests-test_certnames.o: suites/test_certnames.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_certnames.o -MD -MP -MF suites/$(DEPDIR)/tests-test_certnames.Tpo -c -o suites/tests-test_certnames.o `test -f 'suites/test_certnames.c' || echo '$(srcdir)/'`suites/test_certnames.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_certnames.Tpo suites/$(DEPDIR)/tests-test_certnames.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certnames.c' object='suites/tests-test_certnames.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_certnames.o: suites/test_certnames.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_certnames.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Tpo -c -o suites/libstrongswan_tests-test_certnames.o `test -f 'suites/test_certnames.c' || echo '$(srcdir)/'`suites/test_certnames.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certnames.c' object='suites/libstrongswan_tests-test_certnames.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_certnames.o `test -f 'suites/test_certnames.c' || echo '$(srcdir)/'`suites/test_certnames.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_certnames.o `test -f 'suites/test_certnames.c' || echo '$(srcdir)/'`suites/test_certnames.c
 
-suites/tests-test_certnames.obj: suites/test_certnames.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_certnames.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_certnames.Tpo -c -o suites/tests-test_certnames.obj `if test -f 'suites/test_certnames.c'; then $(CYGPATH_W) 'suites/test_certnames.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certnames.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_certnames.Tpo suites/$(DEPDIR)/tests-test_certnames.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certnames.c' object='suites/tests-test_certnames.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_certnames.obj: suites/test_certnames.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_certnames.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Tpo -c -o suites/libstrongswan_tests-test_certnames.obj `if test -f 'suites/test_certnames.c'; then $(CYGPATH_W) 'suites/test_certnames.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certnames.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_certnames.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_certnames.c' object='suites/libstrongswan_tests-test_certnames.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_certnames.obj `if test -f 'suites/test_certnames.c'; then $(CYGPATH_W) 'suites/test_certnames.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certnames.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_certnames.obj `if test -f 'suites/test_certnames.c'; then $(CYGPATH_W) 'suites/test_certnames.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_certnames.c'; fi`
 
-suites/tests-test_host.o: suites/test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_host.o -MD -MP -MF suites/$(DEPDIR)/tests-test_host.Tpo -c -o suites/tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_host.Tpo suites/$(DEPDIR)/tests-test_host.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/tests-test_host.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_host.o: suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_host.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_host.Tpo -c -o suites/libstrongswan_tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_host.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_host.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/libstrongswan_tests-test_host.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_host.o `test -f 'suites/test_host.c' || echo '$(srcdir)/'`suites/test_host.c
 
-suites/tests-test_host.obj: suites/test_host.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_host.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_host.Tpo -c -o suites/tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_host.Tpo suites/$(DEPDIR)/tests-test_host.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/tests-test_host.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_host.obj: suites/test_host.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_host.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_host.Tpo -c -o suites/libstrongswan_tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_host.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_host.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_host.c' object='suites/libstrongswan_tests-test_host.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_host.obj `if test -f 'suites/test_host.c'; then $(CYGPATH_W) 'suites/test_host.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_host.c'; fi`
 
-suites/tests-test_auth_cfg.o: suites/test_auth_cfg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_auth_cfg.o -MD -MP -MF suites/$(DEPDIR)/tests-test_auth_cfg.Tpo -c -o suites/tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_auth_cfg.Tpo suites/$(DEPDIR)/tests-test_auth_cfg.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/tests-test_auth_cfg.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_auth_cfg.o: suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_auth_cfg.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Tpo -c -o suites/libstrongswan_tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/libstrongswan_tests-test_auth_cfg.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_auth_cfg.o `test -f 'suites/test_auth_cfg.c' || echo '$(srcdir)/'`suites/test_auth_cfg.c
 
-suites/tests-test_auth_cfg.obj: suites/test_auth_cfg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_auth_cfg.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_auth_cfg.Tpo -c -o suites/tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_auth_cfg.Tpo suites/$(DEPDIR)/tests-test_auth_cfg.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/tests-test_auth_cfg.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_auth_cfg.obj: suites/test_auth_cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_auth_cfg.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Tpo -c -o suites/libstrongswan_tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_auth_cfg.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_auth_cfg.c' object='suites/libstrongswan_tests-test_auth_cfg.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_auth_cfg.obj `if test -f 'suites/test_auth_cfg.c'; then $(CYGPATH_W) 'suites/test_auth_cfg.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_auth_cfg.c'; fi`
 
-suites/tests-test_hasher.o: suites/test_hasher.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hasher.o -MD -MP -MF suites/$(DEPDIR)/tests-test_hasher.Tpo -c -o suites/tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hasher.Tpo suites/$(DEPDIR)/tests-test_hasher.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/tests-test_hasher.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_hasher.o: suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_hasher.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Tpo -c -o suites/libstrongswan_tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/libstrongswan_tests-test_hasher.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_hasher.o `test -f 'suites/test_hasher.c' || echo '$(srcdir)/'`suites/test_hasher.c
 
-suites/tests-test_hasher.obj: suites/test_hasher.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_hasher.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_hasher.Tpo -c -o suites/tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_hasher.Tpo suites/$(DEPDIR)/tests-test_hasher.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/tests-test_hasher.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_hasher.obj: suites/test_hasher.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_hasher.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Tpo -c -o suites/libstrongswan_tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_hasher.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_hasher.c' object='suites/libstrongswan_tests-test_hasher.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_hasher.obj `if test -f 'suites/test_hasher.c'; then $(CYGPATH_W) 'suites/test_hasher.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_hasher.c'; fi`
 
-suites/tests-test_crypter.o: suites/test_crypter.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypter.o -MD -MP -MF suites/$(DEPDIR)/tests-test_crypter.Tpo -c -o suites/tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypter.Tpo suites/$(DEPDIR)/tests-test_crypter.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/tests-test_crypter.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_crypter.o: suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_crypter.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Tpo -c -o suites/libstrongswan_tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/libstrongswan_tests-test_crypter.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_crypter.o `test -f 'suites/test_crypter.c' || echo '$(srcdir)/'`suites/test_crypter.c
 
-suites/tests-test_crypter.obj: suites/test_crypter.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypter.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_crypter.Tpo -c -o suites/tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypter.Tpo suites/$(DEPDIR)/tests-test_crypter.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/tests-test_crypter.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_crypter.obj: suites/test_crypter.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_crypter.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Tpo -c -o suites/libstrongswan_tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_crypter.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypter.c' object='suites/libstrongswan_tests-test_crypter.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_crypter.obj `if test -f 'suites/test_crypter.c'; then $(CYGPATH_W) 'suites/test_crypter.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypter.c'; fi`
 
-suites/tests-test_crypto_factory.o: suites/test_crypto_factory.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypto_factory.o -MD -MP -MF suites/$(DEPDIR)/tests-test_crypto_factory.Tpo -c -o suites/tests-test_crypto_factory.o `test -f 'suites/test_crypto_factory.c' || echo '$(srcdir)/'`suites/test_crypto_factory.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypto_factory.Tpo suites/$(DEPDIR)/tests-test_crypto_factory.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypto_factory.c' object='suites/tests-test_crypto_factory.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_crypto_factory.o: suites/test_crypto_factory.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_crypto_factory.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Tpo -c -o suites/libstrongswan_tests-test_crypto_factory.o `test -f 'suites/test_crypto_factory.c' || echo '$(srcdir)/'`suites/test_crypto_factory.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypto_factory.c' object='suites/libstrongswan_tests-test_crypto_factory.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypto_factory.o `test -f 'suites/test_crypto_factory.c' || echo '$(srcdir)/'`suites/test_crypto_factory.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_crypto_factory.o `test -f 'suites/test_crypto_factory.c' || echo '$(srcdir)/'`suites/test_crypto_factory.c
 
-suites/tests-test_crypto_factory.obj: suites/test_crypto_factory.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_crypto_factory.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_crypto_factory.Tpo -c -o suites/tests-test_crypto_factory.obj `if test -f 'suites/test_crypto_factory.c'; then $(CYGPATH_W) 'suites/test_crypto_factory.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypto_factory.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_crypto_factory.Tpo suites/$(DEPDIR)/tests-test_crypto_factory.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypto_factory.c' object='suites/tests-test_crypto_factory.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_crypto_factory.obj: suites/test_crypto_factory.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_crypto_factory.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Tpo -c -o suites/libstrongswan_tests-test_crypto_factory.obj `if test -f 'suites/test_crypto_factory.c'; then $(CYGPATH_W) 'suites/test_crypto_factory.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypto_factory.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_crypto_factory.c' object='suites/libstrongswan_tests-test_crypto_factory.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_crypto_factory.obj `if test -f 'suites/test_crypto_factory.c'; then $(CYGPATH_W) 'suites/test_crypto_factory.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypto_factory.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_crypto_factory.obj `if test -f 'suites/test_crypto_factory.c'; then $(CYGPATH_W) 'suites/test_crypto_factory.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_crypto_factory.c'; fi`
 
-suites/tests-test_iv_gen.o: suites/test_iv_gen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_iv_gen.o -MD -MP -MF suites/$(DEPDIR)/tests-test_iv_gen.Tpo -c -o suites/tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_iv_gen.Tpo suites/$(DEPDIR)/tests-test_iv_gen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/tests-test_iv_gen.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_iv_gen.o: suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_iv_gen.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Tpo -c -o suites/libstrongswan_tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/libstrongswan_tests-test_iv_gen.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_iv_gen.o `test -f 'suites/test_iv_gen.c' || echo '$(srcdir)/'`suites/test_iv_gen.c
 
-suites/tests-test_iv_gen.obj: suites/test_iv_gen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_iv_gen.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_iv_gen.Tpo -c -o suites/tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_iv_gen.Tpo suites/$(DEPDIR)/tests-test_iv_gen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/tests-test_iv_gen.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_iv_gen.obj: suites/test_iv_gen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_iv_gen.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Tpo -c -o suites/libstrongswan_tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_iv_gen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_iv_gen.c' object='suites/libstrongswan_tests-test_iv_gen.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_iv_gen.obj `if test -f 'suites/test_iv_gen.c'; then $(CYGPATH_W) 'suites/test_iv_gen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_iv_gen.c'; fi`
 
-suites/tests-test_pen.o: suites/test_pen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_pen.o -MD -MP -MF suites/$(DEPDIR)/tests-test_pen.Tpo -c -o suites/tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_pen.Tpo suites/$(DEPDIR)/tests-test_pen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/tests-test_pen.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_pen.o: suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_pen.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_pen.Tpo -c -o suites/libstrongswan_tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_pen.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_pen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/libstrongswan_tests-test_pen.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_pen.o `test -f 'suites/test_pen.c' || echo '$(srcdir)/'`suites/test_pen.c
 
-suites/tests-test_pen.obj: suites/test_pen.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_pen.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_pen.Tpo -c -o suites/tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_pen.Tpo suites/$(DEPDIR)/tests-test_pen.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/tests-test_pen.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_pen.obj: suites/test_pen.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_pen.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_pen.Tpo -c -o suites/libstrongswan_tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_pen.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_pen.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_pen.c' object='suites/libstrongswan_tests-test_pen.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_pen.obj `if test -f 'suites/test_pen.c'; then $(CYGPATH_W) 'suites/test_pen.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_pen.c'; fi`
 
-suites/tests-test_asn1.o: suites/test_asn1.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1.o -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1.Tpo -c -o suites/tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1.Tpo suites/$(DEPDIR)/tests-test_asn1.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/tests-test_asn1.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_asn1.o: suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_asn1.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Tpo -c -o suites/libstrongswan_tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/libstrongswan_tests-test_asn1.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_asn1.o `test -f 'suites/test_asn1.c' || echo '$(srcdir)/'`suites/test_asn1.c
 
-suites/tests-test_asn1.obj: suites/test_asn1.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1.Tpo -c -o suites/tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1.Tpo suites/$(DEPDIR)/tests-test_asn1.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/tests-test_asn1.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_asn1.obj: suites/test_asn1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_asn1.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Tpo -c -o suites/libstrongswan_tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_asn1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1.c' object='suites/libstrongswan_tests-test_asn1.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_asn1.obj `if test -f 'suites/test_asn1.c'; then $(CYGPATH_W) 'suites/test_asn1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1.c'; fi`
 
-suites/tests-test_asn1_parser.o: suites/test_asn1_parser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1_parser.o -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1_parser.Tpo -c -o suites/tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1_parser.Tpo suites/$(DEPDIR)/tests-test_asn1_parser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/tests-test_asn1_parser.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_asn1_parser.o: suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_asn1_parser.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Tpo -c -o suites/libstrongswan_tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/libstrongswan_tests-test_asn1_parser.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_asn1_parser.o `test -f 'suites/test_asn1_parser.c' || echo '$(srcdir)/'`suites/test_asn1_parser.c
 
-suites/tests-test_asn1_parser.obj: suites/test_asn1_parser.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_asn1_parser.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_asn1_parser.Tpo -c -o suites/tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_asn1_parser.Tpo suites/$(DEPDIR)/tests-test_asn1_parser.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/tests-test_asn1_parser.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_asn1_parser.obj: suites/test_asn1_parser.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_asn1_parser.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Tpo -c -o suites/libstrongswan_tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_asn1_parser.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_asn1_parser.c' object='suites/libstrongswan_tests-test_asn1_parser.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_asn1_parser.obj `if test -f 'suites/test_asn1_parser.c'; then $(CYGPATH_W) 'suites/test_asn1_parser.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_asn1_parser.c'; fi`
 
-suites/tests-test_printf.o: suites/test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_printf.o -MD -MP -MF suites/$(DEPDIR)/tests-test_printf.Tpo -c -o suites/tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_printf.Tpo suites/$(DEPDIR)/tests-test_printf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/tests-test_printf.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_printf.o: suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_printf.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_printf.Tpo -c -o suites/libstrongswan_tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_printf.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/libstrongswan_tests-test_printf.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_printf.o `test -f 'suites/test_printf.c' || echo '$(srcdir)/'`suites/test_printf.c
 
-suites/tests-test_printf.obj: suites/test_printf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_printf.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_printf.Tpo -c -o suites/tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_printf.Tpo suites/$(DEPDIR)/tests-test_printf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/tests-test_printf.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_printf.obj: suites/test_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_printf.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_printf.Tpo -c -o suites/libstrongswan_tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_printf.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_printf.c' object='suites/libstrongswan_tests-test_printf.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_printf.obj `if test -f 'suites/test_printf.c'; then $(CYGPATH_W) 'suites/test_printf.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_printf.c'; fi`
 
-suites/tests-test_test_rng.o: suites/test_test_rng.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_test_rng.o -MD -MP -MF suites/$(DEPDIR)/tests-test_test_rng.Tpo -c -o suites/tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_test_rng.Tpo suites/$(DEPDIR)/tests-test_test_rng.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/tests-test_test_rng.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_test_rng.o: suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_test_rng.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Tpo -c -o suites/libstrongswan_tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/libstrongswan_tests-test_test_rng.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_test_rng.o `test -f 'suites/test_test_rng.c' || echo '$(srcdir)/'`suites/test_test_rng.c
 
-suites/tests-test_test_rng.obj: suites/test_test_rng.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_test_rng.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_test_rng.Tpo -c -o suites/tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_test_rng.Tpo suites/$(DEPDIR)/tests-test_test_rng.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/tests-test_test_rng.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_test_rng.obj: suites/test_test_rng.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_test_rng.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Tpo -c -o suites/libstrongswan_tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_test_rng.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_test_rng.c' object='suites/libstrongswan_tests-test_test_rng.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_test_rng.obj `if test -f 'suites/test_test_rng.c'; then $(CYGPATH_W) 'suites/test_test_rng.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_test_rng.c'; fi`
 
-suites/tests-test_mgf1.o: suites/test_mgf1.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_mgf1.o -MD -MP -MF suites/$(DEPDIR)/tests-test_mgf1.Tpo -c -o suites/tests-test_mgf1.o `test -f 'suites/test_mgf1.c' || echo '$(srcdir)/'`suites/test_mgf1.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_mgf1.Tpo suites/$(DEPDIR)/tests-test_mgf1.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_mgf1.c' object='suites/tests-test_mgf1.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_mgf1.o: suites/test_mgf1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_mgf1.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Tpo -c -o suites/libstrongswan_tests-test_mgf1.o `test -f 'suites/test_mgf1.c' || echo '$(srcdir)/'`suites/test_mgf1.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_mgf1.c' object='suites/libstrongswan_tests-test_mgf1.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_mgf1.o `test -f 'suites/test_mgf1.c' || echo '$(srcdir)/'`suites/test_mgf1.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_mgf1.o `test -f 'suites/test_mgf1.c' || echo '$(srcdir)/'`suites/test_mgf1.c
 
-suites/tests-test_mgf1.obj: suites/test_mgf1.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_mgf1.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_mgf1.Tpo -c -o suites/tests-test_mgf1.obj `if test -f 'suites/test_mgf1.c'; then $(CYGPATH_W) 'suites/test_mgf1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_mgf1.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_mgf1.Tpo suites/$(DEPDIR)/tests-test_mgf1.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_mgf1.c' object='suites/tests-test_mgf1.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_mgf1.obj: suites/test_mgf1.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_mgf1.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Tpo -c -o suites/libstrongswan_tests-test_mgf1.obj `if test -f 'suites/test_mgf1.c'; then $(CYGPATH_W) 'suites/test_mgf1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_mgf1.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_mgf1.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_mgf1.c' object='suites/libstrongswan_tests-test_mgf1.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_mgf1.obj `if test -f 'suites/test_mgf1.c'; then $(CYGPATH_W) 'suites/test_mgf1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_mgf1.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_mgf1.obj `if test -f 'suites/test_mgf1.c'; then $(CYGPATH_W) 'suites/test_mgf1.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_mgf1.c'; fi`
 
-suites/tests-test_ntru.o: suites/test_ntru.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ntru.o -MD -MP -MF suites/$(DEPDIR)/tests-test_ntru.Tpo -c -o suites/tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ntru.Tpo suites/$(DEPDIR)/tests-test_ntru.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/tests-test_ntru.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ntru.o: suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ntru.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Tpo -c -o suites/libstrongswan_tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/libstrongswan_tests-test_ntru.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ntru.o `test -f 'suites/test_ntru.c' || echo '$(srcdir)/'`suites/test_ntru.c
 
-suites/tests-test_ntru.obj: suites/test_ntru.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ntru.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_ntru.Tpo -c -o suites/tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ntru.Tpo suites/$(DEPDIR)/tests-test_ntru.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/tests-test_ntru.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ntru.obj: suites/test_ntru.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ntru.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Tpo -c -o suites/libstrongswan_tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ntru.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ntru.c' object='suites/libstrongswan_tests-test_ntru.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ntru.obj `if test -f 'suites/test_ntru.c'; then $(CYGPATH_W) 'suites/test_ntru.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ntru.c'; fi`
 
-suites/tests-test_ed25519.o: suites/test_ed25519.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ed25519.o -MD -MP -MF suites/$(DEPDIR)/tests-test_ed25519.Tpo -c -o suites/tests-test_ed25519.o `test -f 'suites/test_ed25519.c' || echo '$(srcdir)/'`suites/test_ed25519.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ed25519.Tpo suites/$(DEPDIR)/tests-test_ed25519.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed25519.c' object='suites/tests-test_ed25519.o' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ed25519.o: suites/test_ed25519.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ed25519.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Tpo -c -o suites/libstrongswan_tests-test_ed25519.o `test -f 'suites/test_ed25519.c' || echo '$(srcdir)/'`suites/test_ed25519.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed25519.c' object='suites/libstrongswan_tests-test_ed25519.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ed25519.o `test -f 'suites/test_ed25519.c' || echo '$(srcdir)/'`suites/test_ed25519.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ed25519.o `test -f 'suites/test_ed25519.c' || echo '$(srcdir)/'`suites/test_ed25519.c
 
-suites/tests-test_ed25519.obj: suites/test_ed25519.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -MT suites/tests-test_ed25519.obj -MD -MP -MF suites/$(DEPDIR)/tests-test_ed25519.Tpo -c -o suites/tests-test_ed25519.obj `if test -f 'suites/test_ed25519.c'; then $(CYGPATH_W) 'suites/test_ed25519.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed25519.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/tests-test_ed25519.Tpo suites/$(DEPDIR)/tests-test_ed25519.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed25519.c' object='suites/tests-test_ed25519.obj' libtool=no @AMDEPBACKSLASH@
+suites/libstrongswan_tests-test_ed25519.obj: suites/test_ed25519.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ed25519.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Tpo -c -o suites/libstrongswan_tests-test_ed25519.obj `if test -f 'suites/test_ed25519.c'; then $(CYGPATH_W) 'suites/test_ed25519.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed25519.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed25519.c' object='suites/libstrongswan_tests-test_ed25519.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_CFLAGS) $(CFLAGS) -c -o suites/tests-test_ed25519.obj `if test -f 'suites/test_ed25519.c'; then $(CYGPATH_W) 'suites/test_ed25519.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed25519.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ed25519.obj `if test -f 'suites/test_ed25519.c'; then $(CYGPATH_W) 'suites/test_ed25519.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed25519.c'; fi`
+
+suites/libstrongswan_tests-test_signature_params.o: suites/test_signature_params.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_signature_params.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Tpo -c -o suites/libstrongswan_tests-test_signature_params.o `test -f 'suites/test_signature_params.c' || echo '$(srcdir)/'`suites/test_signature_params.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_signature_params.c' object='suites/libstrongswan_tests-test_signature_params.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_signature_params.o `test -f 'suites/test_signature_params.c' || echo '$(srcdir)/'`suites/test_signature_params.c
+
+suites/libstrongswan_tests-test_signature_params.obj: suites/test_signature_params.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_signature_params.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Tpo -c -o suites/libstrongswan_tests-test_signature_params.obj `if test -f 'suites/test_signature_params.c'; then $(CYGPATH_W) 'suites/test_signature_params.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_signature_params.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_signature_params.c' object='suites/libstrongswan_tests-test_signature_params.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_signature_params.obj `if test -f 'suites/test_signature_params.c'; then $(CYGPATH_W) 'suites/test_signature_params.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_signature_params.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -136,7 +136,7 @@
 /* Define to 1 if you have the `mmap' function. */
 #undef HAVE_MMAP
 
-/* have mpz_mown_sec() */
+/* have mpz_powm_sec() */
 #undef HAVE_MPZ_POWM_SEC
 
 /* Define to 1 if you have the <netinet6/ipsec.h> header file. */
@@ -198,6 +198,9 @@
 
 /* have PF_ROUTE RTM_IFANNOUNCE defined */
 #undef HAVE_RTM_IFANNOUNCE
+
+/* Define to 1 if you have the `sd_listen_fds_with_names' function. */
+#undef HAVE_SD_LISTEN_FDS_WITH_NAMES
 
 /* Define to 1 if you have the `sem_timedwait' function. */
 #undef HAVE_SEM_TIMEDWAIT

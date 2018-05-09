@@ -47,6 +47,7 @@ error "gperf generated tables don't work with this execution character set. Plea
 
 #include <string.h>
 
+#define IN_GPERF_GENERATED_FILE
 #include "keywords.h"
 
 struct kw_entry {

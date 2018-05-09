@@ -18,13 +18,13 @@ options = \
 	options/imv_policy_manager.opt \
 	options/manager.opt \
 	options/medsrv.opt \
-	options/pacman.opt \
 	options/pki.opt \
 	options/pool.opt \
 	options/scepclient.opt \
 	options/starter.opt \
 	options/swanctl.opt \
 	options/tnc.opt \
+	options/sec-updater.opt \
 	options/sw-collector.opt
 
 plugins = \
