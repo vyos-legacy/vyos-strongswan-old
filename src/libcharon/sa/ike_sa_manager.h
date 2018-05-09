@@ -93,8 +93,7 @@ struct ike_sa_manager_t {
 	ike_sa_t* (*checkout_by_message) (ike_sa_manager_t* this, message_t *message);
 
 	/**
-	 * Checkout an IKE_SA for initiation by a peer_config and optional
-	 * source and remote host addresses.
+	 * Checkout an IKE_SA for initiation by a peer_config.
 	 *
 	 * To initiate, a CHILD_SA may be established within an existing IKE_SA.
 	 * This call checks for an existing IKE_SA by comparing the configuration.
@@ -104,13 +103,10 @@ struct ike_sa_manager_t {
 	 * the found IKE_SA is in the DELETING state.
 	 *
 	 * @param peer_cfg			configuration used to find an existing IKE_SA
-	 * @param my_host			source host address for wildcard peer_cfg
-	 * @param other_host		remote host address for wildcard peer_cfg
 	 * @return					checked out/created IKE_SA
 	 */
 	ike_sa_t* (*checkout_by_config) (ike_sa_manager_t* this,
-									 peer_cfg_t *peer_cfg,
-									 host_t *my_host, host_t *other_host);
+									 peer_cfg_t *peer_cfg);
 
 	/**
 	 * Check for duplicates of the given IKE_SA.
