@@ -37,6 +37,7 @@ ENUM(child_sa_state_names, CHILD_CREATED, CHILD_DESTROYING,
 	"REKEYED",
 	"RETRYING",
 	"DELETING",
+	"DELETED",
 	"DESTROYING",
 );
 
@@ -888,7 +889,7 @@ static status_t install_internal(private_child_sa_t *this, chunk_t encr,
 		.ipcomp = this->ipcomp,
 		.cpi = cpi,
 		.encap = this->encap,
-		.hw_offload = this->config->has_option(this->config, OPT_HW_OFFLOAD),
+		.hw_offload = this->config->get_hw_offload(this->config),
 		.esn = esn,
 		.initiator = initiator,
 		.inbound = inbound,
@@ -1060,16 +1061,17 @@ static status_t install_policies_internal(private_child_sa_t *this,
 	host_t *my_addr, host_t *other_addr, traffic_selector_t *my_ts,
 	traffic_selector_t *other_ts, ipsec_sa_cfg_t *my_sa,
 	ipsec_sa_cfg_t *other_sa, policy_type_t type,
-	policy_priority_t priority,	uint32_t manual_prio)
+	policy_priority_t priority,	uint32_t manual_prio, bool outbound)
 {
 	status_t status = SUCCESS;
 
 	status |= install_policies_inbound(this, my_addr, other_addr, my_ts,
-									   other_ts, my_sa, other_sa, type,
-									   priority, manual_prio);
-	status |= install_policies_outbound(this, my_addr, other_addr, my_ts,
-										other_ts, my_sa, other_sa, type,
-										priority, manual_prio);
+						other_ts, my_sa, other_sa, type, priority, manual_prio);
+	if (outbound)
+	{
+		status |= install_policies_outbound(this, my_addr, other_addr, my_ts,
+						other_ts, my_sa, other_sa, type, priority, manual_prio);
+	}
 	return status;
 }
 
@@ -1153,12 +1155,15 @@ static void del_policies_internal(private_child_sa_t *this,
 	host_t *my_addr, host_t *other_addr, traffic_selector_t *my_ts,
 	traffic_selector_t *other_ts, ipsec_sa_cfg_t *my_sa,
 	ipsec_sa_cfg_t *other_sa, policy_type_t type,
-	policy_priority_t priority, uint32_t manual_prio)
+	policy_priority_t priority, uint32_t manual_prio, bool outbound)
 {
-	del_policies_outbound(this, my_addr, other_addr, my_ts, other_ts, my_sa,
-						 other_sa, type, priority, manual_prio);
+	if (outbound)
+	{
+		del_policies_outbound(this, my_addr, other_addr, my_ts, other_ts, my_sa,
+						other_sa, type, priority, manual_prio);
+	}
 	del_policies_inbound(this, my_addr, other_addr, my_ts, other_ts, my_sa,
-						 other_sa, type, priority, manual_prio);
+						other_sa, type, priority, manual_prio);
 }
 
 METHOD(child_sa_t, set_policies, void,
@@ -1249,18 +1254,10 @@ METHOD(child_sa_t, install_policies, status_t,
 		enumerator = create_policy_enumerator(this);
 		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 		{
-			status |= install_policies_inbound(this, this->my_addr,
+			status |= install_policies_internal(this, this->my_addr,
 									this->other_addr, my_ts, other_ts,
-									&my_sa, &other_sa, POLICY_IPSEC,
-									priority, manual_prio);
-
-			if (install_outbound)
-			{
-				status |= install_policies_outbound(this, this->my_addr,
-									this->other_addr, my_ts, other_ts,
-									&my_sa, &other_sa, POLICY_IPSEC,
-									priority, manual_prio);
-			}
+									&my_sa, &other_sa, POLICY_IPSEC, priority,
+									manual_prio, install_outbound);
 			if (status != SUCCESS)
 			{
 				break;
@@ -1463,7 +1460,7 @@ static status_t update_sas(private_child_sa_t *this, host_t *me, host_t *other,
 	}
 
 	/* update his (responder) SA */
-	if (this->other_spi)
+	if (this->other_spi && (this->outbound_state & CHILD_OUTBOUND_SA))
 	{
 		kernel_ipsec_sa_id_t id = {
 			.src = this->my_addr,
@@ -1517,22 +1514,26 @@ METHOD(child_sa_t, update, status_t,
 		traffic_selector_t *my_ts, *other_ts;
 		uint32_t manual_prio;
 		status_t state;
+		bool outbound;
 
 		prepare_sa_cfg(this, &my_sa, &other_sa);
 		manual_prio = this->config->get_manual_prio(this->config);
+		outbound = (this->outbound_state & CHILD_OUTBOUND_POLICIES);
 
 		enumerator = create_policy_enumerator(this);
 		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 		{
 			/* install drop policy to avoid traffic leaks, acquires etc. */
-			install_policies_outbound(this, this->my_addr, this->other_addr,
-						my_ts, other_ts, &my_sa, &other_sa, POLICY_DROP,
-						POLICY_PRIORITY_DEFAULT, manual_prio);
-
+			if (outbound)
+			{
+				install_policies_outbound(this, this->my_addr, this->other_addr,
+							my_ts, other_ts, &my_sa, &other_sa, POLICY_DROP,
+							POLICY_PRIORITY_DEFAULT, manual_prio);
+			}
 			/* remove old policies */
 			del_policies_internal(this, this->my_addr, this->other_addr,
 						my_ts, other_ts, &my_sa, &other_sa, POLICY_IPSEC,
-						POLICY_PRIORITY_DEFAULT, manual_prio);
+						POLICY_PRIORITY_DEFAULT, manual_prio, outbound);
 		}
 		enumerator->destroy(enumerator);
 
@@ -1548,8 +1549,8 @@ METHOD(child_sa_t, update, status_t,
 			if (state == NOT_SUPPORTED)
 			{
 				install_policies_internal(this, this->my_addr, this->other_addr,
-						my_ts, other_ts, &my_sa, &other_sa,
-						POLICY_IPSEC, POLICY_PRIORITY_DEFAULT, manual_prio);
+						my_ts, other_ts, &my_sa, &other_sa, POLICY_IPSEC,
+						POLICY_PRIORITY_DEFAULT, manual_prio, outbound);
 			}
 			else
 			{
@@ -1573,15 +1574,17 @@ METHOD(child_sa_t, update, status_t,
 
 				/* reinstall updated policies */
 				install_policies_internal(this, me, other, my_ts, other_ts,
-										  &my_sa, &other_sa, POLICY_IPSEC,
-										  POLICY_PRIORITY_DEFAULT, manual_prio);
+						&my_sa, &other_sa, POLICY_IPSEC,
+						POLICY_PRIORITY_DEFAULT, manual_prio, outbound);
 			}
 			/* remove the drop policy */
-			del_policies_outbound(this, this->my_addr, this->other_addr,
-								  old_my_ts ?: my_ts,
-								  old_other_ts ?: other_ts,
-								  &my_sa, &other_sa, POLICY_DROP,
-								  POLICY_PRIORITY_DEFAULT, 0);
+			if (outbound)
+			{
+				del_policies_outbound(this, this->my_addr, this->other_addr,
+						old_my_ts ?: my_ts, old_other_ts ?: other_ts,
+						&my_sa, &other_sa, POLICY_DROP,
+						POLICY_PRIORITY_DEFAULT, 0);
+			}
 
 			DESTROY_IF(old_my_ts);
 			DESTROY_IF(old_other_ts);
@@ -1651,16 +1654,9 @@ METHOD(child_sa_t, destroy, void,
 		enumerator = create_policy_enumerator(this);
 		while (enumerator->enumerate(enumerator, &my_ts, &other_ts))
 		{
-			if (del_outbound)
-			{
-				del_policies_outbound(this, this->my_addr,
-									  this->other_addr, my_ts, other_ts,
-									  &my_sa, &other_sa, POLICY_IPSEC,
-									  priority, manual_prio);
-			}
-			del_policies_inbound(this, this->my_addr, this->other_addr,
-								 my_ts, other_ts, &my_sa, &other_sa,
-								 POLICY_IPSEC, priority, manual_prio);
+			del_policies_internal(this, this->my_addr,
+						this->other_addr, my_ts, other_ts, &my_sa, &other_sa,
+						POLICY_IPSEC, priority, manual_prio, del_outbound);
 		}
 		enumerator->destroy(enumerator);
 	}
@@ -1754,7 +1750,7 @@ static host_t* get_proxy_addr(child_cfg_t *config, host_t *ike, bool local)
  * Described in header.
  */
 child_sa_t * child_sa_create(host_t *me, host_t* other,
-							 child_cfg_t *config, uint32_t rekey, bool encap,
+							 child_cfg_t *config, uint32_t reqid, bool encap,
 							 u_int mark_in, u_int mark_out)
 {
 	private_child_sa_t *this;
@@ -1865,21 +1861,15 @@ child_sa_t * child_sa_create(host_t *me, host_t* other,
 
 	if (!this->reqid)
 	{
-		/* reuse old reqid if we are rekeying an existing CHILD_SA. While the
-		 * reqid cache would find the same reqid for our selectors, this does
-		 * not work in a special case: If an SA is triggered by a trap policy,
-		 * but the negotiated SA gets narrowed, we still must reuse the same
-		 * reqid to successfully "trigger" the SA on the kernel level. Rekeying
-		 * such an SA requires an explicit reqid, as the cache currently knows
-		 * the original selectors only for that reqid. */
-		if (rekey)
-		{
-			this->reqid = rekey;
-		}
-		else
-		{
-			this->reqid = charon->traps->find_reqid(charon->traps, config);
-		}
+		/* reuse old reqid if we are rekeying an existing CHILD_SA and when
+		 * initiating a trap policy. While the reqid cache would find the same
+		 * reqid for our selectors, this does not work in a special case: If an
+		 * SA is triggered by a trap policy, but the negotiated TS get
+		 * narrowed, we still must reuse the same reqid to successfully
+		 * replace the temporary SA on the kernel level. Rekeying such an SA
+		 * requires an explicit reqid, as the cache currently knows the original
+		 * selectors only for that reqid. */
+		this->reqid = reqid;
 	}
 	else
 	{
