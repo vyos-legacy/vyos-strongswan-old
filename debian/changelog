@@ -1,4 +1,4 @@
-strongswan (5.6.3-1) UNRELEASED; urgency=medium
+strongswan (5.6.3-1) unstable; urgency=medium
 
   * New upstream version 5.6.2
   * update charon-systemd AppArmor profile (closes: #896813)
@@ -11,7 +11,7 @@ strongswan (5.6.3-1) UNRELEASED; urgency=medium
     (CVE-2018-5388)
   * d/p/05_charon-nm-Fix-building-list-of-DNS-MDNS-servers-with removed
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Jun 2018 10:11:29 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Jun 2018 10:23:22 +0200
 
 strongswan (5.6.2-2) unstable; urgency=medium
 
