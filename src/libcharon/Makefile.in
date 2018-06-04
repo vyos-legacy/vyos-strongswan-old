@@ -301,6 +301,7 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_ATTR_TRUE@am__append_151 = plugins/attr/libstrongswan-attr.la
 @USE_ATTR_SQL_TRUE@am__append_152 = plugins/attr_sql
 @MONOLITHIC_TRUE@@USE_ATTR_SQL_TRUE@am__append_153 = plugins/attr_sql/libstrongswan-attr-sql.la
+@USE_EAP_AKA_3GPP_TRUE@am__append_154 = plugins/eap_aka_3gpp/tests
 subdir = src/libcharon
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -769,7 +770,7 @@ DIST_SUBDIRS = . plugins/load_tester plugins/save_keys \
 	plugins/coupling plugins/radattr plugins/uci plugins/addrblock \
 	plugins/unity plugins/xauth_generic plugins/xauth_eap \
 	plugins/xauth_pam plugins/xauth_noauth plugins/resolve \
-	plugins/attr plugins/attr_sql tests
+	plugins/attr plugins/attr_sql tests plugins/eap_aka_3gpp/tests
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -1185,6 +1186,9 @@ libcharon_la_LIBADD =  \
 EXTRA_DIST = Android.mk
 @STATIC_PLUGIN_CONSTRUCTORS_TRUE@BUILT_SOURCES = $(srcdir)/plugin_constructors.c
 @STATIC_PLUGIN_CONSTRUCTORS_TRUE@CLEANFILES = $(srcdir)/plugin_constructors.c
+
+# build unit tests
+##################
 @MONOLITHIC_FALSE@SUBDIRS = . $(am__append_6) $(am__append_8) \
 @MONOLITHIC_FALSE@	$(am__append_10) $(am__append_12) \
 @MONOLITHIC_FALSE@	$(am__append_14) $(am__append_16) \
@@ -1220,10 +1224,14 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_FALSE@	$(am__append_138) $(am__append_140) \
 @MONOLITHIC_FALSE@	$(am__append_142) $(am__append_144) \
 @MONOLITHIC_FALSE@	$(am__append_146) $(am__append_148) \
-@MONOLITHIC_FALSE@	$(am__append_150) $(am__append_152) tests
+@MONOLITHIC_FALSE@	$(am__append_150) $(am__append_152) tests \
+@MONOLITHIC_FALSE@	$(am__append_154)
 
 # build optional plugins
 ########################
+
+# build unit tests
+##################
 @MONOLITHIC_TRUE@SUBDIRS = $(am__append_6) $(am__append_8) \
 @MONOLITHIC_TRUE@	$(am__append_10) $(am__append_12) \
 @MONOLITHIC_TRUE@	$(am__append_14) $(am__append_16) \
@@ -1259,7 +1267,8 @@ EXTRA_DIST = Android.mk
 @MONOLITHIC_TRUE@	$(am__append_138) $(am__append_140) \
 @MONOLITHIC_TRUE@	$(am__append_142) $(am__append_144) \
 @MONOLITHIC_TRUE@	$(am__append_146) $(am__append_148) \
-@MONOLITHIC_TRUE@	$(am__append_150) $(am__append_152) . tests
+@MONOLITHIC_TRUE@	$(am__append_150) $(am__append_152) . tests \
+@MONOLITHIC_TRUE@	$(am__append_154)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

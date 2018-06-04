@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2013 Tobias Brunner
  * Copyright (C) 2008-2009 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,8 +65,7 @@ static GVariant* handler_to_variant(nm_handler_t *handler,
 	enumerator = handler->create_enumerator(handler, type);
 	while (enumerator->enumerate(enumerator, &chunk))
 	{
-		g_variant_builder_add (&builder, "u",
-							   g_variant_new_uint32 (*(uint32_t*)chunk.ptr));
+		g_variant_builder_add (&builder, "u", *(uint32_t*)chunk.ptr);
 	}
 	enumerator->destroy(enumerator);
 
@@ -493,7 +492,7 @@ static gboolean connect_(NMVpnServicePlugin *plugin, NMConnection *connection,
 					priv->creds->set_key_password(priv->creds, secret);
 				}
 				private = lib->creds->create(lib->creds, CRED_PRIVATE_KEY,
-								KEY_RSA, BUILD_FROM_FILE, str, BUILD_END);
+								KEY_ANY, BUILD_FROM_FILE, str, BUILD_END);
 				if (!private)
 				{
 					g_set_error(err, NM_VPN_PLUGIN_ERROR,
@@ -742,7 +741,7 @@ static gboolean do_disconnect(gpointer plugin)
 		{
 			id = ike_sa->get_unique_id(ike_sa);
 			enumerator->destroy(enumerator);
-			charon->controller->terminate_ike(charon->controller, id,
+			charon->controller->terminate_ike(charon->controller, id, FALSE,
 											  controller_cb_empty, NULL, 0);
 			return FALSE;
 		}

@@ -1797,7 +1797,7 @@ static void rt_entry_destroy(rt_entry_t *this)
 /**
  * Check if the route received with RTM_NEWROUTE is usable based on its type.
  */
-static bool route_usable(struct nlmsghdr *hdr)
+static bool route_usable(struct nlmsghdr *hdr, bool allow_local)
 {
 	struct rtmsg *msg;
 
@@ -1809,6 +1809,8 @@ static bool route_usable(struct nlmsghdr *hdr)
 		case RTN_PROHIBIT:
 		case RTN_THROW:
 			return FALSE;
+		case RTN_LOCAL:
+			return allow_local;
 		default:
 			return TRUE;
 	}
@@ -1832,15 +1834,11 @@ static rt_entry_t *parse_route(struct nlmsghdr *hdr, rt_entry_t *route)
 
 	if (route)
 	{
-		route->gtw = chunk_empty;
-		route->pref_src = chunk_empty;
-		route->dst = chunk_empty;
-		route->dst_len = msg->rtm_dst_len;
-		route->src = chunk_empty;
-		route->src_len = msg->rtm_src_len;
-		route->table = msg->rtm_table;
-		route->oif = 0;
-		route->priority = 0;
+		*route = (rt_entry_t){
+			.dst_len = msg->rtm_dst_len,
+			.src_len = msg->rtm_src_len,
+			.table = msg->rtm_table,
+		};
 	}
 	else
 	{
@@ -1988,7 +1986,7 @@ static host_t *get_route(private_kernel_netlink_net_t *this, host_t *dest,
 				rt_entry_t *other;
 				uintptr_t table;
 
-				if (!route_usable(current))
+				if (!route_usable(current, TRUE))
 				{
 					continue;
 				}
@@ -2260,49 +2258,31 @@ METHOD(enumerator_t, enumerate_subnets, bool,
 				break;
 			case RTM_NEWROUTE:
 			{
-				struct rtmsg *msg;
-				struct rtattr *rta;
-				size_t rtasize;
-				chunk_t dst = chunk_empty;
-				uint32_t oif = 0;
+				rt_entry_t route;
 
-				msg = NLMSG_DATA(this->current);
-
-				if (!route_usable(this->current))
+				if (!route_usable(this->current, FALSE))
 				{
 					break;
 				}
-				else if (msg->rtm_table && (
-							msg->rtm_table == RT_TABLE_LOCAL ||
-							msg->rtm_table == this->private->routing_table))
+				parse_route(this->current, &route);
+
+				if (route.table && (
+							route.table == RT_TABLE_LOCAL ||
+							route.table == this->private->routing_table))
 				{	/* ignore our own and the local routing tables */
 					break;
 				}
-
-				rta = RTM_RTA(msg);
-				rtasize = RTM_PAYLOAD(this->current);
-				while (RTA_OK(rta, rtasize))
-				{
-					switch (rta->rta_type)
-					{
-						case RTA_DST:
-							dst = chunk_create(RTA_DATA(rta), RTA_PAYLOAD(rta));
-							break;
-						case RTA_OIF:
-							if (RTA_PAYLOAD(rta) == sizeof(oif))
-							{
-								oif = *(uint32_t*)RTA_DATA(rta);
-							}
-							break;
-					}
-					rta = RTA_NEXT(rta, rtasize);
+				else if (route.gtw.ptr)
+				{	/* ignore routes via gateway/next hop */
+					break;
 				}
 
-				if (dst.ptr && oif && if_indextoname(oif, this->ifname))
+				if (route.dst.ptr && route.oif &&
+					if_indextoname(route.oif, this->ifname))
 				{
-					this->net = host_create_from_chunk(msg->rtm_family, dst, 0);
+					this->net = host_create_from_chunk(AF_UNSPEC, route.dst, 0);
 					*net = this->net;
-					*mask = msg->rtm_dst_len;
+					*mask = route.dst_len;
 					*ifname = this->ifname;
 					return TRUE;
 				}
@@ -2669,31 +2649,89 @@ static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 	return this->socket->send_ack(this->socket, hdr);
 }
 
+/**
+ * Helper struct used to check routes
+ */
+typedef struct {
+	/** the entry we look for */
+	route_entry_t route;
+	/** kernel interface */
+	private_kernel_netlink_net_t *this;
+} route_entry_lookup_t;
+
+/**
+ * Check if a matching route entry has a VIP associated
+ */
+static bool route_with_vip(route_entry_lookup_t *a, route_entry_t *b)
+{
+	if (chunk_equals(a->route.dst_net, b->dst_net) &&
+		a->route.prefixlen == b->prefixlen &&
+		is_known_vip(a->this, b->src_ip))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Check if there is any route entry with a matching destination
+ */
+static bool route_with_dst(route_entry_lookup_t *a, route_entry_t *b)
+{
+	if (chunk_equals(a->route.dst_net, b->dst_net) &&
+		a->route.prefixlen == b->prefixlen)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
 METHOD(kernel_net_t, add_route, status_t,
 	private_kernel_netlink_net_t *this, chunk_t dst_net, uint8_t prefixlen,
 	host_t *gateway, host_t *src_ip, char *if_name)
 {
 	status_t status;
-	route_entry_t *found, route = {
-		.dst_net = dst_net,
-		.prefixlen = prefixlen,
-		.gateway = gateway,
-		.src_ip = src_ip,
-		.if_name = if_name,
+	route_entry_t *found;
+	route_entry_lookup_t lookup = {
+		.route = {
+			.dst_net = dst_net,
+			.prefixlen = prefixlen,
+			.gateway = gateway,
+			.src_ip = src_ip,
+			.if_name = if_name,
+		},
+		.this = this,
 	};
 
 	this->routes_lock->lock(this->routes_lock);
-	found = this->routes->get(this->routes, &route);
+	found = this->routes->get(this->routes, &lookup.route);
 	if (found)
 	{
 		this->routes_lock->unlock(this->routes_lock);
 		return ALREADY_DONE;
 	}
-	status = manage_srcroute(this, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL,
-							 dst_net, prefixlen, gateway, src_ip, if_name);
+
+	/* don't replace the route if we already have one with a VIP installed,
+	 * but keep track of it in case that other route is uninstalled */
+	this->lock->read_lock(this->lock);
+	if (!is_known_vip(this, src_ip))
+	{
+		found = this->routes->get_match(this->routes, &lookup,
+										(void*)route_with_vip);
+	}
+	this->lock->unlock(this->lock);
+	if (found)
+	{
+		status = SUCCESS;
+	}
+	else
+	{
+		status = manage_srcroute(this, RTM_NEWROUTE, NLM_F_CREATE|NLM_F_REPLACE,
+								 dst_net, prefixlen, gateway, src_ip, if_name);
+	}
 	if (status == SUCCESS)
 	{
-		found = route_entry_clone(&route);
+		found = route_entry_clone(&lookup.route);
 		this->routes->put(this->routes, found, found);
 	}
 	this->routes_lock->unlock(this->routes_lock);
@@ -2705,25 +2743,49 @@ METHOD(kernel_net_t, del_route, status_t,
 	host_t *gateway, host_t *src_ip, char *if_name)
 {
 	status_t status;
-	route_entry_t *found, route = {
-		.dst_net = dst_net,
-		.prefixlen = prefixlen,
-		.gateway = gateway,
-		.src_ip = src_ip,
-		.if_name = if_name,
+	route_entry_t *found;
+	route_entry_lookup_t lookup = {
+		.route = {
+			.dst_net = dst_net,
+			.prefixlen = prefixlen,
+			.gateway = gateway,
+			.src_ip = src_ip,
+			.if_name = if_name,
+		},
+		.this = this,
 	};
 
 	this->routes_lock->lock(this->routes_lock);
-	found = this->routes->get(this->routes, &route);
+	found = this->routes->remove(this->routes, &lookup.route);
 	if (!found)
 	{
 		this->routes_lock->unlock(this->routes_lock);
 		return NOT_FOUND;
 	}
-	this->routes->remove(this->routes, found);
 	route_entry_destroy(found);
-	status = manage_srcroute(this, RTM_DELROUTE, 0, dst_net, prefixlen,
-							 gateway, src_ip, if_name);
+
+	/* check if there are any other routes for the same destination and if
+	 * so update the route, otherwise uninstall it */
+	this->lock->read_lock(this->lock);
+	found = this->routes->get_match(this->routes, &lookup,
+									(void*)route_with_vip);
+	this->lock->unlock(this->lock);
+	if (!found)
+	{
+		found = this->routes->get_match(this->routes, &lookup,
+										(void*)route_with_dst);
+	}
+	if (found)
+	{
+		status = manage_srcroute(this, RTM_NEWROUTE, NLM_F_CREATE|NLM_F_REPLACE,
+							found->dst_net, found->prefixlen, found->gateway,
+							found->src_ip, found->if_name);
+	}
+	else
+	{
+		status = manage_srcroute(this, RTM_DELROUTE, 0, dst_net, prefixlen,
+								 gateway, src_ip, if_name);
+	}
 	this->routes_lock->unlock(this->routes_lock);
 	return status;
 }

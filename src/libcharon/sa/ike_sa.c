@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Tobias Brunner
+ * Copyright (C) 2006-2018 Tobias Brunner
  * Copyright (C) 2006 Daniel Roethlisberger
  * Copyright (C) 2005-2009 Martin Willi
  * Copyright (C) 2005 Jan Hutter
@@ -1053,16 +1053,18 @@ METHOD(ike_sa_t, has_mapping_changed, bool,
 METHOD(ike_sa_t, float_ports, void,
 	   private_ike_sa_t *this)
 {
-	/* do not switch if we have a custom port from MOBIKE/NAT */
+	/* even if the remote port is not 500 (e.g. because the response was natted)
+	 * we switch the remote port if we used port 500 */
+	if (this->other_host->get_port(this->other_host) == IKEV2_UDP_PORT ||
+		this->my_host->get_port(this->my_host) == IKEV2_UDP_PORT)
+	{
+		this->other_host->set_port(this->other_host, IKEV2_NATT_PORT);
+	}
 	if (this->my_host->get_port(this->my_host) ==
 			charon->socket->get_port(charon->socket, FALSE))
 	{
 		this->my_host->set_port(this->my_host,
 								charon->socket->get_port(charon->socket, TRUE));
-	}
-	if (this->other_host->get_port(this->other_host) == IKEV2_UDP_PORT)
-	{
-		this->other_host->set_port(this->other_host, IKEV2_NATT_PORT);
 	}
 }
 
@@ -1791,8 +1793,10 @@ METHOD(ike_sa_t, destroy_child_sa, status_t,
 }
 
 METHOD(ike_sa_t, delete_, status_t,
-	private_ike_sa_t *this)
+	private_ike_sa_t *this, bool force)
 {
+	status_t status = DESTROY_ME;
+
 	switch (this->state)
 	{
 		case IKE_ESTABLISHED:
@@ -1804,19 +1808,38 @@ METHOD(ike_sa_t, delete_, status_t,
 				charon->bus->alert(charon->bus, ALERT_IKE_SA_EXPIRED);
 			}
 			this->task_manager->queue_ike_delete(this->task_manager);
-			return this->task_manager->initiate(this->task_manager);
+			status = this->task_manager->initiate(this->task_manager);
+			break;
 		case IKE_CREATED:
 			DBG1(DBG_IKE, "deleting unestablished IKE_SA");
 			break;
 		case IKE_PASSIVE:
 			break;
 		default:
-			DBG1(DBG_IKE, "destroying IKE_SA in state %N "
-				"without notification", ike_sa_state_names, this->state);
-			charon->bus->ike_updown(charon->bus, &this->public, FALSE);
+			DBG1(DBG_IKE, "destroying IKE_SA in state %N without notification",
+				 ike_sa_state_names, this->state);
+			force = TRUE;
 			break;
 	}
-	return DESTROY_ME;
+
+	if (force)
+	{
+		status = DESTROY_ME;
+
+		if (this->version == IKEV2)
+		{	/* for IKEv1 we trigger this in the ISAKMP delete task */
+			switch (this->state)
+			{
+				case IKE_ESTABLISHED:
+				case IKE_REKEYING:
+				case IKE_DELETING:
+					charon->bus->ike_updown(charon->bus, &this->public, FALSE);
+				default:
+					break;
+			}
+		}
+	}
+	return status;
 }
 
 METHOD(ike_sa_t, rekey, status_t,
@@ -1926,23 +1949,18 @@ static status_t reestablish_children(private_ike_sa_t *this, ike_sa_t *new,
 	enumerator = create_child_sa_enumerator(this);
 	while (enumerator->enumerate(enumerator, (void**)&child_sa))
 	{
+		switch (child_sa->get_state(child_sa))
+		{
+			case CHILD_REKEYED:
+			case CHILD_DELETED:
+				/* ignore CHILD_SAs in these states */
+				continue;
+			default:
+				break;
+		}
 		if (force)
 		{
-			switch (child_sa->get_state(child_sa))
-			{
-				case CHILD_ROUTED:
-				{	/* move routed child directly */
-					remove_child_sa(this, enumerator);
-					new->add_child_sa(new, child_sa);
-					action = ACTION_NONE;
-					break;
-				}
-				default:
-				{	/* initiate/queue all other CHILD_SAs */
-					action = ACTION_RESTART;
-					break;
-				}
-			}
+			action = ACTION_RESTART;
 		}
 		else
 		{	/* only restart CHILD_SAs that are configured accordingly */
@@ -2020,6 +2038,15 @@ METHOD(ike_sa_t, reestablish, status_t,
 		enumerator = array_create_enumerator(this->child_sas);
 		while (enumerator->enumerate(enumerator, (void**)&child_sa))
 		{
+			switch (child_sa->get_state(child_sa))
+			{
+				case CHILD_REKEYED:
+				case CHILD_DELETED:
+					/* ignore CHILD_SAs in these states */
+					continue;
+				default:
+					break;
+			}
 			if (this->state == IKE_DELETING)
 			{
 				action = child_sa->get_close_action(child_sa);
@@ -2035,8 +2062,7 @@ METHOD(ike_sa_t, reestablish, status_t,
 					break;
 				case ACTION_ROUTE:
 					charon->traps->install(charon->traps, this->peer_cfg,
-										   child_sa->get_config(child_sa),
-										   child_sa->get_reqid(child_sa));
+										   child_sa->get_config(child_sa));
 					break;
 				default:
 					break;
@@ -2348,6 +2374,31 @@ METHOD(ike_sa_t, retransmit, status_t,
 					return this->task_manager->initiate(this->task_manager);
 				}
 				DBG1(DBG_IKE, "establishing IKE_SA failed, peer not responding");
+
+				if (this->version == IKEV1 && array_count(this->child_sas))
+				{
+					enumerator_t *enumerator;
+					child_sa_t *child_sa;
+
+					/* if reauthenticating an IKEv1 SA failed (assumed for an SA
+					 * in this state with CHILD_SAs), try again from scratch */
+					DBG1(DBG_IKE, "reauthentication failed, trying to "
+						 "reestablish IKE_SA");
+					reestablish(this);
+					/* trigger down events for the CHILD_SAs, as no down event
+					 * is triggered below for IKE SAs in this state */
+					enumerator = array_create_enumerator(this->child_sas);
+					while (enumerator->enumerate(enumerator, &child_sa))
+					{
+						if (child_sa->get_state(child_sa) != CHILD_REKEYED &&
+							child_sa->get_state(child_sa) != CHILD_DELETED)
+						{
+							charon->bus->child_updown(charon->bus, child_sa,
+													  FALSE);
+						}
+					}
+					enumerator->destroy(enumerator);
+				}
 				break;
 			}
 			case IKE_DELETING:
@@ -2552,10 +2603,15 @@ METHOD(ike_sa_t, roam, status_t,
 		 * without config assigned */
 		return SUCCESS;
 	}
+	if (this->version == IKEV1)
+	{	/* ignore roam events for IKEv1 where we don't have MOBIKE and would
+		 * have to reestablish from scratch (reauth is not enough) */
+		return SUCCESS;
+	}
 
 	/* ignore roam events if MOBIKE is not supported/enabled and the local
 	 * address is statically configured */
-	if (this->version == IKEV2 && !supports_extension(this, EXT_MOBIKE) &&
+	if (!supports_extension(this, EXT_MOBIKE) &&
 		ike_cfg_has_address(this->ike_cfg, this->my_host, TRUE))
 	{
 		DBG2(DBG_IKE, "keeping statically configured path %H - %H",

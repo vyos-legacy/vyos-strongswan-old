@@ -145,8 +145,7 @@ static void find_child(private_child_rekey_t *this, message_t *message)
 			child_sa = this->ike_sa->get_child_sa(this->ike_sa, protocol,
 												  spi, FALSE);
 			if (child_sa &&
-				child_sa->get_state(child_sa) == CHILD_DELETING &&
-				child_sa->get_outbound_state(child_sa) == CHILD_OUTBOUND_NONE)
+				child_sa->get_state(child_sa) == CHILD_DELETED)
 			{	/* ignore rekeyed CHILD_SAs we keep around */
 				return;
 			}
@@ -213,7 +212,8 @@ METHOD(task_t, build_i, status_t,
 									   message) != NEED_MORE)
 	{
 		schedule_delayed_rekey(this);
-		return FAILED;
+		message->set_exchange_type(message, EXCHANGE_TYPE_UNDEFINED);
+		return SUCCESS;
 	}
 	if (message->get_exchange_type(message) == CREATE_CHILD_SA)
 	{

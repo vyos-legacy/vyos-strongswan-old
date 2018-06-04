@@ -302,6 +302,7 @@ static bool parse(private_x509_crl_t *this)
 						}
 						break;
 					case OID_AUTHORITY_KEY_ID:
+						chunk_free(&this->authKeyIdentifier);
 						this->authKeyIdentifier =
 							x509_parse_authorityKeyIdentifier(
 									object, level, &this->authKeySerialNumber);
@@ -545,7 +546,7 @@ METHOD(certificate_t, get_validity, bool,
 	{
 		*not_after = this->nextUpdate;
 	}
-	return (t <= this->nextUpdate);
+	return (t >= this->thisUpdate && t <= this->nextUpdate);
 }
 
 METHOD(certificate_t, get_encoding, bool,

@@ -88,6 +88,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@MONOLITHIC_TRUE@am__append_1 = libstrongswan-eap-aka-3gpp.la
+@MONOLITHIC_FALSE@am__append_2 = $(top_builddir)/src/libsimaka/libsimaka.la
 subdir = src/libcharon/plugins/eap_aka_3gpp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -136,17 +138,19 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(plugindir)"
 LTLIBRARIES = $(noinst_LTLIBRARIES) $(plugin_LTLIBRARIES)
-@MONOLITHIC_FALSE@libstrongswan_eap_aka_3gpp_la_DEPENDENCIES =  \
-@MONOLITHIC_FALSE@	$(top_builddir)/src/libsimaka/libsimaka.la
-am_libstrongswan_eap_aka_3gpp_la_OBJECTS = eap_aka_3gpp_plugin.lo \
-	eap_aka_3gpp_card.lo eap_aka_3gpp_provider.lo \
-	eap_aka_3gpp_functions.lo
-libstrongswan_eap_aka_3gpp_la_OBJECTS =  \
-	$(am_libstrongswan_eap_aka_3gpp_la_OBJECTS)
+libeap_aka_3gpp_la_LIBADD =
+am_libeap_aka_3gpp_la_OBJECTS = eap_aka_3gpp_functions.lo
+libeap_aka_3gpp_la_OBJECTS = $(am_libeap_aka_3gpp_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+libstrongswan_eap_aka_3gpp_la_DEPENDENCIES = libeap_aka_3gpp.la \
+	$(am__append_2)
+am_libstrongswan_eap_aka_3gpp_la_OBJECTS = eap_aka_3gpp_plugin.lo \
+	eap_aka_3gpp_card.lo eap_aka_3gpp_provider.lo
+libstrongswan_eap_aka_3gpp_la_OBJECTS =  \
+	$(am_libstrongswan_eap_aka_3gpp_la_OBJECTS)
 libstrongswan_eap_aka_3gpp_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(AM_CFLAGS) $(CFLAGS) \
@@ -188,8 +192,10 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libstrongswan_eap_aka_3gpp_la_SOURCES)
-DIST_SOURCES = $(libstrongswan_eap_aka_3gpp_la_SOURCES)
+SOURCES = $(libeap_aka_3gpp_la_SOURCES) \
+	$(libstrongswan_eap_aka_3gpp_la_SOURCES)
+DIST_SOURCES = $(libeap_aka_3gpp_la_SOURCES) \
+	$(libstrongswan_eap_aka_3gpp_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -462,16 +468,22 @@ AM_CPPFLAGS = \
 AM_CFLAGS = \
 	$(PLUGIN_CFLAGS)
 
-libstrongswan_eap_aka_3gpp_la_LDFLAGS = -module -avoid-version
-@MONOLITHIC_TRUE@noinst_LTLIBRARIES = libstrongswan-eap-aka-3gpp.la
+
+# these files are also used by the tests, we can't directly refer to them
+# because of the subdirectory, which would cause distclean to fail
+noinst_LTLIBRARIES = libeap_aka_3gpp.la $(am__append_1)
+libeap_aka_3gpp_la_SOURCES = \
+	eap_aka_3gpp_functions.h eap_aka_3gpp_functions.c
+
+libstrongswan_eap_aka_3gpp_la_LIBADD = libeap_aka_3gpp.la \
+	$(am__append_2)
 @MONOLITHIC_FALSE@plugin_LTLIBRARIES = libstrongswan-eap-aka-3gpp.la
-@MONOLITHIC_FALSE@libstrongswan_eap_aka_3gpp_la_LIBADD = $(top_builddir)/src/libsimaka/libsimaka.la
 libstrongswan_eap_aka_3gpp_la_SOURCES = \
 	eap_aka_3gpp_plugin.h eap_aka_3gpp_plugin.c \
 	eap_aka_3gpp_card.h eap_aka_3gpp_card.c \
-	eap_aka_3gpp_provider.h eap_aka_3gpp_provider.c \
-	eap_aka_3gpp_functions.h eap_aka_3gpp_functions.c
+	eap_aka_3gpp_provider.h eap_aka_3gpp_provider.c
 
+libstrongswan_eap_aka_3gpp_la_LDFLAGS = -module -avoid-version
 all: all-am
 
 .SUFFIXES:
@@ -551,6 +563,9 @@ clean-pluginLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
+
+libeap_aka_3gpp.la: $(libeap_aka_3gpp_la_OBJECTS) $(libeap_aka_3gpp_la_DEPENDENCIES) $(EXTRA_libeap_aka_3gpp_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(LINK)  $(libeap_aka_3gpp_la_OBJECTS) $(libeap_aka_3gpp_la_LIBADD) $(LIBS)
 
 libstrongswan-eap-aka-3gpp.la: $(libstrongswan_eap_aka_3gpp_la_OBJECTS) $(libstrongswan_eap_aka_3gpp_la_DEPENDENCIES) $(EXTRA_libstrongswan_eap_aka_3gpp_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libstrongswan_eap_aka_3gpp_la_LINK) $(am_libstrongswan_eap_aka_3gpp_la_rpath) $(libstrongswan_eap_aka_3gpp_la_OBJECTS) $(libstrongswan_eap_aka_3gpp_la_LIBADD) $(LIBS)

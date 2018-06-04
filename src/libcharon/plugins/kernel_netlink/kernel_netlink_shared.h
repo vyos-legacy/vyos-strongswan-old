@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 Tobias Brunner
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,7 +32,7 @@
 /**
  * General purpose netlink buffer.
  *
- * Some platforms require an enforced aligment to four bytes (e.g. ARM).
+ * Some platforms require an enforced alignment to four bytes (e.g. ARM).
  */
 typedef union {
 	struct nlmsghdr hdr;
