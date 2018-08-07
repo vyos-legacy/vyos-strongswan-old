@@ -41,7 +41,7 @@
   network,
   network raw,
 
-  /bin/dash                 rmPUx,
+  /{,usr/}bin/dash                 rmPUx,
 
   # libchron-extra-plugins: kernel-libipsec
   /dev/net/tun              rw,
