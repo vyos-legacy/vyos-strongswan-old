@@ -35,9 +35,6 @@
   # libstrongswan-standard-plugins: agent
   capability dac_override,
 
-  capability net_admin,
-  capability net_raw,
-
   network,
   network raw,
 
