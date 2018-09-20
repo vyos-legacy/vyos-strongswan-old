@@ -43,7 +43,7 @@
 
   /{,usr/}bin/dash                 rmPUx,
 
-  # libchron-extra-plugins: kernel-libipsec
+  # libcharon-extra-plugins: kernel-libipsec
   /dev/net/tun              rw,
 
   /etc/ipsec.conf           r,
