@@ -657,7 +657,7 @@ bool conf_parser_open_next_file(parser_helper_t *ctx);
 static void include_files(parser_helper_t *ctx);
 
 /* use start conditions stack */
-/* do not declare unneded functions */
+/* do not declare unneeded functions */
 #define YY_NO_INPUT 1
 /* don't use global variables, and interact properly with bison */
 /* maintain the line number */

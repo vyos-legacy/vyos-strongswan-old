@@ -1,6 +1,6 @@
 %{
 /*
- * Copyright (C) 2014 Tobias Brunner
+ * Copyright (C) 2014-2018 Tobias Brunner
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ static void include_files(parser_helper_t *ctx);
 /* use start conditions stack */
 %option stack
 
-/* do not declare unneded functions */
+/* do not declare unneeded functions */
 %option noinput noyywrap
 
 /* don't use global variables, and interact properly with bison */
@@ -49,6 +49,8 @@ static void include_files(parser_helper_t *ctx);
 /* type of our extra data */
 %option extra-type="parser_helper_t*"
 
+/* state used to scan references */
+%x ref
 /* state used to scan values */
 %x val
 /* state used to scan include file patterns */
@@ -56,14 +58,25 @@ static void include_files(parser_helper_t *ctx);
 /* state used to scan quoted strings */
 %x str
 
+/* pattern for section/key names */
+NAME [^#{}:.,="\r\n\t ]
+
 %%
 
 [\t ]*#[^\r\n]*			/* eat comments */
 [\t\r ]+				/* eat whitespace */
-\n|#.*\n				return NEWLINE; /* also eats comments at the end of a line */
+\n|#.*\n				/* eat newlines and comments at the end of a line */
 
 "{"						|
 "}"						return yytext[0];
+
+"."						return DOT;
+","						return COMMA;
+
+":"						{
+	yy_push_state(ref, yyscanner);
+	return COLON;
+}
 
 "="						{
 	yy_push_state(val, yyscanner);
@@ -80,16 +93,34 @@ static void include_files(parser_helper_t *ctx);
 	return STRING_ERROR;
 }
 
-[^#{}="\r\n\t ]+			{
+{NAME}+ 				{
 	yylval->s = strdup(yytext);
 	return NAME;
+}
+
+<ref>{
+	[\t ]*#[^\r\n]*			/* eat comments */
+	[\t\r ]+				/* eat whitespace */
+	\n|#.*\n				/* eat newlines and comments at the end of a line */
+
+	","						return COMMA;
+
+	{NAME}+(\.{NAME}+)* {
+		yylval->s = strdup(yytext);
+		return NAME;
+	}
+
+	.					{
+		unput(yytext[0]);
+		yy_pop_state(yyscanner);
+	}
 }
 
 <val>{
 	\r					/* just ignore these */
 	[\t ]+
 	<<EOF>>				|
-	[#}\n]			{
+	[#}\n]				{
 		if (*yytext)
 		{
 			switch (yytext[0])
@@ -107,15 +138,16 @@ static void include_files(parser_helper_t *ctx);
 			}
 		}
 		yy_pop_state(yyscanner);
+		return NEWLINE;
 	}
 
-	"\""					{
+	"\""				{
 		yyextra->string_init(yyextra);
 		yy_push_state(str, yyscanner);
 	}
 
 	/* same as above, but allow more characters */
-	[^#}"\r\n\t ]+			{
+	[^#}"\r\n\t ]+		{
 		yylval->s = strdup(yytext);
 		return NAME;
 	}
