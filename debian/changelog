@@ -6,8 +6,9 @@ strongswan (5.7.0-1) UNRELEASED; urgency=medium
     - include fixes for CVE-2018-16151 and CVE-2018-16152, potential
     Bleichenbacher-style low-exponent attacks leading to RSA signature forgery
     in gmp plugin.
+  * d/control: fix typo in libstrongswan long description
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 24 Sep 2018 15:11:49 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 24 Sep 2018 16:36:10 +0200
 
 strongswan (5.6.3-1) unstable; urgency=medium
 
