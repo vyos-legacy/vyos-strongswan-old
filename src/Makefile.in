@@ -109,21 +109,20 @@ host_triplet = @host@
 @USE_PKI_TRUE@am__append_20 = pki
 @USE_SWANCTL_TRUE@am__append_21 = swanctl
 @USE_CONFTEST_TRUE@am__append_22 = conftest
-@USE_DUMM_TRUE@am__append_23 = dumm
-@USE_FAST_TRUE@am__append_24 = libfast
-@USE_MANAGER_TRUE@am__append_25 = manager
-@USE_MEDSRV_TRUE@am__append_26 = medsrv
-@USE_ATTR_SQL_TRUE@am__append_27 = pool
-@USE_ATTR_SQL_FALSE@@USE_SQL_TRUE@am__append_28 = pool
-@USE_TKM_TRUE@am__append_29 = charon-tkm
-@USE_CMD_TRUE@am__append_30 = charon-cmd
-@USE_SVC_TRUE@am__append_31 = charon-svc
-@USE_LIBPTTLS_TRUE@am__append_32 = pt-tls-client
-@USE_IMC_SWIMA_TRUE@am__append_33 = sw-collector
-@USE_IMV_SWIMA_TRUE@am__append_34 = sec-updater
-@USE_INTEGRITY_TEST_TRUE@am__append_35 = checksum
-@USE_AIKGEN_TRUE@am__append_36 = aikgen
-@USE_TPM_TRUE@am__append_37 = tpm_extendpcr
+@USE_FAST_TRUE@am__append_23 = libfast
+@USE_MANAGER_TRUE@am__append_24 = manager
+@USE_MEDSRV_TRUE@am__append_25 = medsrv
+@USE_ATTR_SQL_TRUE@am__append_26 = pool
+@USE_ATTR_SQL_FALSE@@USE_SQL_TRUE@am__append_27 = pool
+@USE_TKM_TRUE@am__append_28 = charon-tkm
+@USE_CMD_TRUE@am__append_29 = charon-cmd
+@USE_SVC_TRUE@am__append_30 = charon-svc
+@USE_LIBPTTLS_TRUE@am__append_31 = pt-tls-client
+@USE_IMC_SWIMA_TRUE@am__append_32 = sw-collector
+@USE_IMV_SWIMA_TRUE@am__append_33 = sec-updater
+@USE_INTEGRITY_TEST_TRUE@am__append_34 = checksum
+@USE_AIKGEN_TRUE@am__append_35 = aikgen
+@USE_TPM_TRUE@am__append_36 = tpm_extendpcr
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -200,7 +199,7 @@ CTAGS = ctags
 DIST_SUBDIRS = . include libstrongswan libipsec libsimaka libtls \
 	libradius libtncif libtnccs libpttls libtpmtss libimcv \
 	libcharon starter ipsec _copyright charon charon-systemd \
-	charon-nm stroke _updown scepclient pki swanctl conftest dumm \
+	charon-nm stroke _updown scepclient pki swanctl conftest \
 	libfast manager medsrv pool charon-tkm charon-cmd charon-svc \
 	pt-tls-client sw-collector sec-updater checksum aikgen \
 	tpm_extendpcr
@@ -330,7 +329,6 @@ PYTHON_VERSION = @PYTHON_VERSION@
 PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
-RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -356,6 +354,8 @@ am__tar = @am__tar@
 am__untar = @am__untar@
 attest_plugins = @attest_plugins@
 bindir = @bindir@
+botan_CFLAGS = @botan_CFLAGS@
+botan_LIBS = @botan_LIBS@
 build = @build@
 build_alias = @build_alias@
 build_cpu = @build_cpu@
@@ -376,8 +376,6 @@ dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 fuzz_plugins = @fuzz_plugins@
-gtk_CFLAGS = @gtk_CFLAGS@
-gtk_LIBS = @gtk_LIBS@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -432,8 +430,6 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
-ruby_CFLAGS = @ruby_CFLAGS@
-ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -462,8 +458,12 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_esys_CFLAGS = @tss2_esys_CFLAGS@
+tss2_esys_LIBS = @tss2_esys_LIBS@
 tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
 tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_sys_CFLAGS = @tss2_sys_CFLAGS@
+tss2_sys_LIBS = @tss2_sys_LIBS@
 tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
 tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
@@ -480,8 +480,7 @@ SUBDIRS = . include $(am__append_1) $(am__append_2) $(am__append_3) \
 	$(am__append_25) $(am__append_26) $(am__append_27) \
 	$(am__append_28) $(am__append_29) $(am__append_30) \
 	$(am__append_31) $(am__append_32) $(am__append_33) \
-	$(am__append_34) $(am__append_35) $(am__append_36) \
-	$(am__append_37)
+	$(am__append_34) $(am__append_35) $(am__append_36)
 all: all-recursive
 
 .SUFFIXES:

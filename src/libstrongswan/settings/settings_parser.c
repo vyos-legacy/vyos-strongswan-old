@@ -71,7 +71,7 @@
 #line 1 "settings/settings_parser.y" /* yacc.c:339  */
 
 /*
- * Copyright (C) 2014 Tobias Brunner
+ * Copyright (C) 2014-2018 Tobias Brunner
  * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -120,6 +120,7 @@ static section_t *push_section(parser_helper_t *ctx, char *name);
 static section_t *pop_section(parser_helper_t *ctx);
 static void add_section(parser_helper_t *ctx, section_t *section);
 static void add_setting(parser_helper_t *ctx, kv_t *kv);
+static void add_references(parser_helper_t *ctx, array_t *references);
 
 /**
  * Make sure to call lexer with the proper context
@@ -131,7 +132,7 @@ static int yylex(YYSTYPE *lvalp, parser_helper_t *ctx)
 }
 
 
-#line 135 "settings/settings_parser.c" /* yacc.c:339  */
+#line 136 "settings/settings_parser.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -168,28 +169,35 @@ extern int settings_parser_debug;
   {
     NAME = 258,
     STRING = 259,
-    NEWLINE = 260,
-    STRING_ERROR = 261
+    DOT = 260,
+    COMMA = 261,
+    COLON = 262,
+    NEWLINE = 263,
+    STRING_ERROR = 264
   };
 #endif
 /* Tokens.  */
 #define NAME 258
 #define STRING 259
-#define NEWLINE 260
-#define STRING_ERROR 261
+#define DOT 260
+#define COMMA 261
+#define COLON 262
+#define NEWLINE 263
+#define STRING_ERROR 264
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 
 union YYSTYPE
 {
-#line 77 "settings/settings_parser.y" /* yacc.c:355  */
+#line 78 "settings/settings_parser.y" /* yacc.c:355  */
 
 	char *s;
 	struct section_t *sec;
 	struct kv_t *kv;
+	array_t *refs;
 
-#line 193 "settings/settings_parser.c" /* yacc.c:355  */
+#line 201 "settings/settings_parser.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -205,7 +213,7 @@ int settings_parser_parse (parser_helper_t *ctx);
 
 /* Copy the second part of user declarations.  */
 
-#line 209 "settings/settings_parser.c" /* yacc.c:358  */
+#line 217 "settings/settings_parser.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -447,21 +455,21 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  2
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   13
+#define YYLAST   19
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  10
+#define YYNTOKENS  13
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  8
+#define YYNNTS  9
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  15
+#define YYNRULES  17
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  20
+#define YYNSTATES  24
 
 /* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
    by yylex, with out-of-bounds checking.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   261
+#define YYMAXUTOK   264
 
 #define YYTRANSLATE(YYX)                                                \
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
@@ -476,13 +484,13 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     9,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,    12,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     8,     2,     7,     2,     2,     2,     2,
+       2,     2,     2,    11,     2,    10,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -496,15 +504,15 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6
+       5,     6,     7,     8,     9
 };
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,   105,   105,   107,   108,   112,   116,   123,   131,   136,
-     143,   148,   155,   156,   170,   171
+       0,   112,   112,   114,   115,   119,   123,   130,   138,   143,
+     152,   157,   165,   170,   177,   178,   192,   193
 };
 #endif
 
@@ -513,9 +521,10 @@ static const yytype_uint8 yyrline[] =
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
 {
-  "$end", "error", "$undefined", "NAME", "STRING", "NEWLINE",
-  "STRING_ERROR", "'}'", "'{'", "'='", "$accept", "statements",
-  "statement", "section", "section_start", "setting", "value", "valuepart", YY_NULLPTR
+  "$end", "error", "$undefined", "NAME", "STRING", "\".\"", "\",\"",
+  "\":\"", "NEWLINE", "STRING_ERROR", "'}'", "'{'", "'='", "$accept",
+  "statements", "statement", "section", "section_start", "references",
+  "setting", "value", "valuepart", YY_NULLPTR
 };
 #endif
 
@@ -524,14 +533,15 @@ static const char *const yytname[] =
    (internal) symbol number NUM (which must be that of a token).  */
 static const yytype_uint16 yytoknum[] =
 {
-       0,   256,   257,   258,   259,   260,   261,   125,   123,    61
+       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
+     125,   123,    61
 };
 # endif
 
-#define YYPACT_NINF -11
+#define YYPACT_NINF -7
 
 #define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-11)))
+  (!!((Yystate) == (-7)))
 
 #define YYTABLE_NINF -1
 
@@ -542,8 +552,9 @@ static const yytype_uint16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-     -11,     0,   -11,    -1,   -11,   -11,   -11,   -11,   -11,     2,
-     -11,    -2,     6,   -11,   -11,   -11,    -2,   -11,   -11,   -11
+      -7,     0,    -7,    -6,    -7,    -7,    -7,    -7,    -7,     1,
+      -7,     8,    -1,    -7,     4,    -7,    -7,     8,    -7,    -7,
+      10,    -7,    -7,    -7
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -552,19 +563,20 @@ static const yytype_int8 yypact[] =
 static const yytype_uint8 yydefact[] =
 {
        2,     0,     1,     0,     3,     4,     5,     2,     6,     0,
-       8,    11,     0,     9,    14,    15,    10,    12,     7,    13
+       8,    13,     0,    10,     0,    16,    17,    12,    14,     7,
+       0,     9,    15,    11
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -11,     5,   -11,   -11,   -11,   -11,   -11,   -10
+      -7,     7,    -7,    -7,    -7,    -7,    -7,    -7,     2
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     1,     5,     6,     7,     8,    16,    17
+      -1,     1,     5,     6,     7,    14,     8,    17,    18
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -572,36 +584,37 @@ static const yytype_int8 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_uint8 yytable[] =
 {
-       2,    14,    15,     3,     9,     4,    19,    10,    11,     3,
-      13,     4,    12,    18
+       2,     9,     3,     3,    13,    10,    11,     4,     4,    19,
+      20,    15,    16,    23,    12,    21,     0,     0,     0,    22
 };
 
-static const yytype_uint8 yycheck[] =
+static const yytype_int8 yycheck[] =
 {
-       0,     3,     4,     3,     5,     5,    16,     8,     9,     3,
-       8,     5,     7,     7
+       0,     7,     3,     3,     3,    11,    12,     8,     8,    10,
+       6,     3,     4,     3,     7,    11,    -1,    -1,    -1,    17
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    11,     0,     3,     5,    12,    13,    14,    15,     5,
-       8,     9,    11,     8,     3,     4,    16,    17,     7,    17
+       0,    14,     0,     3,     8,    15,    16,    17,    19,     7,
+      11,    12,    14,     3,    18,     3,     4,    20,    21,    10,
+       6,    11,    21,     3
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    10,    11,    11,    11,    12,    12,    13,    14,    14,
-      15,    15,    16,    16,    17,    17
+       0,    13,    14,    14,    14,    15,    15,    16,    17,    17,
+      18,    18,    19,    19,    20,    20,    21,    21
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
-       0,     2,     0,     2,     2,     1,     1,     3,     2,     3,
-       3,     2,     1,     2,     1,     1
+       0,     2,     0,     2,     2,     1,     1,     3,     2,     4,
+       1,     3,     3,     2,     1,     2,     1,     1
 };
 
 
@@ -1027,45 +1040,51 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, parser_helper_t *c
   switch (yytype)
     {
           case 3: /* NAME  */
-#line 91 "settings/settings_parser.y" /* yacc.c:1257  */
+#line 97 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1033 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1046 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
     case 4: /* STRING  */
-#line 91 "settings/settings_parser.y" /* yacc.c:1257  */
+#line 97 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1039 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1052 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
-    case 13: /* section  */
-#line 93 "settings/settings_parser.y" /* yacc.c:1257  */
+    case 16: /* section  */
+#line 99 "settings/settings_parser.y" /* yacc.c:1257  */
       { pop_section(ctx); settings_section_destroy(((*yyvaluep).sec), NULL); }
-#line 1045 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1058 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
-    case 14: /* section_start  */
-#line 93 "settings/settings_parser.y" /* yacc.c:1257  */
+    case 17: /* section_start  */
+#line 99 "settings/settings_parser.y" /* yacc.c:1257  */
       { pop_section(ctx); settings_section_destroy(((*yyvaluep).sec), NULL); }
-#line 1051 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1064 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
-    case 15: /* setting  */
-#line 94 "settings/settings_parser.y" /* yacc.c:1257  */
+    case 18: /* references  */
+#line 101 "settings/settings_parser.y" /* yacc.c:1257  */
+      { array_destroy_function(((*yyvaluep).refs), (void*)free, NULL); }
+#line 1070 "settings/settings_parser.c" /* yacc.c:1257  */
+        break;
+
+    case 19: /* setting  */
+#line 100 "settings/settings_parser.y" /* yacc.c:1257  */
       { settings_kv_destroy(((*yyvaluep).kv), NULL); }
-#line 1057 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1076 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
-    case 16: /* value  */
-#line 91 "settings/settings_parser.y" /* yacc.c:1257  */
+    case 20: /* value  */
+#line 97 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1063 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1082 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
-    case 17: /* valuepart  */
-#line 91 "settings/settings_parser.y" /* yacc.c:1257  */
+    case 21: /* valuepart  */
+#line 97 "settings/settings_parser.y" /* yacc.c:1257  */
       { free(((*yyvaluep).s)); }
-#line 1069 "settings/settings_parser.c" /* yacc.c:1257  */
+#line 1088 "settings/settings_parser.c" /* yacc.c:1257  */
         break;
 
 
@@ -1331,64 +1350,84 @@ yyreduce:
   switch (yyn)
     {
         case 5:
-#line 113 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 120 "settings/settings_parser.y" /* yacc.c:1646  */
     {
 		add_section(ctx, (yyvsp[0].sec));
 	}
-#line 1339 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1358 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 117 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 124 "settings/settings_parser.y" /* yacc.c:1646  */
     {
 		add_setting(ctx, (yyvsp[0].kv));
 	}
-#line 1347 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1366 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 124 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 131 "settings/settings_parser.y" /* yacc.c:1646  */
     {
 		pop_section(ctx);
 		(yyval.sec) = (yyvsp[-2].sec);
 	}
-#line 1356 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1375 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 132 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 139 "settings/settings_parser.y" /* yacc.c:1646  */
     {
 		(yyval.sec) = push_section(ctx, (yyvsp[-1].s));
 	}
-#line 1364 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1383 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 137 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 144 "settings/settings_parser.y" /* yacc.c:1646  */
     {
-		(yyval.sec) = push_section(ctx, (yyvsp[-2].s));
+		(yyval.sec) = push_section(ctx, (yyvsp[-3].s));
+		add_references(ctx, (yyvsp[-1].refs));
+		array_destroy((yyvsp[-1].refs));
 	}
-#line 1372 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1393 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 144 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 153 "settings/settings_parser.y" /* yacc.c:1646  */
     {
-		(yyval.kv) = settings_kv_create((yyvsp[-2].s), (yyvsp[0].s));
+		(yyval.refs) = array_create(0, 0);
+		array_insert((yyval.refs), ARRAY_TAIL, (yyvsp[0].s));
 	}
-#line 1380 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1402 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 149 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 158 "settings/settings_parser.y" /* yacc.c:1646  */
     {
-		(yyval.kv) = settings_kv_create((yyvsp[-1].s), NULL);
+		array_insert((yyvsp[-2].refs), ARRAY_TAIL, (yyvsp[0].s));
+		(yyval.refs) = (yyvsp[-2].refs);
 	}
-#line 1388 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1411 "settings/settings_parser.c" /* yacc.c:1646  */
+    break;
+
+  case 12:
+#line 166 "settings/settings_parser.y" /* yacc.c:1646  */
+    {
+		(yyval.kv) = settings_kv_create((yyvsp[-2].s), (yyvsp[0].s));
+	}
+#line 1419 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 157 "settings/settings_parser.y" /* yacc.c:1646  */
+#line 171 "settings/settings_parser.y" /* yacc.c:1646  */
+    {
+		(yyval.kv) = settings_kv_create((yyvsp[-1].s), NULL);
+	}
+#line 1427 "settings/settings_parser.c" /* yacc.c:1646  */
+    break;
+
+  case 15:
+#line 179 "settings/settings_parser.y" /* yacc.c:1646  */
     {	/* just put a single space between them, use strings for more */
 		if (asprintf(&(yyval.s), "%s %s", (yyvsp[-1].s), (yyvsp[0].s)) < 0)
 		{
@@ -1399,11 +1438,11 @@ yyreduce:
 		free((yyvsp[-1].s));
 		free((yyvsp[0].s));
 	}
-#line 1403 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1442 "settings/settings_parser.c" /* yacc.c:1646  */
     break;
 
 
-#line 1407 "settings/settings_parser.c" /* yacc.c:1646  */
+#line 1446 "settings/settings_parser.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1631,7 +1670,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 174 "settings/settings_parser.y" /* yacc.c:1906  */
+#line 196 "settings/settings_parser.y" /* yacc.c:1906  */
 
 
 /**
@@ -1697,6 +1736,27 @@ static void add_setting(parser_helper_t *ctx, kv_t *kv)
 
 	array_get(sections, ARRAY_TAIL, &section);
 	settings_kv_add(section, kv, NULL);
+}
+
+/**
+ * Adds the given references to the section on top of the stack
+ */
+static void add_references(parser_helper_t *ctx, array_t *references)
+{
+	array_t *sections = (array_t*)ctx->context;
+	section_t *section;
+	enumerator_t *refs;
+	char *ref;
+
+	array_get(sections, ARRAY_TAIL, &section);
+
+	refs = array_create_enumerator(references);
+	while (refs->enumerate(refs, &ref))
+	{
+		settings_reference_add(section, ref, FALSE);
+		array_remove_at(references, refs);
+	}
+	refs->destroy(refs);
 }
 
 /**

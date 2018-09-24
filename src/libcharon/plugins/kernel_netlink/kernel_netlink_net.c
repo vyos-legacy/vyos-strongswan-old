@@ -1504,7 +1504,7 @@ static void process_rule(private_kernel_netlink_net_t *this, struct nlmsghdr *hd
 static bool receive_events(private_kernel_netlink_net_t *this, int fd,
 						   watcher_event_t event)
 {
-	char response[1536];
+	char response[netlink_get_buflen()];
 	struct nlmsghdr *hdr = (struct nlmsghdr*)response;
 	struct sockaddr_nl addr;
 	socklen_t addr_len = sizeof(addr);
@@ -2586,11 +2586,11 @@ static status_t manage_srcroute(private_kernel_netlink_net_t *this,
 		memset(half_net.ptr, 0, half_net.len);
 		half_prefixlen = 1;
 
-		status = manage_srcroute(this, nlmsg_type, flags, half_net, half_prefixlen,
-					gateway, src_ip, if_name);
+		status = manage_srcroute(this, nlmsg_type, flags, half_net,
+								 half_prefixlen, gateway, src_ip, if_name);
 		half_net.ptr[0] |= 0x80;
-		status = manage_srcroute(this, nlmsg_type, flags, half_net, half_prefixlen,
-					gateway, src_ip, if_name);
+		status |= manage_srcroute(this, nlmsg_type, flags, half_net,
+								  half_prefixlen, gateway, src_ip, if_name);
 		return status;
 	}
 
@@ -2925,7 +2925,7 @@ static status_t manage_rule(private_kernel_netlink_net_t *this, int nlmsg_type,
 			msg->rtm_flags |= FIB_RULE_INVERT;
 			fwmark++;
 		}
-		if (mark_from_string(fwmark, &mark))
+		if (mark_from_string(fwmark, MARK_OP_NONE, &mark))
 		{
 			chunk = chunk_from_thing(mark.value);
 			netlink_add_attribute(hdr, FRA_FWMARK, chunk, sizeof(request));

@@ -220,35 +220,37 @@ host_triplet = @host@
 @MONOLITHIC_TRUE@@USE_OPENSSL_TRUE@am__append_106 = plugins/openssl/libstrongswan-openssl.la
 @USE_GCRYPT_TRUE@am__append_107 = plugins/gcrypt
 @MONOLITHIC_TRUE@@USE_GCRYPT_TRUE@am__append_108 = plugins/gcrypt/libstrongswan-gcrypt.la
-@USE_FIPS_PRF_TRUE@am__append_109 = plugins/fips_prf
-@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_110 = plugins/fips_prf/libstrongswan-fips-prf.la
-@USE_AGENT_TRUE@am__append_111 = plugins/agent
-@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_112 = plugins/agent/libstrongswan-agent.la
-@USE_KEYCHAIN_TRUE@am__append_113 = plugins/keychain
-@MONOLITHIC_TRUE@@USE_KEYCHAIN_TRUE@am__append_114 = plugins/keychain/libstrongswan-keychain.la
-@USE_PKCS11_TRUE@am__append_115 = plugins/pkcs11
-@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_116 = plugins/pkcs11/libstrongswan-pkcs11.la
-@USE_CHAPOLY_TRUE@am__append_117 = plugins/chapoly
-@MONOLITHIC_TRUE@@USE_CHAPOLY_TRUE@am__append_118 = plugins/chapoly/libstrongswan-chapoly.la
-@USE_CTR_TRUE@am__append_119 = plugins/ctr
-@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_120 = plugins/ctr/libstrongswan-ctr.la
-@USE_CCM_TRUE@am__append_121 = plugins/ccm
-@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_122 = plugins/ccm/libstrongswan-ccm.la
-@USE_GCM_TRUE@am__append_123 = plugins/gcm
-@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_124 = plugins/gcm/libstrongswan-gcm.la
-@USE_MGF1_TRUE@am__append_125 = plugins/mgf1
-@MONOLITHIC_TRUE@@USE_MGF1_TRUE@am__append_126 = plugins/mgf1/libstrongswan-mgf1.la
-@USE_NTRU_TRUE@am__append_127 = plugins/ntru
-@MONOLITHIC_TRUE@@USE_NTRU_TRUE@am__append_128 = plugins/ntru/libstrongswan-ntru.la
-@USE_BLISS_TRUE@am__append_129 = plugins/bliss
-@MONOLITHIC_TRUE@@USE_BLISS_TRUE@am__append_130 = plugins/bliss/libstrongswan-bliss.la
-@USE_NEWHOPE_TRUE@am__append_131 = plugins/newhope
-@MONOLITHIC_TRUE@@USE_NEWHOPE_TRUE@am__append_132 = plugins/newhope/libstrongswan-newhope.la
-@USE_TEST_VECTORS_TRUE@am__append_133 = plugins/test_vectors
-@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_134 = plugins/test_vectors/libstrongswan-test-vectors.la
-@USE_LIBNTTFFT_TRUE@am__append_135 = math/libnttfft/tests
-@USE_BLISS_TRUE@am__append_136 = plugins/bliss/tests
-@USE_NEWHOPE_TRUE@am__append_137 = plugins/newhope/tests
+@USE_BOTAN_TRUE@am__append_109 = plugins/botan
+@MONOLITHIC_TRUE@@USE_BOTAN_TRUE@am__append_110 = plugins/botan/libstrongswan-botan.la
+@USE_FIPS_PRF_TRUE@am__append_111 = plugins/fips_prf
+@MONOLITHIC_TRUE@@USE_FIPS_PRF_TRUE@am__append_112 = plugins/fips_prf/libstrongswan-fips-prf.la
+@USE_AGENT_TRUE@am__append_113 = plugins/agent
+@MONOLITHIC_TRUE@@USE_AGENT_TRUE@am__append_114 = plugins/agent/libstrongswan-agent.la
+@USE_KEYCHAIN_TRUE@am__append_115 = plugins/keychain
+@MONOLITHIC_TRUE@@USE_KEYCHAIN_TRUE@am__append_116 = plugins/keychain/libstrongswan-keychain.la
+@USE_PKCS11_TRUE@am__append_117 = plugins/pkcs11
+@MONOLITHIC_TRUE@@USE_PKCS11_TRUE@am__append_118 = plugins/pkcs11/libstrongswan-pkcs11.la
+@USE_CHAPOLY_TRUE@am__append_119 = plugins/chapoly
+@MONOLITHIC_TRUE@@USE_CHAPOLY_TRUE@am__append_120 = plugins/chapoly/libstrongswan-chapoly.la
+@USE_CTR_TRUE@am__append_121 = plugins/ctr
+@MONOLITHIC_TRUE@@USE_CTR_TRUE@am__append_122 = plugins/ctr/libstrongswan-ctr.la
+@USE_CCM_TRUE@am__append_123 = plugins/ccm
+@MONOLITHIC_TRUE@@USE_CCM_TRUE@am__append_124 = plugins/ccm/libstrongswan-ccm.la
+@USE_GCM_TRUE@am__append_125 = plugins/gcm
+@MONOLITHIC_TRUE@@USE_GCM_TRUE@am__append_126 = plugins/gcm/libstrongswan-gcm.la
+@USE_MGF1_TRUE@am__append_127 = plugins/mgf1
+@MONOLITHIC_TRUE@@USE_MGF1_TRUE@am__append_128 = plugins/mgf1/libstrongswan-mgf1.la
+@USE_NTRU_TRUE@am__append_129 = plugins/ntru
+@MONOLITHIC_TRUE@@USE_NTRU_TRUE@am__append_130 = plugins/ntru/libstrongswan-ntru.la
+@USE_BLISS_TRUE@am__append_131 = plugins/bliss
+@MONOLITHIC_TRUE@@USE_BLISS_TRUE@am__append_132 = plugins/bliss/libstrongswan-bliss.la
+@USE_NEWHOPE_TRUE@am__append_133 = plugins/newhope
+@MONOLITHIC_TRUE@@USE_NEWHOPE_TRUE@am__append_134 = plugins/newhope/libstrongswan-newhope.la
+@USE_TEST_VECTORS_TRUE@am__append_135 = plugins/test_vectors
+@MONOLITHIC_TRUE@@USE_TEST_VECTORS_TRUE@am__append_136 = plugins/test_vectors/libstrongswan-test-vectors.la
+@USE_LIBNTTFFT_TRUE@am__append_137 = math/libnttfft/tests
+@USE_BLISS_TRUE@am__append_138 = plugins/bliss/tests
+@USE_NEWHOPE_TRUE@am__append_139 = plugins/newhope/tests
 subdir = src/libstrongswan
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/config/libtool.m4 \
@@ -328,7 +330,8 @@ libstrongswan_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__append_112) $(am__append_114) $(am__append_116) \
 	$(am__append_118) $(am__append_120) $(am__append_122) \
 	$(am__append_124) $(am__append_126) $(am__append_128) \
-	$(am__append_130) $(am__append_132) $(am__append_134)
+	$(am__append_130) $(am__append_132) $(am__append_134) \
+	$(am__append_136)
 am__libstrongswan_la_SOURCES_DIST = library.c asn1/asn1.c \
 	asn1/asn1_parser.c asn1/oid.c bio/bio_reader.c \
 	bio/bio_writer.c collections/blocking_queue.c \
@@ -665,10 +668,10 @@ DIST_SUBDIRS = . math/libnttfft plugins/af_alg plugins/aes plugins/des \
 	plugins/sshkey plugins/pem plugins/curl plugins/files \
 	plugins/winhttp plugins/unbound plugins/soup plugins/ldap \
 	plugins/mysql plugins/sqlite plugins/padlock plugins/openssl \
-	plugins/gcrypt plugins/fips_prf plugins/agent plugins/keychain \
-	plugins/pkcs11 plugins/chapoly plugins/ctr plugins/ccm \
-	plugins/gcm plugins/mgf1 plugins/ntru plugins/bliss \
-	plugins/newhope plugins/test_vectors tests \
+	plugins/gcrypt plugins/botan plugins/fips_prf plugins/agent \
+	plugins/keychain plugins/pkcs11 plugins/chapoly plugins/ctr \
+	plugins/ccm plugins/gcm plugins/mgf1 plugins/ntru \
+	plugins/bliss plugins/newhope plugins/test_vectors tests \
 	math/libnttfft/tests plugins/bliss/tests plugins/newhope/tests
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp \
 	$(top_srcdir)/ylwrap settings/settings_lexer.c \
@@ -798,7 +801,6 @@ PYTHON_VERSION = @PYTHON_VERSION@
 PY_TEST = @PY_TEST@
 RANLIB = @RANLIB@
 RTLIB = @RTLIB@
-RUBY = @RUBY@
 RUBYGEMDIR = @RUBYGEMDIR@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -824,6 +826,8 @@ am__tar = @am__tar@
 am__untar = @am__untar@
 attest_plugins = @attest_plugins@
 bindir = @bindir@
+botan_CFLAGS = @botan_CFLAGS@
+botan_LIBS = @botan_LIBS@
 build = @build@
 build_alias = @build_alias@
 build_cpu = @build_cpu@
@@ -844,8 +848,6 @@ dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 fips_mode = @fips_mode@
 fuzz_plugins = @fuzz_plugins@
-gtk_CFLAGS = @gtk_CFLAGS@
-gtk_LIBS = @gtk_LIBS@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
@@ -900,8 +902,6 @@ random_device = @random_device@
 resolv_conf = @resolv_conf@
 routing_table = @routing_table@
 routing_table_prio = @routing_table_prio@
-ruby_CFLAGS = @ruby_CFLAGS@
-ruby_LIBS = @ruby_LIBS@
 runstatedir = @runstatedir@
 s_plugins = @s_plugins@
 sbindir = @sbindir@
@@ -930,8 +930,12 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 tss2_CFLAGS = @tss2_CFLAGS@
 tss2_LIBS = @tss2_LIBS@
+tss2_esys_CFLAGS = @tss2_esys_CFLAGS@
+tss2_esys_LIBS = @tss2_esys_LIBS@
 tss2_socket_CFLAGS = @tss2_socket_CFLAGS@
 tss2_socket_LIBS = @tss2_socket_LIBS@
+tss2_sys_CFLAGS = @tss2_sys_CFLAGS@
+tss2_sys_LIBS = @tss2_sys_LIBS@
 tss2_tabrmd_CFLAGS = @tss2_tabrmd_CFLAGS@
 tss2_tabrmd_LIBS = @tss2_tabrmd_LIBS@
 urandom_device = @urandom_device@
@@ -1080,7 +1084,7 @@ libstrongswan_la_LIBADD = $(DLLIB) $(ATOMICLIB) $(BTLIB) $(SOCKLIB) \
 	$(am__append_114) $(am__append_116) $(am__append_118) \
 	$(am__append_120) $(am__append_122) $(am__append_124) \
 	$(am__append_126) $(am__append_128) $(am__append_130) \
-	$(am__append_132) $(am__append_134)
+	$(am__append_132) $(am__append_134) $(am__append_136)
 AM_CPPFLAGS = -I$(top_srcdir)/src/libstrongswan \
 	-DIPSEC_DIR=\"${ipsecdir}\" -DIPSEC_LIB_DIR=\"${ipseclibdir}\" \
 	-DPLUGINDIR=\"${plugindir}\" \
@@ -1142,8 +1146,9 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_FALSE@	$(am__append_121) $(am__append_123) \
 @MONOLITHIC_FALSE@	$(am__append_125) $(am__append_127) \
 @MONOLITHIC_FALSE@	$(am__append_129) $(am__append_131) \
-@MONOLITHIC_FALSE@	$(am__append_133) tests $(am__append_135) \
-@MONOLITHIC_FALSE@	$(am__append_136) $(am__append_137)
+@MONOLITHIC_FALSE@	$(am__append_133) $(am__append_135) tests \
+@MONOLITHIC_FALSE@	$(am__append_137) $(am__append_138) \
+@MONOLITHIC_FALSE@	$(am__append_139)
 
 # build unit tests
 ##################
@@ -1175,8 +1180,9 @@ $(srcdir)/crypto/proposal/proposal_keywords_static.c
 @MONOLITHIC_TRUE@	$(am__append_121) $(am__append_123) \
 @MONOLITHIC_TRUE@	$(am__append_125) $(am__append_127) \
 @MONOLITHIC_TRUE@	$(am__append_129) $(am__append_131) \
-@MONOLITHIC_TRUE@	$(am__append_133) . tests $(am__append_135) \
-@MONOLITHIC_TRUE@	$(am__append_136) $(am__append_137)
+@MONOLITHIC_TRUE@	$(am__append_133) $(am__append_135) . tests \
+@MONOLITHIC_TRUE@	$(am__append_137) $(am__append_138) \
+@MONOLITHIC_TRUE@	$(am__append_139)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
