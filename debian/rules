@@ -9,6 +9,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-bypass-lan \
 		--enable-ccm \
 		--enable-certexpire \
+		--enable-chapoly \
 		--enable-cmd \
 		--enable-ctr \
 		--enable-curl \
