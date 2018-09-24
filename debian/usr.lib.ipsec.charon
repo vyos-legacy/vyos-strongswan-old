@@ -35,15 +35,12 @@
   # libstrongswan-standard-plugins: agent
   capability dac_override,
 
-  capability net_admin,
-  capability net_raw,
-
   network,
   network raw,
 
   /{,usr/}bin/dash                 rmPUx,
 
-  # libchron-extra-plugins: kernel-libipsec
+  # libcharon-extra-plugins: kernel-libipsec
   /dev/net/tun              rw,
 
   /etc/ipsec.conf           r,
