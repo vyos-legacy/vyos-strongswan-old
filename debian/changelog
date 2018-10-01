@@ -1,4 +1,4 @@
-strongswan (5.7.1-1) UNRELEASED; urgency=medium
+strongswan (5.7.1-1) unstable; urgency=medium
 
   [ Ondřej Nový ]
   * d/copyright: Use https protocol in Format field
@@ -14,7 +14,7 @@ strongswan (5.7.1-1) UNRELEASED; urgency=medium
     plugin triggered by crafted certificates with RSA keys with very small
     moduli (CVE-2018-17540)
 
- -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Oct 2018 22:33:19 +0200
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 01 Oct 2018 22:34:53 +0200
 
 strongswan (5.7.0-1) unstable; urgency=medium
 
