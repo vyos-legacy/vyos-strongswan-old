@@ -33,7 +33,6 @@ Build-Depends: bison,
                systemd [linux-any],
                tzdata
 Homepage: http://www.strongswan.org
-XS-Testsuite: autopkgtest
 
 Package: strongswan
 Architecture: all

@@ -3,6 +3,7 @@ strongswan (5.7.0-2) UNRELEASED; urgency=medium
   * d/copyright: Use https protocol in Format field
   * d/changelog: Remove trailing whitespaces
   * d/rules: Remove trailing whitespaces
+  * d/control: Remove XS-Testsuite field, not needed anymore
 
  -- Ondřej Nový <onovy@debian.org>  Mon, 01 Oct 2018 10:21:46 +0200
 
