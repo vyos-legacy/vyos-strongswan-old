@@ -2,7 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: strongswan
 Upstream-Contact: http://strongswan.org/
 Source: http://strongswan.org/
-License: GPL-2+ with exceptions
+License: GPL-2+ with OpenSSL exception
 Copyright: Martin Willi, Tobias Brunner, Andreas Steffen
 
 Files: debian/*
@@ -2651,7 +2651,7 @@ License: GPL-2+
  Public License version 2 can be found in
  `/usr/share/common-licenses/GPL-2'.
 
-License: GPL-2+ with exceptions
+License: GPL-2+ with OpenSSL exception
  This program is free software; you can redistribute it and/or modify it under
  the terms of the GNU General Public License as published by the Free Software
  Foundation; either version 2 of the License, or (at your option) any later
