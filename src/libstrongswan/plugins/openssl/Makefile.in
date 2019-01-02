@@ -145,7 +145,8 @@ am_libstrongswan_openssl_la_OBJECTS = openssl_plugin.lo \
 	openssl_ec_diffie_hellman.lo openssl_ec_private_key.lo \
 	openssl_ec_public_key.lo openssl_x509.lo openssl_crl.lo \
 	openssl_pkcs7.lo openssl_pkcs12.lo openssl_rng.lo \
-	openssl_hmac.lo openssl_gcm.lo
+	openssl_hmac.lo openssl_gcm.lo openssl_x_diffie_hellman.lo \
+	openssl_ed_private_key.lo openssl_ed_public_key.lo
 libstrongswan_openssl_la_OBJECTS =  \
 	$(am_libstrongswan_openssl_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -487,7 +488,10 @@ libstrongswan_openssl_la_SOURCES = \
 	openssl_pkcs12.c openssl_pkcs12.h \
 	openssl_rng.c openssl_rng.h \
 	openssl_hmac.c openssl_hmac.h \
-	openssl_gcm.c openssl_gcm.h
+	openssl_gcm.c openssl_gcm.h \
+	openssl_x_diffie_hellman.c openssl_x_diffie_hellman.h \
+	openssl_ed_private_key.c openssl_ed_private_key.h \
+	openssl_ed_public_key.c openssl_ed_public_key.h
 
 libstrongswan_openssl_la_LDFLAGS = -module -avoid-version
 libstrongswan_openssl_la_LIBADD = $(OPENSSL_LIB)
@@ -586,6 +590,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_ec_diffie_hellman.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_ec_private_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_ec_public_key.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_ed_private_key.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_ed_public_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_gcm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_hasher.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_hmac.Plo@am__quote@
@@ -598,6 +604,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_sha1_prf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_util.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_x509.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/openssl_x_diffie_hellman.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\

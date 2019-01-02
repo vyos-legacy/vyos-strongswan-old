@@ -142,8 +142,9 @@ am_libstrongswan_botan_la_OBJECTS = botan_plugin.lo botan_rng.lo \
 	botan_hasher.lo botan_hmac.lo botan_crypter.lo \
 	botan_rsa_public_key.lo botan_rsa_private_key.lo \
 	botan_diffie_hellman.lo botan_ec_diffie_hellman.lo \
-	botan_ec_public_key.lo botan_ec_private_key.lo botan_util.lo \
-	botan_util_keys.lo botan_gcm.lo botan_x25519.lo
+	botan_ec_public_key.lo botan_ec_private_key.lo \
+	botan_ed_public_key.lo botan_ed_private_key.lo botan_util.lo \
+	botan_util_keys.lo botan_aead.lo botan_x25519.lo
 libstrongswan_botan_la_OBJECTS = $(am_libstrongswan_botan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -478,9 +479,11 @@ libstrongswan_botan_la_SOURCES = \
 	botan_ec_diffie_hellman.h botan_ec_diffie_hellman.c \
 	botan_ec_public_key.h botan_ec_public_key.c \
 	botan_ec_private_key.h botan_ec_private_key.c \
+	botan_ed_public_key.h botan_ed_public_key.c \
+	botan_ed_private_key.h botan_ed_private_key.c \
 	botan_util.h botan_util.c \
 	botan_util_keys.h botan_util_keys.c \
-	botan_gcm.h botan_gcm.c \
+	botan_aead.h botan_aead.c \
 	botan_x25519.h botan_x25519.c
 
 libstrongswan_botan_la_LDFLAGS = -module -avoid-version
@@ -574,12 +577,14 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_aead.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_crypter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_diffie_hellman.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_ec_diffie_hellman.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_ec_private_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_ec_public_key.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_gcm.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_ed_private_key.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_ed_public_key.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_hasher.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_hmac.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/botan_plugin.Plo@am__quote@

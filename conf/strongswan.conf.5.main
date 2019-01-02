@@ -1685,6 +1685,11 @@ Send an unsupported PB\-TNC message type with the NOSKIP flag set.
 Send a PB\-TNC batch with a modified PB\-TNC version.
 
 .TP
+.BR charon.plugins.tpm.fips_186_4 " [no]"
+Is the TPM 2.0 FIPS\-186\-4 compliant, forcing e.g. the use of the default salt
+length instead of maximum salt length with RSAPSS padding.
+
+.TP
 .BR charon.plugins.tpm.tcti.name " [device|tabrmd]"
 Name of TPM 2.0 TCTI library. Valid values:
 .RI "" "tabrmd" ","

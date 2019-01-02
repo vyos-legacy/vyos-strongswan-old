@@ -74,6 +74,6 @@ typedef enum {
 typedef struct stroke_token stroke_token_t;
 
 extern const stroke_token_t* in_word_set(register const char *str,
-										 register unsigned len);
+										 register size_t len);
 
 #endif /* _STROKE_KEYWORDS_H_ */

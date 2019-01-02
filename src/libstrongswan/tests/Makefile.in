@@ -163,6 +163,7 @@ am_libstrongswan_tests_OBJECTS = libstrongswan_tests-tests.$(OBJEXT) \
 	suites/libstrongswan_tests-test_mgf1.$(OBJEXT) \
 	suites/libstrongswan_tests-test_ntru.$(OBJEXT) \
 	suites/libstrongswan_tests-test_ed25519.$(OBJEXT) \
+	suites/libstrongswan_tests-test_ed448.$(OBJEXT) \
 	suites/libstrongswan_tests-test_signature_params.$(OBJEXT)
 libstrongswan_tests_OBJECTS = $(am_libstrongswan_tests_OBJECTS)
 libstrongswan_tests_DEPENDENCIES =  \
@@ -548,6 +549,7 @@ libstrongswan_tests_SOURCES = tests.h tests.c \
   suites/test_mgf1.c \
   suites/test_ntru.c \
   suites/test_ed25519.c \
+  suites/test_ed448.c \
   suites/test_signature_params.c
 
 libstrongswan_tests_CFLAGS = \
@@ -708,6 +710,8 @@ suites/libstrongswan_tests-test_ntru.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/libstrongswan_tests-test_ed25519.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
+suites/libstrongswan_tests-test_ed448.$(OBJEXT):  \
+	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 suites/libstrongswan_tests-test_signature_params.$(OBJEXT):  \
 	suites/$(am__dirstamp) suites/$(DEPDIR)/$(am__dirstamp)
 
@@ -740,6 +744,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_crypto_factory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ecdsa.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ed25519.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_enum.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_enumerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@suites/$(DEPDIR)/libstrongswan_tests-test_fetch_http.Po@am__quote@
@@ -1358,6 +1363,20 @@ suites/libstrongswan_tests-test_ed25519.obj: suites/test_ed25519.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed25519.c' object='suites/libstrongswan_tests-test_ed25519.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ed25519.obj `if test -f 'suites/test_ed25519.c'; then $(CYGPATH_W) 'suites/test_ed25519.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed25519.c'; fi`
+
+suites/libstrongswan_tests-test_ed448.o: suites/test_ed448.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ed448.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Tpo -c -o suites/libstrongswan_tests-test_ed448.o `test -f 'suites/test_ed448.c' || echo '$(srcdir)/'`suites/test_ed448.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed448.c' object='suites/libstrongswan_tests-test_ed448.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ed448.o `test -f 'suites/test_ed448.c' || echo '$(srcdir)/'`suites/test_ed448.c
+
+suites/libstrongswan_tests-test_ed448.obj: suites/test_ed448.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_ed448.obj -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Tpo -c -o suites/libstrongswan_tests-test_ed448.obj `if test -f 'suites/test_ed448.c'; then $(CYGPATH_W) 'suites/test_ed448.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed448.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Tpo suites/$(DEPDIR)/libstrongswan_tests-test_ed448.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='suites/test_ed448.c' object='suites/libstrongswan_tests-test_ed448.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -c -o suites/libstrongswan_tests-test_ed448.obj `if test -f 'suites/test_ed448.c'; then $(CYGPATH_W) 'suites/test_ed448.c'; else $(CYGPATH_W) '$(srcdir)/suites/test_ed448.c'; fi`
 
 suites/libstrongswan_tests-test_signature_params.o: suites/test_signature_params.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libstrongswan_tests_CFLAGS) $(CFLAGS) -MT suites/libstrongswan_tests-test_signature_params.o -MD -MP -MF suites/$(DEPDIR)/libstrongswan_tests-test_signature_params.Tpo -c -o suites/libstrongswan_tests-test_signature_params.o `test -f 'suites/test_signature_params.c' || echo '$(srcdir)/'`suites/test_signature_params.c

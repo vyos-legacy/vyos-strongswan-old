@@ -19,7 +19,7 @@
 #include "proposal_keywords.h"
 
 const proposal_token_t* proposal_get_token_static(register const char *str,
-												  register unsigned len);
+												  register size_t len);
 
 #endif /* PROPOSAL_KEYWORDS_STATIC_H_ */
 
