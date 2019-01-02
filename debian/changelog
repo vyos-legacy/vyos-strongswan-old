@@ -1,4 +1,4 @@
-strongswan (5.7.2-1) UNRELEASED; urgency=medium
+strongswan (5.7.2-1) unstable; urgency=medium
 
   * d/control: remove Rene from Uploaders, thanks!
   * d/copyright: fix typos
@@ -14,7 +14,7 @@ strongswan (5.7.2-1) UNRELEASED; urgency=medium
   * d/u/signing-key.asc: strip signatures from upstream signing key
   * d/patches: import patches in gbp pq
 
- -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2019 11:40:34 +0100
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2019 13:02:11 +0100
 
 strongswan (5.7.1-1) unstable; urgency=medium
 
