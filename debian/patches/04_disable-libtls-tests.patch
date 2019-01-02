@@ -1,6 +1,17 @@
+From: Romain Francoise <rfrancoise@debian.org>
+Date: Wed, 2 Jan 2019 11:34:18 +0100
+Subject: Disable libtls tests
+
+They're too intensive for the buildd network and cause FTBFS
+---
+ src/libtls/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libtls/Makefile.am b/src/libtls/Makefile.am
+index b649636..635be38 100644
 --- a/src/libtls/Makefile.am
 +++ b/src/libtls/Makefile.am
-@@ -26,4 +26,4 @@
+@@ -26,4 +26,4 @@ nobase_tls_include_HEADERS = \
  	tls_server.h tls_handshake.h tls_application.h tls_aead.h tls.h
  endif
  

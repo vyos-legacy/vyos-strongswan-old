@@ -1,6 +1,15 @@
-diff --git a/debian/patches/03_systemd-service.patch b/debian/patches/03_systemd-service.patch
+From: Romain Francoise <rfrancoise@debian.org>
+Date: Wed, 2 Jan 2019 11:37:27 +0100
+Subject: Tune the ipsec systemd service file
+
+- add a reload argument
+- don't wait on syslog
+---
+ init/systemd/strongswan.service.in | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
 diff --git a/init/systemd/strongswan.service.in b/init/systemd/strongswan.service.in
-index 474284a19..8060d1ea2 100644
+index 474284a..8060d1e 100644
 --- a/init/systemd/strongswan.service.in
 +++ b/init/systemd/strongswan.service.in
 @@ -1,9 +1,10 @@

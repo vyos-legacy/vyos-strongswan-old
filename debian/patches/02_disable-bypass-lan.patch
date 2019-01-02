@@ -1,5 +1,13 @@
+From: Yves-Alexis Perez <corsac@debian.org>
+Date: Wed, 2 Jan 2019 11:35:52 +0100
+Subject: Don't load bypass-lan plugin by default
+
+---
+ conf/plugins/bypass-lan.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 diff --git a/conf/plugins/bypass-lan.conf b/conf/plugins/bypass-lan.conf
-index ad496db67..e470ce68e 100644
+index ad496db..e470ce6 100644
 --- a/conf/plugins/bypass-lan.conf
 +++ b/conf/plugins/bypass-lan.conf
 @@ -11,7 +11,7 @@ bypass-lan {
