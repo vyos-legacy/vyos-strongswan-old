@@ -190,9 +190,6 @@
 /* have GNU-style qsort_r() */
 #undef HAVE_QSORT_R_GNU
 
-/* Define to 1 if you have the `rb_errinfo' function. */
-#undef HAVE_RB_ERRINFO
-
 /* have netlink RTA_TABLE defined */
 #undef HAVE_RTA_TABLE
 
@@ -325,6 +322,12 @@
 /* Define to 1 if strerror_r returns char *. */
 #undef STRERROR_R_CHAR_P
 
+/* use TSS2 v2 Extended System API */
+#undef TSS2_ESYS
+
+/* use TSS2 v2 System API */
+#undef TSS2_SYS
+
 /* use TCTI Sockets */
 #undef TSS2_TCTI_SOCKET
 
@@ -334,8 +337,11 @@
 /* use TrouSerS library libtspi */
 #undef TSS_TROUSERS
 
-/* use TSS 2.0 libraries */
-#undef TSS_TSS2
+/* use TSS 2.0 v1 libraries */
+#undef TSS_TSS2_V1
+
+/* use TSS 2.0 v2 libraries */
+#undef TSS_TSS2_V2
 
 /* using builtin printf for printf hooks */
 #undef USE_BUILTIN_PRINTF

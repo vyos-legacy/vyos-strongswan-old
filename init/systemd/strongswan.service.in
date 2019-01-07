@@ -1,10 +1,9 @@
 [Unit]
 Description=strongSwan IPsec IKEv1/IKEv2 daemon using ipsec.conf
-After=network-online.target
+After=syslog.target network-online.target
 
 [Service]
 ExecStart=@SBINDIR@/@IPSEC_SCRIPT@ start --nofork
-ExecReload=@SBINDIR@/@IPSEC_SCRIPT@ reload
 StandardOutput=syslog
 Restart=on-abnormal
 

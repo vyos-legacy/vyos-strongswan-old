@@ -26,4 +26,4 @@ nobase_tls_include_HEADERS = \
 	tls_server.h tls_handshake.h tls_application.h tls_aead.h tls.h
 endif
 
-SUBDIRS = .
+SUBDIRS = . tests

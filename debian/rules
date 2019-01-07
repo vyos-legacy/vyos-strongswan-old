@@ -9,6 +9,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 		--enable-bypass-lan \
 		--enable-ccm \
 		--enable-certexpire \
+		--enable-chapoly \
 		--enable-cmd \
 		--enable-ctr \
 		--enable-curl \
@@ -44,7 +45,7 @@ CONFIGUREARGS := --libdir=/usr/lib --libexecdir=/usr/lib \
 	# And for --enable-eap-sim we would need the library, which we don't
 	# have right now.
 	# Don't --enable-cisco-quirks, because some other IPsec implementations
-	# (most notably the Phion one) have problems connecting when pluto 
+	# (most notably the Phion one) have problems connecting when pluto
 	# sends these Cisco options.
 	# don't enable medsrv/medcli right now (20160523) since clearsilver FTBFS
 	#--enable-medsrv --enable-medcli \

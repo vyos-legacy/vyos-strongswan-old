@@ -2,6 +2,7 @@
 usr/bin/tpm_extendpcr
 # libstrongswan plugins
 usr/lib/ipsec/plugins/libstrongswan-ccm.so
+usr/lib/ipsec/plugins/libstrongswan-chapoly.so
 usr/lib/ipsec/plugins/libstrongswan-cmac.so
 usr/lib/ipsec/plugins/libstrongswan-ctr.so
 usr/lib/ipsec/plugins/libstrongswan-curl.so
@@ -14,6 +15,7 @@ usr/lib/ipsec/plugins/libstrongswan-tpm.so
 # default configuration files
 usr/share/strongswan/templates/config/plugins/ccm.conf
 usr/share/strongswan/templates/config/plugins/cmac.conf
+usr/share/strongswan/templates/config/plugins/chapoly.conf
 usr/share/strongswan/templates/config/plugins/ctr.conf
 usr/share/strongswan/templates/config/plugins/curl.conf
 usr/share/strongswan/templates/config/plugins/curve25519.conf
@@ -23,6 +25,7 @@ usr/share/strongswan/templates/config/plugins/pkcs11.conf
 usr/share/strongswan/templates/config/plugins/test-vectors.conf
 usr/share/strongswan/templates/config/plugins/tpm.conf
 etc/strongswan.d/charon/ccm.conf
+etc/strongswan.d/charon/chapoly.conf
 etc/strongswan.d/charon/cmac.conf
 etc/strongswan.d/charon/ctr.conf
 etc/strongswan.d/charon/curl.conf
