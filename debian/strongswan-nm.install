@@ -1,0 +1,2 @@
+usr/lib/ipsec/charon-nm
+etc/dbus-1/system.d/nm-strongswan-service.conf
