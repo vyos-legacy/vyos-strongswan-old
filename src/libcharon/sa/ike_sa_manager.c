@@ -1419,51 +1419,48 @@ METHOD(ike_sa_manager_t, checkout_by_config, ike_sa_t*,
 
 	DBG2(DBG_MGR, "checkout IKE_SA by config");
 
-	if (this->reuse_ikesa || peer_cfg->get_ike_version(peer_cfg) == IKEV1)
-	{
-		enumerator = create_table_enumerator(this);
-		while (enumerator->enumerate(enumerator, &entry, &segment))
-		{
-			if (!wait_for_entry(this, entry, segment))
-			{
-				continue;
-			}
-			if (entry->ike_sa->get_state(entry->ike_sa) == IKE_DELETING ||
-				entry->ike_sa->get_state(entry->ike_sa) == IKE_REKEYED)
-			{	/* skip IKE_SAs which are not usable, wake other waiting threads */
-				entry->condvar->signal(entry->condvar);
-				continue;
-			}
-			current_peer = entry->ike_sa->get_peer_cfg(entry->ike_sa);
-			if (current_peer && current_peer->equals(current_peer, peer_cfg))
-			{
-				current_ike = current_peer->get_ike_cfg(current_peer);
-				if (current_ike->equals(current_ike,
-										peer_cfg->get_ike_cfg(peer_cfg)))
-				{
-					entry->checked_out = thread_current();
-					ike_sa = entry->ike_sa;
-					DBG2(DBG_MGR, "found existing IKE_SA %u with a '%s' config",
-							ike_sa->get_unique_id(ike_sa),
-							current_peer->get_name(current_peer));
-					break;
-				}
-			}
-			/* other threads might be waiting for this entry */
-			entry->condvar->signal(entry->condvar);
-		}
-		enumerator->destroy(enumerator);
+	if (!this->reuse_ikesa && peer_cfg->get_ike_version(peer_cfg) != IKEV1)
+	{	/* IKE_SA reuse disabled by config (not possible for IKEv1) */
+		ike_sa = checkout_new(this, peer_cfg->get_ike_version(peer_cfg), TRUE);
+		charon->bus->set_sa(charon->bus, ike_sa);
+		goto out;
 	}
 
-	if (!ike_sa)
-	{	/* no IKE_SA using such a config, or reuse disabled, hand out a new */
-		if (this->ikesa_limit &&
-			this->public.get_count(&this->public) >= this->ikesa_limit)
+	enumerator = create_table_enumerator(this);
+	while (enumerator->enumerate(enumerator, &entry, &segment))
+	{
+		if (!wait_for_entry(this, entry, segment))
 		{
-			DBG1(DBG_MGR, "IKE_SA creation failed, hitting IKE_SA limit (%u)",
-				 this->ikesa_limit);
-			return NULL;
+			continue;
 		}
+		if (entry->ike_sa->get_state(entry->ike_sa) == IKE_DELETING ||
+			entry->ike_sa->get_state(entry->ike_sa) == IKE_REKEYED)
+		{	/* skip IKE_SAs which are not usable, wake other waiting threads */
+			entry->condvar->signal(entry->condvar);
+			continue;
+		}
+
+		current_peer = entry->ike_sa->get_peer_cfg(entry->ike_sa);
+		if (current_peer && current_peer->equals(current_peer, peer_cfg))
+		{
+			current_ike = current_peer->get_ike_cfg(current_peer);
+			if (current_ike->equals(current_ike, peer_cfg->get_ike_cfg(peer_cfg)))
+			{
+				entry->checked_out = thread_current();
+				ike_sa = entry->ike_sa;
+				DBG2(DBG_MGR, "found existing IKE_SA %u with a '%s' config",
+						ike_sa->get_unique_id(ike_sa),
+						current_peer->get_name(current_peer));
+				break;
+			}
+		}
+		/* other threads might be waiting for this entry */
+		entry->condvar->signal(entry->condvar);
+	}
+	enumerator->destroy(enumerator);
+
+	if (!ike_sa)
+	{	/* no IKE_SA using such a config, hand out a new */
 		ike_sa = checkout_new(this, peer_cfg->get_ike_version(peer_cfg), TRUE);
 	}
 	charon->bus->set_sa(charon->bus, ike_sa);
