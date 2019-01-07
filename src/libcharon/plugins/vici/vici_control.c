@@ -197,7 +197,7 @@ CALLBACK(initiate, vici_message_t*,
 	host_t *my_host = NULL, *other_host = NULL;
 	char *child, *ike, *my_host_str, *other_host_str;
 	int timeout;
-	bool limits, async;
+	bool limits;
 	controller_cb_t log_cb = NULL;
 	log_info_t log = {
 		.dispatcher = this->dispatcher,
@@ -208,7 +208,6 @@ CALLBACK(initiate, vici_message_t*,
 	ike = request->get_str(request, NULL, "ike");
 	timeout = request->get_int(request, 0, "timeout");
 	limits = request->get_bool(request, FALSE, "init-limits");
-	async = request->get_bool(request, FALSE, "async");
 	log.level = request->get_int(request, 1, "loglevel");
 	my_host_str = request->get_str(request, NULL, "my-host");
 	other_host_str = request->get_str(request, NULL, "other-host");
@@ -217,7 +216,7 @@ CALLBACK(initiate, vici_message_t*,
 	{
 		return send_reply(this, "missing configuration name");
 	}
-	if (timeout >= 0 && !async)
+	if (timeout >= 0)
 	{
 		log_cb = (controller_cb_t)log_vici;
 	}
