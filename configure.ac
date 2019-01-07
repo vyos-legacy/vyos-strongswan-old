@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.6.2])
+AC_INIT([strongSwan],[5.6.3])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -1908,6 +1908,7 @@ AC_CONFIG_FILES([
 	src/libcharon/Makefile
 	src/libcharon/plugins/eap_aka/Makefile
 	src/libcharon/plugins/eap_aka_3gpp/Makefile
+	src/libcharon/plugins/eap_aka_3gpp/tests/Makefile
 	src/libcharon/plugins/eap_aka_3gpp2/Makefile
 	src/libcharon/plugins/eap_dynamic/Makefile
 	src/libcharon/plugins/eap_identity/Makefile

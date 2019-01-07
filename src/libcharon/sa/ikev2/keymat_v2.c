@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2015 Tobias Brunner
  * Copyright (C) 2008 Martin Willi
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -303,8 +303,8 @@ METHOD(keymat_v2_t, derive_ike_keys, bool,
 	chunk_t nonce_i, chunk_t nonce_r, ike_sa_id_t *id,
 	pseudo_random_function_t rekey_function, chunk_t rekey_skd)
 {
-	chunk_t skeyseed, key, secret, full_nonce, fixed_nonce, prf_plus_seed;
-	chunk_t spi_i, spi_r;
+	chunk_t skeyseed = chunk_empty, key, secret, full_nonce, fixed_nonce;
+	chunk_t prf_plus_seed, spi_i, spi_r;
 	prf_plus_t *prf_plus = NULL;
 	uint16_t alg, key_size, int_alg;
 	prf_t *rekey_prf = NULL;

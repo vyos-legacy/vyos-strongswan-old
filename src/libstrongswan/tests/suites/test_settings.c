@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2014 Tobias Brunner
- * Hochschule fuer Technik Rapperswil
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -1109,6 +1109,12 @@ START_TEST(test_valid)
 		"}\n");
 	ck_assert(chunk_write(contents, path, 0022, TRUE));
 	ck_assert(settings->load_files(settings, path, FALSE));
+
+	contents = chunk_from_str(
+		"equals = a setting with = and { character");
+	ck_assert(chunk_write(contents, path, 0022, TRUE));
+	ck_assert(settings->load_files(settings, path, FALSE));
+	verify_string("a setting with = and { character", "equals");
 }
 END_TEST
 
@@ -1148,9 +1154,107 @@ START_TEST(test_invalid)
 	ck_assert(!settings->load_files(settings, path, FALSE));
 
 	contents = chunk_from_str(
-		"only = a single setting = per line");
+		"\"unexpected\" = string");
 	ck_assert(chunk_write(contents, path, 0022, TRUE));
 	ck_assert(!settings->load_files(settings, path, FALSE));
+}
+END_TEST
+
+START_SETUP(setup_crlf_config)
+{
+	chunk_t inc1 = chunk_from_str(
+		"main {\r\n"
+		"	key1 = n1\r\n"
+		"	key2 = n2\n"
+		"	key3 = val3\n"
+		"	none = \n"
+		"	sub1 {\n"
+		"		key3 = value\n"
+		"	}\n"
+		"	sub2 {\n"
+		"		sub3 = val3\n"
+		"	}\n"
+		"	include " include2 "\n"
+		"}");
+	chunk_t inc2 = chunk_from_str(
+		"key2 = v2\n"
+		"sub1 {\n"
+		"	key = val\n"
+		"}");
+	ck_assert(chunk_write(inc1, include1, 0022, TRUE));
+	ck_assert(chunk_write(inc2, include2, 0022, TRUE));
+}
+END_SETUP
+
+START_TEST(test_crlf)
+{
+	chunk_t contents = chunk_from_str(
+		"main {\r\n"
+		"	key1 = val1\r\n"
+		"	none =\r\n"
+		"	sub1 {\r\n"
+		"		key2 = v2\r\n"
+		"		# key2 = v3\r\n"
+		"		sub1 {\r\n"
+		"			key = val\r\n"
+		"		}\r\n"
+		"	}\r\n"
+		"}");
+
+	create_settings(contents);
+
+	verify_string("val1", "main.key1");
+	verify_string("v2", "main.sub1.key2");
+	verify_string("val", "main.sub1.sub1.key");
+	verify_null("main.none");
+}
+END_TEST
+
+START_TEST(test_crlf_string)
+{
+	chunk_t contents = chunk_from_str(
+		"main {\r\n"
+		"	key1 = \"new\r\nline\"\r\n"
+		"	key2 = \"joi\\\r\nned\"\r\n"
+		"	none =\r\n"
+		"	sub1 {\r\n"
+		"		key2 = v2\r\n"
+		"		sub1 {\r\n"
+		"			key = val\r\n"
+		"		}\r\n"
+		"	}\r\n"
+		"}");
+
+	create_settings(contents);
+
+	verify_string("new\nline", "main.key1");
+	verify_string("joined", "main.key2");
+	verify_string("v2", "main.sub1.key2");
+	verify_string("val", "main.sub1.sub1.key");
+	verify_null("main.none");
+}
+END_TEST
+
+START_TEST(test_crlf_include)
+{
+	chunk_t contents = chunk_from_str(
+		"main {\r\n"
+		"	key1 = val1\r\n"
+		"	none =\r\n"
+		"	sub1 {\r\n"
+		"		key2 = v2\r\n"
+		"		sub1 {\r\n"
+		"			key = val\r\n"
+		"		}\r\n"
+		"	}\r\n"
+		"}");
+
+	create_settings(contents);
+
+	verify_string("val1", "main.key1");
+	verify_string("v2", "main.sub1.key2");
+	verify_string("val", "main.sub1.sub1.key");
+	verify_null("main.none");
 }
 END_TEST
 
@@ -1239,6 +1343,13 @@ Suite *settings_suite_create()
 	tcase_add_checked_fixture(tc, setup_base_config, teardown_config);
 	tcase_add_test(tc, test_valid);
 	tcase_add_test(tc, test_invalid);
+	suite_add_tcase(s, tc);
+
+	tc = tcase_create("crlf");
+	tcase_add_checked_fixture(tc, setup_crlf_config, teardown_include_config);
+	tcase_add_test(tc, test_crlf);
+	tcase_add_test(tc, test_crlf_string);
+	tcase_add_test(tc, test_crlf_include);
 	suite_add_tcase(s, tc);
 
 	return s;

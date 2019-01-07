@@ -1,3 +1,18 @@
+strongswan (5.6.3-1) unstable; urgency=medium
+
+  * New upstream version 5.6.2
+  * update charon-systemd AppArmor profile (closes: #896813)
+  * New upstream version 5.6.3
+    - fix a DoS vulnerability in the IKEv2 key derivation if the openssl
+    plugin is used in FIPS mode and HMAC-MD5 is negotiated as PRF
+    (CVE-2018-10811)
+    - fix a vulnerability in the stroke plugin, which did not check the
+    received length before reading a message from the control socket
+    (CVE-2018-5388)
+  * d/p/05_charon-nm-Fix-building-list-of-DNS-MDNS-servers-with removed
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Mon, 04 Jun 2018 10:23:22 +0200
+
 strongswan (5.6.2-2) unstable; urgency=medium
 
   * charon-nm: Fix building list of DNS/MDNS servers with libnm

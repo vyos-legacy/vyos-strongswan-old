@@ -1146,7 +1146,13 @@ disables IPsec replay protection.
 .TP
 .BR connections.<conn>.children.<child>.hw_offload " [no]"
 Enable hardware offload for this CHILD_SA, if supported by the IPsec
-implementation.
+implementation. The value
+.RI "" "yes" ""
+enforces offloading and the installation will
+fail if it's not supported by either kernel or device.       The value
+.RI "" "auto" ""
+enables offloading, if it's supported, but the installation does not fail
+otherwise.
 
 .TP
 .BR connections.<conn>.children.<child>.start_action " [none]"

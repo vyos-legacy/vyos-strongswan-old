@@ -30,9 +30,9 @@ error "gperf generated tables don't work with this execution character set. Plea
 #endif
 
 
-/* stroke keywords
+/*
  * Copyright (C) 2006 Andreas Steffen
- * Hochschule fuer Technik Rapperswil, Switzerland
+ * HSR Hochschule fuer Technik Rapperswil
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
