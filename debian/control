@@ -2,9 +2,8 @@ Source: strongswan
 Section: net
 Priority: optional
 Maintainer: strongSwan Maintainers <pkg-swan-devel@lists.alioth.debian.org>
-Uploaders: Rene Mayrhofer <rmayr@debian.org>,
-           Yves-Alexis Perez <corsac@debian.org>
-Standards-Version: 4.1.2
+Uploaders: Yves-Alexis Perez <corsac@debian.org>
+Standards-Version: 4.3.0
 Vcs-Browser: https://salsa.debian.org/debian/strongswan
 Vcs-Git: https://salsa.debian.org/debian/strongswan.git
 Build-Depends: bison,

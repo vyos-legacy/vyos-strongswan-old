@@ -197,7 +197,7 @@ struct kw_entry_t {
 };
 
 #ifndef IN_GPERF_GENERATED_FILE
-const kw_entry_t *in_word_set(register const char*, register unsigned);
+const kw_entry_t *in_word_set(register const char*, register size_t);
 #endif
 
 #endif /* _KEYWORDS_H_ */

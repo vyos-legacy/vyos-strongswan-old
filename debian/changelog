@@ -1,3 +1,21 @@
+strongswan (5.7.2-1) unstable; urgency=medium
+
+  * d/control: remove Rene from Uploaders, thanks!
+  * d/copyright: fix typos
+  * d/watch: use HTTPS protocol
+  * d/control: update standards version to 4.2.1
+  * drop unused debconf template
+  * use a clean export for upstream signing key
+  * d/copyright update
+  * New upstream version 5.7.2
+  * d/copyright updated
+  * d/control: update standards version to 4.3.0
+  * d/libstrongswan.dirs: drop lintian overrides dir
+  * d/u/signing-key.asc: strip signatures from upstream signing key
+  * d/patches: import patches in gbp pq
+
+ -- Yves-Alexis Perez <corsac@debian.org>  Wed, 02 Jan 2019 13:02:11 +0100
+
 strongswan (5.7.1-1) unstable; urgency=medium
 
   [ Ondřej Nový ]

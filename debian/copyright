@@ -2,9 +2,12 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: strongswan
 Upstream-Contact: http://strongswan.org/
 Source: http://strongswan.org/
+License: GPL-2+ with OpenSSL exception
+Copyright: Martin Willi, Tobias Brunner, Andreas Steffen
 
-Files: *
-Copyright: 2005-2011, Martin Willi
+Files: debian/*
+Copyright: 2006-2011 Rene Mayrhofer <rene@mayrhofer.eu.org>,
+  2012-2018 Yves-Alexis Perez <corsac@debian.org>
 License: GPL-2+
 
 Files: conf/*
@@ -15,18 +18,37 @@ Files: ltmain.sh
 Copyright: 1996-2001, 2003-2005, 2006
 License: GPL-2+
 
-Files: scripts/aes-test.c
-  scripts/settings-test.c
-Copyright: 2007-2015, Tobias Brunner
+Files: scripts/bin2array.c
+ scripts/bin2sql.c
+ scripts/dh_speed.c
+ scripts/id2sql.c
+ scripts/key2keyid.c
+ scripts/pubkey_speed.c
+Copyright: 2008, Martin Willi
+  2008-2009, Martin Willi
+  2009, Martin Willi
+License: GPL-2+
+
+
+Files: conf/format-options.py
+ fuzz/libFuzzerLocal.c
+ scripts/aes-test.c
+ scripts/settings-test.c
+Copyright: 2013, Tobias Brunner
+  2014-2017, Tobias Brunner
+  2014-2018, Tobias Brunner
+  2017, Tobias Brunner
 License: GPL-2+
 
 Files: scripts/crypt_burn.c
-  scripts/fetch.c
-  scripts/hash_burn.c
-  scripts/oid2der.c
-  scripts/tls_test.c
-Copyright: 2010-2015, revosec AG
-  2006-2015, Martin Willi
+ scripts/fetch.c
+ scripts/hash_burn.c
+ scripts/oid2der.c
+ scripts/tls_test.c
+Copyright: 2010, Martin Willi
+  2010, revosec AG
+  2012, Martin Willi
+  2012, revosec AG
 License: GPL-2+
 
 Files: scripts/dnssec.c
@@ -141,41 +163,6 @@ Copyright: 2012, achelos GmbH
   2010, Martin Willi
 License: Expat and GPL-2+
 
-Files: src/dumm/*
-Copyright: 2007-2015, Tobias Brunner
-  2005-2013, Martin Willi
-License: GPL-2+
-
-Files: src/dumm/bridge.c
-  src/dumm/bridge.h
-  src/dumm/iface.h
-  src/dumm/irdumm.c
-  src/dumm/main.c
-  src/dumm/mconsole.h
-Copyright: 2005-2011, Martin Willi
-License: GPL-2+
-
-Files: src/dumm/cowfs.c
-Copyright: 2009, Tobias Brunner
-  2007, Martin Willi
-  2001-2007, Miklos Szeredi
-License: GPL-2+
-
-Files: src/dumm/ext/lib/*
-Copyright: 2007-2015, Tobias Brunner
-License: GPL-2+
-
-Files: src/dumm/iface.c
-Copyright: 2008, Tobias Brunner
-  2007, Martin Willi
-  2002, Jeff Dike
-License: GPL-2+
-
-Files: src/dumm/mconsole.c
-Copyright: 2007, Martin Willi
-  2001-2004, Jeff Dike
-License: GPL-2+
-
 Files: src/include/*
 Copyright: *No copyright*
 License: GPL-2+
@@ -190,7 +177,7 @@ License: GPL-2+
 
 Files: src/include/sys/*
 Copyright: 1991, 1993
-License: BSD-3-clause
+License: BSD-3
 
 Files: src/libcharon/attributes/attributes.c
   src/libcharon/attributes/attributes.h
@@ -225,18 +212,12 @@ License: GPL-2+
 Files: src/libcharon/config/backend.h
   src/libcharon/config/backend_manager.c
   src/libcharon/config/backend_manager.h
-  src/libcharon/config/proposal.h
 Copyright: 2005-2011, Martin Willi
 License: GPL-2+
 
 Files: src/libcharon/config/ike_cfg.c
 Copyright: 2005-2009, Martin Willi
   2005, Jan Hutter
-License: GPL-2+
-
-Files: src/libcharon/config/proposal.c
-Copyright: 2007-2015, Tobias Brunner
-  2005-2013, Martin Willi
 License: GPL-2+
 
 Files: src/libcharon/control/controller.c
@@ -624,10 +605,6 @@ Files: src/libcharon/plugins/load_tester/load_tester.c
   src/libcharon/plugins/load_tester/load_tester_control.h
 Copyright: 2010-2015, revosec AG
   2006-2015, Martin Willi
-License: GPL-2+
-
-Files: src/libcharon/plugins/maemo/*
-Copyright: 2007-2015, Tobias Brunner
 License: GPL-2+
 
 Files: src/libcharon/plugins/medcli/*
@@ -1144,10 +1121,6 @@ Files: src/libimcv/plugins/imc_scanner/imc_scanner_state.h
 Copyright: 2010, 2011, 2013, Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
 License: GPL-2+
 
-Files: src/libimcv/plugins/imc_swid/imc_swid_state.h
-Copyright: 2010, 2011, 2013, Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
-License: GPL-2+
-
 Files: src/libimcv/plugins/imc_test/imc_test_state.h
 Copyright: 2010, 2011, 2013, Andreas Steffen, HSR Hochschule fuer Technik Rapperswil
 License: GPL-2+
@@ -1211,11 +1184,6 @@ Files: src/libimcv/pts/pts_dh_group.c
   src/libimcv/pts/pts_file_type.h
   src/libimcv/pts/pts_proto_caps.h
   src/libimcv/pts/pts_req_func_comp_evid.h
-  src/libimcv/pts/pts_simple_evid_final.h
-Copyright: 2010, 2011, Sansar Choinyambuu
-License: GPL-2+
-
-Files: src/libimcv/swid/swid_error.c
 Copyright: 2010, 2011, Sansar Choinyambuu
 License: GPL-2+
 
@@ -1270,10 +1238,6 @@ License: GPL-2+
 
 Files: src/libradius/radius_mppe.h
 Copyright: 2001-2015, Andreas Steffen
-License: GPL-2+
-
-Files: src/libstrongswan/AndroidConfigLocal.h
-Copyright: 2007-2015, Tobias Brunner
 License: GPL-2+
 
 Files: src/libstrongswan/asn1/*
@@ -1447,10 +1411,6 @@ License: GPL-2+
 
 Files: src/libstrongswan/crypto/iv/*
 Copyright: 2007-2015, Tobias Brunner
-License: GPL-2+
-
-Files: src/libstrongswan/crypto/mgf1/*
-Copyright: 2001-2015, Andreas Steffen
 License: GPL-2+
 
 Files: src/libstrongswan/crypto/nonce_gen.h
@@ -2614,7 +2574,7 @@ License: BSD-3-clause
 
 License: BSD-Young
  This library is free for commercial and non-commercial use as long as
- the following conditions are aheared to.  The following conditions
+ the following conditions are adhered to.  The following conditions
  apply to all code found in this distribution, be it the RC4, RSA,
  lhash, DES, etc., code; not just the SSL code.  The SSL documentation
  included with this distribution is covered by the same copyright terms
@@ -2639,7 +2599,7 @@ License: BSD-Young
     must display the following acknowledgement:
     "This product includes cryptographic software written by
      Eric Young (eay@cryptsoft.com)"
-    The word 'cryptographic' can be left out if the rouines from the library
+    The word 'cryptographic' can be left out if the routines from the library
     being used are not cryptographic related :-).
  4. If you include any Windows specific code (or a derivative thereof) from
     the apps directory (application code) you must include an acknowledgement:
@@ -2660,7 +2620,7 @@ License: BSD-Young
  The licence and distribution terms for any publically available version or
  derivative of this code cannot be changed.  i.e. this code cannot simply be
  copied and put under another distribution licence
- [including the GNU Public Licence.]
+ [including the GNU General Public License.]
 
 License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2692,48 +2652,45 @@ License: GPL-2+
  `/usr/share/common-licenses/GPL-2'.
 
 License: GPL-2+ with OpenSSL exception
- This program is free software; you can redistribute it
- and/or modify it under the terms of the GNU General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later
+ This program is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation; either version 2 of the License, or (at your option) any later
  version.
  .
- In addition, as a special exception, the author of this
- program gives permission to link the code of its
- release with the OpenSSL project's "OpenSSL" library (or
- with modified versions of it that use the same license as
- the "OpenSSL" library), and distribute the linked
- executables. You must obey the GNU General Public
- License in all respects for all of the code used other
- than "OpenSSL".  If you modify this file, you may extend
- this exception to your version of the file, but you are
- not obligated to do so.  If you do not wish to do so,
- delete this exception statement from your version.
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  .
- This program is distributed in the hope that it will be
- useful, but WITHOUT ANY WARRANTY; without even the implied
- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- PURPOSE.  See the GNU General Public License for more
- details.
+ You should have received a copy of the GNU General Public License along with
+ this program; if not, see <http://www.gnu.org/licenses>.
  .
- You should have received a copy of the GNU General Public
- License along with this package; if not, write to the Free
- Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- Boston, MA  02110-1301 USA
+ Linking strongSwan statically or dynamically with other modules is making a
+ combined work based on strongSwan. Thus, the terms and conditions of the GNU
+ General Public License cover the whole combination.
  .
- On Debian systems, the full text of the GNU General Public
- License version 2 can be found in the file
- `/usr/share/common-licenses/GPL-2'.
+ In addition, as a special exception, the copyright holders of strongSwan give
+ you permission to combine strongSwan with free software programs or libraries
+ that are released under the GNU LGPL and with code included in the standard
+ release of the OpenSSL project's OpenSSL library under the OpenSSL or SSLeay
+ licenses (or modified versions of such code, with unchanged license). You may
+ copy and distribute such a system following the terms of the GNU GPL for
+ strongSwan and the licenses of the other code concerned, provided that you
+ include the source code of that other code when and as the GNU GPL requires
+ distribution of source code.
+ .
+ Note that people who make modified versions of strongSwan are not obligated to
+ grant this special exception for their modified versions; it is their choice
+ whether to do so. The GNU General Public License gives permission to release a
+ modified version without this exception; this exception also makes it possible
+ to release a modified version which carries forward this exception.
+ .
+ On Debian systems, the full text of the GNU General Public License version 2
+ can be found in the file `/usr/share/common-licenses/GPL-2'.
 
 License: GPL-3+
  On Debian systems, the complete text of the GNU General
  Public License version 3 can be found in
  `/usr/share/common-licenses/GPL-3'.
-
-License: LGPL-2+
- On Debian systems, the complete text of the Lesser GNU
- General Public License version 2 can be found in
- `/usr/share/common-licenses/LGPL-2'.
 
 License: MIT
  This file is free software; as a special exception the author gives

@@ -19,7 +19,7 @@
 #  initialize & set some vars
 # ============================
 
-AC_INIT([strongSwan],[5.7.1])
+AC_INIT([strongSwan],[5.7.2])
 AM_INIT_AUTOMAKE(m4_esyscmd([
 	echo tar-ustar
 	echo subdir-objects
@@ -1292,6 +1292,9 @@ if test x$fuzzing = xtrue; then
 	else
 		# required for libFuzzer
 		FUZZING_LDFLAGS="-stdlib=libc++ -lstdc++"
+		if test "$SANITIZER" = "coverage"; then
+			FUZZING_LDFLAGS="$FUZZING_LDFLAGS -lm"
+		fi
 		AC_SUBST(FUZZING_LDFLAGS)
 	fi
 fi

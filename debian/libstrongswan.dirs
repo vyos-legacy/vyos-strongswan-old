@@ -3,4 +3,3 @@
 /etc/logcheck/ignore.d.workstation
 /etc/logcheck/violations.ignore.d
 /usr/lib/ipsec/plugins
-/usr/share/lintian/overrides

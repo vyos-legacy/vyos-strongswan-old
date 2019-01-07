@@ -28,13 +28,6 @@ _Description: Restart strongSwan now?
  existing connections and then bring them back up, so if you are using such
  a strongSwan tunnel to connect for this update, restarting is not recommended.
 
-Template: strongswan/charon
-Type: boolean
-Default: true
-_Description: Start strongSwan's charon daemon?
- The charon daemon must be running to support the Internet Key
- Exchange protocol.
-
 Template: strongswan/install_x509_certificate
 Type: boolean
 Default: false
