@@ -37,7 +37,7 @@ static int terminate(vici_conn_t *conn)
 	vici_req_t *req;
 	vici_res_t *res;
 	command_format_options_t format = COMMAND_FORMAT_NONE;
-	char *arg, *child = NULL, *ike = NULL, *my_host = NULL, *other_host = NULL;
+	char *arg, *child = NULL, *ike = NULL;
 	int ret = 0, timeout = 0, level = 1, child_id = 0, ike_id = 0;
 
 	while (TRUE)
@@ -70,12 +70,6 @@ static int terminate(vici_conn_t *conn)
 			case 'l':
 				level = atoi(arg);
 				continue;
-			case 'S':
-				my_host = arg;
-				continue;
-			case 'R':
-				other_host = arg;
-				continue;
 			case EOF:
 				break;
 			default:
@@ -106,14 +100,6 @@ static int terminate(vici_conn_t *conn)
 	if (ike_id)
 	{
 		vici_add_key_valuef(req, "ike-id", "%d", ike_id);
-	}
-	if (my_host)
-	{
-		vici_add_key_valuef(req, "my-host", "%s", my_host);
-	}
-	if (other_host)
-	{
-		vici_add_key_valuef(req, "other-host", "%s", other_host);
 	}
 	if (timeout)
 	{
@@ -161,8 +147,6 @@ static void __attribute__ ((constructor))reg()
 		{
 			{"help",		'h', 0, "show usage information"},
 			{"child",		'c', 1, "terminate by CHILD_SA name"},
-			{"source",		'S', 1, "override source address"},
-			{"remote",		'R', 1, "override remote address"},
 			{"ike",			'i', 1, "terminate by IKE_SA name"},
 			{"child-id",	'C', 1, "terminate by CHILD_SA reqid"},
 			{"ike-id",		'I', 1, "terminate by IKE_SA unique identifier"},
